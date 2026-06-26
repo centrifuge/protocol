@@ -9,6 +9,7 @@ import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {MessageType} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
@@ -513,21 +514,24 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
 
         vm.prank(address(adapter1));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, adapter1);
+        emit IMultiAdapter.Vote(REMOTE_CENT_ID, payloadId, message, adapter1);
         multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
         assertVotes(1, MESSAGE_1, 1, 0, 0);
 
         vm.prank(address(adapter2));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, adapter2);
+        emit IMultiAdapter.Vote(REMOTE_CENT_ID, payloadId, message, adapter2);
         multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
         assertVotes(1, MESSAGE_1, 1, 1, 0);
 
+        // The final handle() casts the deciding vote and executes, so it emits both events in order
         vm.prank(address(adapter3));
         vm.expectEmit();
-        emit IMultiAdapter.HandlePayload(REMOTE_CENT_ID, payloadId, message, adapter3);
+        emit IMultiAdapter.Vote(REMOTE_CENT_ID, payloadId, message, adapter3);
+        vm.expectEmit();
+        emit IMultiAdapter.Execute(REMOTE_CENT_ID, payloadId, message, adapter3);
         multiAdapter.handle(REMOTE_CENT_ID, message);
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
@@ -851,6 +855,157 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
         assertEq(gateway.count(REMOTE_CENT_ID), 1);
         assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+    }
+}
+
+// -----------------------------------------
+//     VOTE / EXECUTE (proof-adapter primitives)
+// -----------------------------------------
+
+contract MultiAdapterTestVote is MultiAdapterTest {
+    function testErrInvalidAdapter() public {
+        // Caller is not a configured adapter for the payload's pool/session
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.vote(REMOTE_CENT_ID, _wrap(0, "hi"));
+    }
+
+    function testVoteRecordsButNeverExecutesEvenWhenThresholdMet() public {
+        // threshold 1: a single handle() would execute inline, but vote() must not
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
+
+        vm.prank(address(adapter1));
+        vm.expectEmit();
+        emit IMultiAdapter.Vote(REMOTE_CENT_ID, payloadId, message, adapter1);
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+
+        // Vote is recorded but never consumed nor forwarded to the gateway
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(1, MESSAGE_1, 1, 0, 0);
+    }
+
+    function testVoteAccumulatesAcrossAdaptersWithoutExecuting() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+
+        vm.prank(address(adapter1));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter3));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+
+        // Even with the full quorum reached, votes are untouched and nothing executed
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 1);
+    }
+}
+
+contract MultiAdapterTestExecute is MultiAdapterTest {
+    function testErrInvalidAdapter() public {
+        // No adapters configured -> caller cannot be resolved
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.execute(REMOTE_CENT_ID, _wrap(0, "hi"));
+    }
+
+    function testErrNotEnoughVotes() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+
+        // No votes cast yet
+        vm.prank(address(adapter1));
+        vm.expectRevert(IAdapterEntrypoint.NotEnoughVotes.selector);
+        multiAdapter.execute(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
+    }
+
+    function testErrNotEnoughVotesBelowThreshold() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+
+        // Only two of three required votes recorded
+        vm.prank(address(adapter1));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+
+        vm.prank(address(adapter3));
+        vm.expectRevert(IAdapterEntrypoint.NotEnoughVotes.selector);
+        multiAdapter.execute(REMOTE_CENT_ID, message);
+
+        // Votes left intact since execution reverted
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
+    }
+
+    function testExecuteConsumesVotesAndForwards() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+        bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
+
+        vm.prank(address(adapter1));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter3));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        assertVotes(1, MESSAGE_1, 1, 1, 1);
+
+        // Any configured adapter can trigger execution; quorum votes are consumed
+        vm.prank(address(adapter1));
+        vm.expectEmit();
+        emit IMultiAdapter.Execute(REMOTE_CENT_ID, payloadId, message, adapter1);
+        multiAdapter.execute(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertEq(gateway.handled(REMOTE_CENT_ID, 0), MESSAGE_1);
+        assertVotes(1, MESSAGE_1, 0, 0, 0);
+    }
+
+    function testExecuteDoesNotCastOwnVote() public {
+        // threshold 2 / quorum 3: two votes are enough to reach the threshold
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+
+        vm.prank(address(adapter1));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        assertVotes(1, MESSAGE_1, 1, 1, 0);
+
+        // adapter3 executes. If it had cast a vote (like handle()) the result would be 0,0,0;
+        // since execute() never votes, adapter3's slot is only touched by the quorum decrease -> 0,0,-1
+        vm.prank(address(adapter3));
+        multiAdapter.execute(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(1, MESSAGE_1, 0, 0, -1);
+    }
+
+    function testHandleAndVoteCanMixBeforeExecute() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+
+        // A regular handle() vote and a proof vote() both count towards the threshold
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter2));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        vm.prank(address(adapter3));
+        multiAdapter.vote(REMOTE_CENT_ID, message);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+        assertVotes(1, MESSAGE_1, 1, 1, 1);
+
+        vm.prank(address(adapter3));
+        multiAdapter.execute(REMOTE_CENT_ID, message);
+
+        assertEq(gateway.count(REMOTE_CENT_ID), 1);
+        assertVotes(1, MESSAGE_1, 0, 0, 0);
     }
 }
 

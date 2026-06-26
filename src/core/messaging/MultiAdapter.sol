@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "./interfaces/IAdapterEntrypoint.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
 
@@ -169,29 +170,76 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
+    /// @dev Equivalent to vote() followed by execute(): cast this adapter's vote and, if it reaches the
+    ///      threshold, consume the quorum's votes and forward to the gateway.
     function handle(uint16 centrifugeId, bytes calldata payload) external {
+        (Adapter memory adapter, bytes32 payloadHash, bytes calldata unwrappedPayload) = _resolve(centrifugeId, payload);
+        if (_vote(centrifugeId, payload, adapter, payloadHash)) {
+            _execute(centrifugeId, payload, adapter, payloadHash, unwrappedPayload);
+        }
+    }
+
+    /// @inheritdoc IAdapterEntrypoint
+    function vote(uint16 centrifugeId, bytes calldata payload) external {
+        (Adapter memory adapter, bytes32 payloadHash,) = _resolve(centrifugeId, payload);
+        _vote(centrifugeId, payload, adapter, payloadHash);
+    }
+
+    /// @dev Record the calling adapter's vote, emit {Vote} and return whether the threshold has been
+    ///      reached. Votes are NOT consumed here; consumption happens in `_execute()`.
+    function _vote(uint16 centrifugeId, bytes calldata payload, Adapter memory adapter, bytes32 payloadHash)
+        internal
+        returns (bool executable)
+    {
+        _votes[centrifugeId][payloadHash][adapter.id - 1]++;
+        executable = _votes[centrifugeId][payloadHash].countPositiveValues(adapter.quorum) >= adapter.threshold;
+
+        bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
+        emit Vote(centrifugeId, payloadId, payload, IAdapter(msg.sender));
+    }
+
+    /// @inheritdoc IAdapterEntrypoint
+    function execute(uint16 centrifugeId, bytes calldata payload) external {
+        (Adapter memory adapter, bytes32 payloadHash, bytes calldata unwrappedPayload) = _resolve(centrifugeId, payload);
+
+        require(
+            _votes[centrifugeId][payloadHash].countPositiveValues(adapter.quorum) >= adapter.threshold, NotEnoughVotes()
+        );
+        _execute(centrifugeId, payload, adapter, payloadHash, unwrappedPayload);
+    }
+
+    /// @dev Consume the quorum's votes, forward the payload to the gateway and emit {Execute}. The
+    ///      threshold check is the caller's responsibility (handle() via _vote()'s return, execute() via its require).
+    function _execute(
+        uint16 centrifugeId,
+        bytes calldata payload,
+        Adapter memory adapter,
+        bytes32 payloadHash,
+        bytes calldata unwrappedPayload
+    ) internal {
+        _votes[centrifugeId][payloadHash].decreaseFirstNValues(adapter.quorum, adapter.recoveryIndex);
+
+        bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
+        emit Execute(centrifugeId, payloadId, payload, IAdapter(msg.sender));
+
+        gateway.handle(centrifugeId, unwrappedPayload);
+    }
+
+    /// @dev Parse a wrapped payload and resolve the calling adapter's config and the payload hash. Reverts if
+    ///      the caller is not a configured adapter for the payload's pool/session.
+    function _resolve(uint16 centrifugeId, bytes calldata payload)
+        internal
+        view
+        returns (Adapter memory adapter, bytes32 payloadHash, bytes calldata unwrappedPayload)
+    {
         uint16 sessionId = uint16(bytes2(payload[0:2]));
-        bytes calldata unwrappedPayload = payload[2:];
+        unwrappedPayload = payload[2:];
         PoolId poolId = _routePoolId(centrifugeId, unwrappedPayload);
 
-        IAdapter adapterAddr = IAdapter(msg.sender);
-        Adapter memory adapter = _adapterDetails[centrifugeId][poolId][sessionId][adapterAddr];
+        adapter = _adapterDetails[centrifugeId][poolId][sessionId][IAdapter(msg.sender)];
         require(adapter.id != 0, InvalidAdapter());
 
-        // Verify adapter and parse message hash
-        bytes32 payloadHash = keccak256(payload);
-        bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
-        emit HandlePayload(centrifugeId, payloadId, payload, adapterAddr);
-
-        int16[MAX_ADAPTER_COUNT] storage votes_ = _votes[centrifugeId][payloadHash];
-        votes_[adapter.id - 1]++;
-
-        if (votes_.countPositiveValues(adapter.quorum) >= adapter.threshold) {
-            // Reduce votes by quorum
-            votes_.decreaseFirstNValues(adapter.quorum, adapter.recoveryIndex);
-
-            gateway.handle(centrifugeId, unwrappedPayload);
-        }
+        payloadHash = keccak256(payload);
     }
 
     //----------------------------------------------------------------------------------------------

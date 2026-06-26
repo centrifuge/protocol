@@ -73,32 +73,32 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        scheduleUpgrade = _gasValue(152405);
-        cancelUpgrade = _gasValue(132861);
-        registerAsset = _gasValue(162499);
-        setPoolAdapters = _gasValue(781212); // using MAX_ADAPTER_COUNT
-        request = _gasValue(275693);
-        notifyPool = _gasValue(1340115); // create escrow case
-        notifyShareClass = _gasValue(1917888);
-        notifyPricePoolPerShare = _gasValue(161640);
-        notifyPricePoolPerAsset = _gasValue(165470);
-        notifyShareMetadata = _gasValue(175264);
-        updateShareHook = _gasValue(151168);
-        initiateTransferShares = _gasValue(340679);
-        executeTransferShares = _gasValue(232292);
-        updateRestriction = _gasValue(172093);
-        trustedContractUpdate = _gasValue(203373);
-        requestCallback = _gasValue(448744); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2900675);
-        updateVaultLink = _gasValue(242318);
-        updateVaultUnlink = _gasValue(191085);
-        setRequestManager = _gasValue(160504);
-        updateManager = _gasValue(159720);
-        updateHoldingAmount = _gasValue(359849);
-        updateShares = _gasValue(256978);
-        maxAssetPriceAge = _gasValue(165538);
-        maxSharePriceAge = _gasValue(162473);
-        untrustedContractUpdate = _gasValue(143831);
+        scheduleUpgrade = _gasValue(156291);
+        cancelUpgrade = _gasValue(136747);
+        registerAsset = _gasValue(166125);
+        setPoolAdapters = _gasValue(786932); // using MAX_ADAPTER_COUNT
+        request = _gasValue(279860);
+        notifyPool = _gasValue(1343741); // create escrow case
+        notifyShareClass = _gasValue(1923327);
+        notifyPricePoolPerShare = _gasValue(165526);
+        notifyPricePoolPerAsset = _gasValue(169615);
+        notifyShareMetadata = _gasValue(180186);
+        updateShareHook = _gasValue(155054);
+        initiateTransferShares = _gasValue(345083);
+        executeTransferShares = _gasValue(236437);
+        updateRestriction = _gasValue(176238);
+        trustedContractUpdate = _gasValue(208036);
+        requestCallback = _gasValue(453669); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2904820);
+        updateVaultLink = _gasValue(246463);
+        updateVaultUnlink = _gasValue(195230);
+        setRequestManager = _gasValue(164390);
+        updateManager = _gasValue(163606);
+        updateHoldingAmount = _gasValue(364253);
+        updateShares = _gasValue(261123);
+        maxAssetPriceAge = _gasValue(169424);
+        maxSharePriceAge = _gasValue(166359);
+        untrustedContractUpdate = _gasValue(148235);
     }
 
     /// @inheritdoc IMessageProperties

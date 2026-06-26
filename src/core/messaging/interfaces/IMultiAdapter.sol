@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
+import {IAdapterEntrypoint} from "./IAdapterEntrypoint.sol";
 import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
@@ -10,7 +11,7 @@ import {PoolId} from "../../types/PoolId.sol";
 uint8 constant MAX_ADAPTER_COUNT = 8;
 
 /// @notice Interface for handling several adapters transparently
-interface IMultiAdapter is IAdapter, IMessageHandler {
+interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     //----------------------------------------------------------------------------------------------
     // Structs
     //----------------------------------------------------------------------------------------------
@@ -51,6 +52,8 @@ interface IMultiAdapter is IAdapter, IMessageHandler {
     event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex);
     event BlockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
     event UnblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
+    event Vote(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
+    event Execute(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event SendPayload(
         uint16 indexed centrifugeId,
