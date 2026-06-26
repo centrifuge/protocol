@@ -151,4 +151,16 @@ contract MathLibTest is Test {
         y = uint256(bound(y, 0, x - 1));
         assertEq(MathLib.max(x, y), x);
     }
+
+    function testAbsDiff() public pure {
+        assertEq(MathLib.absDiff(0, 0), 0);
+        assertEq(MathLib.absDiff(5, 5), 0);
+        assertEq(MathLib.absDiff(7, 3), 4);
+        assertEq(MathLib.absDiff(3, 7), 4);
+    }
+
+    function testFuzzAbsDiff(uint256 a, uint256 b) public pure {
+        assertEq(MathLib.absDiff(a, b), MathLib.absDiff(b, a));
+        assertEq(MathLib.absDiff(a, b), a > b ? a - b : b - a);
+    }
 }

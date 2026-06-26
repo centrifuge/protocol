@@ -16,7 +16,8 @@ import {
     raw,
     reciprocal,
     reciprocalMulUint128,
-    reciprocalMulUint256
+    reciprocalMulUint256,
+    withinDeviation
 } from "../../../../src/misc/types/D18.sol";
 
 import "forge-std/Test.sol";
@@ -177,6 +178,35 @@ contract D18Test is Test {
     function testIsNotZero() public pure {
         assertEq(d18(0).isNotZero(), false);
         assertEq(d18(123).isNotZero(), true);
+    }
+
+    function testWithinDeviationAdd() public pure {
+        assertTrue(d18(1e18 + 1e16).withinDeviation(d18(1e18), 1e16));
+        assertFalse(d18(1e18 + 1e16 + 1).withinDeviation(d18(1e18), 1e16));
+    }
+
+    function testWithinDeviationSub() public pure {
+        assertTrue(d18(1e18 - 1e16).withinDeviation(d18(1e18), 1e16));
+        assertFalse(d18(1e18 - 1e16 - 1).withinDeviation(d18(1e18), 1e16));
+    }
+
+    function testWithinDeviationEqual() public pure {
+        assertTrue(d18(1e18).withinDeviation(d18(1e18), 0));
+        assertFalse(d18(1e18 + 1).withinDeviation(d18(1e18), 0));
+        assertFalse(d18(1e18 - 1).withinDeviation(d18(1e18), 0));
+    }
+
+    /// @dev Fuzz the full uint128 range against an independent ceil reference to pin precision:
+    ///      allowed = ceil(maxDeviation * reference / 1e18), predicate = |value - reference| <= allowed.
+    ///      NOTE: Avoiding MathLib here so the two paths are independent.
+    /// forge-config: default.fuzz.runs = 100000
+    function testFuzzWithinDeviationMatchesCeilReference(uint128 maxDeviation, uint128 value, uint128 reference_)
+        public
+        pure
+    {
+        uint256 delta = value > reference_ ? uint256(value) - reference_ : uint256(reference_) - value;
+        uint256 allowed = (uint256(maxDeviation) * uint256(reference_) + 1e18 - 1) / 1e18;
+        assertEq(d18(value).withinDeviation(d18(reference_), maxDeviation), delta <= allowed);
     }
 }
 

@@ -16,10 +16,12 @@ import {IShareClassManager} from "../../src/core/hub/interfaces/IShareClassManag
 
 import {IOnOffRamp} from "../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 
+import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
+
 import "forge-std/Test.sol";
 
-import {StdManifest} from "../../src/manifests/StdManifest.sol";
 import {IStdManifest} from "../../src/manifests/interfaces/IStdManifest.sol";
+import {StdManifest, StdManifestFactory} from "../../src/manifests/StdManifest.sol";
 
 contract StdManifestTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
@@ -41,13 +43,15 @@ contract StdManifestTest is Test {
     address immutable who = makeAddr("who");
 
     // The authorization ledger lives in a real HubRegistry, which the manifest classifies for.
-    HubRegistry hubRegistry;
     StdManifest manifest;
+    HubRegistry hubRegistry;
+    StdManifestFactory factory;
 
     function setUp() public {
         hubRegistry = new HubRegistry(address(this));
         vm.mockCall(address(hub), abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
-        manifest = new StdManifest(hub, multiAdapter, scm, _config(CAP, RATE, false, address(0), address(0)));
+        factory = new StdManifestFactory(hub, multiAdapter, scm);
+        manifest = StdManifest(address(factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0)))));
 
         // Register the pool (manager becomes a manager; outsider is not) and install the manifest.
         hubRegistry.registerPool(POOL_A, manager, AssetId.wrap(1));
@@ -66,7 +70,7 @@ contract StdManifestTest is Test {
         view
         returns (IStdManifest.Config memory)
     {
-        return _config(cap, rate, onchain, nav, price, new IStdManifest.Entry[](0));
+        return _config(cap, rate, onchain, nav, price, type(uint128).max, new IStdManifest.Entry[](0));
     }
 
     function _config(
@@ -77,12 +81,33 @@ contract StdManifestTest is Test {
         address price,
         IStdManifest.Entry[] memory allowlist
     ) internal view returns (IStdManifest.Config memory) {
+        return _config(cap, rate, onchain, nav, price, type(uint128).max, allowlist);
+    }
+
+    function _config(uint128 cap, uint128 rate, bool onchain, address nav, address price, uint128 maxDeviation)
+        internal
+        view
+        returns (IStdManifest.Config memory)
+    {
+        return _config(cap, rate, onchain, nav, price, maxDeviation, new IStdManifest.Entry[](0));
+    }
+
+    function _config(
+        uint128 cap,
+        uint128 rate,
+        bool onchain,
+        address nav,
+        address price,
+        uint128 maxDeviation,
+        IStdManifest.Entry[] memory allowlist
+    ) internal view returns (IStdManifest.Config memory) {
         return IStdManifest.Config({
             delay: DELAY,
             expiry: EXPIRY,
             escalation: ESCALATION,
-            maxPriceDelta: cap,
+            maxAbsolutePriceDelta: cap,
             thresholdPerSecond: rate,
+            maxBrmPriceDeviation: maxDeviation,
             onchainAccounting: onchain,
             navManager: nav,
             simplePriceManager: price,
@@ -359,7 +384,7 @@ contract StdManifestTest is Test {
     }
 
     function testPriceGuardDisabled() public {
-        manifest = new StdManifest(hub, multiAdapter, scm, _config(0, 0, false, address(0), address(0)));
+        manifest = StdManifest(address(factory.newStdManifest(_config(0, 0, false, address(0), address(0)))));
 
         // Establish a baseline, then a huge same-block jump: with both guards off everything is in policy.
         vm.prank(address(hub));
@@ -394,6 +419,129 @@ contract StdManifestTest is Test {
 
     function testManagerCallZeroTargetDenyByDefault() public {
         assertEq(_delayOf(_managerCall(bytes32(0), bytes(""))), DELAY);
+    }
+
+    // ─── BRM price-deviation guard ─────────────────────────────────────────────────
+
+    uint128 constant DEVIATION = 1e16; // 1%
+    AssetId constant ASSET = AssetId.wrap(7);
+
+    /// @dev A BRM issue/revoke inner payload carrying `pricePoolPerShare` at word 4 (offset 144).
+    function _brmShareAction(ManagerAction kind, uint128 price) internal pure returns (bytes memory) {
+        return abi.encode(uint8(kind), ShareClassId.unwrap(SC_A), uint128(0), uint32(0), price, uint128(0), address(0));
+    }
+
+    /// @dev A BRM approve deposits/redeems inner payload carrying `pricePoolPerAsset` at word 5 (offset 176).
+    function _brmApproveAction(ManagerAction kind, uint128 price) internal pure returns (bytes memory) {
+        return abi.encode(
+            uint8(kind), ShareClassId.unwrap(SC_A), AssetId.unwrap(ASSET), uint32(0), uint128(0), price, address(0)
+        );
+    }
+
+    /// @dev Classify a BRM-targeted managerCall through a manifest carrying `maxDev`.
+    function _classifyBrm(uint128 maxDev, bytes memory inner) internal returns (uint48) {
+        // Fresh factory per call: this helper classifies many throwaway manifests whose configs may
+        // repeat, and a shared factory's deterministic CREATE2 address would collide on a repeat.
+        IStdManifest m = new StdManifestFactory(hub, multiAdapter, scm)
+            .newStdManifest(_config(CAP, RATE, false, address(0), address(0), maxDev));
+        return m.classify(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), inner));
+    }
+
+    function _mockAssetPrice(uint128 raw) internal {
+        vm.mockCall(
+            address(hub),
+            abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET),
+            abi.encode(D18.wrap(raw))
+        );
+    }
+
+    function testBrmIssueWithinBoundInPolicy() public {
+        // Main share price = 1e18 (setUp). A move under 1% is in policy.
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 1e18 + 5e15)), 0);
+    }
+
+    function testBrmIssueBeyondBoundDelayed() public {
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 1e18 + 2e16)), DELAY);
+    }
+
+    function testBrmRevokeWithinBoundInPolicy() public {
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.RevokeShares, 1e18 - 5e15)), 0);
+    }
+
+    function testBrmRevokeBeyondBoundDelayed() public {
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.RevokeShares, 1e18 - 2e16)), DELAY);
+    }
+
+    function testBrmApproveDepositsWithinBoundInPolicy() public {
+        _mockAssetPrice(1e18);
+        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveDeposits, 1e18 + 5e15)), 0);
+    }
+
+    function testBrmApproveDepositsBeyondBoundDelayed() public {
+        _mockAssetPrice(1e18);
+        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveDeposits, 1e18 + 2e16)), DELAY);
+    }
+
+    function testBrmApproveRedeemsWithinBoundInPolicy() public {
+        _mockAssetPrice(1e18);
+        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveRedeems, 1e18 - 5e15)), 0);
+    }
+
+    function testBrmApproveRedeemsBeyondBoundDelayed() public {
+        _mockAssetPrice(1e18);
+        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveRedeems, 1e18 + 2e16)), DELAY);
+    }
+
+    function testBrmExactMatchBoundDeRwa() public {
+        // maxBrmPriceDeviation == 0: exact match is in policy, any nonzero delta is out (deRWA semantics).
+        assertEq(_classifyBrm(0, _brmShareAction(ManagerAction.IssueShares, 1e18)), 0);
+        assertEq(_classifyBrm(0, _brmShareAction(ManagerAction.IssueShares, 1e18 + 1)), DELAY);
+    }
+
+    function testBrmMainSharePriceZeroSkipsGuard() public {
+        // No committed share price yet (reference reads 0): guard is skipped, call stays in policy.
+        vm.mockCall(
+            address(scm),
+            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
+            abi.encode(D18.wrap(0), uint64(0))
+        );
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 5e18)), 0);
+    }
+
+    function testBrmApproveAssetPriceRevertBubblesUp() public {
+        // A reverting oracle bubbles up: a manager must not approve against a broken price source.
+        IStdManifest m = factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0), DEVIATION));
+        vm.mockCallRevert(
+            address(hub), abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET), "PriceNotSet"
+        );
+        bytes memory call = _managerCall(bytes32(bytes20(brm)), _brmApproveAction(ManagerAction.ApproveDeposits, 1e18));
+        vm.expectRevert();
+        m.classify(POOL_A, manager, call);
+    }
+
+    function testBrmGuardDisabledAnyPriceInPolicy() public {
+        // maxBrmPriceDeviation == type(uint128).max disables the guard: any price is in policy.
+        assertEq(_classifyBrm(type(uint128).max, _brmShareAction(ManagerAction.IssueShares, 100e18)), 0);
+    }
+
+    /// @dev A BRM force-cancel inner payload (no price field).
+    function _brmForceCancel(ManagerAction kind) internal pure returns (bytes memory) {
+        return abi.encode(uint8(kind), ShareClassId.unwrap(SC_A), bytes32(0), AssetId.unwrap(ASSET), address(0));
+    }
+
+    function testBrmForceCancelDepositNoPriceInPolicy() public {
+        // Force-cancels carry no price field: in policy regardless of the bound.
+        assertEq(_classifyBrm(DEVIATION, _brmForceCancel(ManagerAction.ForceCancelDepositRequest)), 0);
+    }
+
+    function testBrmForceCancelRedeemNoPriceInPolicy() public {
+        assertEq(_classifyBrm(DEVIATION, _brmForceCancel(ManagerAction.ForceCancelRedeemRequest)), 0);
+    }
+
+    function testBrmMalformedShortPayloadDelayed() public {
+        // A price-bearing kind whose payload is too short to hold the price word fails closed -> delay.
+        bytes memory inner = abi.encode(uint8(ManagerAction.IssueShares), ShareClassId.unwrap(SC_A));
+        assertEq(_classifyBrm(DEVIATION, inner), DELAY);
     }
 
     // ─── updateContract classification ───────────────────────────────────────────
@@ -553,7 +701,7 @@ contract StdManifestTest is Test {
     address constant PRICE = address(0xB2);
 
     function _onchainManifest() internal returns (StdManifest) {
-        return new StdManifest(hub, multiAdapter, scm, _config(CAP, RATE, true, NAV, PRICE));
+        return StdManifest(address(factory.newStdManifest(_config(CAP, RATE, true, NAV, PRICE))));
     }
 
     function testOnchainAccountingNavManagerInPolicy() public {
@@ -614,7 +762,8 @@ contract StdManifestTest is Test {
     function _allowlistManifest(bytes4[] memory selectors) internal returns (StdManifest) {
         IStdManifest.Entry[] memory wl = new IStdManifest.Entry[](1);
         wl[0] = IStdManifest.Entry({poolId: POOL_A, caller: KEEPER, selectors: selectors});
-        StdManifest m = new StdManifest(hub, multiAdapter, scm, _config(CAP, RATE, false, address(0), address(0), wl));
+        StdManifest m =
+            StdManifest(address(factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0), wl))));
         // KEEPER is a registered manager, and m is installed so the registry classifies/consumes through it.
         hubRegistry.updateManager(POOL_A, KEEPER, true);
         hubRegistry.setManifest(POOL_A, m);

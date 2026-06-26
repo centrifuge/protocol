@@ -3,10 +3,12 @@ pragma solidity ^0.8.28;
 
 import {CentrifugeIntegrationTestWithUtils} from "./Integration.t.sol";
 
+import {D18} from "../../src/misc/types/D18.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IManagerCallFromHub} from "../../src/core/utils/interfaces/IManagerCall.sol";
 
@@ -16,8 +18,10 @@ import {SupervisorFactory} from "../../src/managers/hub/Supervisor.sol";
 import {INAVManager} from "../../src/managers/hub/interfaces/INAVManager.sol";
 import {ISupervisor, TrustedCall} from "../../src/managers/hub/interfaces/ISupervisor.sol";
 
-import {StdManifest} from "../../src/manifests/StdManifest.sol";
+import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
+
 import {IStdManifest} from "../../src/manifests/interfaces/IStdManifest.sol";
+import {StdManifest, StdManifestFactory} from "../../src/manifests/StdManifest.sol";
 
 /// @notice End-to-end test of the manifest circuit breaker on a full single-chain deployment:
 ///         a pool with a real StdManifest installed and a Supervisor wired as a hub manager,
@@ -34,6 +38,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     address immutable sentinel = makeAddr("sentinel");
     address immutable newManager = makeAddr("newManager");
 
+    StdManifestFactory manifestFactory;
     StdManifest manifest;
     ISupervisor supervisor;
 
@@ -43,22 +48,25 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Deploy the pool's Supervisor (sentinel registry) and StdManifest.
         supervisor = new SupervisorFactory(IHub(address(hub))).newSupervisor(POOL_A, mockUpdater);
-        manifest = new StdManifest(
-            IHub(address(hub)),
-            multiAdapter,
-            shareClassManager,
-            IStdManifest.Config({
-                delay: POLICY_DELAY,
-                expiry: POLICY_EXPIRY,
-                escalation: POLICY_ESCALATION,
-                maxPriceDelta: 0,
-                thresholdPerSecond: 0,
-                onchainAccounting: false,
-                navManager: address(0),
-                simplePriceManager: address(0),
-                requestManager: address(batchRequestManager),
-                allowlist: new IStdManifest.Entry[](0)
-            })
+        manifestFactory = new StdManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager);
+        manifest = StdManifest(
+            address(
+                manifestFactory.newStdManifest(
+                    IStdManifest.Config({
+                        delay: POLICY_DELAY,
+                        expiry: POLICY_EXPIRY,
+                        escalation: POLICY_ESCALATION,
+                        maxAbsolutePriceDelta: 0,
+                        thresholdPerSecond: 0,
+                        maxBrmPriceDeviation: type(uint128).max,
+                        onchainAccounting: false,
+                        navManager: address(0),
+                        simplePriceManager: address(0),
+                        requestManager: address(batchRequestManager),
+                        allowlist: new IStdManifest.Entry[](0)
+                    })
+                )
+            )
         );
 
         // Register the operator and the Supervisor as hub managers BEFORE installing the manifest
@@ -128,22 +136,25 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     }
 
     function testReplacingManifestUsesEscalation() public {
-        StdManifest next = new StdManifest(
-            IHub(address(hub)),
-            multiAdapter,
-            shareClassManager,
-            IStdManifest.Config({
-                delay: POLICY_DELAY,
-                expiry: POLICY_EXPIRY,
-                escalation: POLICY_ESCALATION,
-                maxPriceDelta: 0,
-                thresholdPerSecond: 0,
-                onchainAccounting: false,
-                navManager: address(0),
-                simplePriceManager: address(0),
-                requestManager: address(batchRequestManager),
-                allowlist: new IStdManifest.Entry[](0)
-            })
+        StdManifest next = StdManifest(
+            address(
+                new StdManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
+                    .newStdManifest(
+                        IStdManifest.Config({
+                            delay: POLICY_DELAY,
+                            expiry: POLICY_EXPIRY,
+                            escalation: POLICY_ESCALATION,
+                            maxAbsolutePriceDelta: 0,
+                            thresholdPerSecond: 0,
+                            maxBrmPriceDeviation: type(uint128).max,
+                            onchainAccounting: false,
+                            navManager: address(0),
+                            simplePriceManager: address(0),
+                            requestManager: address(batchRequestManager),
+                            allowlist: new IStdManifest.Entry[](0)
+                        })
+                    )
+            )
         );
         bytes memory call = abi.encodeCall(IHub.setManifest, (POOL_A, next));
 
@@ -211,6 +222,89 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         // In policy: enforce succeeds with no prior authorize() (deny-by-default would revert Unauthorized).
         vm.prank(address(hub));
         manifest.enforce(POOL_A, FM, call);
+    }
+
+    /// @dev BRM issue inner payload carrying `pricePoolPerShare` for SC_1.
+    function _brmIssueInner(uint128 price) internal view returns (bytes memory) {
+        return abi.encode(
+            uint8(ManagerAction.IssueShares),
+            ShareClassId.unwrap(SC_1),
+            uint128(0),
+            uint32(0),
+            price,
+            uint128(0),
+            address(0)
+        );
+    }
+
+    /// @notice A BRM issue within `maxBrmPriceDeviation` is in policy; one beyond is out-of-policy and requires
+    ///         the standard authorize -> delay -> consume flow. Reads the real ShareClassManager price.
+    ///
+    /// @dev The matured path consumes at the manifest seam (`enforce`) rather than through a full
+    ///      `hub.managerCall`: the BRM `IssueShares` body needs live epoch/approval state and would revert
+    ///      inside the BRM, which is orthogonal to the price guard.
+    function testBrmManagerCallPriceDeviationGuard() public {
+        // Commit a main share price (setUp manifest has share-price guard disabled, so this runs synchronously).
+        vm.prank(FM);
+        hub.updateSharePrice(POOL_A, SC_1, D18.wrap(1e18), uint64(block.timestamp));
+        (D18 mainPrice,) = shareClassManager.pricePoolPerShare(POOL_A, SC_1);
+        assertEq(mainPrice.raw(), 1e18, "main share price committed");
+
+        // Install a manifest with a 1% price-deviation bound (Anemoy-style).
+        StdManifest guarded = StdManifest(
+            address(
+                manifestFactory.newStdManifest(
+                    IStdManifest.Config({
+                        delay: POLICY_DELAY,
+                        expiry: POLICY_EXPIRY,
+                        escalation: POLICY_ESCALATION,
+                        maxAbsolutePriceDelta: 0,
+                        thresholdPerSecond: 0,
+                        maxBrmPriceDeviation: 1e16,
+                        onchainAccounting: false,
+                        navManager: address(0),
+                        simplePriceManager: address(0),
+                        requestManager: address(batchRequestManager),
+                        allowlist: new IStdManifest.Entry[](0)
+                    })
+                )
+            )
+        );
+        vm.prank(address(root));
+        hub.setManifest(POOL_A, guarded);
+
+        uint16 localId = messageDispatcher.localCentrifugeId();
+        bytes32 target = address(batchRequestManager).toBytes32();
+
+        // In-bound issue (within 1%): in policy. `enforce` runs synchronously, consumes no authorization.
+        bytes memory okCall =
+            abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, _brmIssueInner(1e18 + 5e15), 0, 0, address(0)));
+        assertEq(guarded.classify(POOL_A, FM, okCall), 0, "in-bound issue is in policy");
+        vm.prank(address(hub));
+        guarded.enforce(POOL_A, FM, okCall);
+
+        // Over-deviating issue (>1%): out of policy.
+        bytes memory badInner = _brmIssueInner(1e18 + 2e16);
+        bytes memory badCall = abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, badInner, 0, 0, address(0)));
+        assertEq(guarded.classify(POOL_A, FM, badCall), POLICY_DELAY, "over-deviating issue is out of policy");
+
+        // Without an authorization the live managerCall reverts at the manifest gate, before the BRM body.
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
+
+        // Operator authorizes the exact calldata on the real ledger; not matured yet -> still reverts.
+        vm.prank(operator);
+        hubRegistry.authorize(POOL_A, badCall);
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
+
+        // After the delay the matured authorization is consumed at the manifest seam.
+        skip(POLICY_DELAY);
+        vm.prank(address(hub));
+        guarded.enforce(POOL_A, FM, badCall);
+        assertEq(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, badCall)), 0, "authorization consumed");
     }
 
     /// @notice A NAVManager admin action (`setNAVHook`) routed through `hub.managerCall` is out of policy

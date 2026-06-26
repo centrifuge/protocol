@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IStdManifest} from "./interfaces/IStdManifest.sol";
+import {IStdManifest, IStdManifestFactory} from "./interfaces/IStdManifest.sol";
 
 import {D18} from "../misc/types/D18.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
 import {IHub} from "../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IManifest} from "../core/hub/interfaces/IManifest.sol";
@@ -17,6 +19,8 @@ import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
 
 import {IOnOffRamp} from "../managers/spoke/interfaces/IOnOffRamp.sol";
+
+import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @title  Standard Manifest
 /// @notice Default pool policy installed on the Hub via {IHub.setManifest}. This contract is a pure
@@ -51,13 +55,14 @@ contract StdManifest is IStdManifest {
     address public immutable simplePriceManager;
     IShareClassManager public immutable shareClassManager;
 
-    // Policy
+    // Policy. Price guards differ in unit and disable sentinel; see {IStdManifest.Config}.
     uint48 public immutable delay;
     uint48 public immutable expiry;
     uint48 public immutable escalation;
-    uint128 public immutable maxPriceDelta;
     bool public immutable onchainAccounting;
     uint128 public immutable thresholdPerSecond;
+    uint128 public immutable maxBrmPriceDeviation;
+    uint128 public immutable maxAbsolutePriceDelta;
 
     // State
     mapping(PoolId => mapping(ShareClassId => uint64)) public lastPriceUpdate;
@@ -78,9 +83,10 @@ contract StdManifest is IStdManifest {
         delay = config.delay;
         expiry = config.expiry;
         escalation = config.escalation;
-        maxPriceDelta = config.maxPriceDelta;
         onchainAccounting = config.onchainAccounting;
         thresholdPerSecond = config.thresholdPerSecond;
+        maxBrmPriceDeviation = config.maxBrmPriceDeviation;
+        maxAbsolutePriceDelta = config.maxAbsolutePriceDelta;
 
         for (uint256 i; i < config.allowlist.length; i++) {
             Entry memory entry = config.allowlist[i];
@@ -175,12 +181,14 @@ contract StdManifest is IStdManifest {
             selector == IHub.addShareClass.selector
         ) return delay;
 
-        // Out of policy only when the call weakens policy (classified by value).
+        // Out of policy only when the call weakens policy (classified by value): a manager grant,
+        // a share-price move beyond the rate/cap guard, a non-withdrawal contract update, a weaker
+        // adapter set, or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
         if (selector == IHub.updateManager.selector) return _checkManagerGrant(payload);
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
         if (selector == IHub.updateContract.selector) return _checkUpdateContract(payload);
         if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
-        if (selector == IHub.managerCall.selector) return _checkManagerCall(payload);
+        if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
         // Replacing the manifest disables all future policy, so it uses the longer `escalation`.
         if (selector == IHub.setManifest.selector) return escalation;
@@ -245,10 +253,46 @@ contract StdManifest is IStdManifest {
     /// @dev In policy only when the target is the configured BRM (routine keeper ops); all other targets
     ///      fall to `delay` (timelocked + vetoable). Pinning the target prevents ABI collisions where
     ///      another target's payload shares a BRM action's leading byte. The binding can't be repointed
-    ///      instantly: `setRequestManager` is itself out of policy.
-    function _checkManagerCall(bytes calldata payload) internal view returns (uint48) {
-        (,, bytes32 target,,,,) = abi.decode(payload, (PoolId, uint16, bytes32, bytes, uint128, uint256, address));
-        return target.toAddress() == requestManager ? 0 : delay;
+    ///      instantly: `setRequestManager` is itself out of policy. BRM calls are additionally bounded by
+    ///      {_checkRequestPrice}: an issue/revoke/approve beyond `maxBrmPriceDeviation` falls to `delay`.
+    function _checkManagerCall(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
+        (,, bytes32 target, bytes memory inner,,,) =
+            abi.decode(payload, (PoolId, uint16, bytes32, bytes, uint128, uint256, address));
+        if (target.toAddress() != requestManager) return delay;
+        return _checkRequestPrice(poolId, inner);
+    }
+
+    /// @dev Bound the BRM-supplied price against the pool's committed main price: issue/revoke compare
+    ///      `pricePoolPerShare`, approve deposits/redeems compare `pricePoolPerAsset`. Force-cancels and
+    ///      unknown shapes carry no price and stay in policy. A reverting reference bubbles up by design
+    ///      (never approve against a broken oracle). A zero reference skips the guard; this only fires on
+    ///      the share-price path (`pricePoolPerAsset` defaults to 1.0), analogous to {_checkSharePrice}'s
+    ///      first-update-free.
+    function _checkRequestPrice(PoolId poolId, bytes memory inner) internal view returns (uint48) {
+        if (maxBrmPriceDeviation == type(uint128).max) return 0; // guard disabled
+        if (inner.length < 32) return delay; // malformed: fail closed
+
+        uint8 kind = uint8(inner.toUint256(0));
+
+        D18 brmPrice;
+        D18 mainPrice;
+        if (kind == uint8(ManagerAction.IssueShares) || kind == uint8(ManagerAction.RevokeShares)) {
+            if (inner.length < 160) return delay; // need the scId + price words
+            ShareClassId scId = ShareClassId.wrap(inner.toBytes16(32));
+            brmPrice = D18.wrap(inner.toUint128(144));
+            (mainPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
+        } else if (kind == uint8(ManagerAction.ApproveDeposits) || kind == uint8(ManagerAction.ApproveRedeems)) {
+            if (inner.length < 192) return delay; // need the scId + assetId + price words
+            ShareClassId scId = ShareClassId.wrap(inner.toBytes16(32));
+            AssetId assetId = AssetId.wrap(inner.toUint128(80));
+            brmPrice = D18.wrap(inner.toUint128(176));
+            mainPrice = hub.pricePoolPerAsset(poolId, scId, assetId); // direct call: a revert bubbles up
+        } else {
+            return 0; // force-cancels / unknown shapes carry no price
+        }
+
+        if (mainPrice.isZero()) return 0; // no committed reference: in policy
+        return brmPrice.withinDeviation(mainPrice, maxBrmPriceDeviation) ? 0 : delay;
     }
 
     /// @dev Every local adapter must be a global adapter (poolId=0); a foreign one is blocked outright.
@@ -281,11 +325,11 @@ contract StdManifest is IStdManifest {
         return delay;
     }
 
-    /// @dev Out of policy if the single move exceeds `maxPriceDelta` or the move/second since the last
-    ///      executed update exceeds `thresholdPerSecond` (same-block updates are forced out of policy
+    /// @dev Out of policy if the single move exceeds `maxAbsolutePriceDelta` or the move/second since the
+    ///      last executed update exceeds `thresholdPerSecond` (same-block updates are forced out of policy
     ///      to stop chunking). First update per share class is unguarded; `computedAt` is ignored.
     function _checkSharePrice(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
-        if (thresholdPerSecond == 0 && maxPriceDelta == 0) return 0;
+        if (thresholdPerSecond == 0 && maxAbsolutePriceDelta == 0) return 0;
 
         (, ShareClassId scId, D18 newPrice,) = abi.decode(payload, (PoolId, ShareClassId, D18, uint64));
 
@@ -298,13 +342,54 @@ contract StdManifest is IStdManifest {
         if (elapsed == 0) return delay;
 
         (D18 lastPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
-        uint128 newRaw = D18.unwrap(newPrice);
-        uint128 lastRaw = D18.unwrap(lastPrice);
-        uint256 priceDelta = newRaw > lastRaw ? newRaw - lastRaw : lastRaw - newRaw;
+        uint256 priceDelta = MathLib.absDiff(D18.unwrap(newPrice), D18.unwrap(lastPrice));
 
-        if (maxPriceDelta != 0 && priceDelta >= maxPriceDelta) return delay;
+        if (maxAbsolutePriceDelta != 0 && priceDelta >= maxAbsolutePriceDelta) return delay;
         if (thresholdPerSecond != 0 && priceDelta / elapsed >= thresholdPerSecond) return delay;
 
         return 0;
+    }
+}
+
+/// @title  Standard Manifest Factory
+/// @notice Deploys StdManifest instances which are not necessarily pool-scoped.
+contract StdManifestFactory is IStdManifestFactory {
+    IHub public immutable hub;
+    IMultiAdapter public immutable multiAdapter;
+    IShareClassManager public immutable shareClassManager;
+
+    constructor(IHub hub_, IMultiAdapter multiAdapter_, IShareClassManager shareClassManager_) {
+        hub = hub_;
+        multiAdapter = multiAdapter_;
+        shareClassManager = shareClassManager_;
+    }
+
+    /// @inheritdoc IStdManifestFactory
+    function newStdManifest(IStdManifest.Config memory config) external returns (IStdManifest) {
+        StdManifest manifest = new StdManifest{salt: _salt(config)}(hub, multiAdapter, shareClassManager, config);
+
+        emit DeployStdManifest(address(manifest));
+        return IStdManifest(address(manifest));
+    }
+
+    /// @inheritdoc IStdManifestFactory
+    function previewStdManifest(IStdManifest.Config memory config) external view returns (address) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                _salt(config),
+                keccak256(
+                    abi.encodePacked(
+                        type(StdManifest).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config)
+                    )
+                )
+            )
+        );
+        return address(uint160(uint256(hash)));
+    }
+
+    function _salt(IStdManifest.Config memory config) internal view returns (bytes32) {
+        return keccak256(abi.encode(hub, multiAdapter, shareClassManager, config));
     }
 }

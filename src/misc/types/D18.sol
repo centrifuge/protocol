@@ -105,6 +105,16 @@ function raw(D18 d) pure returns (uint128) {
     return D18.unwrap(d);
 }
 
+/// @dev True iff `value` is within `maxDeviation` of the reference value.
+///      The band is rounded up so the boundary is inclusive.
+///      NOTE: Strict equality via maxDeviation == 0.
+function withinDeviation(D18 value, D18 reference_, uint128 maxDeviation) pure returns (bool) {
+    uint256 ref = reference_.raw();
+    uint256 delta = MathLib.absDiff(value.raw(), ref);
+    uint256 allowed = MathLib.mulDiv(maxDeviation, ref, 1e18, MathLib.Rounding.Up);
+    return delta <= allowed;
+}
+
 using {
     add as +,
     sub as -,
@@ -118,5 +128,6 @@ using {
     reciprocal,
     raw,
     isZero,
-    isNotZero
+    isNotZero,
+    withinDeviation
 } for D18 global;

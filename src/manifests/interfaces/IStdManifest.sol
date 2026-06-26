@@ -24,15 +24,19 @@ interface IStdManifest is IManifest {
     }
 
     /// @notice Policy configuration set at construction.
+    /// @dev Two price guards with opposite disable sentinels: `maxAbsolutePriceDelta` + `thresholdPerSecond`
+    ///      bound `updateSharePrice` (each `0` = off), `maxBrmPriceDeviation` bounds BRM call prices
+    ///      (`type(uint128).max` = off, `0` = exact match).
     struct Config {
         uint48 delay;
         uint48 expiry;
         uint48 escalation;
         Entry[] allowlist;
         address navManager;
-        uint128 maxPriceDelta;
         bool onchainAccounting;
         uint128 thresholdPerSecond;
+        uint128 maxBrmPriceDeviation;
+        uint128 maxAbsolutePriceDelta;
         address simplePriceManager;
         address requestManager;
     }
@@ -44,8 +48,9 @@ interface IStdManifest is IManifest {
     function delay() external view returns (uint48);
     function expiry() external view returns (uint48);
     function escalation() external view returns (uint48);
-    function maxPriceDelta() external view returns (uint128);
     function thresholdPerSecond() external view returns (uint128);
+    function maxBrmPriceDeviation() external view returns (uint128);
+    function maxAbsolutePriceDelta() external view returns (uint128);
     function onchainAccounting() external view returns (bool);
     function navManager() external view returns (address);
     function simplePriceManager() external view returns (address);
@@ -53,4 +58,15 @@ interface IStdManifest is IManifest {
     function lastPriceUpdate(PoolId poolId, ShareClassId scId) external view returns (uint64);
     function restricted(PoolId poolId, address caller) external view returns (bool);
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);
+}
+
+interface IStdManifestFactory {
+    event DeployStdManifest(address indexed manifest);
+
+    function hub() external view returns (IHub);
+    function multiAdapter() external view returns (IMultiAdapter);
+    function shareClassManager() external view returns (IShareClassManager);
+
+    function newStdManifest(IStdManifest.Config memory config) external returns (IStdManifest);
+    function previewStdManifest(IStdManifest.Config memory config) external view returns (address);
 }
