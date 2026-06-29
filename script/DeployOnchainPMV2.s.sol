@@ -12,6 +12,8 @@ import {ApprovalGuard} from "../src/managers/spoke/guards/ApprovalGuard.sol";
 import {SlippageGuard} from "../src/managers/spoke/guards/SlippageGuard.sol";
 import {CircuitBreakerGuard} from "../src/managers/spoke/guards/CircuitBreakerGuard.sol";
 
+import {OracleValuation} from "../src/valuations/OracleValuation.sol";
+
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
@@ -26,6 +28,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
     ApprovalGuard public approvalGuard;
     CircuitBreakerGuard public circuitBreakerGuard;
     SlippageGuard public slippageGuard;
+    OracleValuation public oracleValuation;
 
     function run() public {
         string memory network = prettyEnvString("NETWORK");
@@ -41,7 +44,9 @@ contract DeployOnchainPMV2 is BaseDeployer {
             config.contracts.contractUpdater,
             config.contracts.balanceSheet,
             config.contracts.gateway,
-            config.contracts.spoke
+            config.contracts.spoke,
+            config.contracts.hub,
+            config.contracts.hubRegistry
         );
 
         saveDeploymentOutput();
@@ -49,11 +54,20 @@ contract DeployOnchainPMV2 is BaseDeployer {
         vm.stopBroadcast();
     }
 
-    function _deploy(address contractUpdater_, address balanceSheet_, address gateway_, address spoke_) internal {
+    function _deploy(
+        address contractUpdater_,
+        address balanceSheet_,
+        address gateway_,
+        address spoke_,
+        address hub_,
+        address hubRegistry_
+    ) internal {
         require(contractUpdater_ != address(0), "contractUpdater not set in env");
         require(balanceSheet_ != address(0), "balanceSheet not set in env");
         require(gateway_ != address(0), "gateway not set in env");
         require(spoke_ != address(0), "spoke not set in env");
+        require(hub_ != address(0), "hub not set in env");
+        require(hubRegistry_ != address(0), "hubRegistry not set in env");
 
         accountingToken = AccountingToken(
             create3(
@@ -115,6 +129,13 @@ contract DeployOnchainPMV2 is BaseDeployer {
             )
         );
 
+        oracleValuation = OracleValuation(
+            create3(
+                createSalt("oracleValuation", ONCHAIN_PM_V2_VERSION),
+                abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub_, hubRegistry_, contractUpdater_))
+            )
+        );
+
         console.log("accountingToken:    %s", address(accountingToken));
         console.log("scriptHelpers:      %s", address(scriptHelpers));
         console.log("onchainPMFactory:   %s", onchainPMFactory);
@@ -123,5 +144,6 @@ contract DeployOnchainPMV2 is BaseDeployer {
         console.log("approvalGuard:      %s", address(approvalGuard));
         console.log("circuitBreakerGuard:%s", address(circuitBreakerGuard));
         console.log("slippageGuard:      %s", address(slippageGuard));
+        console.log("oracleValuation:    %s", address(oracleValuation));
     }
 }

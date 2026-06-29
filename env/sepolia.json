@@ -273,10 +273,10 @@
       "version": "v3.1"
     },
     "oracleValuation": {
-      "address": "0xf3869e1Da04886D00D7A15b48C01e71b8c7F3427",
-      "blockNumber": 10142076,
-      "txHash": "0xe8dff1561cf99d93a63fa9dc8ecfb85149cfc16ecfcb01a6da257ab933136b05",
-      "version": "v3.1"
+      "address": "0xE3ccDAA87F3655a0071b2bA84354aB5baf3F04b9",
+      "blockNumber": 10981104,
+      "txHash": "0xed82755d4edebe8612caa3a6fdf1e266d7374b31109833822ac186748ed3db9c",
+      "version": "v3.2"
     },
     "navManager": {
       "address": "0x91a867d2aaC0e6f95d8dC2b77d83037A74FDa67C",
@@ -351,9 +351,9 @@
       "version": "v3.2"
     },
     "slippageGuard": {
-      "address": "0xEcA22067812d4DBEc090D704215E54E3e891dDC9",
-      "blockNumber": 10873921,
-      "txHash": "0x363c2fcfaa0fcbdae2203cbe57ebb2840aedd6b44e4abe1fd76b721b613c1920",
+      "address": "0x9D39c45595eC7cE584269B63a39e60684E5D6771",
+      "blockNumber": 10890581,
+      "txHash": "0xa01d673405d7762e9c571534ca28276fa30d4b91c7b9d002c8e6154b3037ecf9",
       "version": "v3.2"
     }
   },
