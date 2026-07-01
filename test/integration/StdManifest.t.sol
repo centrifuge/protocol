@@ -15,8 +15,9 @@ import {IManagerCallFromHub} from "../../src/core/utils/interfaces/IManagerCall.
 
 import {MAX_MESSAGE_COST as GAS} from "../../src/admin/interfaces/IGasService.sol";
 
+import {INAVManager} from "../../src/hooks/accounting/interfaces/INAVManager.sol";
+
 import {SupervisorFactory} from "../../src/managers/hub/Supervisor.sol";
-import {INAVManager} from "../../src/managers/hub/interfaces/INAVManager.sol";
 import {ISupervisor, TrustedCall} from "../../src/managers/hub/interfaces/ISupervisor.sol";
 
 import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
@@ -64,6 +65,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         navManager: address(0),
                         simplePriceManager: address(0),
                         requestManager: address(batchRequestManager),
+                        bridgingHook: address(0),
                         contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdManifest.Entry[](0)
                     })
@@ -153,6 +155,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             navManager: address(0),
                             simplePriceManager: address(0),
                             requestManager: address(batchRequestManager),
+                            bridgingHook: address(0),
                             contractUpdaterForwarder: address(contractUpdaterForwarder),
                             allowlist: new IStdManifest.Entry[](0)
                         })
@@ -268,6 +271,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         navManager: address(0),
                         simplePriceManager: address(0),
                         requestManager: address(batchRequestManager),
+                        bridgingHook: address(0),
                         contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdManifest.Entry[](0)
                     })

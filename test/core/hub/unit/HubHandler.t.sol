@@ -14,6 +14,11 @@ import {IHubHandler} from "../../../../src/core/hub/interfaces/IHubHandler.sol";
 import {JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+import {
+    IBridgingHook,
+    TransferSharesParams,
+    TransferSharesResult
+} from "../../../../src/core/hub/interfaces/IBridgingHook.sol";
 
 import "forge-std/Test.sol";
 
@@ -37,7 +42,7 @@ contract TestCommon is Test {
 
     HubHandler hubHandler = new HubHandler(hub, holdings, hubRegistry, scm, AUTH);
 
-    function setUp() external {
+    function setUp() public virtual {
         vm.deal(ANY, 1 ether);
     }
 }
@@ -113,5 +118,56 @@ contract TestFile is TestCommon {
         emit IHubHandler.File("shareClassManager", address(23));
         hubHandler.file("shareClassManager", address(23));
         assertEq(address(hubHandler.shareClassManager()), address(23));
+    }
+}
+
+contract MockBridgingHook is IBridgingHook {
+    function onInitiateTransferShares(TransferSharesParams calldata p)
+        external
+        pure
+        returns (TransferSharesResult memory)
+    {
+        return TransferSharesResult({
+            receiver: p.receiver, amount: p.amount, extraGasLimit: p.extraGasLimit, refund: p.refund
+        });
+    }
+}
+
+contract TestInitiateTransferSharesHook is TestCommon {
+    MockBridgingHook hook;
+    address immutable mockSender = makeAddr("Sender");
+
+    function setUp() public override {
+        super.setUp();
+        hook = new MockBridgingHook();
+
+        vm.prank(AUTH);
+        hubHandler.file("sender", mockSender);
+
+        vm.mockCall(
+            address(hubRegistry),
+            abi.encodeWithSelector(IHubRegistry.bridgingHook.selector, POOL_A),
+            abi.encode(address(hook))
+        );
+        vm.mockCall(address(scm), abi.encodeWithSelector(IShareClassManager.updateShares.selector), abi.encode());
+        vm.mockCall(address(holdings), abi.encodeWithSelector(IHoldings.callOnTransferSnapshot.selector), abi.encode());
+        vm.mockCall(
+            mockSender,
+            abi.encodeWithSelector(
+                bytes4(
+                    keccak256("sendExecuteTransferShares(uint16,uint16,uint64,bytes16,bytes32,uint128,uint128,address)")
+                )
+            ),
+            abi.encode()
+        );
+
+        vm.deal(AUTH, 1 ether);
+    }
+
+    function testHookIsCalledAndResultForwarded() public {
+        vm.prank(AUTH);
+        hubHandler.initiateTransferShares{value: COST}(
+            CHAIN_A, CHAIN_B, POOL_A, SC_A, bytes32("receiver"), 100, 0, REFUND
+        );
     }
 }

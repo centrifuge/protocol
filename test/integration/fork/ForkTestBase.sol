@@ -11,7 +11,7 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 

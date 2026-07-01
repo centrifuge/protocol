@@ -45,10 +45,10 @@ import {MAX_MESSAGE_COST} from "../../src/admin/interfaces/IGasService.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
-import {FreezeOnly} from "../../src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "../../src/hooks/FullRestrictions.sol";
-import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {FreezeOnly} from "../../src/hooks/transfer/FreezeOnly.sol";
+import {FullRestrictions} from "../../src/hooks/transfer/FullRestrictions.sol";
+import {RedemptionRestrictions} from "../../src/hooks/transfer/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";

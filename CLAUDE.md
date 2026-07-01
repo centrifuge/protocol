@@ -70,9 +70,6 @@ src/
 │   ├── GasService.sol     # Gas management
 │   └── interfaces/
 ├── managers/              # Automation managers
-│   ├── hub/
-│   │   ├── NAVManager.sol # NAV automation
-│   │   └── SimplePriceManager.sol # Price automation
 │   └── spoke/
 │       └── QueueManager.sol # Queue automation
 ├── vaults/                # Vault implementations
@@ -84,12 +81,18 @@ src/
 │   ├── VaultRouter.sol    # Vault routing
 │   ├── BaseVaults.sol     # Base implementations
 │   └── factories/
-├── hooks/                 # Transfer restrictions
-│   ├── BaseTransferHook.sol # Base hook logic
-│   ├── FreelyTransferable.sol
-│   ├── FreezeOnly.sol
-│   ├── FullRestrictions.sol
-│   └── RedemptionRestrictions.sol
+├── hooks/                 # Hook implementations
+│   ├── transfer/          # Share token transfer restrictions
+│   │   ├── BaseTransferHook.sol # Base hook logic
+│   │   ├── FreelyTransferable.sol
+│   │   ├── FreezeOnly.sol
+│   │   ├── FullRestrictions.sol
+│   │   └── RedemptionRestrictions.sol
+│   ├── bridge/            # Cross-chain bridging hooks
+│   │   └── BridgeCircuitBreaker.sol # Pause + rate limit on outbound transfers
+│   └── accounting/        # NAV & price hooks
+│       ├── NAVManager.sol # NAV automation
+│       └── SimplePriceManager.sol # Price automation
 ├── valuations/            # Asset valuations
 │   ├── OracleValuation.sol # Oracle-based pricing
 │   └── IdentityValuation.sol

@@ -32,15 +32,15 @@ import {ISafe} from "../admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../hooks/FreezeOnly.sol";
-import {FullRestrictions} from "../hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "../hooks/RedemptionRestrictions.sol";
+import {FreezeOnly} from "../hooks/transfer/FreezeOnly.sol";
+import {NAVManager} from "../hooks/accounting/NAVManager.sol";
+import {FullRestrictions} from "../hooks/transfer/FullRestrictions.sol";
+import {FreelyTransferable} from "../hooks/transfer/FreelyTransferable.sol";
+import {SimplePriceManager} from "../hooks/accounting/SimplePriceManager.sol";
+import {RedemptionRestrictions} from "../hooks/transfer/RedemptionRestrictions.sol";
 
-import {NAVManager} from "../managers/hub/NAVManager.sol";
 import {QueueManager} from "../managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
-import {SimplePriceManager} from "../managers/hub/SimplePriceManager.sol";
 
 import {OracleValuation} from "../valuations/OracleValuation.sol";
 import {IdentityValuation} from "../valuations/IdentityValuation.sol";

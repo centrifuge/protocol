@@ -24,7 +24,7 @@ import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVault
 
 import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";

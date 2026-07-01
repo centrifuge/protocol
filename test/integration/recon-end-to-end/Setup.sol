@@ -47,7 +47,7 @@ import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassMa
 import {Root} from "../../../src/admin/Root.sol";
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
-import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
+import {FullRestrictions} from "../../../src/hooks/transfer/FullRestrictions.sol";
 
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 

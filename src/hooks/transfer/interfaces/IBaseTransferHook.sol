@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {HookData, ITransferHook} from "../../core/spoke/interfaces/ITransferHook.sol";
-import {IPoolEscrowProvider} from "../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
+import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
+import {HookData, ITransferHook} from "../../../core/spoke/interfaces/ITransferHook.sol";
+import {IPoolEscrowProvider} from "../../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
-import {IRoot} from "../../admin/interfaces/IRoot.sol";
+import {IRoot} from "../../../admin/interfaces/IRoot.sol";
 
 /// @title  IBaseTransferHook
 /// @notice Interface for base transfer hook with trusted call functionality

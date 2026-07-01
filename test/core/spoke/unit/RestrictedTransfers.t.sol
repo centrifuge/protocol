@@ -6,9 +6,9 @@ import {IERC165} from "../../../../src/misc/interfaces/IERC7575.sol";
 import {ShareToken} from "../../../../src/core/spoke/ShareToken.sol";
 import {ITransferHook} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
 
-import {IFreezable} from "../../../../src/hooks/interfaces/IFreezable.sol";
-import {FullRestrictions} from "../../../../src/hooks/FullRestrictions.sol";
-import {IMemberlist} from "../../../../src/hooks/interfaces/IMemberlist.sol";
+import {IFreezable} from "../../../../src/hooks/transfer/interfaces/IFreezable.sol";
+import {FullRestrictions} from "../../../../src/hooks/transfer/FullRestrictions.sol";
+import {IMemberlist} from "../../../../src/hooks/transfer/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "../../mocks/MockRoot.sol";
 

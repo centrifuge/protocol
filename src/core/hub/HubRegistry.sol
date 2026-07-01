@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IManifest} from "./interfaces/IManifest.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -22,6 +23,7 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
     mapping(PoolId => IManifest) public manifest;
+    mapping(PoolId => IBridgingHook) public bridgingHook;
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(bytes32 => address)) public dependency;
     mapping(bytes32 authId => uint48 validAfter) public authorizedAfter;
@@ -221,5 +223,11 @@ contract HubRegistry is Auth, IHubRegistry {
     /// @inheritdoc IHubRegistry
     function isRegistered(AssetId assetId) public view returns (bool) {
         return _decimals[assetId] != 0;
+    }
+
+    /// @inheritdoc IHubRegistry
+    function setBridgingHook(PoolId poolId_, IBridgingHook hook_) external auth {
+        bridgingHook[poolId_] = hook_;
+        emit SetBridgingHook(poolId_, address(hook_));
     }
 }

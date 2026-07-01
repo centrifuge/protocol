@@ -18,7 +18,7 @@ import {ContractUpdateLib} from "../../../../../src/core/utils/ContractUpdateLib
 import {IVault, VaultKind} from "../../../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {BatchRequestManagerCallLib} from "../../../../vaults/utils/BatchRequestManagerCallLib.sol";
 

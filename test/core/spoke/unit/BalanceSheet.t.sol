@@ -22,7 +22,7 @@ import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfac
 
 import {IRoot} from "../../../../src/admin/interfaces/IRoot.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 

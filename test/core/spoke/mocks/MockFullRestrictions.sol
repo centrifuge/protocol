@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {HookData} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
 
-import {FullRestrictions} from "../../../../src/hooks/FullRestrictions.sol";
+import {FullRestrictions} from "../../../../src/hooks/transfer/FullRestrictions.sol";
 
 import {Mock} from "../../mocks/Mock.sol";
 

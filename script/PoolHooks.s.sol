@@ -16,8 +16,8 @@ import {IPoolEscrowProvider} from "../src/core/spoke/factories/interfaces/IPoolE
 
 import {Root} from "../src/admin/Root.sol";
 
-import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
+import {FullRestrictions} from "../src/hooks/transfer/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/hooks/transfer/FreelyTransferable.sol";
 
 import {console} from "forge-std/console.sol";
 import {stdJson} from "forge-std/StdJson.sol";

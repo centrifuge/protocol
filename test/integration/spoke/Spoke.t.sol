@@ -12,7 +12,7 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";

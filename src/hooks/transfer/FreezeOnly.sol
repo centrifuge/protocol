@@ -3,14 +3,15 @@ pragma solidity 0.8.28;
 
 import {BaseTransferHook} from "./BaseTransferHook.sol";
 
-import {ITransferHook, HookData} from "../core/spoke/interfaces/ITransferHook.sol";
+import {ITransferHook, HookData} from "../../core/spoke/interfaces/ITransferHook.sol";
 
-/// @title  Freely Transferable
+/// @title  Freeze Only
 /// @notice Hook implementation that:
 ///         * Allows any non-frozen account to receive tokens and transfer tokens
-///         * Requires accounts to be added as a member before submitting a deposit or redemption request
 ///         * Supports freezing accounts which blocks transfers both to and from them
-contract FreelyTransferable is BaseTransferHook {
+///
+/// @dev    The last bit of hookData is used to denote whether the account is frozen.
+contract FreezeOnly is BaseTransferHook {
     constructor(
         address root_,
         address spoke_,
@@ -22,25 +23,14 @@ contract FreelyTransferable is BaseTransferHook {
     ) BaseTransferHook(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
 
     /// @inheritdoc ITransferHook
-    function checkERC20Transfer(
-        address from,
-        address to,
-        uint256,
-        /* value */
-        HookData calldata hookData
-    )
+    function checkERC20Transfer(address from, address to, uint256, HookData calldata hookData)
         public
         view
         override
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
-        if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
-        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
-        if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
-        if (isRedeemClaimOrRevocation(from, to)) return isSourceMember(from, hookData);
 
-        // Else, it's a fulfillment, redemption, or transfer
         return true;
     }
 }

@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {d18} from "../../../../src/misc/types/D18.sol";
-import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
+import {d18} from "../../../src/misc/types/D18.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
-import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
+import {ISnapshotHook} from "../../../src/core/hub/interfaces/ISnapshotHook.sol";
+import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 
-import {INAVManager} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+import {INAVManager} from "../../../src/hooks/accounting/interfaces/INAVManager.sol";
 
-import {CentrifugeIntegrationTest} from "../../Integration.t.sol";
+import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
 
 contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     using CastLib for address;

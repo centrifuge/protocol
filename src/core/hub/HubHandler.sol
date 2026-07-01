@@ -7,6 +7,7 @@ import {IHubHandler} from "./interfaces/IHubHandler.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
+import {IBridgingHook, TransferSharesParams, TransferSharesResult} from "./interfaces/IBridgingHook.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -122,6 +123,25 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
+        IBridgingHook hook = hubRegistry.bridgingHook(poolId);
+        if (address(hook) != address(0)) {
+            TransferSharesResult memory result = hook.onInitiateTransferShares(
+                TransferSharesParams({
+                    originCentrifugeId: originCentrifugeId,
+                    targetCentrifugeId: targetCentrifugeId,
+                    poolId: poolId,
+                    scId: scId,
+                    sender: bytes32(0),
+                    receiver: receiver,
+                    amount: amount,
+                    extraGasLimit: extraGasLimit,
+                    refund: refund
+                })
+            );
+            (receiver, amount, extraGasLimit, refund) =
+            (result.receiver, result.amount, result.extraGasLimit, result.refund);
+        }
+
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
         shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
 

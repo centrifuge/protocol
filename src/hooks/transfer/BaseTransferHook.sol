@@ -6,23 +6,23 @@ import {IMemberlist} from "./interfaces/IMemberlist.sol";
 import {IBaseTransferHook} from "./interfaces/IBaseTransferHook.sol";
 import {UpdateRestrictionType, UpdateRestrictionMessageLib} from "./libraries/UpdateRestrictionMessageLib.sol";
 
-import {Auth} from "../misc/Auth.sol";
-import {IAuth} from "../misc/interfaces/IAuth.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
-import {IERC165} from "../misc/interfaces/IERC7575.sol";
-import {BitmapLib} from "../misc/libraries/BitmapLib.sol";
+import {Auth} from "../../misc/Auth.sol";
+import {IAuth} from "../../misc/interfaces/IAuth.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {IERC165} from "../../misc/interfaces/IERC7575.sol";
+import {BitmapLib} from "../../misc/libraries/BitmapLib.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
-import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
-import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
-import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
-import {IPoolEscrowProvider} from "../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
+import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IPoolEscrowProvider} from "../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../core/spoke/interfaces/ITransferHook.sol";
 
-import {IRoot} from "../admin/interfaces/IRoot.sol";
+import {IRoot} from "../../admin/interfaces/IRoot.sol";
 
 /// @title  BaseTransferHook
 /// @notice Abstract base contract for share token transfer restrictions that provides memberlist management,

@@ -41,6 +41,7 @@ contract StdManifestFactoryTest is Test {
             navManager: address(0),
             simplePriceManager: address(0),
             requestManager: brm,
+            bridgingHook: address(0),
             contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: new IStdManifest.Entry[](0)
         });

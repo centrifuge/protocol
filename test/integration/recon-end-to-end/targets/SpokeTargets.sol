@@ -11,7 +11,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 

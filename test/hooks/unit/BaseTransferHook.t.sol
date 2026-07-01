@@ -10,11 +10,11 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
-import {IFreezable} from "../../../src/hooks/interfaces/IFreezable.sol";
-import {BaseTransferHook} from "../../../src/hooks/BaseTransferHook.sol";
-import {IMemberlist} from "../../../src/hooks/interfaces/IMemberlist.sol";
-import {IBaseTransferHook} from "../../../src/hooks/interfaces/IBaseTransferHook.sol";
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {IFreezable} from "../../../src/hooks/transfer/interfaces/IFreezable.sol";
+import {BaseTransferHook} from "../../../src/hooks/transfer/BaseTransferHook.sol";
+import {IMemberlist} from "../../../src/hooks/transfer/interfaces/IMemberlist.sol";
+import {IBaseTransferHook} from "../../../src/hooks/transfer/interfaces/IBaseTransferHook.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 

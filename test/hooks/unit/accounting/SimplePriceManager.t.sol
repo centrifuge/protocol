@@ -10,8 +10,8 @@ import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId, newShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
-import {SimplePriceManager} from "../../../../src/managers/hub/SimplePriceManager.sol";
-import {ISimplePriceManager} from "../../../../src/managers/hub/interfaces/ISimplePriceManager.sol";
+import {SimplePriceManager} from "../../../../src/hooks/accounting/SimplePriceManager.sol";
+import {ISimplePriceManager} from "../../../../src/hooks/accounting/interfaces/ISimplePriceManager.sol";
 
 import "forge-std/Test.sol";
 

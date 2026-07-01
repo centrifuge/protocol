@@ -6,7 +6,7 @@ import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.s
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
+import {FullRestrictions} from "../../../src/hooks/transfer/FullRestrictions.sol";
 
 import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../script/FullDeployer.s.sol";
 

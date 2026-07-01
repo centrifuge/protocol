@@ -5,6 +5,7 @@ import {IFeeHook} from "./interfaces/IFeeHook.sol";
 import {IManifest} from "./interfaces/IManifest.sol";
 import {IValuation} from "./interfaces/IValuation.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
+import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
 import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
@@ -315,6 +316,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
+    function setBridgingHook(PoolId poolId, address hook) external {
+        _protected(poolId);
+
+        hubRegistry.setBridgingHook(poolId, IBridgingHook(hook));
+        emit SetBridgingHook(poolId, hook);
+    }
+
     function managerCall(
         PoolId poolId,
         uint16 centrifugeId,

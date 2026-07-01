@@ -675,6 +675,13 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertTrue(address(circuitBreakerGuard).code.length > 0);
     }
 
+    function testBridgeCircuitBreaker() public view {
+        // dependencies set correctly
+        assertEq(bridgeCircuitBreaker.envoy(), address(envoy));
+        assertEq(bridgeCircuitBreaker.hubHandler(), address(hubHandler));
+        assertEq(address(bridgeCircuitBreaker.circuitBreakerGuard()), address(circuitBreakerGuard));
+    }
+
     function testSlippageGuard() public view {
         // dependencies set correctly
         assertEq(address(slippageGuard.spoke()), address(spoke));

@@ -16,8 +16,8 @@ import {IManagerCallFromSpoke} from "../../../../src/core/utils/interfaces/IMana
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/core/types/AccountId.sol";
 
-import {NAVManager} from "../../../../src/managers/hub/NAVManager.sol";
-import {INAVManager, INAVHook} from "../../../../src/managers/hub/interfaces/INAVManager.sol";
+import {NAVManager} from "../../../../src/hooks/accounting/NAVManager.sol";
+import {INAVManager, INAVHook} from "../../../../src/hooks/accounting/interfaces/INAVManager.sol";
 
 import "forge-std/Test.sol";
 

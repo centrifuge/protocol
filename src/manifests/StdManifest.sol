@@ -18,6 +18,8 @@ import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
 
+import {IBridgeCircuitBreaker} from "../hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
+
 import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @title  Standard Manifest
@@ -47,6 +49,7 @@ contract StdManifest is IStdManifest {
     // Dependencies
     IHub public immutable hub;
     address public immutable navManager;
+    address public immutable bridgingHook;
     address public immutable requestManager;
     address public immutable contractUpdaterForwarder;
     IHubRegistry public immutable hubRegistry;
@@ -73,6 +76,7 @@ contract StdManifest is IStdManifest {
         hub = hub_;
         navManager = config.navManager;
         requestManager = config.requestManager;
+        bridgingHook = config.bridgingHook;
         contractUpdaterForwarder = config.contractUpdaterForwarder;
         hubRegistry = hub_.hubRegistry();
         multiAdapter = multiAdapter_;
@@ -229,18 +233,23 @@ contract StdManifest is IStdManifest {
     ///      wrapped contract update (the forwarder unwraps `(scId, realTarget, inner)` and forwards to
     ///      `ContractUpdater.trustedCall`), so it is classified like a legacy contract update (see
     ///      {_classifyContractUpdate}). A call to the configured BRM is in policy (routine keeper ops) but
-    ///      additionally bounded by {_checkRequestPrice}. Every other target falls to `delay` (timelocked +
-    ///      vetoable). Pinning the targets prevents ABI collisions where another target's payload shares a
-    ///      classified action's leading byte; neither binding can be repointed instantly (`setRequestManager`
-    ///      is out of policy, and both pins are immutable CREATE3 anchors).
+    ///      additionally bounded by {_checkRequestPrice}. A SetPaused call to the configured bridging hook
+    ///      is in policy (instant emergency pause); SetRateLimit still goes through `delay`. Every other
+    ///      target falls to `delay` (timelocked + vetoable). Pinning the targets prevents ABI collisions
+    ///      where another target's payload shares a classified action's leading byte; neither binding can be
+    ///      repointed instantly (`setRequestManager` is out of policy, and both pins are immutable CREATE3 anchors).
     function _checkManagerCall(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
         (,, bytes32 target, bytes memory inner,,,) =
             abi.decode(payload, (PoolId, uint16, bytes32, bytes, uint128, uint256, address));
 
         address targetAddr = target.toAddress();
         if (targetAddr == contractUpdaterForwarder) return _classifyContractUpdate(inner);
-        if (targetAddr != requestManager) return delay;
-        return _checkRequestPrice(poolId, inner);
+        if (targetAddr == requestManager) return _checkRequestPrice(poolId, inner);
+        if (
+            bridgingHook != address(0) && targetAddr == bridgingHook && inner.length >= 32
+                && inner.toUint256(0) == uint256(IBridgeCircuitBreaker.ConfigKind.SetPaused)
+        ) return 0;
+        return delay;
     }
 
     /// @dev Classify a wrapped contract update (a managerCall whose target is the `contractUpdaterForwarder`).

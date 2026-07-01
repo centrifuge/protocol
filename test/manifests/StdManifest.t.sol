@@ -39,6 +39,7 @@ contract StdManifestTest is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable supervisor = makeAddr("supervisor");
     address immutable brm = makeAddr("BRM");
+    address immutable hook = makeAddr("bridgingHook");
     address immutable contractUpdaterForwarder = makeAddr("contractUpdaterForwarder");
     address immutable manager = makeAddr("manager");
     address immutable outsider = makeAddr("outsider");
@@ -114,6 +115,7 @@ contract StdManifestTest is Test {
             navManager: nav,
             simplePriceManager: price,
             requestManager: brm,
+            bridgingHook: hook,
             contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: allowlist
         });
@@ -423,6 +425,30 @@ contract StdManifestTest is Test {
     function testManagerCallUnknownTargetDenyByDefault() public {
         // An unpinned target (neither the contractUpdaterForwarder nor the BRM) is out of policy: deny-by-default.
         assertEq(_delayOf(_managerCall(bytes32(bytes20(makeAddr("unknown"))), bytes(""))), DELAY);
+    }
+
+    function testManagerCallToBridgingHookSetPausedInPolicy() public {
+        // SetPaused (kind 0) to the configured bridging hook is instant — no authorization needed.
+        bytes memory inner = abi.encode(uint8(0), bytes16("sc1"), true);
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(hook)), inner));
+    }
+
+    function testManagerCallToBridgingHookSetRateLimitDelayed() public {
+        // SetRateLimit (kind 1) to the bridging hook is still out of policy — needs authorization.
+        bytes memory inner = abi.encode(uint8(1), bytes16("sc1"), uint16(2), uint128(5000e18), uint32(3600));
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(hook)), inner)), DELAY);
+    }
+
+    function testManagerCallToBridgingHookNotConfiguredDelayed() public {
+        // When bridgingHook is address(0), a SetPaused payload to any target is still delayed.
+        IStdManifest.Config memory cfg = _config(CAP, RATE, false, address(0), address(0));
+        cfg.bridgingHook = address(0);
+        StdManifest noHook = new StdManifest(hub, multiAdapter, scm, cfg);
+        hubRegistry.setManifest(POOL_A, noHook);
+        bytes memory inner = abi.encode(uint8(0), bytes16("sc1"), true);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(hook)), inner)), DELAY);
+        hubRegistry.setManifest(POOL_A, manifest);
     }
 
     // ─── BRM price-deviation guard ─────────────────────────────────────────────────

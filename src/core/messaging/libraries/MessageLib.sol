@@ -57,7 +57,8 @@ enum ManagerKind {
     BalanceSheet,
     Adapter,
     Gateway,
-    Spoke
+    Spoke,
+    Bridger
 }
 
 library MessageLib {

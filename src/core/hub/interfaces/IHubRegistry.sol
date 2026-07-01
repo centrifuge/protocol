@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IManifest} from "./IManifest.sol";
+import {IBridgingHook} from "./IBridgingHook.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 
 import {IERC6909Decimals} from "../../../misc/interfaces/IERC6909.sol";
@@ -21,6 +22,7 @@ interface IHubRegistry is IERC6909Decimals {
     event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
     event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
+    event SetBridgingHook(PoolId indexed poolId, address hook);
     event SetManifest(PoolId indexed poolId, IManifest manifest);
 
     /// @notice Emitted when an out-of-policy Hub call is authorized: this starts the policy timelock.
@@ -209,4 +211,12 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param assetId The asset identifier
     /// @return Whether the asset is registered
     function isRegistered(AssetId assetId) external view returns (bool);
+
+    /// @notice Set or clear the bridging hook for a pool
+    /// @param poolId The pool identifier
+    /// @param hook The hook contract, or address(0) to clear
+    function setBridgingHook(PoolId poolId, IBridgingHook hook) external;
+
+    /// @notice Returns the bridging hook for a pool, or address(0) if none
+    function bridgingHook(PoolId poolId) external view returns (IBridgingHook);
 }

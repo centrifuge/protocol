@@ -3,14 +3,14 @@ pragma solidity 0.8.28;
 
 import {BaseTransferHook} from "./BaseTransferHook.sol";
 
-import {ITransferHook, HookData} from "../core/spoke/interfaces/ITransferHook.sol";
+import {ITransferHook, HookData} from "../../core/spoke/interfaces/ITransferHook.sol";
 
-/// @title  Redemption Restrictions
+/// @title  Freely Transferable
 /// @notice Hook implementation that:
 ///         * Allows any non-frozen account to receive tokens and transfer tokens
-///         * Requires accounts to be added as a member before submitting a redemption request
+///         * Requires accounts to be added as a member before submitting a deposit or redemption request
 ///         * Supports freezing accounts which blocks transfers both to and from them
-contract RedemptionRestrictions is BaseTransferHook {
+contract FreelyTransferable is BaseTransferHook {
     constructor(
         address root_,
         address spoke_,
@@ -35,9 +35,12 @@ contract RedemptionRestrictions is BaseTransferHook {
         returns (bool)
     {
         if (isSourceOrTargetFrozen(from, to, hookData)) return false;
+        if (isDepositRequestOrIssuance(from, to)) return isTargetMember(to, hookData);
+        if (isDepositClaim(from, to)) return isTargetMember(to, hookData);
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
+        if (isRedeemClaimOrRevocation(from, to)) return isSourceMember(from, hookData);
 
-        // Else, it's a deposit request, redemption fulfillment or claiming, or transfer
+        // Else, it's a fulfillment, redemption, or transfer
         return true;
     }
 }

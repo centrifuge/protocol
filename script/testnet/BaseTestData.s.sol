@@ -25,8 +25,8 @@ import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/M
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
-import {RedemptionRestrictions} from "../../src/hooks/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {RedemptionRestrictions} from "../../src/hooks/transfer/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 

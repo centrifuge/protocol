@@ -28,12 +28,14 @@ import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "../src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../src/hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "../src/hooks/RedemptionRestrictions.sol";
+import {FreezeOnly} from "../src/hooks/transfer/FreezeOnly.sol";
+import {NAVManager} from "../src/hooks/accounting/NAVManager.sol";
+import {FullRestrictions} from "../src/hooks/transfer/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/hooks/transfer/FreelyTransferable.sol";
+import {BridgeCircuitBreaker} from "../src/hooks/bridge/BridgeCircuitBreaker.sol";
+import {SimplePriceManager} from "../src/hooks/accounting/SimplePriceManager.sol";
+import {RedemptionRestrictions} from "../src/hooks/transfer/RedemptionRestrictions.sol";
 
-import {NAVManager} from "../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
 import {ScriptHelpers} from "../src/managers/spoke/ScriptHelpers.sol";
@@ -42,7 +44,6 @@ import {FlashLoanHelper} from "../src/managers/spoke/FlashLoanHelper.sol";
 import {AdapterFailover} from "../src/managers/adapters/AdapterFailover.sol";
 import {ApprovalGuard} from "../src/managers/spoke/guards/ApprovalGuard.sol";
 import {SlippageGuard} from "../src/managers/spoke/guards/SlippageGuard.sol";
-import {SimplePriceManager} from "../src/managers/hub/SimplePriceManager.sol";
 import {CircuitBreakerGuard} from "../src/managers/spoke/guards/CircuitBreakerGuard.sol";
 import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
 
@@ -161,6 +162,8 @@ contract FullDeployer is BaseDeployer, Constants {
     SyncDepositVaultFactory public syncDepositVaultFactory;
     SyncManager public syncManager;
     VaultRouter public vaultRouter;
+
+    BridgeCircuitBreaker public bridgeCircuitBreaker;
 
     FreezeOnly public freezeOnlyHook;
     FullRestrictions public fullRestrictionsHook;
@@ -648,6 +651,16 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("simplePriceManager", V3_1),
                 abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(navManager)))
+            )
+        );
+
+        bridgeCircuitBreaker = BridgeCircuitBreaker(
+            create3(
+                createSalt("bridgeCircuitBreaker", V3_3),
+                abi.encodePacked(
+                    type(BridgeCircuitBreaker).creationCode,
+                    abi.encode(address(envoy), address(hubHandler), address(circuitBreakerGuard))
+                )
             )
         );
     }

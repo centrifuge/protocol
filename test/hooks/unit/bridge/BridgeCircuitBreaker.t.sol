@@ -1,0 +1,354 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
+
+import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {TransferSharesParams, TransferSharesResult} from "../../../../src/core/hub/interfaces/IBridgingHook.sol";
+
+import {BridgeCircuitBreaker} from "../../../../src/hooks/bridge/BridgeCircuitBreaker.sol";
+import {IBridgeCircuitBreaker} from "../../../../src/hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
+
+import "forge-std/Test.sol";
+
+contract MockCircuitBreakerGuard {
+    error ExceedsCumulativeLimit(bytes32 key, uint256 amount, uint256 max, uint256 window);
+
+    bool public shouldRevert;
+    bytes32 public lastKey;
+    uint256 public lastAmount;
+    uint256 public lastMax;
+    uint256 public lastWindow;
+
+    function setShouldRevert(bool value) external {
+        shouldRevert = value;
+    }
+
+    function tally(bytes32 key, uint256 amount, uint256 max, uint256 window) external {
+        lastKey = key;
+        lastAmount = amount;
+        lastMax = max;
+        lastWindow = window;
+        if (shouldRevert) revert ExceedsCumulativeLimit(key, amount, max, window);
+    }
+}
+
+contract BridgeCircuitBreakerTestBase is Test {
+    address immutable HUB_HANDLER = makeAddr("hubHandler");
+    address immutable ENVOY = makeAddr("envoy");
+
+    PoolId constant POOL_A = PoolId.wrap(1);
+    ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
+    uint16 constant ORIGIN = 1;
+    uint16 constant TARGET = 2;
+    uint128 constant AMOUNT = 1000e18;
+
+    BridgeCircuitBreaker hook;
+    MockCircuitBreakerGuard guard;
+
+    TransferSharesParams internal baseParams;
+
+    function setUp() public virtual {
+        guard = new MockCircuitBreakerGuard();
+        hook = new BridgeCircuitBreaker(ENVOY, HUB_HANDLER, address(guard));
+
+        baseParams = TransferSharesParams({
+            originCentrifugeId: ORIGIN,
+            targetCentrifugeId: TARGET,
+            poolId: POOL_A,
+            scId: SC_1,
+            sender: bytes32(0),
+            receiver: bytes32(uint256(uint160(makeAddr("receiver")))),
+            amount: AMOUNT,
+            extraGasLimit: 0,
+            refund: makeAddr("refund")
+        });
+    }
+
+    function _fromHub(bytes memory payload) internal {
+        vm.prank(ENVOY);
+        hook.fromHub(POOL_A, payload);
+    }
+
+    function _setPaused(ShareClassId scId, bool isPaused) internal {
+        _fromHub(abi.encode(uint8(0), ShareClassId.unwrap(scId), isPaused));
+    }
+
+    function _setRateLimit(ShareClassId scId, uint16 centrifugeId, uint128 max, uint32 window) internal {
+        _fromHub(abi.encode(uint8(1), ShareClassId.unwrap(scId), centrifugeId, max, window));
+    }
+
+    function _transfer() internal returns (TransferSharesResult memory) {
+        vm.prank(HUB_HANDLER);
+        return hook.onInitiateTransferShares(baseParams);
+    }
+}
+
+contract BridgeCircuitBreakerTestConstructor is BridgeCircuitBreakerTestBase {
+    function testConstructor() public view {
+        assertEq(hook.hubHandler(), HUB_HANDLER);
+        assertEq(hook.envoy(), ENVOY);
+        assertEq(address(hook.circuitBreakerGuard()), address(guard));
+    }
+}
+
+contract BridgeCircuitBreakerTestPause is BridgeCircuitBreakerTestBase {
+    function setUp() public override {
+        super.setUp();
+        _setRateLimit(SC_1, ORIGIN, type(uint128).max, 3600);
+    }
+
+    function testPassThrough() public {
+        TransferSharesResult memory result = _transfer();
+        assertEq(uint256(result.amount), uint256(AMOUNT));
+        assertEq(result.receiver, baseParams.receiver);
+        assertEq(result.refund, baseParams.refund);
+    }
+
+    function testErrNotHubHandler(address notHubHandler) public {
+        vm.assume(notHubHandler != HUB_HANDLER);
+        vm.prank(notHubHandler);
+        vm.expectRevert(IBridgeCircuitBreaker.NotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testErrPaused() public {
+        _setPaused(SC_1, true);
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.Paused.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testUnpause() public {
+        _setPaused(SC_1, true);
+        _setPaused(SC_1, false);
+        TransferSharesResult memory result = _transfer();
+        assertEq(uint256(result.amount), uint256(AMOUNT));
+    }
+
+    function testPausedIsPoolAndScSpecific() public {
+        ShareClassId SC_2 = ShareClassId.wrap(bytes16("sc2"));
+        _setPaused(SC_1, true);
+        assertFalse(hook.paused(POOL_A, SC_2));
+    }
+
+    function testSetPausedEmitsEvent() public {
+        vm.prank(ENVOY);
+        vm.expectEmit();
+        emit IBridgeCircuitBreaker.SetPaused(POOL_A, SC_1, true);
+        hook.fromHub(POOL_A, abi.encode(uint8(0), ShareClassId.unwrap(SC_1), true));
+        assertTrue(hook.paused(POOL_A, SC_1));
+    }
+}
+
+contract BridgeCircuitBreakerTestRateLimit is BridgeCircuitBreakerTestBase {
+    function testDefaultRateMaxBlocksTransfer() public {
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testCallsTallyWhenLimitSet() public {
+        uint128 max = 5000e18;
+        uint32 window = 3600;
+        _setRateLimit(SC_1, ORIGIN, max, window);
+
+        _transfer();
+
+        bytes32 expectedKey = keccak256(abi.encode(POOL_A, SC_1, ORIGIN));
+        assertEq(guard.lastKey(), expectedKey);
+        assertEq(guard.lastAmount(), uint256(AMOUNT));
+        assertEq(guard.lastMax(), uint256(max));
+        assertEq(guard.lastWindow(), uint256(window));
+    }
+
+    function testRevertsWhenGuardReverts() public {
+        uint128 max = AMOUNT + 1; // amount <= max so tally is called
+        uint32 window = 3600;
+        _setRateLimit(SC_1, ORIGIN, max, window);
+        guard.setShouldRevert(true);
+
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MockCircuitBreakerGuard.ExceedsCumulativeLimit.selector,
+                keccak256(abi.encode(POOL_A, SC_1, ORIGIN)),
+                AMOUNT,
+                max,
+                uint256(window)
+            )
+        );
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testRateLimitIsChainSpecific() public {
+        uint128 max = 1000e18;
+        uint32 window = 3600;
+        _setRateLimit(SC_1, ORIGIN, max, window);
+
+        (uint128 storedMax,) = hook.limits(POOL_A, SC_1, ORIGIN);
+        (uint128 otherMax,) = hook.limits(POOL_A, SC_1, uint16(3));
+        assertEq(uint256(storedMax), uint256(max));
+        assertEq(uint256(otherMax), uint256(0));
+    }
+
+    function testZeroRateMaxBlocksTransfers() public {
+        _setRateLimit(SC_1, ORIGIN, 1000e18, 3600);
+        _setRateLimit(SC_1, ORIGIN, 0, 3600);
+
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+        assertEq(guard.lastAmount(), uint256(0));
+    }
+
+    function testSetRateLimitEmitsEvent() public {
+        uint128 max = 10000e18;
+        uint32 window = 86400;
+        vm.prank(ENVOY);
+        vm.expectEmit();
+        emit IBridgeCircuitBreaker.SetRateLimit(POOL_A, SC_1, TARGET, max, window);
+        hook.fromHub(POOL_A, abi.encode(uint8(1), ShareClassId.unwrap(SC_1), TARGET, max, window));
+
+        (uint128 storedMax, uint32 storedWindow) = hook.limits(POOL_A, SC_1, TARGET);
+        assertEq(uint256(storedMax), uint256(max));
+        assertEq(uint256(storedWindow), uint256(window));
+    }
+}
+
+contract BridgeCircuitBreakerTestFromHub is BridgeCircuitBreakerTestBase {
+    function testErrUnknownConfigKind() public {
+        vm.prank(ENVOY);
+        vm.expectRevert(IBridgeCircuitBreaker.UnknownConfigKind.selector);
+        hook.fromHub(POOL_A, abi.encode(uint8(4), ShareClassId.unwrap(SC_1), true));
+    }
+}
+
+contract BridgeCircuitBreakerTestAuthorizeTransfer is BridgeCircuitBreakerTestBase {
+    uint128 constant RATE_MAX = AMOUNT / 2; // AMOUNT always exceeds this
+
+    bytes32 internal authKey;
+
+    function setUp() public override {
+        super.setUp();
+        _setRateLimit(SC_1, ORIGIN, RATE_MAX, 3600);
+        authKey = keccak256(abi.encode(POOL_A, SC_1, ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT));
+    }
+
+    function _authorizeTransfer() internal {
+        _fromHub(
+            abi.encode(uint8(2), ShareClassId.unwrap(SC_1), ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT)
+        );
+    }
+
+    function _cancelAuthorizations() internal {
+        _fromHub(
+            abi.encode(uint8(3), ShareClassId.unwrap(SC_1), ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT)
+        );
+    }
+
+    function testRevertsWhenNotAuthorized() public {
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testAuthorizeAllowsLargeTransfer() public {
+        _authorizeTransfer();
+        assertEq(hook.authorizations(authKey), 1);
+
+        TransferSharesResult memory result = _transfer();
+        assertEq(uint256(result.amount), uint256(AMOUNT));
+        assertEq(hook.authorizations(authKey), 0);
+    }
+
+    function testAuthorizationIsConsumedOnUse() public {
+        _authorizeTransfer();
+        _transfer();
+
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testMultipleAuthorizationsAllowMultipleTransfers() public {
+        _authorizeTransfer();
+        _authorizeTransfer();
+        _authorizeTransfer();
+        assertEq(hook.authorizations(authKey), 3);
+
+        _transfer();
+        assertEq(hook.authorizations(authKey), 2);
+        _transfer();
+        assertEq(hook.authorizations(authKey), 1);
+        _transfer();
+        assertEq(hook.authorizations(authKey), 0);
+
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testCancelAuthorizationsResetsCounter() public {
+        _authorizeTransfer();
+        _authorizeTransfer();
+        assertEq(hook.authorizations(authKey), 2);
+
+        _cancelAuthorizations();
+        assertEq(hook.authorizations(authKey), 0);
+
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(baseParams);
+    }
+
+    function testCancelAuthorizationsEmitsEvent() public {
+        vm.prank(ENVOY);
+        vm.expectEmit();
+        emit IBridgeCircuitBreaker.CancelTransferAuthorizations(
+            POOL_A, SC_1, ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT
+        );
+        hook.fromHub(
+            POOL_A,
+            abi.encode(uint8(3), ShareClassId.unwrap(SC_1), ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT)
+        );
+    }
+
+    function testAuthorizeTransferEmitsEvent() public {
+        vm.prank(ENVOY);
+        vm.expectEmit();
+        emit IBridgeCircuitBreaker.AuthorizeTransfer(
+            POOL_A, SC_1, ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT
+        );
+        hook.fromHub(
+            POOL_A,
+            abi.encode(uint8(2), ShareClassId.unwrap(SC_1), ORIGIN, baseParams.sender, baseParams.receiver, AMOUNT)
+        );
+    }
+
+    function testAuthorizationIsKeyedByTransferIdentity() public {
+        // Authorization for a different receiver does not apply
+        _authorizeTransfer();
+
+        TransferSharesParams memory otherParams = baseParams;
+        otherParams.receiver = bytes32(uint256(uint160(makeAddr("otherReceiver"))));
+
+        vm.prank(HUB_HANDLER);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        hook.onInitiateTransferShares(otherParams);
+    }
+
+    function testLargeTransferDoesNotTallyAgainstRateLimit() public {
+        _authorizeTransfer();
+        _transfer();
+
+        assertEq(guard.lastAmount(), 0); // tally never called for large transfers
+    }
+
+    function testSmallTransferStillTalliesNormally() public {
+        uint128 smallAmount = RATE_MAX;
+        baseParams.amount = smallAmount;
+        _transfer();
+
+        assertEq(guard.lastAmount(), uint256(smallAmount));
+    }
+}

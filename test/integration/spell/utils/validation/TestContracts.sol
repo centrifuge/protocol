@@ -25,15 +25,15 @@ import {GasService} from "../../../../../src/admin/GasService.sol";
 import {OpsGuardian} from "../../../../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../../../../src/admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../../../../../src/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "../../../../../src/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../../../../../src/hooks/FreelyTransferable.sol";
-import {RedemptionRestrictions} from "../../../../../src/hooks/RedemptionRestrictions.sol";
+import {FreezeOnly} from "../../../../../src/hooks/transfer/FreezeOnly.sol";
+import {NAVManager} from "../../../../../src/hooks/accounting/NAVManager.sol";
+import {FullRestrictions} from "../../../../../src/hooks/transfer/FullRestrictions.sol";
+import {FreelyTransferable} from "../../../../../src/hooks/transfer/FreelyTransferable.sol";
+import {SimplePriceManager} from "../../../../../src/hooks/accounting/SimplePriceManager.sol";
+import {RedemptionRestrictions} from "../../../../../src/hooks/transfer/RedemptionRestrictions.sol";
 
-import {NAVManager} from "../../../../../src/managers/hub/NAVManager.sol";
 import {QueueManager} from "../../../../../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../../../../../src/managers/spoke/OnOffRamp.sol";
-import {SimplePriceManager} from "../../../../../src/managers/hub/SimplePriceManager.sol";
 
 import {OracleValuation} from "../../../../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../../../../src/valuations/IdentityValuation.sol";

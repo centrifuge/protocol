@@ -66,6 +66,7 @@ interface IHub is IBatchedMulticall {
     event UpdateVault(
         PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
     );
+    event SetBridgingHook(PoolId indexed poolId, address hook);
     event ManagerCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 target, bytes payload);
     event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
     event SetMaxSharePriceAge(
@@ -355,6 +356,11 @@ interface IHub is IBatchedMulticall {
         uint256 localValue,
         address refund
     ) external payable;
+
+    /// @notice Set or clear the bridging hook for a pool
+    /// @param poolId The pool identifier
+    /// @param hook The hook contract address, or address(0) to clear
+    function setBridgingHook(PoolId poolId, address hook) external;
 
     /// @notice Update the price per share of a share class
     /// @param poolId The pool identifier
