@@ -264,9 +264,8 @@ contract StdManifest is IStdManifest {
     /// @dev Bound the BRM-supplied price against the pool's committed main price: issue/revoke compare
     ///      `pricePoolPerShare`, approve deposits/redeems compare `pricePoolPerAsset`. Force-cancels and
     ///      unknown shapes carry no price and stay in policy. A reverting reference bubbles up by design
-    ///      (never approve against a broken oracle). A zero reference skips the guard; this only fires on
-    ///      the share-price path (`pricePoolPerAsset` defaults to 1.0), analogous to {_checkSharePrice}'s
-    ///      first-update-free.
+    ///      (never approve against a broken oracle). A zero reference fails closed: a manager must not
+    ///      approve or issue/revoke shares without a committed hub price.
     function _checkRequestPrice(PoolId poolId, bytes memory inner) internal view returns (uint48) {
         if (maxBrmPriceDeviation == type(uint128).max) return 0; // guard disabled
         if (inner.length < 32) return delay; // malformed: fail closed
@@ -290,7 +289,7 @@ contract StdManifest is IStdManifest {
             return 0; // force-cancels / unknown shapes carry no price
         }
 
-        if (mainPrice.isZero()) return 0; // no committed reference: in policy
+        if (mainPrice.isZero()) return delay; // no committed reference: fail closed
         return brmPrice.withinDeviation(mainPrice, maxBrmPriceDeviation) ? 0 : delay;
     }
 

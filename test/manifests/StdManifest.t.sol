@@ -502,14 +502,34 @@ contract StdManifestTest is Test {
         assertEq(_classifyBrm(0, _brmShareAction(ManagerAction.IssueShares, 1e18 + 1)), DELAY);
     }
 
-    function testBrmMainSharePriceZeroSkipsGuard() public {
-        // No committed share price yet (reference reads 0): guard is skipped, call stays in policy.
+    function testBrmMainSharePriceZeroDelayed() public {
+        // No committed share price (reference reads 0): fails closed — requires a timelock authorization.
         vm.mockCall(
             address(scm),
             abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
             abi.encode(D18.wrap(0), uint64(0))
         );
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 5e18)), 0);
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 5e18)), DELAY);
+    }
+
+    function testBrmMainSharePriceZeroRevokeDelayed() public {
+        // Same guard applies to RevokeShares.
+        vm.mockCall(
+            address(scm),
+            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
+            abi.encode(D18.wrap(0), uint64(0))
+        );
+        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.RevokeShares, 5e18)), DELAY);
+    }
+
+    function testBrmMainAssetPriceZeroDelayed() public {
+        // A zero asset price from the oracle also fails closed.
+        vm.mockCall(
+            address(hub),
+            abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET),
+            abi.encode(D18.wrap(0))
+        );
+        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveDeposits, 1e18)), DELAY);
     }
 
     function testBrmApproveAssetPriceRevertBubblesUp() public {
