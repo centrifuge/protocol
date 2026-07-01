@@ -557,15 +557,12 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        // Root-warded singleton: per-pool stewards and MultiAdapter manager registration are operational
-        // (governance) steps, so no deploy-time wiring is needed. Timelock matches the protocol delay.
+        // Timelock is immutable and matches the protocol delay. Per-pool stewards and MultiAdapter manager
+        // registration are operational (governance) steps, so no deploy-time wiring is needed.
         adapterFailover = AdapterFailover(
             create3(
                 createSalt("adapterFailover", V3_3),
-                abi.encodePacked(
-                    type(AdapterFailover).creationCode,
-                    abi.encode(multiAdapter, contractUpdater, uint64(DELAY), address(root))
-                )
+                abi.encodePacked(type(AdapterFailover).creationCode, abi.encode(envoy, multiAdapter, uint64(DELAY)))
             )
         );
 

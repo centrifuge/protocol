@@ -297,8 +297,8 @@ contract StdManifest is IStdManifest {
     /// @dev Every local adapter must be a global adapter (poolId=0); a foreign one is blocked outright.
     ///      A valid subset is out of policy, since a weaker subset/threshold needs a veto window.
     function _checkSetAdapters(bytes calldata payload) internal view returns (uint48) {
-        (, uint16 centrifugeId, IAdapter[] memory localAdapters,,,,) =
-            abi.decode(payload, (PoolId, uint16, IAdapter[], bytes32[], uint8, uint8, address));
+        (, uint16 centrifugeId, IAdapter[] memory localAdapters,,,) =
+            abi.decode(payload, (PoolId, uint16, IAdapter[], bytes32[], uint8, address));
 
         PoolId globalPool = PoolId.wrap(0);
         uint16 sessionId = multiAdapter.activeSessionId(centrifugeId, globalPool);

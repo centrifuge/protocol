@@ -16,7 +16,7 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     // Structs
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Each adapter struct is packed with the quorum, threshold and recoveryIndex to reduce SLOADs on handle
+    /// @dev Each adapter struct is packed with the quorum and threshold to reduce SLOADs on handle
     struct Adapter {
         /// @notice Starts at 1 and maps to id - 1 as the index on the adapters array
         uint8 id;
@@ -24,8 +24,6 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
         uint8 quorum;
         /// @notice Number of votes required for a message to be executed. Less-equal to quorum
         uint8 threshold;
-        /// @notice Index in the adapter array to start consider the adapter as recovery adapter
-        uint8 recoveryIndex;
     }
 
     struct Adapters {
@@ -39,7 +37,6 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     ///      A session is blocked iff its stashed list is non-empty.
     struct BlockedSession {
         uint8 threshold;
-        uint8 recoveryIndex;
         bool wasActive;
         IAdapter[] list;
     }
@@ -49,12 +46,11 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
-    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex);
+    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold);
     event BlockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
     event UnblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
     event Vote(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event Execute(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
-    event HandlePayload(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event SendPayload(
         uint16 indexed centrifugeId,
         bytes32 indexed payloadId,
@@ -79,9 +75,6 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
 
     /// @notice Dispatched when the threshold number is higher than the number of configured adapters (aka quorum).
     error ThresholdHigherThanQuorum();
-
-    /// @notice Dispatched when the recovery index is higher than the number of configured adapters (aka quorum).
-    error RecoveryIndexHigherThanQuorum();
 
     /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
     error ExceedsMax();
@@ -119,24 +112,7 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     ///         If the array is empty, it disables the usage for messages of that pool.
     /// @param  threshold Minimum number of adapters required to process the messages
     ///         If not wanted a threshold set `adapters.length` value
-    /// @param  recoveryIndex Index in adapters array from where consider the adapter as recovery adapter.
-    ///         If not wanted a recoveryIndex set `adapters.length` value
-    ///
-    ///         A recovery adapter is an adapter that does not decrease their votes below 0.
-    ///         it is, it can never have a debt on messages not received.
-    ///         It can be used to easily emulate receiving a missing message by some of the others adapters.
-    ///
-    ///         i.e: Suppose a configuration of `[Adapter1, Adapter2, RecoveryAdapter]` with threshold 2.
-    ///         Both `Adapter1` and `Adapter2` will need always need to handle the message, each one, to process it.
-    ///         In case some of those fail, the losing vote can be recover through the `RecoveryAdapter`` to reach
-    ///         threshold 2.
-    function setAdapters(
-        uint16 centrifugeId,
-        PoolId poolId,
-        IAdapter[] calldata adapters,
-        uint8 threshold,
-        uint8 recoveryIndex
-    ) external;
+    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;
 
     /// @notice Mark a session as blocked, preventing its adapters from voting on incoming messages and, if it is the
     ///         active session, from sending outgoing messages. The session can later be recovered with unblockSession().
@@ -156,6 +132,35 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     /// @param who Manager address
     /// @param canManage If enabled as manager
     function updateManager(PoolId poolId, address who, bool canManage) external;
+
+    //----------------------------------------------------------------------------------------------
+    // Incoming
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Manager-driven variant of {IMessageHandler-handle}. Adapters submit via the two-argument
+    ///         `handle`, identifying themselves through `msg.sender`. Here a ward, or a manager of the
+    ///         payload's pool, submits on behalf of `adapter`, naming which configured adapter the message
+    ///         belongs to. Equivalent to a vote followed by a possible execute.
+    /// @param  centrifugeId Source chain identifier
+    /// @param  payload The wrapped payload (session-id prefixed)
+    /// @param  adapter The configured adapter the message is attributed to
+    function handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) external;
+
+    /// @notice Manager-driven variant of {IAdapterEntrypoint-vote}. A ward, or a manager of the payload's
+    ///         pool, casts a vote on behalf of `adapter` without ever executing it.
+    /// @param  centrifugeId Source chain identifier
+    /// @param  payload The wrapped payload (session-id prefixed)
+    /// @param  adapter The configured adapter the vote is attributed to
+    function vote(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) external;
+
+    /// @notice Manager-driven variant of {IAdapterEntrypoint-execute}. A ward, or a manager of the payload's
+    ///         pool, executes an already-threshold-reached payload, attributing it to `adapter`. Reverts with
+    ///         {NotEnoughVotes} if the threshold is not met. `adapter` only identifies the session config and
+    ///         the {Execute} attribution; no vote of its own is cast.
+    /// @param  centrifugeId Source chain identifier
+    /// @param  payload The wrapped payload (session-id prefixed)
+    /// @param  adapter A configured adapter the execution is attributed to
+    function execute(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) external;
 
     //----------------------------------------------------------------------------------------------
     // View methods
@@ -208,12 +213,6 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     /// @param poolId PoolId associated to the adapters
     /// @return Needed amount
     function threshold(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
-
-    /// @notice Index in the adapter array to start consider the adapter as recovery adapter
-    /// @param centrifugeId Chain where the adapter is configured for
-    /// @param poolId PoolId associated to the adapters
-    /// @return Recovery index
-    function recoveryIndex(uint16 centrifugeId, PoolId poolId) external view returns (uint8);
 
     /// @notice Counts how many times each incoming messages has been received per adapter.
     /// @dev    It supports parallel messages ( duplicates ). That means that the incoming messages could be

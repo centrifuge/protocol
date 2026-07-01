@@ -760,16 +760,9 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
         assertEq(address(hyperlaneAdapter.mailbox()), HYPERLANE_MAILBOX);
     }
 
-    function testAdapterFailover(address nonWard) public view {
-        // permissions set correctly: root-warded singleton, per-pool stewards/manager wiring are operational
-        vm.assume(nonWard != address(root));
-
-        assertEq(adapterFailover.wards(address(root)), 1);
-        assertEq(adapterFailover.wards(nonWard), 0);
-
-        // dependencies set correctly
+    function testAdapterFailover() public view {
         assertEq(address(adapterFailover.multiAdapter()), address(multiAdapter));
-        assertEq(adapterFailover.contractUpdater(), address(contractUpdater));
+        assertEq(adapterFailover.envoy(), address(envoy));
         assertEq(adapterFailover.timelock(), uint64(DELAY));
     }
 }

@@ -25,9 +25,7 @@ interface IOpsGuardian {
     /// @param centrifugeId Target chain ID to configure adapters on
     /// @param adapters Array of adapter contract addresses
     /// @param threshold Minimum number of adapters that must agree
-    /// @param recoveryIndex Index of the recovery adapter in the array
-    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold, uint8 recoveryIndex)
-        external;
+    function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold) external;
 
     /// @notice Wire an adapter to a remote chain (can be called multiple times to re-point a binding)
     /// @dev Reverts if centrifugeId is the mainnet (ETHEREUM) hub chain. The ETHEREUM connection

@@ -1004,7 +1004,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         _validateAdapterOrder(multiAdapterContract, centrifugeId, poolId, chainConfig);
     }
 
-    /// @notice Validates MultiAdapter quorum, threshold, and recoveryIndex parameters
+    /// @notice Validates MultiAdapter quorum and threshold parameters
     function _validateMultiAdapterParams(
         MultiAdapter multiAdapterContract,
         uint16 centrifugeId,
@@ -1013,7 +1013,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     ) internal view {
         uint8 actualQuorum = multiAdapterContract.quorum(centrifugeId, poolId);
         uint8 actualThreshold = multiAdapterContract.threshold(centrifugeId, poolId);
-        uint8 actualRecoveryIndex = multiAdapterContract.recoveryIndex(centrifugeId, poolId);
 
         // Calculate expected quorum
         uint8 expectedQuorum = _calculateExpectedQuorum(chainConfig);
@@ -1022,10 +1021,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         assertEq(actualQuorum, expectedQuorum, _formatAdapterError("MultiAdapter", "quorum", chainConfig.name));
         assertTrue(
             actualThreshold <= actualQuorum, _formatAdapterError("MultiAdapter", "threshold > quorum", chainConfig.name)
-        );
-        assertTrue(
-            actualRecoveryIndex <= actualQuorum,
-            _formatAdapterError("MultiAdapter", "recoveryIndex > quorum", chainConfig.name)
         );
     }
 

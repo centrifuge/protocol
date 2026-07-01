@@ -286,9 +286,31 @@ contract GatewayTestHandle is GatewayTest {
     }
 
     function testErrNotAuthorized() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.handle(REMOTE_CENT_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, batch);
+    }
+
+    function testManagerCanHandle() public {
+        bytes memory batch = MessageKind.WithPoolA1.asBytes(); // messagePoolId -> POOL_A
+        gateway.updateManager(POOL_A, ANY, true);
+
+        vm.expectEmit();
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, keccak256(batch));
+        vm.prank(ANY);
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
+    }
+
+    function testManagerOfOtherPoolCannotHandle() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes(); // messagePoolId -> POOL_0
+        gateway.updateManager(POOL_A, ANY, true); // manager of POOL_A, not POOL_0
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.handle(REMOTE_CENT_ID, batch);
     }
 
     function testNotEnoughGas() public {

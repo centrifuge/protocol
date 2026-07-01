@@ -105,7 +105,11 @@ contract Gateway is Auth, Recoverable, IGateway {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
+    function handle(uint16 centrifugeId, bytes memory batch)
+        public
+        pauseable
+        onlyAuthOrManager(messageProperties.messagePoolId(batch))
+    {
         PoolId batchPoolId = messageProperties.messagePoolId(batch);
 
         uint128 failureGasReserve = messageProperties.messageFailureGasReserve();

@@ -189,11 +189,7 @@ contract WireToNewNetwork is Script {
             }
 
             targets[idx] = opsGuardian;
-            data[idx] = abi.encodeCall(
-                IOpsGuardian.setAdapters,
-                // recoveryIndex = adapterCount: no recovery adapter. Configured separately after initial wiring if needed.
-                (centrifugeId, trimmedAdapters, conn.threshold, uint8(adapterCount))
-            );
+            data[idx] = abi.encodeCall(IOpsGuardian.setAdapters, (centrifugeId, trimmedAdapters, conn.threshold));
             idx++;
         }
 

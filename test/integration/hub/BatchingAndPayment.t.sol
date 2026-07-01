@@ -31,7 +31,7 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
         mockAdapters[0] = IAdapter(mockAdapter);
 
         vm.prank(address(root));
-        multiAdapter.setAdapters(TARGET_CHAIN, PoolId.wrap(0), mockAdapters, 1, 1);
+        multiAdapter.setAdapters(TARGET_CHAIN, PoolId.wrap(0), mockAdapters, 1);
     }
 
     /// Test that a multicall with two notifyPool calls for the same pool requires GAS per call.
@@ -44,7 +44,7 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
         opsGuardian.createPool(poolA, FM, USD_ID);
 
         vm.startPrank(FM);
-        hub.setAdapters{value: GAS}(poolA, TARGET_CHAIN, mockAdapters, new bytes32[](0), 1, 1, REFUND);
+        hub.setAdapters{value: GAS}(poolA, TARGET_CHAIN, mockAdapters, new bytes32[](0), 1, REFUND);
 
         bytes[] memory cs = new bytes[](2);
         cs[0] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, TARGET_CHAIN, REFUND);
@@ -68,8 +68,8 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
         vm.stopPrank();
 
         vm.startPrank(FM);
-        hub.setAdapters{value: GAS}(poolA, TARGET_CHAIN, mockAdapters, new bytes32[](0), 1, 1, REFUND);
-        hub.setAdapters{value: GAS}(poolB, TARGET_CHAIN, mockAdapters, new bytes32[](0), 1, 1, REFUND);
+        hub.setAdapters{value: GAS}(poolA, TARGET_CHAIN, mockAdapters, new bytes32[](0), 1, REFUND);
+        hub.setAdapters{value: GAS}(poolB, TARGET_CHAIN, mockAdapters, new bytes32[](0), 1, REFUND);
 
         bytes[] memory cs = new bytes[](2);
         cs[0] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, TARGET_CHAIN, REFUND);

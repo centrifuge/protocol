@@ -472,7 +472,6 @@ interface IHub is IBatchedMulticall {
     /// @param localAdapters Adapter addresses in this chain
     /// @param remoteAdapters Adapter addresses in the remote chain
     /// @param threshold Minimum number of adapters required to process the messages
-    /// @param recoveryIndex Index in adapters array from where consider the adapter as recovery adapter
     /// @param refund Address to receive excess gas refund
     function setAdapters(
         PoolId poolId,
@@ -480,7 +479,6 @@ interface IHub is IBatchedMulticall {
         IAdapter[] memory localAdapters,
         bytes32[] memory remoteAdapters,
         uint8 threshold,
-        uint8 recoveryIndex,
         address refund
     ) external payable;
 

@@ -55,7 +55,6 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = ADAPTER;
         uint8 threshold = 1;
-        uint8 recoveryIndex = 2;
 
         vm.mockCall(
             address(multiAdapter),
@@ -66,12 +65,7 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         vm.mockCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector,
-                REMOTE_CENTRIFUGE_ID,
-                GLOBAL_POOL,
-                adapters,
-                threshold,
-                recoveryIndex
+                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold
             ),
             abi.encode()
         );
@@ -79,17 +73,12 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         vm.expectCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector,
-                REMOTE_CENTRIFUGE_ID,
-                GLOBAL_POOL,
-                adapters,
-                threshold,
-                recoveryIndex
+                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold
             )
         );
 
         vm.prank(address(SAFE));
-        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, threshold, recoveryIndex);
+        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, threshold);
     }
 
     function testSetAdaptersSuccessMultipleTimes() public {
@@ -103,15 +92,13 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         );
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, 1, 1
-            ),
+            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, 1),
             abi.encode()
         );
 
         vm.startPrank(address(SAFE));
-        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1, 1);
-        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1, 1);
+        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1);
+        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1);
         vm.stopPrank();
     }
 
@@ -127,7 +114,7 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
 
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.CannotSetAdaptersForLocalChain.selector);
-        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1, 2);
+        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1);
     }
 
     function testSetAdaptersRevertWhenHubChain() public {
@@ -143,7 +130,7 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         uint16 mainnetId = opsGuardian.MAINNET_CENTRIFUGE_ID();
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.CannotSetAdaptersForMainnet.selector);
-        opsGuardian.setAdapters(mainnetId, adapters, 1, 2);
+        opsGuardian.setAdapters(mainnetId, adapters, 1);
     }
 
     function testSetAdaptersRevertWhenNotSafe() public {
@@ -152,7 +139,7 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
-        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1, 2);
+        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1);
     }
 }
 

@@ -483,8 +483,7 @@ contract AdapterActionBatcher {
                         connections.centrifugeId,
                         PoolId.wrap(0),
                         adapters,
-                        connections.threshold > 0 ? connections.threshold : uint8(adapters.length),
-                        uint8(adapters.length)
+                        connections.threshold > 0 ? connections.threshold : uint8(adapters.length)
                     );
             }
         }

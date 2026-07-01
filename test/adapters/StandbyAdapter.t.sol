@@ -239,7 +239,7 @@ contract StandbyAdapterMultiAdapterTest is Test {
         set[0] = activeA;
         set[1] = activeB;
         set[2] = standby;
-        multi.setAdapters(REMOTE, POOL_0, set, 2, 0); // 2-of-3, recoveryIndex 0
+        multi.setAdapters(REMOTE, POOL_0, set, 2); // 2-of-3
     }
 
     /// @dev MultiAdapter wraps outbound payloads with the active sessionId; the standby records that.

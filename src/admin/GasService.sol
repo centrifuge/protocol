@@ -94,11 +94,11 @@ contract GasService is IGasService {
         updateVaultUnlink = _gasValue(191195);
         setRequestManager = _gasValue(160614);
         updateManager = _gasValue(159830);
-        updateHoldingAmount = _gasValue(359959);
-        updateShares = _gasValue(257088);
-        maxAssetPriceAge = _gasValue(165648);
-        maxSharePriceAge = _gasValue(162583);
-        untrustedContractUpdate = _gasValue(143941);
+        updateHoldingAmount = _gasValue(366469);
+        updateShares = _gasValue(263307);
+        maxAssetPriceAge = _gasValue(171599);
+        maxSharePriceAge = _gasValue(168534);
+        untrustedContractUpdate = _gasValue(150429);
     }
 
     /// @inheritdoc IMessageProperties

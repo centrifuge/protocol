@@ -170,7 +170,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
         PoolId poolId,
         bytes32[] memory adapters,
         uint8 threshold,
-        uint8 recoveryIndex,
         address refund
     ) external payable;
 }

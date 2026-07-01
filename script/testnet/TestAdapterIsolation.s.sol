@@ -334,7 +334,7 @@ contract TestAdapterIsolation is Script, Constants {
         remoteAdapters[0] = address(adapterInstance).toBytes32();
 
         Hub(h.contracts.hub).setAdapters{value: xcGasPerCall}(
-            poolId, s.network.centrifugeId, localAdapters, remoteAdapters, 1, 0, msg.sender
+            poolId, s.network.centrifugeId, localAdapters, remoteAdapters, 1, msg.sender
         );
         console.log("    SetPoolAdapters sent via", _adapterName(adapter));
 

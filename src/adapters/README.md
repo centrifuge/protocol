@@ -19,7 +19,3 @@ Adapters enable cross-chain messaging by integrating with various bridging proto
 ### `HyperlaneAdapter`
 
 `HyperlaneAdapter` integrates with the Hyperlane Mailbox for cross-chain messaging. Destination gas limits are encoded in `StandardHookMetadata` passed to the Mailbox's dispatch/quoteDispatch calls, and an admin-configurable Interchain Security Module (ISM) verifies inbound messages. Replay protection is enforced by the Hyperlane Mailbox.
-
-### `RecoveryAdapter`
-
-`RecoveryAdapter` is a special-purpose adapter for message recovery that allows authenticated parties to inject messages directly into the protocol entrypoint, bypassing normal cross-chain messaging. It implements both `IAdapter` and `IMessageHandler`, providing a direct path to the entrypoint while skipping any outgoing message sending (returns empty adapter data and zero cost estimates).

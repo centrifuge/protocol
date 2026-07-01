@@ -13,13 +13,13 @@ import {IAdapter} from "../../../core/messaging/interfaces/IAdapter.sol";
 ///
 ///         A pool steward arms a failover with `initiateFailover`, which records the proposed set behind a
 ///         long timelock. While the timelock runs, the hub — if the pool's adapters still function — can
-///         veto it with a single trusted call routed over those same pool adapters (`trustedCall`). If
-///         the pool adapters are genuinely dead the veto cannot land, the timelock elapses, and anyone
-///         may `executeFailover` to install the new set locally. Working adapters block the takeover;
-///         dead adapters cannot, so the failover only ever wins when it is actually needed.
+///         veto it via `fromHub` (the ManagerCall path). If the pool adapters are genuinely dead the veto
+///         cannot land, the timelock elapses, and anyone may `executeFailover` to install the new set
+///         locally. Working adapters block the takeover; dead adapters cannot, so the failover only ever
+///         wins when it is actually needed.
 interface IAdapterFailover {
-    /// @notice Operations the hub can trigger over the pool's adapters via a trusted contract update.
-    enum TrustedCall {
+    /// @notice Operations the hub can trigger via the ManagerCall/Envoy path.
+    enum HubCall {
         CancelFailover,
         UpdateSteward
     }
@@ -27,54 +27,33 @@ interface IAdapterFailover {
     struct Failover {
         /// @notice Timestamp at which the failover may be executed. Zero means no failover is pending.
         uint64 executableAt;
-        /// @notice keccak256(abi.encode(adapters, threshold, recoveryIndex)) of the proposed set. The
-        ///         executor must reproduce the exact set, so only the armed configuration can be installed.
+        /// @notice keccak256(abi.encode(adapters, threshold)) of the proposed set. The executor must
+        ///         reproduce the exact set, so only the armed configuration can be installed.
         bytes32 paramsHash;
     }
 
-    event File(bytes32 indexed what, uint64 value);
     event UpdateSteward(PoolId indexed poolId, address indexed who, bool isSteward);
     event InitiateFailover(
-        uint16 indexed centrifugeId,
-        PoolId indexed poolId,
-        IAdapter[] adapters,
-        uint8 threshold,
-        uint8 recoveryIndex,
-        uint64 executableAt
+        uint16 indexed centrifugeId, PoolId indexed poolId, IAdapter[] adapters, uint8 threshold, uint64 executableAt
     );
     event BlockFailover(uint16 indexed centrifugeId, PoolId indexed poolId);
-    event ExecuteFailover(
-        uint16 indexed centrifugeId, PoolId indexed poolId, IAdapter[] adapters, uint8 threshold, uint8 recoveryIndex
-    );
+    event ExecuteFailover(uint16 indexed centrifugeId, PoolId indexed poolId, IAdapter[] adapters, uint8 threshold);
 
-    error FileUnrecognizedParam();
     error NotSteward();
-    error GlobalPoolNotAllowed();
     error InvalidThreshold();
-    error NotContractUpdater();
-    error UnknownTrustedCall();
+    error NotEnvoy();
+    error UnexpectedValue();
     error NoPendingFailover();
     error TimelockNotElapsed();
     error FailoverExpired();
     error ParamsMismatch();
 
-    /// @notice Configure the contract. Currently only the "timelock" key (the veto window, in seconds).
-    function file(bytes32 what, uint64 value) external;
-
-    /// @notice Grant or revoke an account's permission to drive failover for a pool (arm, cancel, block a
-    ///         session). Ward-gated. The hub can also set a pool's steward over the pool's adapters via a
-    ///         `TrustedCall.UpdateSteward` contract update. Executing an armed failover stays permissionless.
-    function updateSteward(PoolId poolId, address who, bool isSteward) external;
-
     /// @notice Arm a failover of the (centrifugeId, poolId) adapter set. Starts the veto window; the set
     ///         can be installed by `executeFailover` once it elapses, unless vetoed first.
-    function initiateFailover(
-        uint16 centrifugeId,
-        PoolId poolId,
-        IAdapter[] calldata adapters,
-        uint8 threshold,
-        uint8 recoveryIndex
-    ) external;
+    /// @dev    PoolId 0 (the global/default set) can never reach here: stewards are assigned only through
+    ///         `fromHub` which is pool-manager-gated on the hub side, and the hub enforces valid pool IDs.
+    function initiateFailover(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold)
+        external;
 
     /// @notice Cancel a pending failover locally (steward path, e.g. it was armed in error).
     function cancelFailover(uint16 centrifugeId, PoolId poolId) external;
@@ -85,11 +64,5 @@ interface IAdapterFailover {
 
     /// @notice Install the armed set after the veto window has elapsed. Permissionless: the params must
     ///         match what was armed, so a finalizer cannot substitute a different set.
-    function executeFailover(
-        uint16 centrifugeId,
-        PoolId poolId,
-        IAdapter[] calldata adapters,
-        uint8 threshold,
-        uint8 recoveryIndex
-    ) external;
+    function executeFailover(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;
 }

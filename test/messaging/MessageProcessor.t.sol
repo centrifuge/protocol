@@ -39,9 +39,7 @@ contract TestSourceChecks is TestCommon {
     function testSetPoolAdaptersOnlyFromSource() public {
         // poolId encodes centrifugeId=2, message sent from centrifugeId=1
         bytes memory message = MessageLib.serialize(
-            MessageLib.SetPoolAdapters({
-                poolId: newPoolId(2, 0).raw(), threshold: 0, recoveryIndex: 0, adapterList: new bytes32[](0)
-            })
+            MessageLib.SetPoolAdapters({poolId: newPoolId(2, 0).raw(), threshold: 0, adapterList: new bytes32[](0)})
         );
 
         vm.prank(AUTH);
@@ -155,8 +153,7 @@ contract TestHandleFromSource is Test {
         // Hub->spoke: only valid coming from the pool's home chain.
         cases[0] = Case(
             "SetPoolAdapters",
-            MessageLib.SetPoolAdapters({poolId: p, threshold: 0, recoveryIndex: 0, adapterList: new bytes32[](0)})
-                .serialize(),
+            MessageLib.SetPoolAdapters({poolId: p, threshold: 0, adapterList: new bytes32[](0)}).serialize(),
             adapter_,
             HOME_CHAIN,
             true
@@ -467,8 +464,7 @@ contract TestHandleSetPoolAdapters is TestCommon {
     function _message() internal returns (bytes memory) {
         bytes32[] memory adapters = new bytes32[](1);
         adapters[0] = bytes32(bytes20(makeAddr("adapter")));
-        return MessageLib.SetPoolAdapters({poolId: poolId.raw(), threshold: 1, recoveryIndex: 0, adapterList: adapters})
-            .serialize();
+        return MessageLib.SetPoolAdapters({poolId: poolId.raw(), threshold: 1, adapterList: adapters}).serialize();
     }
 
     function _fileMultiAdapter() internal {

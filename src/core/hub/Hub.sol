@@ -486,7 +486,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         IAdapter[] memory localAdapters,
         bytes32[] memory remoteAdapters,
         uint8 threshold,
-        uint8 recoveryIndex,
         address refund
     ) external payable {
         _protected(poolId);
@@ -497,11 +496,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         // Send the remote update before applying the local set: SetPoolAdapters routes over the pool's
         // own set, so it must travel over the set still shared with the destination.
-        sender.sendSetPoolAdapters{value: msgValue()}(
-            centrifugeId, poolId, remoteAdapters, threshold, recoveryIndex, refund
-        );
+        sender.sendSetPoolAdapters{value: msgValue()}(centrifugeId, poolId, remoteAdapters, threshold, refund);
 
-        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, recoveryIndex);
+        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -96,8 +96,7 @@ src/
 ├── adapters/              # Cross-chain adapters
 │   ├── AxelarAdapter.sol
 │   ├── ChainlinkAdapter.sol
-│   ├── LayerZeroAdapter.sol
-│   └── RecoveryAdapter.sol
+│   └── LayerZeroAdapter.sol
 ├── utils/                  # Utilities
 │   ├── RefundEscrow.sol   # Refund handling
 │   ├── RefundEscrowFactory.sol
