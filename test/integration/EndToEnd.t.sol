@@ -28,6 +28,7 @@ import {VaultRegistry} from "../../src/core/spoke/VaultRegistry.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {BalanceSheet, WithdrawMode} from "../../src/core/spoke/BalanceSheet.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
@@ -121,6 +122,7 @@ contract EndToEndDeployment is Test {
         // Core
         Gateway gateway;
         MultiAdapter multiAdapter;
+        bytes32 contractUpdaterForwarder;
         // Admin
         Root root;
         ProtocolGuardian protocolGuardian;
@@ -290,6 +292,7 @@ contract EndToEndDeployment is Test {
         s_.opsGuardian = deploy.opsGuardian();
         s_.gateway = deploy.gateway();
         s_.multiAdapter = deploy.multiAdapter();
+        s_.contractUpdaterForwarder = address(deploy.contractUpdaterForwarder()).toBytes32();
         s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
         s_.vaultRegistry = deploy.vaultRegistry();
@@ -739,9 +742,11 @@ contract EndToEndFlows is EndToEndUtils {
         );
     }
 
-    /// @dev `updateContract` reaches a legacy spoke target (SyncManager) via `TrustedContractUpdate`.
-    ///      Fuzzing `sameChain` covers both the local (direct `trustedCall`) and cross-chain (serialized
-    ///      message) branches.
+    /// @dev A trusted contract update reaches a legacy spoke target (SyncManager) via the unified
+    ///      `managerCall` transport (sentinel target + wrapped payload). Fuzzing `sameChain` covers both the
+    ///      local (direct `trustedCall`) and cross-chain (serialized message) branches. The hub lives on
+    ///      CENTRIFUGE_ID_A, so the call is local iff `sameChain`: the `value` arg must equal `msg.value`
+    ///      locally and be 0 remotely, while `{value: GAS}` still funds the cross-chain message.
     function testUpdateContractReachesLegacySpokeTarget(bool sameChain) public {
         _configurePool(sameChain);
 
@@ -749,13 +754,15 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(s.syncManager.maxReserve(POOL_A, SC_1, address(s.usdc), 0), 0, "maxReserve starts unset");
 
         vm.startPrank(FM);
-        h.hub.updateContract{value: GAS}(
+        h.hub.managerCall{value: sameChain ? 0 : GAS}(
             POOL_A,
-            SC_1,
             s.centrifugeId,
-            address(s.syncManager).toBytes32(),
-            _updateContractSyncDepositMaxReserveMsg(newMaxReserve),
+            s.contractUpdaterForwarder,
+            ContractUpdateLib.wrap(
+                SC_1, address(s.syncManager), _updateContractSyncDepositMaxReserveMsg(newMaxReserve)
+            ),
             EXTRA_GAS,
+            0,
             REFUND
         );
         vm.stopPrank();
@@ -763,7 +770,7 @@ contract EndToEndFlows is EndToEndUtils {
         assertEq(
             s.syncManager.maxReserve(POOL_A, SC_1, address(s.usdc), 0),
             newMaxReserve,
-            "spoke target state updated via updateContract"
+            "spoke target state updated via contract update"
         );
     }
 
@@ -777,13 +784,15 @@ contract EndToEndFlows is EndToEndUtils {
         );
         IBaseVault vault = IBaseVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
-        h.hub.updateContract{value: GAS}(
+        h.hub.managerCall{value: sameChain ? 0 : GAS}(
             POOL_A,
-            SC_1,
             s.centrifugeId,
-            address(s.syncManager).toBytes32(),
-            _updateContractSyncDepositMaxReserveMsg(type(uint128).max),
+            s.contractUpdaterForwarder,
+            ContractUpdateLib.wrap(
+                SC_1, address(s.syncManager), _updateContractSyncDepositMaxReserveMsg(type(uint128).max)
+            ),
             EXTRA_GAS,
+            0,
             REFUND
         );
 
@@ -1274,13 +1283,13 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         uint256 VALUE = 123;
 
         vm.startPrank(FM);
-        h.hub.updateContract{value: GAS}(
+        h.hub.managerCall{value: sameChain ? 0 : GAS}(
             POOL_A,
-            SC_1,
             s.centrifugeId,
-            address(s.asyncRequestManager).toBytes32(),
-            abi.encode(RECEIVER.toBytes32(), VALUE),
+            s.contractUpdaterForwarder,
+            ContractUpdateLib.wrap(SC_1, address(s.asyncRequestManager), abi.encode(RECEIVER.toBytes32(), VALUE)),
             EXTRA_GAS,
+            0,
             REFUND
         );
 

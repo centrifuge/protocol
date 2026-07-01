@@ -10,6 +10,7 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
+import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {IManagerCallFromHub} from "../../src/core/utils/interfaces/IManagerCall.sol";
 
 import {MAX_MESSAGE_COST as GAS} from "../../src/admin/interfaces/IGasService.sol";
@@ -63,6 +64,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         navManager: address(0),
                         simplePriceManager: address(0),
                         requestManager: address(batchRequestManager),
+                        contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdManifest.Entry[](0)
                     })
                 )
@@ -151,6 +153,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             navManager: address(0),
                             simplePriceManager: address(0),
                             requestManager: address(batchRequestManager),
+                            contractUpdaterForwarder: address(contractUpdaterForwarder),
                             allowlist: new IStdManifest.Entry[](0)
                         })
                     )
@@ -265,6 +268,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         navManager: address(0),
                         simplePriceManager: address(0),
                         requestManager: address(batchRequestManager),
+                        contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdManifest.Entry[](0)
                     })
                 )
@@ -359,8 +363,9 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         assertTrue(oracleValuation.feeder(POOL_A, 0, priceFeeder), "feeder added via authorized managerCall");
     }
 
-    /// @notice A non-withdrawal `updateContract` is classified out of policy by `_checkUpdateContract`:
-    ///         spoke config actions are timelocked + sentinel-vetoable for manifest pools.
+    /// @notice A non-withdrawal contract update is classified out of policy by `_classifyContractUpdate`:
+    ///         spoke config actions are timelocked + sentinel-vetoable for manifest pools. The update now rides
+    ///         the unified `managerCall` transport (sentinel target + wrapped payload).
     function testUpdateContractIsOutOfPolicyByDefault() public {
         _registerUSDC();
 
@@ -375,30 +380,31 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.stopPrank();
 
         uint128 newMaxReserve = 123e6;
-        bytes32 target = address(syncManager).toBytes32();
+        bytes32 fwd = address(contractUpdaterForwarder).toBytes32();
         bytes memory inner = _updateContractSyncDepositMaxReserveMsg(usdcId, newMaxReserve);
-        bytes memory call = abi.encodeCall(IHub.updateContract, (POOL_A, SC_1, localId, target, inner, 0, address(0)));
+        bytes memory payload = ContractUpdateLib.wrap(SC_1, address(syncManager), inner);
+        bytes memory call = abi.encodeCall(IHub.managerCall, (POOL_A, localId, fwd, payload, 0, 0, address(0)));
 
         // Out of policy: without an authorization the call reverts (deny-by-default).
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
-        hub.updateContract(POOL_A, SC_1, localId, target, inner, 0, address(0));
+        hub.managerCall(POOL_A, localId, fwd, payload, 0, 0, address(0));
 
         // Operator pre-authorizes the exact calldata; not matured yet -> still reverts.
         vm.prank(operator);
         hubRegistry.authorize(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
-        hub.updateContract(POOL_A, SC_1, localId, target, inner, 0, address(0));
+        hub.managerCall(POOL_A, localId, fwd, payload, 0, 0, address(0));
 
         // After the delay it runs, reaching the unchanged legacy spoke target via contractUpdater.
         skip(POLICY_DELAY);
         vm.prank(FM);
-        hub.updateContract(POOL_A, SC_1, localId, target, inner, 0, address(0));
+        hub.managerCall(POOL_A, localId, fwd, payload, 0, 0, address(0));
         assertEq(
             syncManager.maxReserve(POOL_A, SC_1, address(usdc), 0),
             newMaxReserve,
-            "maxReserve set via authorized updateContract"
+            "maxReserve set via authorized contract update"
         );
     }
 

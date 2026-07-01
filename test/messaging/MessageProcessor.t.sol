@@ -125,6 +125,7 @@ contract TestHandleFromSource is Test {
         processor.file("hubHandler", makeAddr("HubHandler"));
         processor.file("vaultRegistry", makeAddr("VaultRegistry"));
         processor.file("contractUpdater", makeAddr("ContractUpdater"));
+        processor.file("envoy", makeAddr("Envoy"));
 
         // SetPoolAdapters reads the local chain id to forbid configuring a pool the local chain hubs.
         // Mock it to a spoke id so the legitimate spoke delivery path is exercised. Persisted across the
@@ -146,6 +147,7 @@ contract TestHandleFromSource is Test {
         address hub_ = address(processor.hubHandler());
         address vault_ = address(processor.vaultRegistry());
         address updater_ = address(processor.contractUpdater());
+        address envoy_ = address(processor.envoy());
         uint64 p = poolId.raw();
 
         cases = new Case[](21);
@@ -267,11 +269,10 @@ contract TestHandleFromSource is Test {
             true
         );
         cases[14] = Case(
-            "TrustedContractUpdate",
-            MessageLib.TrustedContractUpdate({
-                    poolId: p, scId: bytes16("sc"), target: bytes32("target"), extraGasLimit: 0, payload: bytes("")
-                }).serialize(),
-            updater_,
+            "ManagerCall",
+            MessageLib.ManagerCall({poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")})
+                .serialize(),
+            envoy_,
             HOME_CHAIN,
             true
         );

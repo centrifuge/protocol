@@ -242,49 +242,35 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendTrustedContractUpdate(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
-        address refund
-    ) external payable auth {
-        if (centrifugeId == localCentrifugeId) {
-            contractUpdater.trustedCall(poolId, scId, target.toAddress(), payload);
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.TrustedContractUpdate({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        target: target,
-                        extraGasLimit: extraGasLimit,
-                        payload: payload
-                    }).serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
     function sendManagerHubCall(
         uint16 centrifugeId,
         PoolId poolId,
         address target,
         bytes calldata payload,
-        uint128, /* extraGasLimit */
+        uint128 extraGasLimit,
         uint256 value,
-        address /* refund */
+        address refund
     ) external payable auth {
-        // `extraGasLimit` is inert on the local branch (no message to meter), reserved for the future
-        // cross-chain branch. `Hub.managerCall` enforces `value == msgValue()`, so the whole balance funds
-        // the call (0 inside a batch). No origin args: already authorized at the Hub.
-        require(centrifugeId == localCentrifugeId, ManagerCallRemoteNotSupported());
-        envoy.callFromHub{value: value}(poolId, target, payload);
+        // `target` is explicit: a `fromHub` manager, or the ContractUpdaterForwarder for a wrapped contract
+        // update. No origin args: already authorized at the Hub.
+        if (centrifugeId == localCentrifugeId) {
+            envoy.callFromHub{value: value}(poolId, target, payload);
+            // Refund any value not forwarded rather than assume `value == msgValue()`: if that Hub
+            // precondition ever changes, the remainder is returned instead of silently stranded here.
+            if (msg.value > value) {
+                (bool success,) = payable(refund).call{value: msg.value - value}("");
+                require(success, CannotRefund());
+            }
+        } else {
+            _send(
+                centrifugeId,
+                MessageLib.ManagerCall({
+                        poolId: poolId.raw(), target: target.toBytes32(), extraGasLimit: extraGasLimit, payload: payload
+                    }).serialize(),
+                false,
+                refund
+            );
+        }
     }
 
     /// @inheritdoc IHubMessageSender

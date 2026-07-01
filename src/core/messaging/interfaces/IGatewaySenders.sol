@@ -85,21 +85,10 @@ interface IHubMessageSender is ILocalCentrifugeId {
         address refund
     ) external payable;
 
-    /// @notice Creates and send the message
-    function sendTrustedContractUpdate(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
-        address refund
-    ) external payable;
-
-    /// @notice Routes a hub-local manager call through the `Envoy`, forwarding `value`.
-    /// @dev    Only the local branch is supported; a non-local `centrifugeId` reverts. `extraGasLimit` is
-    ///         inert on the local branch and reserved for the future cross-chain branch. `Hub.managerCall`
-    ///         enforces `value == msgValue()`, so `value` funds the dispatched call in full with no remainder.
+    /// @notice Routes a manager call to its target. Local: through the `Envoy`, forwarding `value`. Remote:
+    ///         emits a `ManagerCall` message delivered on the destination chain via its `Envoy`.
+    /// @dev    `Hub.managerCall` enforces `value == msgValue()` locally / `value == 0` remotely. `extraGasLimit`
+    ///         meters the remote delivery (inert on the local branch).
     function sendManagerHubCall(
         uint16 centrifugeId,
         PoolId poolId,

@@ -273,10 +273,12 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(messageProcessor));
         vm.assume(nonWard != address(messageDispatcher));
+        vm.assume(nonWard != address(contractUpdaterForwarder));
 
         assertEq(contractUpdater.wards(address(root)), 1);
         assertEq(contractUpdater.wards(address(messageProcessor)), 1);
         assertEq(contractUpdater.wards(address(messageDispatcher)), 1);
+        assertEq(contractUpdater.wards(address(contractUpdaterForwarder)), 1);
         assertEq(contractUpdater.wards(nonWard), 0);
     }
 
@@ -284,9 +286,11 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(messageDispatcher));
+        vm.assume(nonWard != address(messageProcessor));
 
         assertEq(envoy.wards(address(root)), 1);
         assertEq(envoy.wards(address(messageDispatcher)), 1);
+        assertEq(envoy.wards(address(messageProcessor)), 1);
         assertEq(envoy.wards(nonWard), 0);
     }
 

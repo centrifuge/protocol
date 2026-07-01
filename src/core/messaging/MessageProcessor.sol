@@ -23,6 +23,7 @@ import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
+import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
@@ -45,6 +46,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
     IBalanceSheetGatewayHandler public balanceSheet;
     IVaultRegistryGatewayHandler public vaultRegistry;
     IContractUpdateGatewayHandler public contractUpdater;
+    IEnvoy public envoy;
 
     constructor(IScheduleAuth scheduleAuth_, address deployer) Auth(deployer) {
         scheduleAuth = scheduleAuth_;
@@ -63,6 +65,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
         else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
+        else if (what == "envoy") envoy = IEnvoy(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -159,11 +162,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             spoke.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
-        } else if (kind == MessageType.TrustedContractUpdate) {
-            MessageLib.TrustedContractUpdate memory m = MessageLib.deserializeTrustedContractUpdate(message);
-            contractUpdater.trustedCall(
-                PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.target.toAddress(), m.payload
-            );
+        } else if (kind == MessageType.ManagerCall) {
+            MessageLib.ManagerCall memory m = MessageLib.deserializeManagerCall(message);
+            envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);
         } else if (kind == MessageType.UntrustedContractUpdate) {
             MessageLib.UntrustedContractUpdate memory m = MessageLib.deserializeUntrustedContractUpdate(message);
             contractUpdater.untrustedCall(

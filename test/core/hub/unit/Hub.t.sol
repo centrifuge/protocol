@@ -16,6 +16,7 @@ import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {ContractUpdateLib} from "../../../../src/core/utils/ContractUpdateLib.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IMultiAdapter} from "../../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
@@ -146,9 +147,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.managerCall(POOL_A, 0, bytes32(0), bytes(""), 0, 0, REFUND);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0), uint64(block.timestamp));
@@ -543,70 +541,63 @@ contract TestManagerCall is TestCommon {
         hub.managerCall(POOL_A, CHAIN_B, makeAddr("t").toBytes32(), hex"1234", EXTRA_GAS, VALUE, REFUND);
     }
 
-    /// @dev `updateContract` is the spoke direction: `_requireSC`, bridge onto the `TrustedContractUpdate`
-    ///      path, emit `UpdateContract`. `scId` is an explicit param and there is no `value` param.
-    function testUpdateContractLocalRoute() public {
+    /// @dev A trusted contract update now rides the unified `managerCall` transport: `target` is the
+    ///      {ContractUpdateLib.SENTINEL} (`address(0)`) and the `scId` + real target + inner are encoded in the
+    ///      wrapped payload. Local branch (`CHAIN_A` == `localCentrifugeId`): `value` must equal `msg.value`.
+    function testContractUpdateLocalRoute() public {
         address target = makeAddr("localSpokeTarget");
         bytes memory inner = hex"1234";
+        bytes memory payload = ContractUpdateLib.wrap(SC_A, target, inner);
 
-        vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(true));
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(
-                IHubMessageSender.sendTrustedContractUpdate.selector,
+                IHubMessageSender.sendManagerHubCall.selector,
                 CHAIN_A,
                 POOL_A,
-                SC_A,
-                target.toBytes32(),
-                inner,
+                address(0),
+                payload,
                 EXTRA_GAS,
+                VALUE,
                 REFUND
             ),
             abi.encode()
         );
 
         vm.expectEmit();
-        emit IHub.UpdateContract(CHAIN_A, POOL_A, SC_A, target.toBytes32(), inner);
+        emit IHub.ManagerCall(CHAIN_A, POOL_A, bytes32(0), payload);
 
+        vm.deal(ADMIN, VALUE);
         vm.prank(ADMIN);
-        hub.updateContract(POOL_A, SC_A, CHAIN_A, target.toBytes32(), inner, EXTRA_GAS, REFUND);
+        hub.managerCall{value: VALUE}(POOL_A, CHAIN_A, bytes32(0), payload, EXTRA_GAS, VALUE, REFUND);
     }
 
-    function testUpdateContractRemoteRoute() public {
+    /// @dev Remote branch (`CHAIN_B` != `localCentrifugeId`): `value` must be 0.
+    function testContractUpdateRemoteRoute() public {
         address target = makeAddr("remoteSpokeTarget");
         bytes memory inner = hex"1234";
+        bytes memory payload = ContractUpdateLib.wrap(SC_A, target, inner);
 
-        vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(true));
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(
-                IHubMessageSender.sendTrustedContractUpdate.selector,
+                IHubMessageSender.sendManagerHubCall.selector,
                 CHAIN_B,
                 POOL_A,
-                SC_A,
-                target.toBytes32(),
-                inner,
+                address(0),
+                payload,
                 EXTRA_GAS,
+                uint256(0),
                 REFUND
             ),
             abi.encode()
         );
 
         vm.expectEmit();
-        emit IHub.UpdateContract(CHAIN_B, POOL_A, SC_A, target.toBytes32(), inner);
+        emit IHub.ManagerCall(CHAIN_B, POOL_A, bytes32(0), payload);
 
         vm.prank(ADMIN);
-        hub.updateContract(POOL_A, SC_A, CHAIN_B, target.toBytes32(), inner, EXTRA_GAS, REFUND);
-    }
-
-    function testUpdateContractUnknownShareClass() public {
-        address target = makeAddr("localSpokeTarget");
-
-        vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(false));
-
-        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        vm.prank(ADMIN);
-        hub.updateContract(POOL_A, SC_A, CHAIN_A, target.toBytes32(), hex"1234", EXTRA_GAS, REFUND);
+        hub.managerCall(POOL_A, CHAIN_B, bytes32(0), payload, EXTRA_GAS, 0, REFUND);
     }
 
     function testManagerCallOnlyManager() public {
@@ -620,19 +611,6 @@ contract TestManagerCall is TestCommon {
         vm.expectRevert(IHub.NotManager.selector);
         vm.prank(notManager);
         hub.managerCall(POOL_A, CHAIN_A, makeAddr("t").toBytes32(), hex"1234", 0, 0, REFUND);
-    }
-
-    function testUpdateContractOnlyManager() public {
-        address notManager = makeAddr("notManager");
-        vm.mockCall(
-            address(hubRegistry),
-            abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, notManager),
-            abi.encode(false)
-        );
-
-        vm.expectRevert(IHub.NotManager.selector);
-        vm.prank(notManager);
-        hub.updateContract(POOL_A, SC_A, CHAIN_A, makeAddr("t").toBytes32(), hex"1234", 0, REFUND);
     }
 }
 

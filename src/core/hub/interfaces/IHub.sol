@@ -66,9 +66,6 @@ interface IHub is IBatchedMulticall {
     event UpdateVault(
         PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
     );
-    event UpdateContract(
-        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 target, bytes payload
-    );
     event ManagerCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 target, bytes payload);
     event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
     event SetMaxSharePriceAge(
@@ -109,8 +106,8 @@ interface IHub is IBatchedMulticall {
 
     error RequestManagerCallFailed();
 
-    /// @notice Dispatched when `value` is inconsistent with `centrifugeId`: local branch requires
-    ///         `value == msgValue()`; remote branch requires `value == 0`.
+    /// @notice Dispatched when `localValue` is inconsistent with `centrifugeId`: local target requires
+    ///         `localValue == msgValue()`; remote target requires `localValue == 0`.
     error ManagerCallUnexpectedValue();
 
     /// @notice Dispatched when setAdapters is called while the gateway is batching. SetPoolAdapters must be
@@ -347,7 +344,7 @@ interface IHub is IBatchedMulticall {
     /// @param payload Opaque bytes decoded by the target's `fromHub`
     /// @param extraGasLimit Extra gas for remote computation. Inert on the local branch; carried for
     ///        forward compatibility so wiring the cross-chain branch needs no Hub redeploy.
-    /// @param value Native value forwarded. Must equal `msgValue()` on the local branch; must be 0 on remote.
+    /// @param localValue Native value forwarded to the target. Only valid for local targets; must be 0 for remote.
     /// @param refund Address to receive any refunded remainder
     function managerCall(
         PoolId poolId,
@@ -355,26 +352,7 @@ interface IHub is IBatchedMulticall {
         bytes32 target,
         bytes calldata payload,
         uint128 extraGasLimit,
-        uint256 value,
-        address refund
-    ) external payable;
-
-    /// @notice Update a contract on a spoke target via the legacy `trustedCall` path.
-    ///         NOTE: Transitional — will be removed once spoke targets migrate to `IManagerCallFromSpoke`.
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param target Contract where to execute in CV
-    /// @param payload Content of the update to execute
-    /// @param extraGasLimit Extra gas limit for remote computation
-    /// @param refund Address to receive excess gas refund
-    function updateContract(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
+        uint256 localValue,
         address refund
     ) external payable;
 

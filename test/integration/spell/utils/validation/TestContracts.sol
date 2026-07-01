@@ -18,6 +18,7 @@ import {TokenFactory} from "../../../../../src/core/spoke/factories/TokenFactory
 import {MessageProcessor} from "../../../../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../../../../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
+import {ContractUpdaterForwarder} from "../../../../../src/core/utils/ContractUpdaterForwarder.sol";
 
 import {Root} from "../../../../../src/admin/Root.sol";
 import {GasService} from "../../../../../src/admin/GasService.sol";
@@ -82,6 +83,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         BalanceSheet(c.balanceSheet),
         TokenFactory(c.tokenFactory),
         ContractUpdater(c.contractUpdater),
+        ContractUpdaterForwarder(c.contractUpdaterForwarder),
         Envoy(c.envoy),
         VaultRegistry(c.vaultRegistry),
         HubRegistry(c.hubRegistry),

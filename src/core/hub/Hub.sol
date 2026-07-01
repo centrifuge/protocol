@@ -321,39 +321,20 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         bytes32 target,
         bytes calldata payload,
         uint128 extraGasLimit,
-        uint256 value,
+        uint256 localValue,
         address refund
     ) external payable {
         _protected(poolId);
 
         // Gas is explicit: a local call is funded entirely by `msg.value`, a remote call carries none.
         require(
-            centrifugeId == sender.localCentrifugeId() ? value == msgValue() : value == 0, ManagerCallUnexpectedValue()
+            centrifugeId == sender.localCentrifugeId() ? localValue == msgValue() : localValue == 0,
+            ManagerCallUnexpectedValue()
         );
 
         emit ManagerCall(centrifugeId, poolId, target, payload);
         sender.sendManagerHubCall{value: msgValue()}(
-            centrifugeId, poolId, target.toAddress(), payload, extraGasLimit, value, refund
-        );
-    }
-
-    /// @inheritdoc IHub
-    function updateContract(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
-        address refund
-    ) external payable {
-        _protected(poolId);
-
-        _requireSC(poolId, scId);
-
-        emit UpdateContract(centrifugeId, poolId, scId, target, payload);
-        sender.sendTrustedContractUpdate{value: msgValue()}(
-            centrifugeId, poolId, scId, target, payload, extraGasLimit, refund
+            centrifugeId, poolId, target.toAddress(), payload, extraGasLimit, localValue, refund
         );
     }
 

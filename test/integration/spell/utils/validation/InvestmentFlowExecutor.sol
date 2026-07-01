@@ -14,6 +14,7 @@ import {AssetId} from "../../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {ContractUpdateLib} from "../../../../../src/core/utils/ContractUpdateLib.sol";
 import {IVault, VaultKind} from "../../../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib.sol";
 
@@ -362,16 +363,24 @@ contract InvestmentFlowExecutor is Test {
             );
         }
 
+        // Routed through the unified managerCall transport: the ContractUpdaterForwarder target + wrapped
+        // payload. A contract update carries no value (it forwards to the non-payable `trustedCall`), and the
+        // call is local, so no `msg.value` is attached and the `value` arg is 0.
         vm.startPrank(ctx.gql.hubManager);
-        ctx.report.core.hub.updateContract{value: GAS}(
-            ctx.poolId,
-            ctx.scId,
-            ctx.localCentrifugeId,
-            address(ctx.report.syncManager).toBytes32(),
-            _updateContractSyncDepositMaxReserveMsg(ctx.assetId, type(uint128).max),
-            IntegrationConstants.EXTRA_GAS,
-            address(this)
-        );
+        ctx.report.core.hub
+            .managerCall(
+                ctx.poolId,
+                ctx.localCentrifugeId,
+                address(ctx.report.core.contractUpdaterForwarder).toBytes32(),
+                ContractUpdateLib.wrap(
+                    ctx.scId,
+                    address(ctx.report.syncManager),
+                    _updateContractSyncDepositMaxReserveMsg(ctx.assetId, type(uint128).max)
+                ),
+                IntegrationConstants.EXTRA_GAS,
+                0,
+                address(this)
+            );
         vm.stopPrank();
 
         IBaseVault vault = IBaseVault(ctx.gql.vault);

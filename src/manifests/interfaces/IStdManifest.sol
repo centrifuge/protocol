@@ -39,6 +39,7 @@ interface IStdManifest is IManifest {
         uint128 maxAbsolutePriceDelta;
         address simplePriceManager;
         address requestManager;
+        address contractUpdaterForwarder;
     }
 
     function hub() external view returns (IHub);
@@ -55,6 +56,7 @@ interface IStdManifest is IManifest {
     function navManager() external view returns (address);
     function simplePriceManager() external view returns (address);
     function requestManager() external view returns (address);
+    function contractUpdaterForwarder() external view returns (address);
     function lastPriceUpdate(PoolId poolId, ShareClassId scId) external view returns (uint64);
     function restricted(PoolId poolId, address caller) external view returns (bool);
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);

@@ -28,9 +28,6 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
     /// @notice Dispatched when an unsupported manager kind is dispatched locally
     error InvalidManagerKind();
 
-    /// @notice Dispatched when `sendManagerHubCall` targets a non-local chain (cross-chain path not yet wired).
-    error ManagerCallRemoteNotSupported();
-
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------

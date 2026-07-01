@@ -37,9 +37,12 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
-    TrustedContractUpdate,
+    /// @dev Reserved gap. Was TrustedContractUpdate, now delivered via ManagerCall + Envoy -> ContractUpdater.
+    ///      Kept so that enum values of subsequent message types stay stable for in-flight messages.
+    _GAP4,
     UntrustedContractUpdate,
-    UpdateManager
+    UpdateManager,
+    ManagerCall
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -94,9 +97,9 @@ library MessageLib {
         (57  << uint8(MessageType.Request) * 8) +
         (57  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
-        (73  << uint8(MessageType.TrustedContractUpdate) * 8) +
         (105  << uint8(MessageType.UntrustedContractUpdate) * 8) +
-        (43  << uint8(MessageType.UpdateManager) * 8);
+        (43  << uint8(MessageType.UpdateManager) * 8) +
+        (57  << uint8(MessageType.ManagerCall) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -115,7 +118,7 @@ library MessageLib {
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.TrustedContractUpdate)) {
+        } else if (kind == uint8(MessageType.ManagerCall)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
             length += 2 + message.toUint16(length); //payloadLength
@@ -185,8 +188,8 @@ library MessageLib {
             return message.toUint128(73);
         } else if (kind == uint8(MessageType.UpdateRestriction)) {
             return message.toUint128(25);
-        } else if (kind == uint8(MessageType.TrustedContractUpdate)) {
-            return message.toUint128(57);
+        } else if (kind == uint8(MessageType.ManagerCall)) {
+            return message.toUint128(41);
         } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
             return message.toUint128(89);
         } else if (kind == uint8(MessageType.Request)) {
@@ -557,38 +560,33 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    TrustedContractUpdate
+    //    ManagerCall
     //---------------------------------------
 
-    struct TrustedContractUpdate {
+    /// @dev Generic hub->target manager call routed through the Envoy on the receiving chain. Pool-scoped;
+    ///      any `scId` is encoded inside `payload` by the caller. Legacy trusted-contract updates ride this
+    ///      message with `target` = the ContractUpdater (which unwraps and forwards to `trustedCall`).
+    struct ManagerCall {
         uint64 poolId;
-        bytes16 scId;
         bytes32 target;
         uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
-    function deserializeTrustedContractUpdate(bytes memory data) internal pure returns (TrustedContractUpdate memory) {
-        require(messageType(data) == MessageType.TrustedContractUpdate, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(73);
-        return TrustedContractUpdate({
+    function deserializeManagerCall(bytes memory data) internal pure returns (ManagerCall memory) {
+        require(messageType(data) == MessageType.ManagerCall, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(57);
+        return ManagerCall({
             poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            target: data.toBytes32(25),
-            extraGasLimit: data.toUint128(57),
-            payload: data.slice(75, payloadLength)
+            target: data.toBytes32(9),
+            extraGasLimit: data.toUint128(41),
+            payload: data.slice(59, payloadLength)
         });
     }
 
-    function serialize(TrustedContractUpdate memory t) internal pure returns (bytes memory) {
+    function serialize(ManagerCall memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.TrustedContractUpdate,
-            t.poolId,
-            t.scId,
-            t.target,
-            t.extraGasLimit,
-            t.payload.length.toUint16(),
-            t.payload
+            MessageType.ManagerCall, t.poolId, t.target, t.extraGasLimit, t.payload.length.toUint16(), t.payload
         );
     }
 

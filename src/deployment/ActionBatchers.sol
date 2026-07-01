@@ -24,6 +24,7 @@ import {MessageProcessor} from "../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../core/spoke/factories/PoolEscrowFactory.sol";
 import {MAX_ADAPTER_COUNT} from "../core/messaging/interfaces/IMultiAdapter.sol";
+import {ContractUpdaterForwarder} from "../core/utils/ContractUpdaterForwarder.sol";
 
 import {Root} from "../admin/Root.sol";
 import {GasService} from "../admin/GasService.sol";
@@ -69,6 +70,7 @@ struct CoreReport {
     BalanceSheet balanceSheet;
     TokenFactory tokenFactory;
     ContractUpdater contractUpdater;
+    ContractUpdaterForwarder contractUpdaterForwarder;
     Envoy envoy;
     VaultRegistry vaultRegistry;
     HubRegistry hubRegistry;
@@ -186,6 +188,7 @@ contract CoreActionBatcher is Constants {
         report.contractUpdater.rely(address(report.messageProcessor));
         report.vaultRegistry.rely(address(report.messageProcessor));
         report.hubHandler.rely(address(report.messageProcessor));
+        report.envoy.rely(address(report.messageProcessor));
         report.root.rely(address(report.messageProcessor));
 
         // Rely spoke
@@ -246,8 +249,12 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("spoke", address(report.spoke));
         report.messageProcessor.file("balanceSheet", address(report.balanceSheet));
         report.messageProcessor.file("contractUpdater", address(report.contractUpdater));
+        report.messageProcessor.file("envoy", address(report.envoy));
         report.messageProcessor.file("vaultRegistry", address(report.vaultRegistry));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
+
+        // The forwarder must be a ward of the (unchanged) ContractUpdater to call `trustedCall`.
+        report.contractUpdater.rely(address(report.contractUpdaterForwarder));
 
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 

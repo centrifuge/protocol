@@ -83,8 +83,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeTrustedContractUpdate() public {
-        MessageLib.deserializeTrustedContractUpdate(_prepareFor());
+    function testDeserializeManagerCall() public {
+        MessageLib.deserializeManagerCall(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -385,20 +385,12 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
-    function testTrustedContractUpdate(
-        uint64 poolId,
-        bytes16 scId,
-        bytes32 target,
-        uint128 extraGasLimit,
-        bytes memory payload
-    ) public pure {
-        MessageLib.TrustedContractUpdate memory a = MessageLib.TrustedContractUpdate({
-            poolId: poolId, scId: scId, target: target, extraGasLimit: extraGasLimit, payload: payload
-        });
-        MessageLib.TrustedContractUpdate memory b = MessageLib.deserializeTrustedContractUpdate(a.serialize());
+    function testManagerCall(uint64 poolId, bytes32 target, uint128 extraGasLimit, bytes memory payload) public pure {
+        MessageLib.ManagerCall memory a =
+            MessageLib.ManagerCall({poolId: poolId, target: target, extraGasLimit: extraGasLimit, payload: payload});
+        MessageLib.ManagerCall memory b = MessageLib.deserializeManagerCall(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
         assertEq(a.target, b.target);
         assertEq(a.extraGasLimit, b.extraGasLimit);
         assertEq(a.payload, b.payload);
@@ -676,14 +668,15 @@ contract TestMessageLibIsHubToSpoke is Test {
         expected[uint256(MessageType.SetMaxSharePriceAge)] = true;
         expected[uint256(MessageType.RequestCallback)] = true;
         expected[uint256(MessageType.SetRequestManager)] = true;
-        expected[uint256(MessageType.TrustedContractUpdate)] = true;
         expected[uint256(MessageType.UpdateManager)] = true;
+        expected[uint256(MessageType.ManagerCall)] = true;
 
         // Reserved gaps fall in the pool-dependent range, so they are treated as Hub->spoke
         // (fail-safe). They are never valid messages - handle() reverts them as InvalidMessage - and
         // occupy the slots of removed Hub->spoke manager messages.
         expected[uint256(MessageType._GAP2)] = true;
         expected[uint256(MessageType._GAP3)] = true;
+        expected[uint256(MessageType._GAP4)] = true;
 
         // Everything else is false: the pool-independent messages (_Invalid, ScheduleUpgrade,
         // CancelUpgrade, _GAP, RegisterAsset) and the spoke->hub messages (InitiateTransferShares,

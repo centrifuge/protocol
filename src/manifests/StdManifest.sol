@@ -18,8 +18,6 @@ import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
 
-import {IOnOffRamp} from "../managers/spoke/interfaces/IOnOffRamp.sol";
-
 import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @title  Standard Manifest
@@ -50,6 +48,7 @@ contract StdManifest is IStdManifest {
     IHub public immutable hub;
     address public immutable navManager;
     address public immutable requestManager;
+    address public immutable contractUpdaterForwarder;
     IHubRegistry public immutable hubRegistry;
     IMultiAdapter public immutable multiAdapter;
     address public immutable simplePriceManager;
@@ -74,6 +73,7 @@ contract StdManifest is IStdManifest {
         hub = hub_;
         navManager = config.navManager;
         requestManager = config.requestManager;
+        contractUpdaterForwarder = config.contractUpdaterForwarder;
         hubRegistry = hub_.hubRegistry();
         multiAdapter = multiAdapter_;
         simplePriceManager = config.simplePriceManager;
@@ -186,7 +186,6 @@ contract StdManifest is IStdManifest {
         // adapter set, or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
         if (selector == IHub.updateManager.selector) return _checkManagerGrant(payload);
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
-        if (selector == IHub.updateContract.selector) return _checkUpdateContract(payload);
         if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
@@ -233,33 +232,33 @@ contract StdManifest is IStdManifest {
         return canManage ? delay : 0;
     }
 
-    /// @dev Contract updates are out of policy (config flows through here to trusted targets), except
-    ///      an OnOffRamp withdrawal: it targets an already-configured offramp, so it stays in policy.
-    ///      BRM is reached via `managerCall` on this deployment (see {_checkManagerCall}), not here.
-    function _checkUpdateContract(bytes calldata payload) internal view returns (uint48) {
-        (,,,, bytes memory innerPayload,,) =
-            abi.decode(payload, (PoolId, ShareClassId, uint16, bytes32, bytes, uint128, address));
-
-        // Read the first word directly rather than `abi.decode(_, (uint8))`: enforce classifies every
-        // updateContract, and decoding as uint8 reverts whenever the first inner word exceeds 255 (any
-        // target whose payload starts with a uint256/address/bytes32), which would brick legitimate
-        // calls. A word that isn't exactly the Withdraw tag simply falls through to the delay below.
-        if (innerPayload.length >= 32 && innerPayload.toUint256(0) == uint256(uint8(IOnOffRamp.TrustedCall.Withdraw))) {
-            return 0;
-        }
-        return delay;
-    }
-
-    /// @dev In policy only when the target is the configured BRM (routine keeper ops); all other targets
-    ///      fall to `delay` (timelocked + vetoable). Pinning the target prevents ABI collisions where
-    ///      another target's payload shares a BRM action's leading byte. The binding can't be repointed
-    ///      instantly: `setRequestManager` is itself out of policy. BRM calls are additionally bounded by
-    ///      {_checkRequestPrice}: an issue/revoke/approve beyond `maxBrmPriceDeviation` falls to `delay`.
+    /// @dev `managerCall` classification, pinned by target. A call to the `contractUpdaterForwarder` is a
+    ///      wrapped contract update (the forwarder unwraps `(scId, realTarget, inner)` and forwards to
+    ///      `ContractUpdater.trustedCall`), so it is classified like a legacy contract update (see
+    ///      {_classifyContractUpdate}). A call to the configured BRM is in policy (routine keeper ops) but
+    ///      additionally bounded by {_checkRequestPrice}. Every other target falls to `delay` (timelocked +
+    ///      vetoable). Pinning the targets prevents ABI collisions where another target's payload shares a
+    ///      classified action's leading byte; neither binding can be repointed instantly (`setRequestManager`
+    ///      is out of policy, and both pins are immutable CREATE3 anchors).
     function _checkManagerCall(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
         (,, bytes32 target, bytes memory inner,,,) =
             abi.decode(payload, (PoolId, uint16, bytes32, bytes, uint128, uint256, address));
-        if (target.toAddress() != requestManager) return delay;
+
+        address targetAddr = target.toAddress();
+        if (targetAddr == contractUpdaterForwarder) return _classifyContractUpdate(inner);
+        if (targetAddr != requestManager) return delay;
         return _checkRequestPrice(poolId, inner);
+    }
+
+    /// @dev Classify a wrapped contract update (a managerCall whose target is the `contractUpdaterForwarder`).
+    ///      Always out of policy: timelocked + vetoable. There is deliberately NO fast path. A tag-only
+    ///      shortcut (the former OnOffRamp `Withdraw` exception) keyed on the inner payload's leading word and
+    ///      ignored the target, so any `trustedCall` target accepting that leading word (SlippageGuard,
+    ///      QueueManager, …) inherited the shortcut and bypassed the timelock (Sherlock #15). A *target-
+    ///      validated* fast path (verifying the target is the legitimate offramp for the payload's scId) could
+    ///      be reintroduced here, but a tag-only one must not.
+    function _classifyContractUpdate(bytes memory) internal view returns (uint48) {
+        return delay;
     }
 
     /// @dev Bound the BRM-supplied price against the pool's committed main price: issue/revoke compare

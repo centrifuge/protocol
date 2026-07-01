@@ -16,8 +16,10 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
+import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {ContractUpdaterForwarder} from "../../src/core/utils/ContractUpdaterForwarder.sol";
 import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
@@ -121,6 +123,7 @@ abstract contract BaseTestData is LaunchDeployer {
         asyncRequestManager = AsyncRequestManager(payable(config.contracts.asyncRequestManager));
         batchRequestManager = BatchRequestManager(config.contracts.batchRequestManager);
         syncManager = SyncManager(config.contracts.syncManager);
+        contractUpdaterForwarder = ContractUpdaterForwarder(config.contracts.contractUpdaterForwarder);
         protocolGuardian = ProtocolGuardian(config.contracts.protocolGuardian);
         opsGuardian = OpsGuardian(config.contracts.opsGuardian);
         subsidyManager = SubsidyManager(config.contracts.subsidyManager);
@@ -318,13 +321,18 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.notifySharePrice(poolId, scId, params.targetCentrifugeId, msg.sender);
         hub.notifyAssetPrice(poolId, scId, params.assetId, msg.sender);
 
-        // Configure sync manager
-        hub.updateContract(
+        // Configure sync manager (routed through the unified managerCall transport: the ContractUpdaterForwarder
+        // target + wrapped payload). No value is forwarded here, so the `value` arg is 0 for both local and remote.
+        hub.managerCall(
             poolId,
-            scId,
             params.targetCentrifugeId,
-            address(syncManager).toBytes32(),
-            abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), params.assetId.raw(), type(uint128).max),
+            address(contractUpdaterForwarder).toBytes32(),
+            ContractUpdateLib.wrap(
+                scId,
+                address(syncManager),
+                abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), params.assetId.raw(), type(uint128).max)
+            ),
+            0,
             0,
             msg.sender
         );

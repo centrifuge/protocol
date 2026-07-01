@@ -53,7 +53,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.InitiateTransferShares) return "initiateTransferShares";
         if (kind == MessageType.ExecuteTransferShares) return "executeTransferShares";
         if (kind == MessageType.UpdateRestriction) return "updateRestriction";
-        if (kind == MessageType.TrustedContractUpdate) return "trustedContractUpdate";
+        if (kind == MessageType.ManagerCall) return "managerCall";
         if (kind == MessageType.RequestCallback) return "requestCallback";
         if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);

@@ -14,7 +14,6 @@ import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.s
 import {ISpokeMessageSender} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {IMessageDispatcher} from "../../src/core/messaging/interfaces/IMessageDispatcher.sol";
 import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
-import {IContractUpdateGatewayHandler} from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
 
 import "forge-std/Test.sol";
 
@@ -66,9 +65,6 @@ contract TestAuthChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendUpdateRestriction(REMOTE_CHAIN, POOL_A, SC_A, EMPTY_BYTES, 0, REFUND);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendTrustedContractUpdate(REMOTE_CHAIN, POOL_A, SC_A, bytes32(0), EMPTY_BYTES, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendManagerHubCall(LOCAL_CHAIN, POOL_A, makeAddr("target"), EMPTY_BYTES, 0, 0, REFUND);
@@ -152,46 +148,12 @@ contract TestSendManagerCall is TestCommon {
         assertEq(REFUND.balance, 0, "no refund leg");
     }
 
-    function testRemoteBranchReverts() public {
+    function testRemoteBranchSendsManagerCall() public {
+        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.send.selector), "");
+        vm.expectCall(address(gateway), abi.encodeWithSelector(IGateway.send.selector));
+
         vm.prank(AUTH);
-        vm.expectRevert(IMessageDispatcher.ManagerCallRemoteNotSupported.selector);
         dispatcher.sendManagerHubCall(REMOTE_CHAIN, POOL_A, target, hex"1234", 0, 0, REFUND);
-    }
-}
-
-contract TestSendTrustedContractUpdate is TestCommon {
-    address immutable contractUpdater = makeAddr("contractUpdater");
-    bytes4 constant TRUSTED_CALL = IContractUpdateGatewayHandler.trustedCall.selector;
-    bytes4 constant GATEWAY_SEND = IGateway.send.selector;
-
-    /// @dev Local spoke target: forwards to `contractUpdater.trustedCall` and refunds the whole `msg.value`
-    ///      (the legacy path carries no `value` param).
-    function testLocalSpokeForwardsTrustedCallAndRefunds() public {
-        vm.prank(AUTH);
-        dispatcher.file("contractUpdater", contractUpdater);
-
-        vm.mockCall(contractUpdater, abi.encodeWithSelector(TRUSTED_CALL), "");
-        vm.expectCall(contractUpdater, abi.encodeWithSelector(TRUSTED_CALL));
-
-        vm.deal(AUTH, 1 ether);
-        vm.prank(AUTH);
-        dispatcher.sendTrustedContractUpdate{value: 0.5 ether}(
-            LOCAL_CHAIN, POOL_A, SC_A, bytes32(0), hex"1234", 0, REFUND
-        );
-
-        assertEq(REFUND.balance, 0.5 ether, "local spoke refunds full msg.value");
-    }
-
-    /// @dev Remote spoke target: forwards the full `msg.value` to the gateway, which refunds the excess.
-    function testRemoteSpokeForwardsToGateway() public {
-        vm.mockCall(address(gateway), abi.encodeWithSelector(GATEWAY_SEND), "");
-        vm.expectCall(address(gateway), 0.5 ether, abi.encodeWithSelector(GATEWAY_SEND));
-
-        vm.deal(AUTH, 1 ether);
-        vm.prank(AUTH);
-        dispatcher.sendTrustedContractUpdate{value: 0.5 ether}(
-            REMOTE_CHAIN, POOL_A, SC_A, bytes32(0), hex"1234", 0, REFUND
-        );
     }
 }
 

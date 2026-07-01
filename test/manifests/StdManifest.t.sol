@@ -11,6 +11,7 @@ import {IManifest} from "../../src/core/hub/interfaces/IManifest.sol";
 import {IHub, ManagerKind} from "../../src/core/hub/interfaces/IHub.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
+import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../../src/core/hub/interfaces/IShareClassManager.sol";
 
@@ -38,6 +39,7 @@ contract StdManifestTest is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable supervisor = makeAddr("supervisor");
     address immutable brm = makeAddr("BRM");
+    address immutable contractUpdaterForwarder = makeAddr("contractUpdaterForwarder");
     address immutable manager = makeAddr("manager");
     address immutable outsider = makeAddr("outsider");
     address immutable who = makeAddr("who");
@@ -112,6 +114,7 @@ contract StdManifestTest is Test {
             navManager: nav,
             simplePriceManager: price,
             requestManager: brm,
+            contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: allowlist
         });
     }
@@ -417,8 +420,9 @@ contract StdManifestTest is Test {
         );
     }
 
-    function testManagerCallZeroTargetDenyByDefault() public {
-        assertEq(_delayOf(_managerCall(bytes32(0), bytes(""))), DELAY);
+    function testManagerCallUnknownTargetDenyByDefault() public {
+        // An unpinned target (neither the contractUpdaterForwarder nor the BRM) is out of policy: deny-by-default.
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(makeAddr("unknown"))), bytes(""))), DELAY);
     }
 
     // ─── BRM price-deviation guard ─────────────────────────────────────────────────
@@ -544,11 +548,22 @@ contract StdManifestTest is Test {
         assertEq(_classifyBrm(DEVIATION, inner), DELAY);
     }
 
-    // ─── updateContract classification ───────────────────────────────────────────
+    // ─── contract-update classification (managerCall to the forwarder) ────────────
 
-    function _updateContractCall(bytes32 target, bytes memory inner) internal pure returns (bytes memory) {
+    function _updateContractCall(bytes32 target, bytes memory inner) internal view returns (bytes memory) {
+        // A contract update is a `managerCall` to the contractUpdaterForwarder, carrying the scId + real
+        // target + inner payload wrapped via {ContractUpdateLib.wrap}. The manifest sees the forwarder as the
+        // target and dispatches to `_classifyContractUpdate`.
+        bytes memory payload = ContractUpdateLib.wrap(SC_A, address(bytes20(target)), inner);
         return abi.encodeWithSelector(
-            IHub.updateContract.selector, POOL_A, SC_A, uint16(1), target, inner, uint128(0), address(0)
+            IHub.managerCall.selector,
+            POOL_A,
+            uint16(1),
+            bytes32(bytes20(contractUpdaterForwarder)),
+            payload,
+            uint128(0),
+            uint256(0),
+            address(0)
         );
     }
 
@@ -564,16 +579,16 @@ contract StdManifestTest is Test {
         assertEq(_delayOf(_updateContractCall(bytes32(bytes20(supervisor)), inner)), DELAY);
     }
 
-    function testUpdateContractWithdrawInPolicy() public {
+    function testUpdateContractWithdrawDelayed() public {
+        // No fast path: even an OnOffRamp Withdraw-tagged update is out of policy (timelocked + vetoable).
+        // The tag-only shortcut was removed because it ignored the target (Sherlock #15).
         bytes memory inner = abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw));
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _updateContractCall(bytes32(bytes20(makeAddr("ramp"))), inner));
+        assertEq(_delayOf(_updateContractCall(bytes32(bytes20(makeAddr("ramp"))), inner)), DELAY);
     }
 
     function testUpdateContractLargeFirstWordIsDelayedNotReverting() public {
         // An inner payload whose first word exceeds 255 (e.g. a target whose payload starts with a
-        // uint256/address) must NOT revert during classification — it simply isn't the Withdraw tag,
-        // so it falls through to the timelocked default.
+        // uint256/address) must NOT revert during classification; every contract update is timelocked.
         bytes memory inner = abi.encode(uint256(type(uint256).max));
         assertEq(_delayOf(_updateContractCall(bytes32(bytes20(makeAddr("target"))), inner)), DELAY);
     }

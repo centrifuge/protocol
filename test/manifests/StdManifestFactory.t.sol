@@ -20,6 +20,7 @@ contract StdManifestFactoryTest is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable hubRegistry = makeAddr("HubRegistry");
     address immutable brm = makeAddr("BRM");
+    address immutable contractUpdaterForwarder = makeAddr("contractUpdaterForwarder");
 
     StdManifestFactory factory;
 
@@ -40,6 +41,7 @@ contract StdManifestFactoryTest is Test {
             navManager: address(0),
             simplePriceManager: address(0),
             requestManager: brm,
+            contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: new IStdManifest.Entry[](0)
         });
     }

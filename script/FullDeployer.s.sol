@@ -20,6 +20,7 @@ import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
+import {ContractUpdaterForwarder} from "../src/core/utils/ContractUpdaterForwarder.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {GasService} from "../src/admin/GasService.sol";
@@ -141,6 +142,7 @@ contract FullDeployer is BaseDeployer, Constants {
     BalanceSheet public balanceSheet;
     TokenFactory public tokenFactory;
     ContractUpdater public contractUpdater;
+    ContractUpdaterForwarder public contractUpdaterForwarder;
     Envoy public envoy;
     VaultRegistry public vaultRegistry;
     PoolEscrowFactory public poolEscrowFactory;
@@ -288,6 +290,15 @@ contract FullDeployer is BaseDeployer, Constants {
 
         envoy =
             Envoy(create3(createSalt("envoy", V3_3), abi.encodePacked(type(Envoy).creationCode, abi.encode(batcher))));
+
+        contractUpdaterForwarder = ContractUpdaterForwarder(
+            create3(
+                createSalt("contractUpdaterForwarder", V3_3),
+                abi.encodePacked(
+                    type(ContractUpdaterForwarder).creationCode, abi.encode(address(envoy), contractUpdater)
+                )
+            )
+        );
 
         messageProcessor = MessageProcessor(
             create3(
@@ -725,6 +736,7 @@ contract FullDeployer is BaseDeployer, Constants {
             balanceSheet,
             tokenFactory,
             contractUpdater,
+            contractUpdaterForwarder,
             envoy,
             vaultRegistry,
             hubRegistry,

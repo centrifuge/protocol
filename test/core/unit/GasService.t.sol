@@ -41,6 +41,7 @@ contract GasServiceTest is Test {
         vm.assume(message.messageCode() != uint8(MessageType._GAP));
         vm.assume(message.messageCode() != uint8(MessageType._GAP2));
         vm.assume(message.messageCode() != uint8(MessageType._GAP3));
+        vm.assume(message.messageCode() != uint8(MessageType._GAP4));
 
         if (message.messageCode() == uint8(MessageType.UpdateVault)) {
             vm.assume(message.length > 73);
@@ -70,6 +71,7 @@ contract GasServiceTest is Test {
             if (MessageType(i) == MessageType._GAP) continue;
             if (MessageType(i) == MessageType._GAP2) continue;
             if (MessageType(i) == MessageType._GAP3) continue;
+            if (MessageType(i) == MessageType._GAP4) continue;
 
             message[0] = bytes1(i);
 
