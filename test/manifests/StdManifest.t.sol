@@ -642,9 +642,8 @@ contract StdManifestTest is Test {
         assertEq(_delayOf(_managerCall(ManagerKind.Adapter, bytes32(bytes20(who)), true)), DELAY);
     }
 
-    function testRevokeAdaptersManagerInPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _managerCall(ManagerKind.Adapter, bytes32(bytes20(who)), false));
+    function testRevokeAdaptersManagerNeedsAuthorization() public {
+        assertEq(_delayOf(_managerCall(ManagerKind.Adapter, bytes32(bytes20(who)), false)), DELAY);
     }
 
     // ─── balance-sheet manager classification ─────────────────────────────────────
@@ -653,9 +652,8 @@ contract StdManifestTest is Test {
         assertEq(_delayOf(_managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), true)), DELAY);
     }
 
-    function testRevokeBalanceSheetManagerInPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), false));
+    function testRevokeBalanceSheetManagerNeedsAuthorization() public {
+        assertEq(_delayOf(_managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), false)), DELAY);
     }
 
     // ─── setAdapters classification ───────────────────────────────────────────────
@@ -774,6 +772,73 @@ contract StdManifestTest is Test {
         vm.prank(address(hub));
         vm.expectRevert(IStdManifest.OnchainAccountingOnly.selector);
         m.enforce(POOL_A, manager, abi.encodeWithSelector(IHub.setSnapshotHook.selector, POOL_A, address(0xBAD)));
+    }
+
+    function testOnchainPriceManagerFirstUpdateInPolicy() public {
+        StdManifest m = _onchainManifest();
+        // No baseline yet -> first update from SimplePriceManager is in policy regardless of the price.
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(100e18));
+        assertEq(m.lastPriceUpdate(POOL_A, SC_A), block.timestamp);
+    }
+
+    function testOnchainPriceManagerSmallUpdateInPolicy() public {
+        StdManifest m = _onchainManifest();
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline
+        skip(100);
+
+        // Tiny move, well under rate and cap.
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18 + 1e10));
+    }
+
+    function testOnchainPriceManagerRateLimitedNeedsAuthorization() public {
+        StdManifest m = _onchainManifest();
+        hubRegistry.setManifest(POOL_A, m);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline at T0
+        skip(1); // 1 second later
+
+        // delta 2e15 over 1s exceeds RATE (1e15/s); below CAP. Out of policy.
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18 + 2e15));
+    }
+
+    function testOnchainPriceManagerCapExceededNeedsAuthorization() public {
+        StdManifest m = _onchainManifest();
+        hubRegistry.setManifest(POOL_A, m);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline
+        skip(1e9); // huge elapsed -> rate would pass
+
+        // delta 1e18 >= CAP (5e17): out of policy regardless of elapsed time.
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(2e18));
+    }
+
+    function testOnchainPriceManagerSameBlockNeedsAuthorization() public {
+        StdManifest m = _onchainManifest();
+        hubRegistry.setManifest(POOL_A, m);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline committed this block
+
+        // A second update in the same block has zero elapsed: out of policy.
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18 + 1e10));
+    }
+
+    function testOnchainPriceManagerGuardDisabled() public {
+        StdManifest m = StdManifest(address(factory.newStdManifest(_config(0, 0, true, NAV, PRICE))));
+
+        // With both guards off, SimplePriceManager can make any same-block jump.
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18));
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(100e18));
     }
 
     function testAccountingSelectorTimelockedWhenFlagOff() public {

@@ -161,7 +161,7 @@ contract StdManifest is IStdManifest {
             }
             if (selector == IHub.updateSharePrice.selector) {
                 require(caller == simplePriceManager, OnchainAccountingOnly());
-                return 0;
+                return _checkSharePrice(poolId, payload);
             }
             // The snapshot hook drives the accounting, so it may only point at the NAVManager.
             if (selector == IHub.setSnapshotHook.selector) {
@@ -181,10 +181,10 @@ contract StdManifest is IStdManifest {
             selector == IHub.addShareClass.selector
         ) return delay;
 
-        // Out of policy only when the call weakens policy (classified by value): a manager grant,
-        // a share-price move beyond the rate/cap guard, a non-withdrawal contract update, a weaker
-        // adapter set, or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
-        if (selector == IHub.updateManager.selector) return _checkManagerGrant(payload);
+        // Out of policy: a manager grant or revoke (instant mass-revocation by one manager could strip
+        // all others), a share-price move beyond the rate/cap guard, a non-withdrawal contract update,
+        // a weaker adapter set, or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
+        if (selector == IHub.updateManager.selector) return delay;
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
         if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
@@ -223,13 +223,6 @@ contract StdManifest is IStdManifest {
             || selector == IHub.updateHoldingValuation.selector
             || selector == IHub.updateHoldingIsLiability.selector
             || selector == IHub.setHoldingAccountId.selector;
-    }
-
-    /// @dev BalanceSheet / Adapter / Gateway / Spoke manager updates (same layout): granting needs
-    ///      authorization, revoking is in policy.
-    function _checkManagerGrant(bytes calldata payload) internal view returns (uint48) {
-        (,,,, bool canManage,) = abi.decode(payload, (PoolId, uint16, uint8, bytes32, bool, address));
-        return canManage ? delay : 0;
     }
 
     /// @dev `managerCall` classification, pinned by target. A call to the `contractUpdaterForwarder` is a
