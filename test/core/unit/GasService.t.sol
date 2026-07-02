@@ -37,11 +37,6 @@ contract GasServiceTest is Test {
         vm.assume(message.messageExtraGasLimit() < 100_000);
         vm.assume(message.messageCode() > 0);
         vm.assume(message.messageCode() <= uint8(type(MessageType).max));
-        // _GAP* are reserved enum gaps with no valid message; they revert with InvalidMessageType()
-        vm.assume(message.messageCode() != uint8(MessageType._GAP));
-        vm.assume(message.messageCode() != uint8(MessageType._GAP2));
-        vm.assume(message.messageCode() != uint8(MessageType._GAP3));
-        vm.assume(message.messageCode() != uint8(MessageType._GAP4));
 
         if (message.messageCode() == uint8(MessageType.UpdateVault)) {
             vm.assume(message.length > 73);
@@ -67,12 +62,6 @@ contract GasServiceTest is Test {
         uint8 maxType = uint8(type(MessageType).max);
 
         for (uint8 i = 1; i <= maxType; i++) {
-            // _GAP* are reserved enum gaps with no valid message; they revert with InvalidMessageType()
-            if (MessageType(i) == MessageType._GAP) continue;
-            if (MessageType(i) == MessageType._GAP2) continue;
-            if (MessageType(i) == MessageType._GAP3) continue;
-            if (MessageType(i) == MessageType._GAP4) continue;
-
             message[0] = bytes1(i);
 
             if (MessageType(i) == MessageType.UpdateVault) {

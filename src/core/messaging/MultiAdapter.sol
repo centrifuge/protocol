@@ -239,7 +239,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @dev Parse a wrapped payload and resolve `adapter`'s config and the payload hash. The caller must be
-    ///      `adapter` itself, or a ward or manager of the payload's pool submitting on its behalf. Reverts if
+    ///      `adapter` itself, or a manager of the payload's pool submitting on its behalf. Reverts if
     ///      `adapter` is not a configured adapter for the payload's pool/session.
     function _resolve(uint16 centrifugeId, bytes calldata payload, IAdapter adapter)
         internal

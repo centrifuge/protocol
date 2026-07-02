@@ -118,8 +118,8 @@ contract MultiAdapterTest is Test {
     bytes constant MESSAGE_1 = "POOL_A: Message 1";
     bytes constant MESSAGE_2 = "POOL_A: Message 2";
     bytes constant MESSAGE_POOL_0 = "Message";
-    // A SetPoolAdapters message for POOL_A: first byte is the message kind (5), rest is filler.
-    bytes constant SET_POOL_ADAPTERS_MSG = hex"05a1b2c3d4e5f6";
+    // A SetPoolAdapters message for POOL_A: first byte is the message kind (4), rest is filler.
+    bytes constant SET_POOL_ADAPTERS_MSG = hex"04a1b2c3d4e5f6";
 
     address immutable MANAGER = makeAddr("Manager");
 
@@ -898,14 +898,15 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
         assertVotes(1, MESSAGE_1, 1, 0, 0);
     }
 
-    function testWardCanSubmitOnBehalfOfAdapter() public {
+    function testErrWardCannotSubmitOnBehalfOfAdapter() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
-        // The test contract is the deployer/ward of multiAdapter.
+        // The test contract is the deployer/ward of multiAdapter, but submitting on behalf of an
+        // adapter is reserved for managers of the payload's pool.
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         multiAdapter.vote(REMOTE_CENT_ID, message, adapter3);
-        assertVotes(1, MESSAGE_1, 0, 0, 1);
     }
 
     function testManagerCanDriveFullExecution() public {

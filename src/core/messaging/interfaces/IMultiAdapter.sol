@@ -138,23 +138,23 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Manager-driven variant of {IMessageHandler-handle}. Adapters submit via the two-argument
-    ///         `handle`, identifying themselves through `msg.sender`. Here a ward, or a manager of the
-    ///         payload's pool, submits on behalf of `adapter`, naming which configured adapter the message
+    ///         `handle`, identifying themselves through `msg.sender`. Here a manager of the payload's
+    ///         pool submits on behalf of `adapter`, naming which configured adapter the message
     ///         belongs to. Equivalent to a vote followed by a possible execute.
     /// @param  centrifugeId Source chain identifier
     /// @param  payload The wrapped payload (session-id prefixed)
     /// @param  adapter The configured adapter the message is attributed to
     function handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) external;
 
-    /// @notice Manager-driven variant of {IAdapterEntrypoint-vote}. A ward, or a manager of the payload's
-    ///         pool, casts a vote on behalf of `adapter` without ever executing it.
+    /// @notice Manager-driven variant of {IAdapterEntrypoint-vote}. A manager of the payload's
+    ///         pool casts a vote on behalf of `adapter` without ever executing it.
     /// @param  centrifugeId Source chain identifier
     /// @param  payload The wrapped payload (session-id prefixed)
     /// @param  adapter The configured adapter the vote is attributed to
     function vote(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) external;
 
-    /// @notice Manager-driven variant of {IAdapterEntrypoint-execute}. A ward, or a manager of the payload's
-    ///         pool, executes an already-threshold-reached payload, attributing it to `adapter`. Reverts with
+    /// @notice Manager-driven variant of {IAdapterEntrypoint-execute}. A manager of the payload's
+    ///         pool executes an already-threshold-reached payload, attributing it to `adapter`. Reverts with
     ///         {NotEnoughVotes} if the threshold is not met. `adapter` only identifies the session config and
     ///         the {Execute} attribution; no vote of its own is cast.
     /// @param  centrifugeId Source chain identifier

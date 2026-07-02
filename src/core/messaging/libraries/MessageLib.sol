@@ -13,8 +13,6 @@ enum MessageType {
     // -- Pool independent messages
     ScheduleUpgrade,
     CancelUpgrade,
-    /// @dev Reserved gap. Kept so that enum values of subsequent message types stay stable for in-flight messages.
-    _GAP,
     RegisterAsset,
     SetPoolAdapters,
     // -- Pool dependent messages
@@ -28,8 +26,6 @@ enum MessageType {
     ExecuteTransferShares,
     UpdateRestriction,
     UpdateVault,
-    _GAP2,
-    _GAP3,
     UpdateHoldingAmount,
     UpdateShares,
     SetMaxAssetPriceAge,
@@ -37,9 +33,6 @@ enum MessageType {
     Request,
     RequestCallback,
     SetRequestManager,
-    /// @dev Reserved gap. Was TrustedContractUpdate, now delivered via ManagerCall + Envoy -> ContractUpdater.
-    ///      Kept so that enum values of subsequent message types stay stable for in-flight messages.
-    _GAP4,
     UntrustedContractUpdate,
     UpdateManager,
     ManagerCall
@@ -76,7 +69,6 @@ library MessageLib {
     uint256 constant MESSAGE_LENGTHS_1 =
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
-        (161 << uint8(MessageType._GAP) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
         (12  << uint8(MessageType.SetPoolAdapters) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
@@ -89,8 +81,6 @@ library MessageLib {
         (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
         (90  << uint8(MessageType.UpdateVault) * 8) +
-        (42  << uint8(MessageType._GAP2) * 8) +
-        (42  << uint8(MessageType._GAP3) * 8) +
         (107  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (75  << uint8(MessageType.UpdateShares) * 8) +
         (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +

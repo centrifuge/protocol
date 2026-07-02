@@ -666,15 +666,8 @@ contract TestMessageLibIsHubToSpoke is Test {
         expected[uint256(MessageType.UpdateManager)] = true;
         expected[uint256(MessageType.ManagerCall)] = true;
 
-        // Reserved gaps fall in the pool-dependent range, so they are treated as Hub->spoke
-        // (fail-safe). They are never valid messages - handle() reverts them as InvalidMessage - and
-        // occupy the slots of removed Hub->spoke manager messages.
-        expected[uint256(MessageType._GAP2)] = true;
-        expected[uint256(MessageType._GAP3)] = true;
-        expected[uint256(MessageType._GAP4)] = true;
-
         // Everything else is false: the pool-independent messages (_Invalid, ScheduleUpgrade,
-        // CancelUpgrade, _GAP, RegisterAsset) and the spoke->hub messages (InitiateTransferShares,
+        // CancelUpgrade, RegisterAsset) and the spoke->hub messages (InitiateTransferShares,
         // UpdateHoldingAmount, UpdateShares, Request, UntrustedContractUpdate).
 
         for (uint256 i = 0; i <= max; i++) {

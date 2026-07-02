@@ -536,6 +536,8 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                 false,
                 refund
             );
+        } else if (msgValue() > 0) {
+            refund.safeTransferETH(msgValue());
         }
     }
 
@@ -658,6 +660,8 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                 false,
                 refund
             );
+        } else if (msgValue() > 0) {
+            refund.safeTransferETH(msgValue());
         }
     }
 
