@@ -346,7 +346,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @dev Send and handle apply the same rule, so both chains agree on the carrying set.
     function _routePoolId(uint16 centrifugeId, bytes calldata payload) internal view returns (PoolId) {
         PoolId poolId = messageProperties.messagePoolId(payload);
-        bool poolConfigured = _activeAdapters[centrifugeId][poolId].list.length != 0;
+        bool poolConfigured = activeSessionId[centrifugeId][poolId] != 0;
         return messageProperties.routePoolId(payload, poolConfigured);
     }
 

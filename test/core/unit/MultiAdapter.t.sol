@@ -496,6 +496,37 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, _wrap(0, "hi"));
     }
 
+    /// @dev Blocking a configured pool's active session must NOT reopen the SetPoolAdapters global bootstrap
+    ///      route: a forged SetPoolAdapters delivered over the global set must keep verifying against the
+    ///      pool's own (now empty) set and be rejected, otherwise the global set could reinstall adapters on
+    ///      an already-configured pool. See PROT-3.
+    function testBlockedSessionDoesNotReopenGlobalSetPoolAdaptersRoute() public {
+        // Global set (POOL_0) is adapter1; POOL_A's own set is a distinct adapter (adapter2).
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1);
+        IAdapter[] memory poolASet = new IAdapter[](1);
+        poolASet[0] = adapter2;
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, poolASet, 1);
+
+        // A SetPoolAdapters (routed to POOL_A) delivered over the global adapter is rejected while POOL_A is
+        // configured, because verification uses POOL_A's own set which does not contain adapter1.
+        bytes memory message = _wrap(1, SET_POOL_ADAPTERS_MSG);
+        vm.prank(address(adapter1));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+
+        // Block POOL_A's active session: clears the live set but leaves activeSessionId set.
+        multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
+        assertEq(multiAdapter.activeAdapters(REMOTE_CENT_ID, POOL_A).list.length, 0);
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
+
+        // The identical forged message must STILL be rejected: routing stays on POOL_A (ever-configured),
+        // not the global set, so adapter1 is not a valid voter and nothing reaches the gateway.
+        vm.prank(address(adapter1));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+    }
+
     function testMessageWithSeveralAdapters() public {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
 
