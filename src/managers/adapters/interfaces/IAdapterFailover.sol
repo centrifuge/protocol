@@ -58,10 +58,6 @@ interface IAdapterFailover {
     /// @notice Cancel a pending failover locally (steward path, e.g. it was armed in error).
     function cancelFailover(uint16 centrifugeId, PoolId poolId) external;
 
-    /// @notice Disable an adapter session on the local MultiAdapter. AdapterFailover is the registered
-    ///         manager, so this is the steward's path to block a stuck or compromised session.
-    function blockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
-
     /// @notice Install the armed set after the veto window has elapsed. Permissionless: the params must
     ///         match what was armed, so a finalizer cannot substitute a different set.
     function executeFailover(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;

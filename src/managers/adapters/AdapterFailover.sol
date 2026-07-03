@@ -76,11 +76,6 @@ contract AdapterFailover is IManagerCallFromHub, IAdapterFailover {
     }
 
     /// @inheritdoc IAdapterFailover
-    function blockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external onlySteward(poolId) {
-        multiAdapter.blockSession(centrifugeId, poolId, sessionId);
-    }
-
-    /// @inheritdoc IAdapterFailover
     function executeFailover(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold)
         external
     {

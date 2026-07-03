@@ -197,29 +197,6 @@ contract AdapterFailoverTest is Test {
         assertEq(executableAt, 0);
     }
 
-    //----------------------------------------------------------------------------------------------
-    // blockSession
-    //----------------------------------------------------------------------------------------------
-
-    function testBlockSessionForwardsToMultiAdapter() public {
-        uint16 sessionId = 3;
-
-        vm.expectCall(
-            multiAdapter,
-            abi.encodeWithSelector(IMultiAdapter.blockSession.selector, HUB_CENTRIFUGE_ID, POOL_A, sessionId)
-        );
-        vm.mockCall(multiAdapter, abi.encodeWithSelector(IMultiAdapter.blockSession.selector), "");
-
-        vm.prank(steward);
-        adapterFailover.blockSession(HUB_CENTRIFUGE_ID, POOL_A, sessionId);
-    }
-
-    function testBlockSessionOnlySteward() public {
-        vm.prank(outsider);
-        vm.expectRevert(IAdapterFailover.NotSteward.selector);
-        adapterFailover.blockSession(HUB_CENTRIFUGE_ID, POOL_A, 1);
-    }
-
     function testStewardIsScopedPerPool() public {
         PoolId otherPool = PoolId.wrap(2);
         // steward is only assigned to POOL_A, not otherPool.
