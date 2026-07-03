@@ -263,6 +263,8 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Allow/disallow an account to interact as a manager for the given target contract.
     /// @dev A message is sent to (or executed on) `centrifugeId`.
+    ///      When `kind == Gateway`, see {IGateway.updateManager} for the security implications:
+    ///      a gateway manager can inject arbitrary hub-originated messages for the pool.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain where the manager will operate
     /// @param kind Which contract's manager mapping is updated (BalanceSheet, Adapter, Gateway, Spoke)

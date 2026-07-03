@@ -857,6 +857,43 @@ contract StdManifestTest is Test {
         m.enforce(POOL_A, PRICE, _priceCall(1e18 + 1e10));
     }
 
+    function testOnchainPriceManagerOutOfPolicyCanBePreauthorized() public {
+        StdManifest m = _onchainManifest();
+        hubRegistry.setManifest(POOL_A, m);
+        address spm = m.simplePriceManager();
+        vm.prank(address(hub));
+        m.enforce(POOL_A, spm, _priceCall(1e18));
+        skip(1);
+
+        // out-of-policy price update, but a pool manager can pre-authorize.
+        bytes memory d = _priceCall(1e18 + 2e15);
+        vm.prank(manager);
+        hubRegistry.authorize(POOL_A, d);
+
+        skip(DELAY);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, spm, d);
+    }
+
+    function testOnchainPriceManagerPreauthorizationBlocksNonPriceManager() public {
+        StdManifest m = _onchainManifest();
+        hubRegistry.setManifest(POOL_A, m);
+        address spm = m.simplePriceManager();
+        vm.prank(address(hub));
+        m.enforce(POOL_A, spm, _priceCall(1e18));
+        skip(1);
+
+        bytes memory d = _priceCall(1e18 + 2e15);
+        vm.prank(manager);
+        hubRegistry.authorize(POOL_A, d);
+        skip(DELAY);
+
+        // Even with a valid pre-authorization, a non-SimplePriceManager caller is blocked at enforce.
+        vm.expectRevert(IStdManifest.OnchainAccountingOnly.selector);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, manager, d);
+    }
+
     function testOnchainPriceManagerGuardDisabled() public {
         StdManifest m = StdManifest(address(factory.newStdManifest(_config(0, 0, true, NAV, PRICE))));
 

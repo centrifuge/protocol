@@ -112,6 +112,13 @@ contract StdManifest is IStdManifest {
         require(msg.sender == address(hub), NotHub());
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
 
+        // In onchainAccounting mode, share-price updates may only be executed by the SimplePriceManager.
+        // The check lives here (not in _classify) so pool managers can still pre-authorize out-of-policy
+        // price moves via hubRegistry.authorize, which calls classify with the manager as caller.
+        if (onchainAccounting && selector == IHub.updateSharePrice.selector) {
+            require(caller == simplePriceManager, OnchainAccountingOnly());
+        }
+
         if (_classify(poolId, caller, selector, payload) != 0) {
             hubRegistry.consumeAuthorization(poolId, caller, data, expiry);
         }
@@ -164,7 +171,6 @@ contract StdManifest is IStdManifest {
                 return 0;
             }
             if (selector == IHub.updateSharePrice.selector) {
-                require(caller == simplePriceManager, OnchainAccountingOnly());
                 return _checkSharePrice(poolId, payload);
             }
             // The snapshot hook drives the accounting, so it may only point at the NAVManager.

@@ -110,10 +110,18 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param data New address
     function file(bytes32 what, address data) external;
 
-    /// @notice Allow/disallow an account to interact as gateway manager for a pool
+    /// @notice Allow/disallow an account to act as gateway manager for a pool.
+    /// @dev    WARNING: Gateway managers carry very significant permissions. A manager can call
+    ///         `Gateway.handle` directly with an arbitrary centrifugeId and raw message bytes,
+    ///         which lets it forge any hub-originated message for its pool — including
+    ///         `SetPoolAdapters`, `UpdateManager`, and `ManagerCall`. This is intentional for
+    ///         recovery scenarios (e.g. replaying a valid message that the transport dropped), but
+    ///         it means a compromised or malicious manager key is equivalent to hub-level authority
+    ///         over that pool. Grant this role only to smart contracts that constrain what messages
+    ///         can be injected; never grant it to a plain EOA.
     /// @param poolId The pool identifier
-    /// @param who Address to update manager status for
-    /// @param canManage Whether the address can manage the gateway for the pool
+    /// @param who Address to grant or revoke the gateway manager role for
+    /// @param canManage True to grant, false to revoke
     function updateManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Remove a failed message so it can no longer be retried.
@@ -206,7 +214,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging
     function pauser() external view returns (IProtocolPauser);
 
-    /// @notice Returns whether `who` is a gateway manager for `poolId`
+    /// @notice Returns whether `who` is a gateway manager for `poolId`.
+    ///         See {updateManager} for the security implications of this role.
     function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice Returns the underpaid batch info for a given chain and batch hash

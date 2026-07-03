@@ -11,12 +11,12 @@ import {MathLib} from "../../../misc/libraries/MathLib.sol";
 contract CircuitBreakerGuard is ICircuitBreakerGuard {
     using MathLib for uint256;
 
-    mapping(address caller => mapping(bytes32 key => mapping(uint256 window => ReferenceState))) public refs;
-    mapping(address caller => mapping(bytes32 key => mapping(uint256 window => CumulativeState))) public cumulative;
+    mapping(address caller => mapping(bytes32 key => ReferenceState)) public refs;
+    mapping(address caller => mapping(bytes32 key => CumulativeState)) public cumulative;
 
     /// @inheritdoc ICircuitBreakerGuard
     function tally(bytes32 key, uint256 amount, uint256 max, uint256 window) external {
-        CumulativeState storage s = cumulative[msg.sender][key][window];
+        CumulativeState storage s = cumulative[msg.sender][key];
         uint256 newTotal;
         if (block.timestamp - s.windowStart > window) {
             s.windowStart = uint64(block.timestamp);
@@ -33,7 +33,7 @@ contract CircuitBreakerGuard is ICircuitBreakerGuard {
         require(currentValue != 0, ZeroAnchor());
 
         uint256 anchor;
-        ReferenceState storage s = refs[msg.sender][key][window];
+        ReferenceState storage s = refs[msg.sender][key];
         if (block.timestamp - s.windowStart > window) {
             anchor = currentValue;
             s.anchor = currentValue.toUint128();
