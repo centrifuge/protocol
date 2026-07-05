@@ -107,112 +107,55 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     //----------------------------------------------------------------------------------------------
-    // Pool admin methods
+    // Manager: Authorization ledger
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable {
-        _protected(poolId);
+    function authorize(PoolId poolId, bytes calldata data) external {
+        _requireManager(poolId);
 
-        emit NotifyPool(centrifugeId, poolId);
-        sender.sendNotifyPool{value: msgValue()}(centrifugeId, poolId, refund);
+        hubRegistry.authorize(poolId, msgSender(), data);
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
+    function cancelAuthorization(PoolId poolId, bytes calldata data) external {
+        _requireManager(poolId);
 
-        _requireSC(poolId, scId);
-
-        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
-        uint8 decimals = hubRegistry.decimals(poolId);
-
-        emit NotifyShareClass(centrifugeId, poolId, scId);
-        sender.sendNotifyShareClass{value: msgValue()}(
-            centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
-        );
+        hubRegistry.cancelAuthorization(poolId, msgSender(), data);
     }
 
-    /// @inheritdoc IHub
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
-
-        emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
-        sender.sendNotifyShareMetadata{value: msgValue()}(centrifugeId, poolId, scId, name, symbol, refund);
-    }
+    //----------------------------------------------------------------------------------------------
+    // Manager: Pool configuration
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        emit UpdateShareHook(centrifugeId, poolId, scId, hook);
-        sender.sendUpdateShareHook{value: msgValue()}(centrifugeId, poolId, scId, hook, refund);
-    }
-
-    /// @inheritdoc IHub
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable {
-        _protected(poolId);
-
-        (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
-
-        emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
-        sender.sendNotifyPricePoolPerShare{value: msgValue()}(
-            centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund
-        );
-    }
-
-    /// @inheritdoc IHub
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable {
-        _protected(poolId);
-
-        D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
-        emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
-        sender.sendNotifyPricePoolPerAsset{value: msgValue()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
-
-        _accrue(poolId, scId);
-    }
-
-    /// @inheritdoc IHub
-    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
-        sender.sendSetMaxAssetPriceAge{value: msgValue()}(poolId, scId, assetId, maxPriceAge, refund);
-    }
-
-    /// @inheritdoc IHub
-    function setMaxSharePriceAge(
+    function setAdapters(
         PoolId poolId,
-        ShareClassId scId,
         uint16 centrifugeId,
-        uint64 maxPriceAge,
+        IAdapter[] memory localAdapters,
+        bytes32[] memory remoteAdapters,
+        uint8 threshold,
         address refund
     ) external payable {
         _protected(poolId);
 
-        emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
-        sender.sendSetMaxSharePriceAge{value: msgValue()}(centrifugeId, poolId, scId, maxPriceAge, refund);
+        // Batching would defer the send until after the new set is applied, routing over a set the
+        // destination lacks, so it is disallowed here.
+        require(!gateway.isBatching(), CannotSetAdaptersWhileBatching());
+
+        // Send the remote update before applying the local set: SetPoolAdapters routes over the pool's
+        // own set, so it must travel over the set still shared with the destination.
+        sender.sendSetPoolAdapters{value: msgValue()}(centrifugeId, poolId, remoteAdapters, threshold, refund);
+
+        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold);
     }
 
     /// @inheritdoc IHub
-    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
+    function setBridgingHook(PoolId poolId, address hook) external {
         _protected(poolId);
 
-        hubRegistry.setMetadata(poolId, metadata);
+        hubRegistry.setBridgingHook(poolId, IBridgingHook(hook));
+        emit SetBridgingHook(poolId, hook);
     }
 
     /// @inheritdoc IHub
@@ -220,6 +163,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _protected(poolId);
 
         holdings.setSnapshotHook(poolId, hook);
+    }
+
+    /// @inheritdoc IHub
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
+        _protected(poolId);
+
+        hubRegistry.setMetadata(poolId, metadata);
     }
 
     /// @inheritdoc IHub
@@ -231,6 +181,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         shareClassManager.updateMetadata(poolId, scId, name, symbol);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Manager: Permissions & routing
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
     function updateHubManager(PoolId poolId, address who, bool canManage) external payable {
@@ -269,6 +223,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
         sender.sendSetRequestManager{value: msgValue()}(centrifugeId, poolId, spokeManager, refund);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Manager: Share classes & vaults
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
@@ -315,36 +273,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         sender.sendUpdateVault{value: msgValue()}(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
     }
 
-    /// @inheritdoc IHub
-    function setBridgingHook(PoolId poolId, address hook) external {
-        _protected(poolId);
-
-        hubRegistry.setBridgingHook(poolId, IBridgingHook(hook));
-        emit SetBridgingHook(poolId, hook);
-    }
-
-    function managerCall(
-        PoolId poolId,
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
-        uint256 localValue,
-        address refund
-    ) external payable {
-        _protected(poolId);
-
-        // Gas is explicit: a local call is funded entirely by `msg.value`, a remote call carries none.
-        require(
-            centrifugeId == sender.localCentrifugeId() ? localValue == msgValue() : localValue == 0,
-            ManagerCallUnexpectedValue()
-        );
-
-        emit ManagerCall(centrifugeId, poolId, target, payload);
-        sender.sendManagerHubCall{value: msgValue()}(
-            centrifugeId, poolId, target.toAddress(), payload, extraGasLimit, localValue, refund
-        );
-    }
+    //----------------------------------------------------------------------------------------------
+    // Manager: Holdings & accounting
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
@@ -356,6 +287,20 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare, computedAt);
 
         _accrue(poolId, scId);
+    }
+
+    /// @inheritdoc IHub
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external payable {
+        _protected(poolId);
+
+        accounting.createAccount(poolId, account, isDebitNormal);
+    }
+
+    /// @inheritdoc IHub
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable {
+        _protected(poolId);
+
+        accounting.setAccountMetadata(poolId, account, metadata);
     }
 
     /// @inheritdoc IHub
@@ -462,20 +407,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external payable {
-        _protected(poolId);
-
-        accounting.createAccount(poolId, account, isDebitNormal);
-    }
-
-    /// @inheritdoc IHub
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable {
-        _protected(poolId);
-
-        accounting.setAccountMetadata(poolId, account, metadata);
-    }
-
-    /// @inheritdoc IHub
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
         external
         payable
@@ -487,26 +418,134 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         accounting.lock();
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Manager: Spoke notifications
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IHub
-    function setAdapters(
+    function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable {
+        _protected(poolId);
+
+        emit NotifyPool(centrifugeId, poolId);
+        sender.sendNotifyPool{value: msgValue()}(centrifugeId, poolId, refund);
+    }
+
+    /// @inheritdoc IHub
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        _requireSC(poolId, scId);
+
+        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
+        uint8 decimals = hubRegistry.decimals(poolId);
+
+        emit NotifyShareClass(centrifugeId, poolId, scId);
+        sender.sendNotifyShareClass{value: msgValue()}(
+            centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
+        );
+    }
+
+    /// @inheritdoc IHub
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
+
+        emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
+        sender.sendNotifyShareMetadata{value: msgValue()}(centrifugeId, poolId, scId, name, symbol, refund);
+    }
+
+    /// @inheritdoc IHub
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        emit UpdateShareHook(centrifugeId, poolId, scId, hook);
+        sender.sendUpdateShareHook{value: msgValue()}(centrifugeId, poolId, scId, hook, refund);
+    }
+
+    /// @inheritdoc IHub
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable {
+        _protected(poolId);
+
+        (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
+
+        emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
+        sender.sendNotifyPricePoolPerShare{value: msgValue()}(
+            centrifugeId, poolId, scId, pricePoolPerShare, computedAt, refund
+        );
+    }
+
+    /// @inheritdoc IHub
+    function setMaxSharePriceAge(
         PoolId poolId,
+        ShareClassId scId,
         uint16 centrifugeId,
-        IAdapter[] memory localAdapters,
-        bytes32[] memory remoteAdapters,
-        uint8 threshold,
+        uint64 maxPriceAge,
         address refund
     ) external payable {
         _protected(poolId);
 
-        // Batching would defer the send until after the new set is applied, routing over a set the
-        // destination lacks, so it is disallowed here.
-        require(!gateway.isBatching(), CannotSetAdaptersWhileBatching());
+        emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
+        sender.sendSetMaxSharePriceAge{value: msgValue()}(centrifugeId, poolId, scId, maxPriceAge, refund);
+    }
 
-        // Send the remote update before applying the local set: SetPoolAdapters routes over the pool's
-        // own set, so it must travel over the set still shared with the destination.
-        sender.sendSetPoolAdapters{value: msgValue()}(centrifugeId, poolId, remoteAdapters, threshold, refund);
+    /// @inheritdoc IHub
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable {
+        _protected(poolId);
 
-        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold);
+        D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
+        emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
+        sender.sendNotifyPricePoolPerAsset{value: msgValue()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
+
+        _accrue(poolId, scId);
+    }
+
+    /// @inheritdoc IHub
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
+        sender.sendSetMaxAssetPriceAge{value: msgValue()}(poolId, scId, assetId, maxPriceAge, refund);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Manager: Envoy calls
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IHub
+    function managerCall(
+        PoolId poolId,
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        uint256 localValue,
+        address refund
+    ) external payable {
+        _protected(poolId);
+
+        // Gas is explicit: a local call is funded entirely by `msg.value`, a remote call carries none.
+        require(
+            centrifugeId == sender.localCentrifugeId() ? localValue == msgValue() : localValue == 0,
+            ManagerCallUnexpectedValue()
+        );
+
+        emit ManagerCall(centrifugeId, poolId, target, payload);
+        sender.sendManagerHubCall{value: msgValue()}(
+            centrifugeId, poolId, target.toAddress(), payload, extraGasLimit, localValue, refund
+        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -654,10 +693,15 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     ///      against the pool's manifest, running synchronously when in policy, or consuming a
     ///      matured authorization when out of policy (reverting otherwise).
     function _protected(PoolId poolId) internal {
-        require(hubRegistry.manager(poolId, msgSender()), IHub.NotManager());
+        _requireManager(poolId);
 
         IManifest m = hubRegistry.manifest(poolId);
         if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+    }
+
+    /// @dev Reverts unless the resolved sender is a registered manager for `poolId`.
+    function _requireManager(PoolId poolId) internal view {
+        require(hubRegistry.manager(poolId, msgSender()), IHub.NotManager());
     }
 
     /// @dev Ensure the share class exists for the pool.

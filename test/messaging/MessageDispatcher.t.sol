@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {D18} from "../../src/misc/types/D18.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
+import {SafeTransferLib} from "../../src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
@@ -154,6 +155,43 @@ contract TestSendManagerCall is TestCommon {
 
         vm.prank(AUTH);
         dispatcher.sendManagerHubCall(REMOTE_CHAIN, POOL_A, target, hex"1234", 0, 0, REFUND);
+    }
+
+    function testLocalBranchRefundsExcessValue() public {
+        vm.prank(AUTH);
+        dispatcher.file("envoy", mcDispatcher);
+
+        bytes memory payload = hex"1234";
+        vm.mockCall(mcDispatcher, abi.encodeWithSelector(IEnvoy.callFromHub.selector, POOL_A, target, payload), "");
+
+        vm.deal(AUTH, 1 ether);
+        vm.prank(AUTH);
+        dispatcher.sendManagerHubCall{value: 1 ether}(LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, REFUND);
+
+        assertEq(REFUND.balance, 0.5 ether, "excess value refunded");
+    }
+
+    function testLocalBranchRevertsIfRefundFails() public {
+        vm.prank(AUTH);
+        dispatcher.file("envoy", mcDispatcher);
+
+        bytes memory payload = hex"1234";
+        vm.mockCall(mcDispatcher, abi.encodeWithSelector(IEnvoy.callFromHub.selector, POOL_A, target, payload), "");
+
+        address rejectingRefund = address(new RejectsAllETH());
+        vm.deal(AUTH, 1 ether);
+        vm.prank(AUTH);
+        vm.expectRevert(SafeTransferLib.SafeTransferEthFailed.selector);
+        dispatcher.sendManagerHubCall{value: 1 ether}(
+            LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, rejectingRefund
+        );
+    }
+}
+
+/// @dev Rejects any ETH sent to it, even a zero-value call.
+contract RejectsAllETH {
+    fallback() external payable {
+        revert("always reverts");
     }
 }
 

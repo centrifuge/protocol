@@ -51,6 +51,10 @@ contract MockMessageProperties is IMessageProperties {
         return _poolId(message);
     }
 
+    function messageSourceCentrifugeId(bytes calldata) external pure returns (uint16) {
+        return 0;
+    }
+
     function _poolId(bytes calldata message) internal pure returns (PoolId) {
         // A SetPoolAdapters message (first byte == the message kind) targets POOL_A in these tests.
         if (message.length >= 1 && uint8(message[0]) == uint8(MessageType.SetPoolAdapters)) return POOL_A;
@@ -250,6 +254,40 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
             assertEq(adapter.quorum, threeAdapters.length);
             assertEq(address(multiAdapter.adapters(REMOTE_CENT_ID, POOL_A, 1, i)), address(threeAdapters[i]));
         }
+    }
+
+    function testFuzzSetAdaptersThresholdQuorumBoundary(uint8 quorumCount, uint8 threshold) public {
+        quorumCount = uint8(bound(quorumCount, 0, MAX_ADAPTER_COUNT));
+
+        IAdapter[] memory adapters = new IAdapter[](quorumCount);
+        for (uint256 i; i < quorumCount; i++) {
+            adapters[i] = IAdapter(address(uint160(i + 1)));
+        }
+
+        if (threshold > quorumCount) {
+            vm.expectRevert(IMultiAdapter.ThresholdHigherThanQuorum.selector);
+            multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+            return;
+        }
+
+        // threshold <= quorum is always accepted, including threshold == 1 with quorum > 1: MultiAdapter
+        // enforces no floor on threshold relative to quorum (reviewed and accepted as a pool-operator
+        // configuration choice, not a code gap).
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+        assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), quorumCount);
+        assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), threshold);
+    }
+
+    function testFuzzSetAdaptersExceedsMax(uint8 quorumCount, uint8 threshold) public {
+        quorumCount = uint8(bound(quorumCount, MAX_ADAPTER_COUNT + 1, type(uint8).max));
+
+        IAdapter[] memory adapters = new IAdapter[](quorumCount);
+        for (uint256 i; i < quorumCount; i++) {
+            adapters[i] = IAdapter(address(uint160(i + 1)));
+        }
+
+        vm.expectRevert(IMultiAdapter.ExceedsMax.selector);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
     }
 
     function testMultiAdapterSetAdaptersAdvanceSession() public {
@@ -1259,6 +1297,25 @@ contract MultiAdapterTestSend is MultiAdapterTest {
             REFUND
         );
         multiAdapter.send{value: cost}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+    }
+
+    /// @dev Any msg.value above the real per-adapter cost (e.g. the caller's estimate used a conservative
+    ///      placeholder session prefix) is refunded rather than stranded in the contract.
+    function testSendRefundsExcessValue() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+
+        bytes memory message = _wrap(1, MESSAGE_1);
+        uint256 cost = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
+        uint256 dust = 1234;
+
+        _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
+        _mockAdapter(adapter2, message, ADAPTER_ESTIMATE_2, ADAPTER_DATA_2);
+        _mockAdapter(adapter3, message, ADAPTER_ESTIMATE_3, ADAPTER_DATA_3);
+
+        uint256 refundBalanceBefore = REFUND.balance;
+        multiAdapter.send{value: cost + dust}(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
+
+        assertEq(REFUND.balance, refundBalanceBefore + dust);
     }
 
     /// @dev A SetPoolAdapters message for a pool with no set of its own falls back to the global set

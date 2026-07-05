@@ -13,7 +13,6 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {IHub} from "../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IManifest} from "../core/hub/interfaces/IManifest.sol";
-import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
@@ -23,25 +22,28 @@ import {IBridgeCircuitBreaker} from "../hooks/bridge/interfaces/IBridgeCircuitBr
 import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @title  Standard Manifest
-/// @notice Default pool policy installed on the Hub via {IHub.setManifest}. This contract is a pure
-///         classifier; the authorization ledger (storing/maturing/vetoing/consuming authorizations and
-///         emitting their events) lives in {HubRegistry}, shared by every manifest.
+/// @notice Default pool policy installed on the Hub via {IHub.setManifest}. A pure classifier; the
+///         authorization ledger lives in {HubRegistry}, shared by every manifest.
 ///
 ///         The Hub calls {enforce} on every guarded manager method. In-policy calls (delay 0) run
-///         synchronously; out-of-policy calls must be pre-authorized via {IHubRegistry.authorize} and
-///         matured past the delay, leaving sentinels a veto window via {IHubRegistry.cancelAuthorization}.
-///         {enforce} consumes the matured authorization from the registry. A matured authorization is
-///         executable only within `expiry` (then it fails closed), so it can neither be banked while
-///         cheap nor held until the baseline has drifted. One instance can serve many pools.
+///         synchronously; out-of-policy calls must be pre-authorized via {IHubRegistry.authorize}, mature
+///         past `delay`, and are consumed by {enforce} within `expiry` (else they fail closed). Sentinels
+///         get a veto window via {Supervisor.cancelAuthorization}. One instance can serve many pools.
+///         `escalation` (a longer delay) applies only to replacing the manifest; a construction-time
+///         allowlist can additionally confine a caller to a fixed selector set.
 ///
-///         Two delay tiers: `delay` for every out-of-policy action, and the longer `escalation` only
-///         for replacing the manifest (the gravest action, since a malicious swap disables all policy).
-///         See {_classify} for the full per-selector policy.
-///
-///         A caller may additionally be confined to a fixed set of selectors via the construction-time
-///         allowlist: a listed caller can invoke only its selectors (anything else is blocked outright),
-///         so a narrow keeper stays low-stakes even if its key leaks. The value guards still bound how
-///         far each permitted call may move things.
+///         Per-selector policy (see {_classify} for the exhaustive dispatch):
+///         - Accounting/price writes, when `onchainAccounting` is set, are gated to the NAVManager /
+///           SimplePriceManager and run instantly; `updateSharePrice` is further rate/cap-bounded by
+///           {_checkSharePrice}.
+///         - `updateHubManager`, `setRequestManager`, `updateShareHook`, `updateVault`, `addShareClass`,
+///           `updateManager`, and `setAdapters` are always out of policy.
+///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
+///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
+///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
+///         - `setManifest` uses `escalation` instead of `delay`.
+///         - Cross-chain notifications and pool/share metadata updates are always in policy.
+///         - Everything else (deny-by-default) falls through to `delay`.
 contract StdManifest is IStdManifest {
     using BytesLib for bytes;
     using CastLib for bytes32;
@@ -57,7 +59,7 @@ contract StdManifest is IStdManifest {
     address public immutable simplePriceManager;
     IShareClassManager public immutable shareClassManager;
 
-    // Policy. Price guards differ in unit and disable sentinel; see {IStdManifest.Config}.
+    // Policy.
     uint48 public immutable delay;
     uint48 public immutable expiry;
     uint48 public immutable escalation;
@@ -150,21 +152,14 @@ contract StdManifest is IStdManifest {
         view
         returns (uint48)
     {
-        // Per-caller confinement: an allowlisted caller may invoke only its listed selectors for this
-        // pool; anything else is blocked outright (can't even be authorized). This bounds a narrow
-        // keeper/bot even if its key leaks: it can never reach a selector outside its set, whatever
-        // else it is a manager for. It only restricts: a permitted selector still flows through the
-        // value guards below, which bound how far each call may move things. Unrestricted callers are
-        // unaffected.
+        // Per-caller confinement: an allowlisted caller may invoke only its listed selectors for this pool;
+        // anything else is blocked outright. A permitted selector still flows through the value guards below.
         if (restricted[poolId][caller]) {
             require(allowed[poolId][caller][selector], CallerNotAllowed());
         }
 
-        // On-chain accounting: accounting selectors come only from the NAVManager and price only from
-        // the SimplePriceManager (both run synchronously); any other caller is blocked outright.
-        // This binds the Hub-side entry points to the NAVManager address; for a full guarantee the
-        // NAVManager's own admin (setNAVHook / updateManager) must also be brought under the manifest
-        // in a follow-up, so its manager set can't be changed without a veto.
+        // On-chain accounting: accounting selectors come only from the NAVManager, price only from the
+        // SimplePriceManager (both run synchronously); any other caller is blocked outright.
         if (onchainAccounting) {
             if (_isAccountingSelector(selector)) {
                 require(caller == navManager, OnchainAccountingOnly());
@@ -188,15 +183,15 @@ contract StdManifest is IStdManifest {
             selector == IHub.setRequestManager.selector ||
             selector == IHub.updateShareHook.selector ||
             selector == IHub.updateVault.selector ||
-            selector == IHub.addShareClass.selector
+            selector == IHub.addShareClass.selector ||
+            selector == IHub.setAdapters.selector
         ) return delay;
 
         // Out of policy: a manager grant or revoke (instant mass-revocation by one manager could strip
         // all others), a share-price move beyond the rate/cap guard, a non-withdrawal contract update,
-        // a weaker adapter set, or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
+        // or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
         if (selector == IHub.updateManager.selector) return delay;
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
-        if (selector == IHub.setAdapters.selector) return _checkSetAdapters(payload);
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
         // Replacing the manifest disables all future policy, so it uses the longer `escalation`.
@@ -235,21 +230,21 @@ contract StdManifest is IStdManifest {
             || selector == IHub.setHoldingAccountId.selector;
     }
 
-    /// @dev `managerCall` classification, pinned by target. A call to the `contractUpdaterForwarder` is a
-    ///      wrapped contract update (the forwarder unwraps `(scId, realTarget, inner)` and forwards to
-    ///      `ContractUpdater.trustedCall`), so it is classified like a legacy contract update (see
-    ///      {_classifyContractUpdate}). A call to the configured BRM is in policy (routine keeper ops) but
-    ///      additionally bounded by {_checkRequestPrice}. A SetPaused call to the configured bridging hook
-    ///      is in policy (instant emergency pause); SetRateLimit still goes through `delay`. Every other
-    ///      target falls to `delay` (timelocked + vetoable). Pinning the targets prevents ABI collisions
-    ///      where another target's payload shares a classified action's leading byte; neither binding can be
-    ///      repointed instantly (`setRequestManager` is out of policy, and both pins are immutable CREATE3 anchors).
+    /// @dev `managerCall` classification, pinned by target: the BRM is in policy but bounded by
+    ///      {_checkRequestPrice}, a SetPaused to the bridging hook is in policy, everything else is
+    ///      `delay`. Target pins are local addresses, so a remote `centrifugeId` always falls through to
+    ///      `delay`.
     function _checkManagerCall(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
-        (,, bytes32 target, bytes memory inner,,,) =
+        // Below 224 bytes (7 x 32, the managerCall tuple's minimum ABI encoding), abi.decode would revert;
+        // classify as out-of-policy instead. {Supervisor._checkNotSelfRemoval} shares this shape and
+        // threshold; if the managerCall tuple changes, update both together.
+        if (payload.length < 224) return delay;
+        (, uint16 centrifugeId, bytes32 target, bytes memory inner,,,) =
             abi.decode(payload, (PoolId, uint16, bytes32, bytes, uint128, uint256, address));
+        if (centrifugeId != hub.sender().localCentrifugeId()) return delay;
 
         address targetAddr = target.toAddress();
-        if (targetAddr == contractUpdaterForwarder) return _classifyContractUpdate(inner);
+        if (targetAddr == contractUpdaterForwarder) return delay;
         if (targetAddr == requestManager) return _checkRequestPrice(poolId, inner);
         if (
             bridgingHook != address(0) && targetAddr == bridgingHook && inner.length >= 32
@@ -258,22 +253,8 @@ contract StdManifest is IStdManifest {
         return delay;
     }
 
-    /// @dev Classify a wrapped contract update (a managerCall whose target is the `contractUpdaterForwarder`).
-    ///      Always out of policy: timelocked + vetoable. There is deliberately NO fast path. A tag-only
-    ///      shortcut (the former OnOffRamp `Withdraw` exception) keyed on the inner payload's leading word and
-    ///      ignored the target, so any `trustedCall` target accepting that leading word (SlippageGuard,
-    ///      QueueManager, …) inherited the shortcut and bypassed the timelock (Sherlock #15). A *target-
-    ///      validated* fast path (verifying the target is the legitimate offramp for the payload's scId) could
-    ///      be reintroduced here, but a tag-only one must not.
-    function _classifyContractUpdate(bytes memory) internal view returns (uint48) {
-        return delay;
-    }
-
-    /// @dev Bound the BRM-supplied price against the pool's committed main price: issue/revoke compare
-    ///      `pricePoolPerShare`, approve deposits/redeems compare `pricePoolPerAsset`. Force-cancels and
-    ///      unknown shapes carry no price and stay in policy. A reverting reference bubbles up by design
-    ///      (never approve against a broken oracle). A zero reference fails closed: a manager must not
-    ///      approve or issue/revoke shares without a committed hub price.
+    /// @dev Bounds the BRM-supplied price against the pool's committed price (share price for issue/revoke,
+    ///      asset price for approvals). Unknown shapes and a reverting/zero reference fail closed to `delay`.
     function _checkRequestPrice(PoolId poolId, bytes memory inner) internal view returns (uint48) {
         if (maxBrmPriceDeviation == type(uint128).max) return 0; // guard disabled
         if (inner.length < 32) return delay; // malformed: fail closed
@@ -293,42 +274,17 @@ contract StdManifest is IStdManifest {
             AssetId assetId = AssetId.wrap(inner.toUint128(80));
             brmPrice = D18.wrap(inner.toUint128(176));
             mainPrice = hub.pricePoolPerAsset(poolId, scId, assetId); // direct call: a revert bubbles up
+        } else if (
+            kind == uint8(ManagerAction.ForceCancelDepositRequest)
+                || kind == uint8(ManagerAction.ForceCancelRedeemRequest)
+        ) {
+            return 0; // returns the investor's own pending funds, carries no price
         } else {
-            return 0; // force-cancels / unknown shapes carry no price
+            return delay; // unrecognized kind: deny-by-default, don't wave through instantly
         }
 
         if (mainPrice.isZero()) return delay; // no committed reference: fail closed
         return brmPrice.withinDeviation(mainPrice, maxBrmPriceDeviation) ? 0 : delay;
-    }
-
-    /// @dev Every local adapter must be a global adapter (poolId=0); a foreign one is blocked outright.
-    ///      A valid subset is out of policy, since a weaker subset/threshold needs a veto window.
-    function _checkSetAdapters(bytes calldata payload) internal view returns (uint48) {
-        (, uint16 centrifugeId, IAdapter[] memory localAdapters,,,) =
-            abi.decode(payload, (PoolId, uint16, IAdapter[], bytes32[], uint8, address));
-
-        PoolId globalPool = PoolId.wrap(0);
-        uint16 sessionId = multiAdapter.activeSessionId(centrifugeId, globalPool);
-        uint8 quorum = multiAdapter.quorum(centrifugeId, globalPool);
-
-        // Read the global set once instead of re-fetching each slot for every local adapter.
-        IAdapter[] memory globalAdapters = new IAdapter[](quorum);
-        for (uint256 j; j < quorum; j++) {
-            globalAdapters[j] = multiAdapter.adapters(centrifugeId, globalPool, sessionId, j);
-        }
-
-        for (uint256 i; i < localAdapters.length; i++) {
-            bool isGlobal;
-            for (uint256 j; j < quorum; j++) {
-                if (localAdapters[i] == globalAdapters[j]) {
-                    isGlobal = true;
-                    break;
-                }
-            }
-            require(isGlobal, AdapterMismatch());
-        }
-
-        return delay;
     }
 
     /// @dev Out of policy if the single move exceeds `maxAbsolutePriceDelta` or the move/second since the
@@ -380,22 +336,17 @@ contract StdManifestFactory is IStdManifestFactory {
 
     /// @inheritdoc IStdManifestFactory
     function previewStdManifest(IStdManifest.Config memory config) external view returns (address) {
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                bytes1(0xff),
-                address(this),
-                _salt(config),
-                keccak256(
-                    abi.encodePacked(
-                        type(StdManifest).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config)
-                    )
-                )
-            )
-        );
+        bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), _salt(config), _initCodeHash(config)));
         return address(uint160(uint256(hash)));
     }
 
     function _salt(IStdManifest.Config memory config) internal view returns (bytes32) {
         return keccak256(abi.encode(hub, multiAdapter, shareClassManager, config));
+    }
+
+    function _initCodeHash(IStdManifest.Config memory config) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(type(StdManifest).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config))
+        );
     }
 }

@@ -71,8 +71,13 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when the content of a batch doesn't belong to the same pool
     error MalformedBatch();
 
-    /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
-    error CannotRefund();
+    /// @notice Dispatched when a message claims to originate from the local chain. A message reaching
+    ///         `handle` always crossed a real inter-chain bridge (same-chain hub<->spoke calls bypass
+    ///         Gateway entirely via a direct call), so this can only happen for a forged message.
+    error CannotBeReceivedLocally();
+
+    /// @notice Dispatched when a message arrives from a chain that is not its expected source.
+    error SourceMismatch();
 
     /// @notice Dispatched when there is not enough gas to send the message
     error NotEnoughGas();

@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
+import {SafeTransferLib} from "../../../src/misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "../../../src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
@@ -45,7 +46,8 @@ enum MessageKind {
     WithPoolAFail, // Use this will fail
     WithPoolALongFail, // Use this will fail
     WithPoolATooLong,
-    SetPoolAdapters // pool-routed: messagePoolId returns its pool (POOL_A), mirroring MessageLib
+    SetPoolAdapters, // pool-routed: messagePoolId returns its pool (POOL_A), mirroring MessageLib
+    RequireRemoteSource // messageSourceCentrifugeId returns REMOTE_CENT_ID, pool-routed like WithPoolA1
 }
 
 function length(MessageKind kind) pure returns (uint16) {
@@ -58,6 +60,7 @@ function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPoolALongFail) return uint16(10);
     if (kind == MessageKind.WithPoolATooLong) return uint16(MESSAGE_MAX_LENGTH + 1);
     if (kind == MessageKind.SetPoolAdapters) return 13;
+    if (kind == MessageKind.RequireRemoteSource) return 10;
     return 2;
 }
 
@@ -138,6 +141,7 @@ contract MockMessageProperties is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolATooLong)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.SetPoolAdapters)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 
@@ -158,6 +162,11 @@ contract MockMessageProperties is IMessageProperties {
 
     function messageFailureGasReserve() external pure returns (uint128) {
         return MOCK_PROCESS_FAIL_GAS;
+    }
+
+    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16) {
+        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return REMOTE_CENT_ID;
+        return 0;
     }
 }
 
@@ -340,6 +349,41 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.expectRevert(IGateway.MalformedBatch.selector);
         gateway.handle(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrCannotBeReceivedLocally() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
+
+        vm.expectRevert(IGateway.CannotBeReceivedLocally.selector);
+        gateway.handle(LOCAL_CENT_ID, batch);
+    }
+
+    function testErrSourceMismatch() public {
+        bytes memory batch = MessageKind.RequireRemoteSource.asBytes(); // requires REMOTE_CENT_ID
+
+        vm.expectRevert(IGateway.SourceMismatch.selector);
+        gateway.handle(REMOTE_CENT_ID + 1, batch);
+    }
+
+    function testSourceMismatchAcceptsMatchingSource() public {
+        bytes memory batch = MessageKind.RequireRemoteSource.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
+    }
+
+    /// @dev Unlike a processor-level failure (testBatchWithFailingMessages), a source mismatch reverts the
+    ///      whole batch: nothing in it - including the otherwise-valid message1 - gets processed.
+    function testSourceMismatchRevertsWholeBatch() public {
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.RequireRemoteSource.asBytes(); // requires REMOTE_CENT_ID
+        bytes memory batch = abi.encodePacked(message1, message2);
+
+        vm.expectRevert(IGateway.SourceMismatch.selector);
+        gateway.handle(REMOTE_CENT_ID + 1, batch);
+
+        assertEq(processor.count(REMOTE_CENT_ID + 1), 0);
     }
 
     function testMessage() public {
@@ -569,7 +613,7 @@ contract GatewayTestSend is GatewayTest {
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_OVERALL_GAS_LIMIT, NO_PAYABLE_DESTINATION);
 
-        vm.expectRevert(IGateway.CannotRefund.selector);
+        vm.expectRevert(SafeTransferLib.SafeTransferEthFailed.selector);
         gateway.send{value: cost + 1234}(REMOTE_CENT_ID, message, false, NO_PAYABLE_DESTINATION);
     }
 

@@ -102,6 +102,7 @@ contract BridgeCircuitBreakerTestPause is BridgeCircuitBreakerTestBase {
         assertEq(uint256(result.amount), uint256(AMOUNT));
         assertEq(result.receiver, baseParams.receiver);
         assertEq(result.refund, baseParams.refund);
+        assertEq(uint256(result.extraGasLimit), uint256(baseParams.extraGasLimit));
     }
 
     function testErrNotHubHandler(address notHubHandler) public {

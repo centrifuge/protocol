@@ -49,8 +49,6 @@ interface IHubRegistry is IERC6909Decimals {
     error EmptyCurrency();
     error EmptyShareClassManager();
     error AssetNotFound();
-    /// @notice Dispatched when {authorize}/{cancelAuthorization} caller is not a pool manager.
-    error NotManager();
     /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing to classify).
     error NoManifest();
     /// @notice Dispatched when {authorize} targets a call that is currently in policy (nothing to authorize).
@@ -120,17 +118,22 @@ interface IHubRegistry is IERC6909Decimals {
     // Authorization ledger
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Pre-authorize a future, out-of-policy Hub call. Manager only. The pool's manifest
-    ///         classifies the call; an in-policy call can't be authorized. Matures after the classified
+    /// @notice Pre-authorize a future, out-of-policy Hub call. Callable only by the Hub (the manager check
+    ///         lives in {IHub.authorize}). The pool's manifest classifies the call, using `caller` as the
+    ///         authorizing manager; an in-policy call can't be authorized. Matures after the classified
     ///         delay, after which a guarded Hub call whose calldata byte-matches `data` consumes it.
     /// @param poolId The pool the call targets
+    /// @param caller The manager authorizing the call (for classification and the audit event)
     /// @param data The exact future Hub calldata being authorized
-    function authorize(PoolId poolId, bytes calldata data) external;
+    function authorize(PoolId poolId, address caller, bytes calldata data) external;
 
-    /// @notice Cancel a pending authorization. Manager only (sentinels act through their Supervisor).
+    /// @notice Cancel a pending authorization. Callable only by the Hub (the manager check lives in
+    ///         {IHub.cancelAuthorization}; sentinels act through their Supervisor, itself a registered
+    ///         Hub manager).
     /// @param poolId The pool the authorization targets
+    /// @param caller The manager cancelling the authorization (for the audit event)
     /// @param data The exact Hub calldata that was authorized
-    function cancelAuthorization(PoolId poolId, bytes calldata data) external;
+    function cancelAuthorization(PoolId poolId, address caller, bytes calldata data) external;
 
     /// @notice Consume a matured authorization for an executing out-of-policy call. Callable only by the
     ///         pool's installed manifest (from its {IManifest.enforce}). Reverts unless an authorization

@@ -71,6 +71,7 @@ library SafeTransferLib {
     /// @param to The destination of the transfer
     /// @param value The value to be transferred
     function safeTransferETH(address to, uint256 value) internal {
+        if (value == 0) return;
         (bool success,) = to.call{value: value}(new bytes(0));
         require(success, SafeTransferEthFailed());
     }

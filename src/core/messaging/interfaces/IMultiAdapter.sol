@@ -128,6 +128,13 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     function unblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId) external;
 
     /// @notice Configures a manager address for a pool
+    /// @dev    WARNING: a manager carries very significant permissions equivalent to controlling every
+    ///         adapter configured for the pool. It can call `handle`/`vote`/`execute` on behalf of any
+    ///         configured adapter address, and by doing so once per adapter can single-handedly reach
+    ///         quorum and forward an arbitrary payload to the gateway as if real cross-chain consensus
+    ///         had been reached — bypassing the M-of-N adapter security model entirely for that pool.
+    ///         Grant this role only to smart contracts that constrain what can be submitted; never grant
+    ///         it to a plain EOA. Mirrors the same trust level as `IGateway.updateManager`.
     /// @param poolId PoolId associated to the adapters
     /// @param who Manager address
     /// @param canManage If enabled as manager

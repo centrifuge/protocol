@@ -170,7 +170,7 @@ Async vaults implement a three-phase deposit flow:
 
 ## Deployment Info
 - **Current Version**: v3.1.0 (see `env/*.json` for network-specific details)
-- Contract addresses are deterministic across ALL networks (CREATE3)
+- Contract addresses are deterministic across ALL networks using the standard CREATE3 deploy flow (same deployer + salt). Do NOT treat this as a protocol-enforced invariant when writing security-relevant checks: some EVM chains implement custom address-derivation logic (breaking CREATE3 determinism), the deploy flow has a legacy pre-CREATE3 salt path with no cross-chain guarantee, and the protocol aims to support non-EVM chains where "address" may not even be a comparable concept. Never validate a remote-chain address against a local-chain address as a security check.
 - Find addresses in `env/*.json` (e.g., `env/ethereum.json`)
 
 ## Root Access & Spell Execution

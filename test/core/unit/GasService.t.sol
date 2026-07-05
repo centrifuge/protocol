@@ -26,6 +26,19 @@ contract GasServiceTest is Test {
         service = new GasService(txLimits, CENTRIFUGE_ID);
     }
 
+    function testDefaultChainUsesDefaultFailureGasReserve() public view {
+        assertEq(service.messageFailureGasReserve(), service.DEFAULT_FAILURE_GAS_RESERVE());
+    }
+
+    function testMonadChainUsesMonadFailureGasReserve() public {
+        uint8[32] memory txLimits;
+        txLimits[0] = 30;
+
+        GasService monadService = new GasService(txLimits, service.MONAD_CENTRIFUGE_ID());
+        assertEq(monadService.messageFailureGasReserve(), monadService.MONAD_FAILURE_GAS_RESERVE());
+        assertTrue(monadService.MONAD_FAILURE_GAS_RESERVE() != monadService.DEFAULT_FAILURE_GAS_RESERVE());
+    }
+
     function testGasLimit(uint256 len, bytes calldata seed) public view {
         len = bound(len, 121, 4096); // ensuring we can deserialize extraGasLimit from any message
 
@@ -89,6 +102,29 @@ contract GasServiceTest is Test {
                 );
             }
         }
+    }
+
+    function testMessageLength() public view {
+        bytes memory message = MessageLib.NotifyPool({poolId: 1}).serialize();
+        assertEq(service.messageLength(message), message.messageLength());
+    }
+
+    function testMessagePoolId() public view {
+        bytes memory message = MessageLib.NotifyPool({poolId: 1}).serialize();
+        assertEq(service.messagePoolId(message).raw(), message.messagePoolId().raw());
+    }
+
+    function testRoutePoolId() public view {
+        bytes memory message =
+            MessageLib.SetPoolAdapters({poolId: 1, threshold: 1, adapterList: new bytes32[](0)}).serialize();
+
+        assertEq(service.routePoolId(message, true).raw(), message.messagePoolId().raw());
+        assertEq(service.routePoolId(message, false).raw(), 0);
+    }
+
+    function testMessageSourceCentrifugeId() public view {
+        bytes memory message = MessageLib.NotifyPool({poolId: uint64(CENTRIFUGE_ID) << 48}).serialize();
+        assertEq(service.messageSourceCentrifugeId(message), message.messageSourceCentrifugeId());
     }
 
     function testMaxBatchGasLimit(uint16 centrifugeId) public view {

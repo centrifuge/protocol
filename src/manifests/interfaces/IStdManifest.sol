@@ -10,7 +10,6 @@ import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
 interface IStdManifest is IManifest {
-    error AdapterMismatch();
     error OnchainAccountingOnly();
     error CallerNotAllowed();
 

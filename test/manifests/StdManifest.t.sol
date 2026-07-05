@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 import {D18} from "../../src/misc/types/D18.sol";
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
@@ -14,6 +16,7 @@ import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../../src/core/hub/interfaces/IShareClassManager.sol";
+import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {IOnOffRamp} from "../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 
@@ -33,8 +36,10 @@ contract StdManifestTest is Test {
     uint48 constant ESCALATION = 7 days;
     uint128 constant RATE = 1e15; // per second
     uint128 constant CAP = 5e17; // absolute per-update
+    uint16 constant LOCAL_CENTRIFUGE_ID = 1;
 
     IHub immutable hub = IHub(makeAddr("Hub"));
+    address immutable sender = makeAddr("Sender");
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable supervisor = makeAddr("supervisor");
@@ -53,6 +58,12 @@ contract StdManifestTest is Test {
     function setUp() public {
         hubRegistry = new HubRegistry(address(this));
         vm.mockCall(address(hub), abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
+        vm.mockCall(address(hub), abi.encodeWithSelector(IHub.sender.selector), abi.encode(sender));
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(ILocalCentrifugeId.localCentrifugeId.selector),
+            abi.encode(LOCAL_CENTRIFUGE_ID)
+        );
         factory = new StdManifestFactory(hub, multiAdapter, scm);
         manifest = StdManifest(address(factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0)))));
 
@@ -127,8 +138,7 @@ contract StdManifestTest is Test {
 
     /// @dev Authorize `data` as a manager and return the classified delay (validAfter - now).
     function _delayOf(bytes memory d) internal returns (uint48) {
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
         return hubRegistry.authorizedAfter(_authId(d)) - uint48(block.timestamp);
     }
 
@@ -146,52 +156,45 @@ contract StdManifestTest is Test {
         bytes memory d = _setManifestCall(address(this));
         vm.expectEmit();
         emit IHubRegistry.AuthorizationScheduled(POOL_A, manager, _authId(d), uint48(block.timestamp) + ESCALATION, d);
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
         assertEq(hubRegistry.authorizedAfter(_authId(d)), block.timestamp + ESCALATION);
     }
 
-    function testAuthorizeNotManager() public {
-        vm.expectRevert(IHubRegistry.NotManager.selector);
+    function testAuthorizeNotAuthorized() public {
+        // authorize is ward-only; the manager check lives in Hub.authorize.
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(outsider);
-        hubRegistry.authorize(POOL_A, _setManifestCall(address(this)));
+        hubRegistry.authorize(POOL_A, manager, _setManifestCall(address(this)));
     }
 
     function testReauthorizePendingReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         // Re-authorizing a pending auth reverts rather than silently resetting its maturity clock.
         vm.expectRevert(IHubRegistry.AlreadyAuthorized.selector);
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
     }
 
     function testReauthorizeExpiredReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         // Past maturity + expiry the auth is dead but enforce never cleared it, so re-authorizing
         // still reverts — it must be cancelled first.
         skip(ESCALATION + EXPIRY + 1);
         vm.expectRevert(IHubRegistry.AlreadyAuthorized.selector);
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
     }
 
     function testCancelThenReauthorize() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
-        vm.prank(manager);
-        hubRegistry.cancelAuthorization(POOL_A, d);
+        hubRegistry.cancelAuthorization(POOL_A, manager, d);
 
         // Once cancelled, the same call can be authorized again.
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
         assertEq(hubRegistry.authorizedAfter(_authId(d)), block.timestamp + ESCALATION);
     }
 
@@ -200,33 +203,30 @@ contract StdManifestTest is Test {
         // once the same calldata drifts out of policy.
         bytes memory d = abi.encodeWithSelector(IHub.notifyPool.selector, POOL_A, uint16(1), address(0));
         vm.expectRevert(IHubRegistry.InPolicy.selector);
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
     }
 
     function testCancelAuthorization() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         vm.expectEmit();
         emit IHubRegistry.AuthorizationCanceled(POOL_A, manager, _authId(d));
-        vm.prank(manager);
-        hubRegistry.cancelAuthorization(POOL_A, d);
+        hubRegistry.cancelAuthorization(POOL_A, manager, d);
         assertEq(hubRegistry.authorizedAfter(_authId(d)), 0);
     }
 
-    function testCancelNotManager() public {
-        vm.expectRevert(IHubRegistry.NotManager.selector);
+    function testCancelNotAuthorized() public {
+        // cancelAuthorization is ward-only; the manager check lives in Hub.cancelAuthorization.
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(outsider);
-        hubRegistry.cancelAuthorization(POOL_A, _setManifestCall(address(this)));
+        hubRegistry.cancelAuthorization(POOL_A, manager, _setManifestCall(address(this)));
     }
 
     function testCancelNoAuthorizationReverts() public {
         // Cancelling a call that was never authorized fails loud rather than emitting a no-op event.
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
-        vm.prank(manager);
-        hubRegistry.cancelAuthorization(POOL_A, _setManifestCall(address(this)));
+        hubRegistry.cancelAuthorization(POOL_A, manager, _setManifestCall(address(this)));
     }
 
     function testEnforceNotHub() public {
@@ -250,8 +250,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyNotMaturedReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         skip(ESCALATION - 1);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
@@ -261,8 +260,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyMaturedConsumes() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         skip(ESCALATION);
         vm.prank(address(hub));
@@ -277,8 +275,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyExpiredReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         // Matured but the execution window has closed: fails closed, the auth is no longer valid.
         skip(ESCALATION + EXPIRY + 1);
@@ -289,8 +286,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyAtExpiryBoundaryConsumes() public {
         bytes memory d = _setManifestCall(address(this));
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         // The last instant of the window is still valid (inclusive upper bound).
         skip(ESCALATION + EXPIRY);
@@ -300,8 +296,7 @@ contract StdManifestTest is Test {
     }
 
     function testAuthorizationMatchesExactCalldata() public {
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, _setManifestCall(address(0xA)));
+        hubRegistry.authorize(POOL_A, manager, _setManifestCall(address(0xA)));
         skip(ESCALATION);
 
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
@@ -365,6 +360,52 @@ contract StdManifestTest is Test {
         manifest.enforce(POOL_A, manager, _priceCall(2e18));
     }
 
+    function testAbsoluteCapBoundaryExactlyAtCapIsOutOfPolicy() public {
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(1e18)); // baseline
+        skip(1000); // large enough that RATE alone would not trigger at this delta
+
+        // delta == CAP exactly: the >= comparison must still classify this as out of policy.
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(1e18 + CAP));
+    }
+
+    function testAbsoluteCapBoundaryJustUnderCapIsInPolicy() public {
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(1e18)); // baseline
+        skip(1000); // keeps delta/elapsed well under RATE too
+
+        // delta == CAP - 1: strictly below the cap, must stay in policy.
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(1e18 + CAP - 1));
+    }
+
+    function testRateBoundaryExactlyAtThresholdIsOutOfPolicy() public {
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(1e18)); // baseline
+        skip(100);
+
+        // delta / elapsed == RATE exactly, and delta stays well under CAP so only the rate branch
+        // can be responsible for classifying this out of policy.
+        uint256 delta = uint256(RATE) * 100;
+        assertLt(delta, CAP);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(uint128(1e18 + delta)));
+    }
+
+    function testRateBoundaryJustUnderThresholdIsInPolicy() public {
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(1e18)); // baseline
+        skip(100);
+
+        // delta / elapsed just under RATE: must stay in policy.
+        uint256 delta = uint256(RATE) * 100 - 1;
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCall(uint128(1e18 + delta)));
+    }
+
     function testAuthorizeDoesNotMoveBaseline() public {
         vm.prank(address(hub));
         manifest.enforce(POOL_A, manager, _priceCall(1e18)); // baseline at T0
@@ -372,8 +413,7 @@ contract StdManifestTest is Test {
 
         skip(50);
         // Authorizing an out-of-policy price jump must NOT advance the baseline.
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, _priceCall(2e18));
+        hubRegistry.authorize(POOL_A, manager, _priceCall(2e18));
         assertEq(manifest.lastPriceUpdate(POOL_A, SC_A), t0);
     }
 
@@ -402,7 +442,7 @@ contract StdManifestTest is Test {
 
     function _managerCall(bytes32 target, bytes memory inner) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(
-            IHub.managerCall.selector, POOL_A, uint16(1), target, inner, uint128(0), uint256(0), address(0)
+            IHub.managerCall.selector, POOL_A, LOCAL_CENTRIFUGE_ID, target, inner, uint128(0), uint256(0), address(0)
         );
     }
 
@@ -411,6 +451,23 @@ contract StdManifestTest is Test {
         // synchronously, no authorization needed. The opaque payload is not inspected (target is pinned).
         vm.prank(address(hub));
         manifest.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), abi.encode(uint8(1), bytes16(0))));
+    }
+
+    function testManagerCallToRequestManagerOnRemoteChainDelayed() public {
+        // Target pins (BRM, bridging hook, forwarder) are local addresses with no cross-chain guarantee
+        // (CREATE3 determinism is not a security invariant). A remote-dispatched managerCall must fall
+        // through to delay even if the target byte-matches a local pin.
+        bytes memory d = abi.encodeWithSelector(
+            IHub.managerCall.selector,
+            POOL_A,
+            LOCAL_CENTRIFUGE_ID + 1,
+            bytes32(bytes20(brm)),
+            abi.encode(uint8(1), bytes16(0)),
+            uint128(0),
+            uint256(0),
+            address(0)
+        );
+        assertEq(_delayOf(d), DELAY);
     }
 
     function testManagerCallToOtherTargetDenyByDefault() public {
@@ -425,6 +482,33 @@ contract StdManifestTest is Test {
     function testManagerCallUnknownTargetDenyByDefault() public {
         // An unpinned target (neither the contractUpdaterForwarder nor the BRM) is out of policy: deny-by-default.
         assertEq(_delayOf(_managerCall(bytes32(bytes20(makeAddr("unknown"))), bytes(""))), DELAY);
+    }
+
+    function testManagerCallShortPayloadFailsClosed() public view {
+        // A managerCall payload shorter than 224 bytes (the static ABI encoding of its 7 parameters)
+        // must not revert during classify/authorize — it fails closed as out-of-policy (delay).
+        bytes memory shortPayload = abi.encodePacked(IHub.managerCall.selector, new bytes(100)); // 4 + 100 = 104 bytes, well under 224
+        assertEq(manifest.classify(POOL_A, manager, shortPayload), DELAY);
+    }
+
+    function testManagerCallTruncatedDynamicTailReverts() public {
+        // A payload >= 224 bytes (past the length guard) can still revert on abi.decode: 224 only covers
+        // the static head, but a validly-encoded call needs a further word for the dynamic `inner` bytes'
+        // length (256 minimum). A payload truncated to 234 bytes has a head pointing past its own end, so
+        // decode reverts. This is safe rather than a re-run of the malformed-payload DoS: classify() runs
+        // inside authorize(), so the revert only aborts that authorize() call - nothing is stored, so there
+        // is nothing later for {Supervisor._checkNotSelfRemoval} to freeze via a revert on cancellation.
+        bytes memory full = _managerCall(bytes32(bytes20(makeAddr("someTarget"))), abi.encode(uint256(1), bytes32(0)));
+        bytes memory truncated = new bytes(234);
+        for (uint256 i; i < 234; i++) {
+            truncated[i] = full[i];
+        }
+        vm.expectRevert();
+        this.classifyExternal(truncated);
+    }
+
+    function classifyExternal(bytes calldata data) external view {
+        manifest.classify(POOL_A, manager, data);
     }
 
     function testManagerCallToBridgingHookSetPausedInPolicy() public {
@@ -588,6 +672,13 @@ contract StdManifestTest is Test {
         assertEq(_classifyBrm(DEVIATION, _brmForceCancel(ManagerAction.ForceCancelRedeemRequest)), 0);
     }
 
+    function testBrmUnknownActionKindDelayed() public {
+        // A kind outside the known ManagerAction set (price-bearing or force-cancel) fails closed to
+        // delay rather than being waved through in-policy - deny-by-default, not deny-by-exception.
+        bytes memory inner = abi.encode(uint8(99), bytes16(0));
+        assertEq(_classifyBrm(DEVIATION, inner), DELAY);
+    }
+
     function testBrmMalformedShortPayloadDelayed() public {
         // A price-bearing kind whose payload is too short to hold the price word fails closed -> delay.
         bytes memory inner = abi.encode(uint8(ManagerAction.IssueShares), ShareClassId.unwrap(SC_A));
@@ -598,8 +689,8 @@ contract StdManifestTest is Test {
 
     function _updateContractCall(bytes32 target, bytes memory inner) internal view returns (bytes memory) {
         // A contract update is a `managerCall` to the contractUpdaterForwarder, carrying the scId + real
-        // target + inner payload wrapped via {ContractUpdateLib.wrap}. The manifest sees the forwarder as the
-        // target and dispatches to `_classifyContractUpdate`.
+        // target + inner payload wrapped via {ContractUpdateLib.wrap}. The manifest sees the forwarder as
+        // the target and classifies it as `delay` in `_checkManagerCall`.
         bytes memory payload = ContractUpdateLib.wrap(SC_A, address(bytes20(target)), inner);
         return abi.encodeWithSelector(
             IHub.managerCall.selector,
@@ -684,65 +775,21 @@ contract StdManifestTest is Test {
 
     // ─── setAdapters classification ───────────────────────────────────────────────
 
-    function _setAdaptersCall(IAdapter[] memory local) internal pure returns (bytes memory) {
+    function _setAdaptersCall(IAdapter[] memory local, bytes32[] memory remote) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(
-            IHub.setAdapters.selector, POOL_A, uint16(1), local, new bytes32[](0), uint8(0), uint8(0), address(0)
+            IHub.setAdapters.selector, POOL_A, uint16(1), local, remote, uint8(0), uint8(0), address(0)
         );
     }
 
-    function testSetAdaptersMatchingGlobalOutOfPolicy() public {
-        IAdapter adapter = IAdapter(makeAddr("adapter"));
-        vm.mockCall(
-            address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.activeSessionId.selector), abi.encode(uint16(1))
-        );
-        vm.mockCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.quorum.selector), abi.encode(uint8(1)));
-        vm.mockCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.adapters.selector), abi.encode(adapter));
-
+    function testSetAdaptersAlwaysOutOfPolicy() public {
+        // setAdapters is always `delay`, regardless of which local/remote adapters are proposed: neither
+        // is validated on-chain (see {StdManifest._classify}), so a sentinel reviewing the pending
+        // authorization is the only safeguard.
         IAdapter[] memory local = new IAdapter[](1);
-        local[0] = adapter;
-        // A valid set still needs authorization and a veto window.
-        assertEq(_delayOf(_setAdaptersCall(local)), DELAY);
-    }
-
-    function testSetAdaptersMismatchReverts() public {
-        IAdapter adapter = IAdapter(makeAddr("adapter"));
-        vm.mockCall(
-            address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.activeSessionId.selector), abi.encode(uint16(1))
-        );
-        vm.mockCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.quorum.selector), abi.encode(uint8(1)));
-        vm.mockCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.adapters.selector), abi.encode(adapter));
-
-        IAdapter[] memory local = new IAdapter[](1);
-        local[0] = IAdapter(makeAddr("wrongAdapter"));
-        vm.expectRevert(IStdManifest.AdapterMismatch.selector);
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _setAdaptersCall(local));
-    }
-
-    function testSetAdaptersSubsetOfGlobalOutOfPolicy() public {
-        IAdapter lz = IAdapter(makeAddr("lz"));
-        IAdapter axelar = IAdapter(makeAddr("axelar"));
-        // Global set for this chain is [lz, axelar].
-        vm.mockCall(
-            address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.activeSessionId.selector), abi.encode(uint16(1))
-        );
-        vm.mockCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.quorum.selector), abi.encode(uint8(2)));
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.adapters.selector, uint16(1), PoolId.wrap(0), uint16(1), uint256(0)),
-            abi.encode(lz)
-        );
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.adapters.selector, uint16(1), PoolId.wrap(0), uint16(1), uint256(1)),
-            abi.encode(axelar)
-        );
-
-        // Using only a subset (just axelar) of the global set is valid, but out of policy: it
-        // weakens the threshold and so needs authorization and a veto window.
-        IAdapter[] memory local = new IAdapter[](1);
-        local[0] = axelar;
-        assertEq(_delayOf(_setAdaptersCall(local)), DELAY);
+        local[0] = IAdapter(makeAddr("adapter"));
+        bytes32[] memory remote = new bytes32[](1);
+        remote[0] = CastLib.toBytes32(makeAddr("foreignAdapter"));
+        assertEq(_delayOf(_setAdaptersCall(local, remote)), DELAY);
     }
 
     // ─── deny-by-default ──────────────────────────────────────────────────────────
@@ -867,8 +914,7 @@ contract StdManifestTest is Test {
 
         // out-of-policy price update, but a pool manager can pre-authorize.
         bytes memory d = _priceCall(1e18 + 2e15);
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
 
         skip(DELAY);
         vm.prank(address(hub));
@@ -884,8 +930,7 @@ contract StdManifestTest is Test {
         skip(1);
 
         bytes memory d = _priceCall(1e18 + 2e15);
-        vm.prank(manager);
-        hubRegistry.authorize(POOL_A, d);
+        hubRegistry.authorize(POOL_A, manager, d);
         skip(DELAY);
 
         // Even with a valid pre-authorization, a non-SimplePriceManager caller is blocked at enforce.
@@ -965,9 +1010,8 @@ contract StdManifestTest is Test {
     function testAllowlistedCallerCannotAuthorizeOtherSelector() public {
         _allowlistManifest(_selectors(IHub.updateSharePrice.selector));
         // Confinement also blocks authorize: KEEPER can't even queue an out-of-policy call outside its set.
-        vm.prank(KEEPER);
         vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
-        hubRegistry.authorize(POOL_A, _setManifestCall(address(this)));
+        hubRegistry.authorize(POOL_A, KEEPER, _setManifestCall(address(this)));
     }
 
     function testAllowlistComposesWithValueGuard() public {
@@ -983,8 +1027,7 @@ contract StdManifestTest is Test {
         m.enforce(POOL_A, KEEPER, _priceCall(1e18 + 2e15));
 
         // KEEPER may authorize it (it is within its selector set) and run it after the delay.
-        vm.prank(KEEPER);
-        hubRegistry.authorize(POOL_A, _priceCall(1e18 + 2e15));
+        hubRegistry.authorize(POOL_A, KEEPER, _priceCall(1e18 + 2e15));
         skip(DELAY);
         vm.prank(address(hub));
         m.enforce(POOL_A, KEEPER, _priceCall(1e18 + 2e15));

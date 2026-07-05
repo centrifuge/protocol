@@ -29,6 +29,9 @@ jobs:
           FOUNDRY_PROFILE: ci
 
   coverage:
+    # Temporarily disabled: the runner has been flaking with mid-run shutdown/cancellation
+    # unrelated to test correctness. Re-enable once that infra issue is resolved.
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

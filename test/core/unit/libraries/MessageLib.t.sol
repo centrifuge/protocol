@@ -639,39 +639,79 @@ contract TestMessageLibIdentities is Test {
     }
 }
 
-contract TestMessageLibIsHubToSpoke is Test {
+contract TestMessageLibSourceCentrifugeId is Test {
     /// @dev Exhaustive, hand-maintained expectation for every MessageType, cross-checking
-    ///      MessageLib.isHubToSpoke. If a new message type is added, this test fails until it is
-    ///      classified here, surfacing any spoke->hub message that was not excluded in isHubToSpoke
-    ///      (which would otherwise be wrongly rejected when arriving from its source chain).
-    function testIsHubToSpokeForEveryMessageType() public pure {
+    ///      MessageLib.messageSourceCentrifugeId. If a new message type is added, this test fails
+    ///      until it is classified here, surfacing any spoke->hub message that would otherwise be
+    ///      incorrectly rejected when arriving from its source chain.
+    ///
+    ///      The test buffer encodes centrifugeId=1 at the two positions read by the function:
+    ///        buf[2]  = 0x01 → poolId at offset 1 has centrifugeId=1 (uint64, top 16 bits)
+    ///                       → assetId at offset 1 has centrifugeId=1 (uint128, top 16 bits)
+    ///        buf[26] = 0x01 → assetId at offset 25 has centrifugeId=1
+    function testMessageSourceCentrifugeIdForEveryMessageType() public pure {
         uint256 max = uint256(type(MessageType).max);
-        bool[] memory expected = new bool[](max + 1);
 
-        // Hub->spoke messages (processed on the spoke side; must come from the pool's home chain).
-        expected[uint256(MessageType.SetPoolAdapters)] = true;
-        expected[uint256(MessageType.NotifyPool)] = true;
-        expected[uint256(MessageType.NotifyShareClass)] = true;
-        expected[uint256(MessageType.NotifyPricePoolPerShare)] = true;
-        expected[uint256(MessageType.NotifyPricePoolPerAsset)] = true;
-        expected[uint256(MessageType.NotifyShareMetadata)] = true;
-        expected[uint256(MessageType.UpdateShareHook)] = true;
-        expected[uint256(MessageType.ExecuteTransferShares)] = true;
-        expected[uint256(MessageType.UpdateRestriction)] = true;
-        expected[uint256(MessageType.UpdateVault)] = true;
-        expected[uint256(MessageType.SetMaxAssetPriceAge)] = true;
-        expected[uint256(MessageType.SetMaxSharePriceAge)] = true;
-        expected[uint256(MessageType.RequestCallback)] = true;
-        expected[uint256(MessageType.SetRequestManager)] = true;
-        expected[uint256(MessageType.UpdateManager)] = true;
-        expected[uint256(MessageType.ManagerCall)] = true;
+        bytes memory buf = new bytes(50);
+        buf[2] = bytes1(uint8(1)); // centrifugeId=1 for poolId@1 and assetId@1
+        buf[26] = bytes1(uint8(1)); // centrifugeId=1 for assetId@25
 
-        // Everything else is false: the pool-independent messages (_Invalid, ScheduleUpgrade,
-        // CancelUpgrade, RegisterAsset) and the spoke->hub messages (InitiateTransferShares,
-        // UpdateHoldingAmount, UpdateShares, Request, UntrustedContractUpdate).
+        uint16[] memory expected = new uint16[](max + 1);
+
+        // Hub->spoke: must originate from the pool's home chain (centrifugeId=1 via buf[2]).
+        expected[uint256(MessageType.SetPoolAdapters)] = 1;
+        expected[uint256(MessageType.NotifyPool)] = 1;
+        expected[uint256(MessageType.NotifyShareClass)] = 1;
+        expected[uint256(MessageType.NotifyPricePoolPerShare)] = 1;
+        expected[uint256(MessageType.NotifyPricePoolPerAsset)] = 1;
+        expected[uint256(MessageType.NotifyShareMetadata)] = 1;
+        expected[uint256(MessageType.UpdateShareHook)] = 1;
+        expected[uint256(MessageType.ExecuteTransferShares)] = 1;
+        expected[uint256(MessageType.UpdateRestriction)] = 1;
+        expected[uint256(MessageType.UpdateVault)] = 1;
+        expected[uint256(MessageType.SetMaxAssetPriceAge)] = 1;
+        expected[uint256(MessageType.SetMaxSharePriceAge)] = 1;
+        expected[uint256(MessageType.RequestCallback)] = 1;
+        expected[uint256(MessageType.SetRequestManager)] = 1;
+        expected[uint256(MessageType.UpdateManager)] = 1;
+        expected[uint256(MessageType.ManagerCall)] = 1;
+
+        // Mainnet-only messages (centrifugeId=MAINNET_CENTRIFUGE_ID=1).
+        expected[uint256(MessageType.ScheduleUpgrade)] = 1;
+        expected[uint256(MessageType.CancelUpgrade)] = 1;
+
+        // Asset-homed messages (centrifugeId=1 from the encoded assetId).
+        expected[uint256(MessageType.RegisterAsset)] = 1; // assetId at offset 1
+        expected[uint256(MessageType.Request)] = 1; // assetId at offset 25
+        expected[uint256(MessageType.UpdateHoldingAmount)] = 1; // assetId at offset 25
+
+        // Unrestricted spoke->hub messages (0 = any source permitted).
+        expected[uint256(MessageType.InitiateTransferShares)] = 0;
+        expected[uint256(MessageType.UpdateShares)] = 0;
+        expected[uint256(MessageType.UntrustedContractUpdate)] = 0;
+
+        // _Invalid has no source restriction.
+        expected[uint256(MessageType._Invalid)] = 0;
 
         for (uint256 i = 0; i <= max; i++) {
-            assertEq(MessageLib.isHubToSpoke(MessageType(i)), expected[i], "unexpected isHubToSpoke classification");
+            buf[0] = bytes1(uint8(i));
+            assertEq(
+                MessageLib.messageSourceCentrifugeId(buf),
+                expected[i],
+                "unexpected messageSourceCentrifugeId classification"
+            );
         }
+    }
+
+    /// @dev A hub->spoke message whose poolId encodes centrifugeId=0 is always forged (no real pool has
+    ///      centrifugeId 0) and must revert rather than fall through to the "0 = any source" sentinel.
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testMessageSourceCentrifugeIdRevertsOnZeroPoolHome() public {
+        bytes memory buf = new bytes(50);
+        buf[0] = bytes1(uint8(MessageType.NotifyPool));
+        // buf[2] left as 0 => poolId's centrifugeId resolves to 0.
+
+        vm.expectRevert(MessageLib.InvalidPoolHome.selector);
+        MessageLib.messageSourceCentrifugeId(buf);
     }
 }

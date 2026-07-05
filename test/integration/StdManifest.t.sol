@@ -107,7 +107,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     function testAuthorizeThenExecute() public {
         // Operator (a hub manager) pre-authorizes the exact call on the registry.
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, _grantManagerCall());
+        hub.authorize(POOL_A, _grantManagerCall());
 
         // Not matured yet -> still reverts.
         vm.prank(FM);
@@ -127,7 +127,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         IManagerCallFromHub(address(supervisor)).fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinel));
 
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, _grantManagerCall());
+        hub.authorize(POOL_A, _grantManagerCall());
 
         vm.prank(sentinel);
         supervisor.cancelAuthorization(_grantManagerCall());
@@ -166,7 +166,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // A manager replacing the manifest is out of policy and waits the longer escalation delay.
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, call);
+        hub.authorize(POOL_A, call);
 
         skip(POLICY_DELAY); // past the standard delay but not escalation
         vm.prank(FM);
@@ -177,6 +177,53 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.prank(FM);
         hub.setManifest(POOL_A, next);
         assertEq(address(hub.manifest(POOL_A)), address(next));
+    }
+
+    /// @notice A manifest swap orphans authorizations the OLD manifest had pending: `consumeAuthorization`
+    ///         checks the caller against whichever manifest is CURRENTLY installed, and the authId embeds
+    ///         the manifest's own address, so neither the old nor the new manifest can finalize the old
+    ///         one's pending call after the swap.
+    function testManifestSwapOrphansPendingAuthorization() public {
+        // Authorize a call under the original manifest, but don't let it mature yet.
+        vm.prank(operator);
+        hub.authorize(POOL_A, _grantManagerCall());
+
+        StdManifest next = StdManifest(
+            address(
+                new StdManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
+                    .newStdManifest(
+                        IStdManifest.Config({
+                            delay: POLICY_DELAY,
+                            expiry: POLICY_EXPIRY,
+                            escalation: POLICY_ESCALATION,
+                            maxAbsolutePriceDelta: 0,
+                            thresholdPerSecond: 0,
+                            maxBrmPriceDeviation: type(uint128).max,
+                            onchainAccounting: false,
+                            navManager: address(0),
+                            simplePriceManager: address(0),
+                            requestManager: address(batchRequestManager),
+                            bridgingHook: address(0),
+                            contractUpdaterForwarder: address(contractUpdaterForwarder),
+                            allowlist: new IStdManifest.Entry[](0)
+                        })
+                    )
+            )
+        );
+
+        // Swap the manifest via the ward break-glass path (skips needing a second authorization cycle).
+        vm.prank(address(root));
+        hub.setManifest(POOL_A, next);
+        assertEq(address(hub.manifest(POOL_A)), address(next));
+
+        // The original authorization's delay has now elapsed, but it can never be consumed: HubRegistry
+        // checks msg.sender against the manifest CURRENTLY installed (`next`), not the one (`manifest`)
+        // that created the authId.
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.updateHubManager(POOL_A, newManager, true);
+        assertFalse(hubRegistry.manager(POOL_A, newManager));
     }
 
     /// @notice `managerCall` is in policy only when it targets the configured request manager (BRM). Any
@@ -203,7 +250,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Operator pre-authorizes the exact calldata; not matured yet -> still reverts.
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, call);
+        hub.authorize(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, targetId, action, 0, 0, address(0));
@@ -303,7 +350,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Operator authorizes the exact calldata on the real ledger; not matured yet -> still reverts.
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, badCall);
+        hub.authorize(POOL_A, badCall);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
@@ -330,7 +377,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
 
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, call);
+        hub.authorize(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
@@ -356,7 +403,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
 
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, call);
+        hub.authorize(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
@@ -367,8 +414,8 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         assertTrue(oracleValuation.feeder(POOL_A, 0, priceFeeder), "feeder added via authorized managerCall");
     }
 
-    /// @notice A non-withdrawal contract update is classified out of policy by `_classifyContractUpdate`:
-    ///         spoke config actions are timelocked + sentinel-vetoable for manifest pools. The update now rides
+    /// @notice A non-withdrawal contract update is classified out of policy by `_checkManagerCall`: spoke
+    ///         config actions are timelocked + sentinel-vetoable for manifest pools. The update now rides
     ///         the unified `managerCall` transport (sentinel target + wrapped payload).
     function testUpdateContractIsOutOfPolicyByDefault() public {
         _registerUSDC();
@@ -396,7 +443,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Operator pre-authorizes the exact calldata; not matured yet -> still reverts.
         vm.prank(operator);
-        hubRegistry.authorize(POOL_A, call);
+        hub.authorize(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, fwd, payload, 0, 0, address(0));

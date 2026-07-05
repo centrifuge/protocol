@@ -63,6 +63,28 @@ contract AdapterFailoverTest is Test {
         assertEq(paramsHash, keccak256(abi.encode(adapters, threshold)));
     }
 
+    /// @dev Documents current behavior: initiateFailover does not require the existing pending proposal
+    ///      to be empty/cancelled first, so a steward can overwrite an in-flight proposal (legitimate or
+    ///      not) with new parameters, resetting the timelock clock. Pins this down so a future change to
+    ///      require cancellation first is a deliberate decision, not an untested behavior change.
+    function testInitiateFailoverOverwritesExistingPendingProposal() public {
+        _initiate();
+        (uint64 firstExecutableAt,) = adapterFailover.pendingFailover(HUB_CENTRIFUGE_ID, POOL_A);
+
+        vm.warp(block.timestamp + 1 hours);
+
+        IAdapter[] memory newAdapters = new IAdapter[](1);
+        newAdapters[0] = IAdapter(makeAddr("replacementAdapter"));
+        uint8 newThreshold = 1;
+
+        vm.prank(steward);
+        adapterFailover.initiateFailover(HUB_CENTRIFUGE_ID, POOL_A, newAdapters, newThreshold);
+
+        (uint64 secondExecutableAt, bytes32 paramsHash) = adapterFailover.pendingFailover(HUB_CENTRIFUGE_ID, POOL_A);
+        assertGt(secondExecutableAt, firstExecutableAt);
+        assertEq(paramsHash, keccak256(abi.encode(newAdapters, newThreshold)));
+    }
+
     function testInitiateFailoverOnlySteward() public {
         vm.prank(outsider);
         vm.expectRevert(IAdapterFailover.NotSteward.selector);

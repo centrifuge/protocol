@@ -36,8 +36,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
     using MessageLib for *;
     using BytesLib for bytes;
 
-    uint16 public constant MAINNET_CENTRIFUGE_ID = 1;
-
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
     ISpokeGatewayHandler public spoke;
@@ -79,29 +77,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        if (kind.isHubToSpoke()) {
-            require(centrifugeId == message.messagePoolId().centrifugeId(), OnlyFromSource());
-        }
-
         if (kind == MessageType.ScheduleUpgrade) {
-            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
             scheduleAuth.scheduleRely(m.target.toAddress());
         } else if (kind == MessageType.CancelUpgrade) {
-            require(centrifugeId == MAINNET_CENTRIFUGE_ID, OnlyFromMainnet());
             MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
             scheduleAuth.cancelRely(m.target.toAddress());
         } else if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
-            require(centrifugeId == AssetId.wrap(m.assetId).centrifugeId(), OnlyFromSource());
             hubHandler.registerAsset(AssetId.wrap(m.assetId), m.decimals);
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
             PoolId poolId = PoolId.wrap(m.poolId);
-            // A hub configures its own pools' adapters locally via Hub.setAdapters and never accepts an
-            // inbound SetPoolAdapters for a pool it hubs. Otherwise a forged source-is-hub message (e.g. over
-            // compromised global adapters) could install an attacker-controlled adapter set on the hub.
-            require(multiAdapter.localCentrifugeId() != poolId.centrifugeId(), CannotSetAdaptersOnHub());
             IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
@@ -201,7 +188,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
             else revert InvalidMessage(uint8(kind));
         } else if (kind == MessageType.UpdateHoldingAmount) {
             MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
-            require(centrifugeId == AssetId.wrap(m.assetId).centrifugeId(), OnlyFromSource());
             hubHandler.updateHoldingAmount(
                 centrifugeId,
                 PoolId.wrap(m.poolId),

@@ -20,6 +20,10 @@ contract MockUntrustedTarget is IUntrustedContractUpdate {
 contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
     using MessageLib for *;
 
+    // UntrustedContractUpdate has no source restriction, so any non-local id works here; only
+    // used as the `centrifugeId` param to `gateway.handle` (the pool itself stays local).
+    uint16 constant REMOTE_CENTRIFUGE_ID = 1;
+
     PoolId poolId;
     address target;
 
@@ -65,11 +69,11 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
     function testMaxAllowedBatchCanBeProcessed() public {
         // Get gas limits from the system
         bytes memory singleMessage = _createMessage();
-        uint128 perMessageGasLimit = gasService.messageOverallGasLimit(LOCAL_CENTRIFUGE_ID, singleMessage);
+        uint128 perMessageGasLimit = gasService.messageOverallGasLimit(REMOTE_CENTRIFUGE_ID, singleMessage);
 
         // NOTE: if using 30_000_000 here, the safety margin is still 3.8 at the moment of this comment.
         // NOTE: limit is approx under a maxBatchLimit of 65_000_000
-        uint128 maxBatchLimit = gasService.maxBatchGasLimit(LOCAL_CENTRIFUGE_ID);
+        uint128 maxBatchLimit = gasService.maxBatchGasLimit(REMOTE_CENTRIFUGE_ID);
         uint256 maxMessages = maxBatchLimit / perMessageGasLimit;
 
         bytes memory batch = _createBatch(maxMessages);
@@ -83,7 +87,7 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
 
         // Process the batch and measure gas
         uint256 gasBefore = gasleft();
-        gateway.handle(LOCAL_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
         uint256 gasConsumed = gasBefore - gasleft();
 
         console.log("Result:");

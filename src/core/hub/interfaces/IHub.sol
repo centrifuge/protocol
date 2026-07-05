@@ -162,89 +162,64 @@ interface IHub is IBatchedMulticall {
     function setManifest(PoolId poolId, IManifest manifest_) external;
 
     //----------------------------------------------------------------------------------------------
-    // Pool admin methods
+    // Manager: Authorization ledger
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Notify to a CV instance that a new pool is available
-    /// @param poolId The pool identifier
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param refund Address to receive excess gas refund
-    function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable;
+    /// @notice Pre-authorize a future, out-of-policy Hub call. Manager only; see {IHubRegistry.authorize}.
+    /// @param poolId The pool the call targets
+    /// @param data The exact future Hub calldata being authorized
+    function authorize(PoolId poolId, bytes calldata data) external;
 
-    /// @notice Notify to a CV instance that a new share class is available
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param hook The hook address of the share class
-    /// @param refund Address to receive excess gas refund
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        external
-        payable;
+    /// @notice Cancel a pending authorization. Manager only; see {IHubRegistry.cancelAuthorization}.
+    ///         Sentinels act through their pool's Supervisor, itself a registered manager.
+    /// @param poolId The pool the authorization targets
+    /// @param data The exact Hub calldata that was authorized
+    function cancelAuthorization(PoolId poolId, bytes calldata data) external;
 
-    /// @notice Notify to a CV instance that share metadata has updated
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param refund Address to receive excess gas refund
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
+    //----------------------------------------------------------------------------------------------
+    // Manager: Pool configuration
+    //----------------------------------------------------------------------------------------------
 
-    /// @notice Update on a CV instance the hook of a share token
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param hook The new hook address
+    /// @notice Set adapters for a pool in another chain.
+    /// @dev    Changing adapters increments the session ID.
+    ///         All messages sent always use the latest session ID.
+    ///         The system can still receive message from old session IDs.
+    ///         If you want to block messages attached to some session ID from being processed,
+    ///         you need to call blockSession() in the receiver side.
+    ///         Recommended flow to retire an old adapter set/session without dropping messages:
+    ///         1. Call setAdapters() with the new adapter set.
+    ///         2. Wait until every message sent under the old session has been delivered.
+    ///         3. Only then call blockSession() on the spoke for the old session, since blocking a
+    ///            session that still has messages in flight would drop them.
+    /// @param poolId Pool associated to this configuration
+    /// @param centrifugeId Chain where to perform the adapter configuration
+    /// @param localAdapters Adapter addresses in this chain
+    /// @param remoteAdapters Adapter addresses in the remote chain
+    /// @param threshold Minimum number of adapters required to process the messages
     /// @param refund Address to receive excess gas refund
-    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        external
-        payable;
-
-    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
-    /// @param poolId The pool identifier
-    /// @param scId Identifier of the share class
-    /// @param centrifugeId Chain to where the share price is notified
-    /// @param refund Address to receive excess gas refund
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
-
-    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
-    /// @param poolId The pool identifier
-    /// @param scId Identifier of the share class
-    /// @param assetId Identifier of the asset
-    /// @param refund Address to receive excess gas refund
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable;
-
-    /// @notice Set the max price age per asset of a share class
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id
-    /// @param maxPriceAge Timestamp until the price become invalid
-    /// @param refund Address to receive excess gas refund
-    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable;
-
-    /// @notice Set the max price age per share of a share class
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param maxPriceAge Timestamp until the price become invalid
-    /// @param refund Address to receive excess gas refund
-    function setMaxSharePriceAge(
+    function setAdapters(
         PoolId poolId,
-        ShareClassId scId,
         uint16 centrifugeId,
-        uint64 maxPriceAge,
+        IAdapter[] memory localAdapters,
+        bytes32[] memory remoteAdapters,
+        uint8 threshold,
         address refund
     ) external payable;
 
-    /// @notice Attach custom data to a pool
+    /// @notice Set or clear the bridging hook for a pool
     /// @param poolId The pool identifier
-    /// @param metadata Custom metadata to attach
-    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
+    /// @param hook The hook contract address, or address(0) to clear
+    function setBridgingHook(PoolId poolId, address hook) external;
 
     /// @notice Set snapshot hook for a pool
     /// @param poolId The pool identifier
     /// @param hook The snapshot hook contract
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable;
+
+    /// @notice Attach custom data to a pool
+    /// @param poolId The pool identifier
+    /// @param metadata Custom metadata to attach
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
 
     /// @notice Update name & symbol of share class
     /// @param poolId The pool identifier
@@ -254,6 +229,10 @@ interface IHub is IBatchedMulticall {
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
         external
         payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Manager: Permissions & routing
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Allow/disallow an account to interact as hub manager for this pool
     /// @param poolId The pool identifier
@@ -293,6 +272,10 @@ interface IHub is IBatchedMulticall {
         bytes32 spokeManager,
         address refund
     ) external payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Manager: Share classes & vaults
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Add a new share class to the pool
     /// @param poolId The pool identifier
@@ -338,31 +321,9 @@ interface IHub is IBatchedMulticall {
         address refund
     ) external payable;
 
-    /// @notice Route a payable, supervised manager call to an `IManagerCallFromHub` target via the `Envoy`.
-    ///         Pool-scoped: any `scId` is encoded in `payload`. No origin args reach the target: the call
-    ///         is already authorized here via `_protected` + manifest.
-    /// @param poolId The pool identifier
-    /// @param centrifugeId Chain where the target lives (only the local chain is currently supported)
-    /// @param target Contract to call (as bytes32; converted to address for local dispatch)
-    /// @param payload Opaque bytes decoded by the target's `fromHub`
-    /// @param extraGasLimit Extra gas for remote computation. Inert on the local branch; carried for
-    ///        forward compatibility so wiring the cross-chain branch needs no Hub redeploy.
-    /// @param localValue Native value forwarded to the target. Only valid for local targets; must be 0 for remote.
-    /// @param refund Address to receive any refunded remainder
-    function managerCall(
-        PoolId poolId,
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
-        uint256 localValue,
-        address refund
-    ) external payable;
-
-    /// @notice Set or clear the bridging hook for a pool
-    /// @param poolId The pool identifier
-    /// @param hook The hook contract address, or address(0) to clear
-    function setBridgingHook(PoolId poolId, address hook) external;
+    //----------------------------------------------------------------------------------------------
+    // Manager: Holdings & accounting
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Update the price per share of a share class
     /// @param poolId The pool identifier
@@ -372,6 +333,18 @@ interface IHub is IBatchedMulticall {
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
         external
         payable;
+
+    /// @notice Creates an account
+    /// @param poolId The pool identifier
+    /// @param accountId The new AccountId used
+    /// @param isDebitNormal Determines if the account should be used as debit-normal or credit-normal
+    function createAccount(PoolId poolId, AccountId accountId, bool isDebitNormal) external payable;
+
+    /// @notice Attach custom data to an account
+    /// @param poolId The pool identifier
+    /// @param account The account identifier
+    /// @param metadata Custom metadata to attach
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
     ///         It will register the different accounts used for holdings.
@@ -423,21 +396,21 @@ interface IHub is IBatchedMulticall {
     /// @param assetId The asset identifier
     function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable;
 
-    /// @notice Updates whether the holding represents a liability or not
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @param isLiability Whether the holding is a liability
-    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
-        external
-        payable;
-
     /// @notice Updates the valuation used by a holding
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
     /// @param valuation Used to transform between the holding asset and pool currency
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
+        external
+        payable;
+
+    /// @notice Updates whether the holding represents a liability or not
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @param isLiability Whether the holding is a liability
+    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
         external
         payable;
 
@@ -451,44 +424,115 @@ interface IHub is IBatchedMulticall {
         external
         payable;
 
-    /// @notice Creates an account
-    /// @param poolId The pool identifier
-    /// @param accountId The new AccountId used
-    /// @param isDebitNormal Determines if the account should be used as debit-normal or credit-normal
-    function createAccount(PoolId poolId, AccountId accountId, bool isDebitNormal) external payable;
-
-    /// @notice Attach custom data to an account
-    /// @param poolId The pool identifier
-    /// @param account The account identifier
-    /// @param metadata Custom metadata to attach
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
-
     /// @notice Perform an accounting entries update
     /// @param poolId The pool identifier
     /// @param debits Array of debit journal entries
     /// @param credits Array of credit journal entries
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits) external payable;
 
-    /// @notice Set adapters for a pool in another chain.
-    /// @dev    Changing adapters increments the session ID.
-    ///         All messages sent always use the latest session ID.
-    ///         The system can still receive message from old session IDs.
-    ///         If you want to block messages attached to some session ID from being processed,
-    ///         you need to call blockSession() in the receiver side.
-    /// @param poolId Pool associated to this configuration
-    /// @param centrifugeId Chain where to perform the adapter configuration
-    /// @param localAdapters Adapter addresses in this chain
-    /// @param remoteAdapters Adapter addresses in the remote chain
-    /// @param threshold Minimum number of adapters required to process the messages
+    //----------------------------------------------------------------------------------------------
+    // Manager: Spoke notifications
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Notify to a CV instance that a new pool is available
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain where CV instance lives
     /// @param refund Address to receive excess gas refund
-    function setAdapters(
+    function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable;
+
+    /// @notice Notify to a CV instance that a new share class is available
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param centrifugeId Chain where CV instance lives
+    /// @param hook The hook address of the share class
+    /// @param refund Address to receive excess gas refund
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
+        external
+        payable;
+
+    /// @notice Notify to a CV instance that share metadata has updated
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param centrifugeId Chain where CV instance lives
+    /// @param refund Address to receive excess gas refund
+    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
+
+    /// @notice Update on a CV instance the hook of a share token
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param centrifugeId Chain where CV instance lives
+    /// @param hook The new hook address
+    /// @param refund Address to receive excess gas refund
+    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
+        external
+        payable;
+
+    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
+    /// @param poolId The pool identifier
+    /// @param scId Identifier of the share class
+    /// @param centrifugeId Chain to where the share price is notified
+    /// @param refund Address to receive excess gas refund
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
+
+    /// @notice Set the max price age per share of a share class
+    /// @param poolId The centrifuge pool id
+    /// @param scId The share class id
+    /// @param centrifugeId Chain where CV instance lives
+    /// @param maxPriceAge Timestamp until the price become invalid
+    /// @param refund Address to receive excess gas refund
+    function setMaxSharePriceAge(
         PoolId poolId,
+        ShareClassId scId,
         uint16 centrifugeId,
-        IAdapter[] memory localAdapters,
-        bytes32[] memory remoteAdapters,
-        uint8 threshold,
+        uint64 maxPriceAge,
         address refund
     ) external payable;
+
+    /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
+    /// @param poolId The pool identifier
+    /// @param scId Identifier of the share class
+    /// @param assetId Identifier of the asset
+    /// @param refund Address to receive excess gas refund
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable;
+
+    /// @notice Set the max price age per asset of a share class
+    /// @param poolId The centrifuge pool id
+    /// @param scId The share class id
+    /// @param assetId The asset id
+    /// @param maxPriceAge Timestamp until the price become invalid
+    /// @param refund Address to receive excess gas refund
+    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
+        external
+        payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Manager: Envoy calls
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Route a payable, supervised manager call to an `IManagerCallFromHub` target via the `Envoy`.
+    ///         Pool-scoped: any `scId` is encoded in `payload`. No origin args reach the target: the call
+    ///         is already authorized here via `_protected` + manifest.
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain where the target lives (only the local chain is currently supported)
+    /// @param target Contract to call (as bytes32; converted to address for local dispatch)
+    /// @param payload Opaque bytes decoded by the target's `fromHub`
+    /// @param extraGasLimit Extra gas for remote computation. Inert on the local branch; carried for
+    ///        forward compatibility so wiring the cross-chain branch needs no Hub redeploy.
+    /// @param localValue Native value forwarded to the target. Only valid for local targets; must be 0 for remote.
+    /// @param refund Address to receive any refunded remainder
+    function managerCall(
+        PoolId poolId,
+        uint16 centrifugeId,
+        bytes32 target,
+        bytes calldata payload,
+        uint128 extraGasLimit,
+        uint256 localValue,
+        address refund
+    ) external payable;
+
+    //----------------------------------------------------------------------------------------------
+    // Accounting methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Update accounting for a holding amount change
     /// @param poolId The pool identifier

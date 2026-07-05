@@ -31,11 +31,6 @@ contract HubRegistry is Auth, IHubRegistry {
 
     constructor(address deployer) Auth(deployer) {}
 
-    modifier onlyManager(PoolId poolId_) {
-        require(manager[poolId_][msg.sender], NotManager());
-        _;
-    }
-
     //----------------------------------------------------------------------------------------------
     // Registration methods
     //----------------------------------------------------------------------------------------------
@@ -127,35 +122,30 @@ contract HubRegistry is Auth, IHubRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry
-    function authorize(PoolId poolId_, bytes calldata data) external onlyManager(poolId_) {
+    function authorize(PoolId poolId_, address caller, bytes calldata data) external auth {
         IManifest m = manifest[poolId_];
         require(address(m) != address(0), NoManifest());
 
-        // Only an out-of-policy call may be authorized; an in-policy one would mature immediately and
-        // could be banked while cheap, then fired later once the same calldata is out of policy.
-        uint48 delaySeconds = m.classify(poolId_, msg.sender, data);
+        // Only an out-of-policy call may be authorized: an in-policy call would mature instantly.
+        uint48 delaySeconds = m.classify(poolId_, caller, data);
         require(delaySeconds != 0, InPolicy());
 
-        // Reject re-authorizing: overwriting would silently reset the maturity clock (and veto window).
-        // This also covers an expired authorization, which {consumeAuthorization} leaves in place, so it
-        // must be cancelled before the same call can be re-authorized.
+        // Reject re-authorizing: it would silently reset the maturity clock, so cancel first.
         bytes32 id = _authId(poolId_, address(m), data);
         require(authorizedAfter[id] == 0, AlreadyAuthorized());
 
         uint48 validAfter = uint48(block.timestamp) + delaySeconds;
         authorizedAfter[id] = validAfter;
-        emit AuthorizationScheduled(poolId_, msg.sender, id, validAfter, data);
+        emit AuthorizationScheduled(poolId_, caller, id, validAfter, data);
     }
 
     /// @inheritdoc IHubRegistry
-    function cancelAuthorization(PoolId poolId_, bytes calldata data) external onlyManager(poolId_) {
+    function cancelAuthorization(PoolId poolId_, address caller, bytes calldata data) external auth {
         bytes32 id = authId(poolId_, data);
-        // Fail loud on a no-op cancel: a veto against a non-existent (already consumed, already
-        // cancelled, or mismatched calldata) authorization signals a mistake worth surfacing, and
-        // avoids writing a misleading AuthorizationCanceled entry to the audit trail.
+        // Revert on a no-op cancel rather than writing a misleading audit entry.
         require(authorizedAfter[id] != 0, Unauthorized());
         delete authorizedAfter[id];
-        emit AuthorizationCanceled(poolId_, msg.sender, id);
+        emit AuthorizationCanceled(poolId_, caller, id);
     }
 
     /// @inheritdoc IHubRegistry

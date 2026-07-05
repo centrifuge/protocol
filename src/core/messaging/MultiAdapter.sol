@@ -11,6 +11,7 @@ import {Auth} from "../../misc/Auth.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {ArrayLib} from "../../misc/libraries/ArrayLib.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 
@@ -274,11 +275,13 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(adapters_.list.length != 0, EmptyAdapterSet());
 
         bytes memory wrappedPayload = abi.encodePacked(adapters_.sessionId, payload);
-
         bytes32 payloadId = keccak256(abi.encodePacked(localCentrifugeId, centrifugeId, keccak256(wrappedPayload)));
+
+        uint256 totalCost;
         for (uint256 i = 0; i < adapters_.list.length; i++) {
-            _sendToAdapter(centrifugeId, payloadId, wrappedPayload, adapters_.list[i], gasLimit, refund);
+            totalCost += _sendToAdapter(centrifugeId, payloadId, wrappedPayload, adapters_.list[i], gasLimit, refund);
         }
+        if (msg.value > totalCost) SafeTransferLib.safeTransferETH(refund, msg.value - totalCost);
 
         return bytes32(0);
     }
@@ -290,8 +293,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
         IAdapter adapter,
         uint256 gasLimit,
         address refund
-    ) internal {
-        uint256 cost = adapter.estimate(centrifugeId, payload, gasLimit);
+    ) internal returns (uint256 cost) {
+        cost = adapter.estimate(centrifugeId, payload, gasLimit);
         bytes32 adapterData = adapter.send{value: cost}(centrifugeId, payload, gasLimit, refund);
         emit SendPayload(centrifugeId, payloadId, payload, adapter, adapterData, gasLimit, cost, refund);
     }

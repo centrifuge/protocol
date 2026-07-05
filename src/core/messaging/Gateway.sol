@@ -11,6 +11,7 @@ import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "../../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../../misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
@@ -110,8 +111,9 @@ contract Gateway is Auth, Recoverable, IGateway {
         pauseable
         onlyAuthOrManager(messageProperties.messagePoolId(batch))
     {
-        PoolId batchPoolId = messageProperties.messagePoolId(batch);
+        require(centrifugeId != localCentrifugeId, CannotBeReceivedLocally());
 
+        PoolId batchPoolId = messageProperties.messagePoolId(batch);
         uint128 failureGasReserve = messageProperties.messageFailureGasReserve();
         bytes memory remaining = batch;
         while (remaining.length > 0) {
@@ -122,6 +124,9 @@ contract Gateway is Auth, Recoverable, IGateway {
                 // Only check if batching
                 require(batchPoolId == messageProperties.messagePoolId(message), MalformedBatch());
             }
+
+            uint16 requiredSource = messageProperties.messageSourceCentrifugeId(message);
+            require(requiredSource == 0 || requiredSource == centrifugeId, SourceMismatch());
 
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
@@ -211,7 +216,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             require(gasLimit <= messageProperties.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
 
             uint256 cost = _send(centrifugeId, message, gasLimit, refund, unpaidMode, msg.value);
-            _refund(refund, msg.value - cost);
+            SafeTransferLib.safeTransferETH(refund, msg.value - cost);
         }
     }
 
@@ -234,13 +239,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         }
     }
 
-    function _refund(address refund, uint256 fuel) internal {
-        if (fuel > 0) {
-            (bool success,) = payable(refund).call{value: fuel}("");
-            require(success, CannotRefund());
-        }
-    }
-
     function _addUnpaidBatch(uint16 centrifugeId, bytes memory message, uint128 gasLimit) internal {
         bytes32 batchHash = keccak256(message);
 
@@ -260,7 +258,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         underpaid_.counter--;
 
         uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit, refund, false, msg.value);
-        _refund(refund, msg.value - cost);
+        SafeTransferLib.safeTransferETH(refund, msg.value - cost);
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
@@ -290,10 +288,10 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(address(_batcher) == address(0), CallbackWasNotLocked());
 
         if (isNested) {
-            _refund(refund, msg.value - callbackValue);
+            SafeTransferLib.safeTransferETH(refund, msg.value - callbackValue);
         } else {
             uint256 cost = _endBatching(msg.value - callbackValue, refund);
-            _refund(refund, msg.value - callbackValue - cost);
+            SafeTransferLib.safeTransferETH(refund, msg.value - callbackValue - cost);
         }
     }
 

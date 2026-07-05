@@ -18,7 +18,7 @@ import "forge-std/Test.sol";
 contract MockHubRegistry {
     bytes public lastCancelled;
 
-    function cancelAuthorization(PoolId, bytes calldata data) external {
+    function cancelAuthorization(PoolId, address, bytes calldata data) external {
         lastCancelled = data;
     }
 }
@@ -28,6 +28,10 @@ contract MockHub {
 
     constructor(IHubRegistry hubRegistry_) {
         hubRegistry = hubRegistry_;
+    }
+
+    function cancelAuthorization(PoolId poolId, bytes calldata data) external {
+        hubRegistry.cancelAuthorization(poolId, msg.sender, data);
     }
 }
 
@@ -112,6 +116,25 @@ contract SupervisorTest is Test {
         assertEq(registry.lastCancelled(), _removeSentinelCall(sentinelA));
     }
 
+    function testSentinelCanCancelOtherTargetSharingRemoveSentinelShape() public {
+        _addSentinel(sentinelA);
+        _addSentinel(sentinelB);
+
+        // A managerCall targeting a different contract (e.g. AdapterFailover.UpdateSteward) can encode a
+        // payload with the same leading-word/address-at-44 shape as RemoveSentinel(sentinelA): first word
+        // 1, address at offset 44. Without pinning the target to this Supervisor, this would be
+        // misclassified as sentinelA's own removal and block the veto.
+        address other = makeAddr("adapterFailover");
+        bytes memory inner = abi.encode(uint8(1), sentinelA, true);
+        bytes memory call = abi.encodeWithSelector(
+            IHub.managerCall.selector, POOL_A, uint16(1), other.toBytes32(), inner, uint128(0), uint256(0), address(0)
+        );
+
+        vm.prank(sentinelA);
+        supervisor.cancelAuthorization(call);
+        assertEq(registry.lastCancelled(), call);
+    }
+
     function testSentinelVetoNotBlockedByMalformedPayload() public {
         _addSentinel(sentinelA);
         _addSentinel(sentinelB);
@@ -137,6 +160,20 @@ contract SupervisorTest is Test {
         assertEq(registry.lastCancelled(), call);
     }
 
+    function testSentinelVetoNotBlockedByTruncatedManagerCallArgs() public {
+        _addSentinel(sentinelA);
+        _addSentinel(sentinelB);
+
+        // A managerCall selector with fewer than the 224 static-encoded bytes of its args would revert an
+        // unguarded abi.decode. The self-removal guard must tolerate it, not revert, or it would freeze
+        // the sentinel veto for exactly such calls.
+        bytes memory call = abi.encodeWithSelector(IHub.managerCall.selector, POOL_A, uint16(1));
+
+        vm.prank(sentinelA);
+        supervisor.cancelAuthorization(call);
+        assertEq(registry.lastCancelled(), call);
+    }
+
     // ─── sentinel management ────────────────────────────────────────────────────
 
     function testAddSentinel() public {
@@ -144,6 +181,32 @@ contract SupervisorTest is Test {
         emit ISupervisor.AddSentinel(sentinelA);
         _addSentinel(sentinelA);
 
+        assertTrue(supervisor.sentinels(sentinelA));
+        assertEq(supervisor.sentinelCount(), 1);
+    }
+
+    function testAddSentinelAlreadySentinel() public {
+        _addSentinel(sentinelA);
+
+        vm.expectRevert(ISupervisor.AlreadySentinel.selector);
+        vm.prank(envoy);
+        supervisor.fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinelA));
+    }
+
+    /// @dev Documents the accepted bootstrap gap: the very first AddSentinel authorization for a freshly
+    ///      deployed Supervisor matures with no possible veto, since no sentinel exists yet to call
+    ///      cancelAuthorization. Reviewed this session and accepted as an operational deployment concern
+    ///      (seed the first sentinel promptly), not a code fix — this test pins the current behavior.
+    function testFirstAddSentinelHasNoVetoWindow() public {
+        assertEq(supervisor.sentinelCount(), 0);
+
+        // No sentinel exists, so cancelAuthorization would revert NotSentinel for anyone who tried.
+        vm.expectRevert(ISupervisor.NotSentinel.selector);
+        vm.prank(outsider);
+        supervisor.cancelAuthorization(_removeSentinelCall(sentinelA));
+
+        // The first AddSentinel still matures and executes normally.
+        _addSentinel(sentinelA);
         assertTrue(supervisor.sentinels(sentinelA));
         assertEq(supervisor.sentinelCount(), 1);
     }
