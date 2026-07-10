@@ -29,12 +29,10 @@ enum MessageType {
     UpdateVault,
     UpdateHoldingAmount,
     UpdateShares,
-    SetMaxAssetPriceAge,
-    SetMaxSharePriceAge,
     Request,
     RequestCallback,
     SetRequestManager,
-    UntrustedContractUpdate,
+    ManagerCallFromSpoke,
     UpdateManager,
     ManagerCall
 }
@@ -81,18 +79,16 @@ library MessageLib {
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
         (57  << uint8(MessageType.UpdateShareHook) * 8) +
-        (107  << uint8(MessageType.InitiateTransferShares) * 8) +
+        (139  << uint8(MessageType.InitiateTransferShares) * 8) +
         (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
         (90  << uint8(MessageType.UpdateVault) * 8) +
         (107  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (75  << uint8(MessageType.UpdateShares) * 8) +
-        (49  << uint8(MessageType.SetMaxAssetPriceAge) * 8) +
-        (33  << uint8(MessageType.SetMaxSharePriceAge) * 8) +
         (57  << uint8(MessageType.Request) * 8) +
         (57  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
-        (105  << uint8(MessageType.UntrustedContractUpdate) * 8) +
+        (89  << uint8(MessageType.ManagerCallFromSpoke) * 8) +
         (43  << uint8(MessageType.UpdateManager) * 8) +
         (57  << uint8(MessageType.ManagerCall) * 8);
 
@@ -115,7 +111,7 @@ library MessageLib {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.ManagerCall)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
+        } else if (kind == uint8(MessageType.ManagerCallFromSpoke)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
@@ -159,7 +155,7 @@ library MessageLib {
                     && kind != MessageType.UpdateHoldingAmount
                     && kind != MessageType.UpdateShares
                     && kind != MessageType.Request
-                    && kind != MessageType.UntrustedContractUpdate)
+                    && kind != MessageType.ManagerCallFromSpoke)
         ) {
             uint16 hub = messagePoolId(message).centrifugeId();
             // No real pool has centrifugeId 0 (unlike an asset's home, which is legitimately 0 for
@@ -212,8 +208,8 @@ library MessageLib {
             return message.toUint128(25);
         } else if (kind == uint8(MessageType.ManagerCall)) {
             return message.toUint128(41);
-        } else if (kind == uint8(MessageType.UntrustedContractUpdate)) {
-            return message.toUint128(89);
+        } else if (kind == uint8(MessageType.ManagerCallFromSpoke)) {
+            return message.toUint128(73);
         } else if (kind == uint8(MessageType.Request)) {
             return message.toUint128(41);
         } else if (kind == uint8(MessageType.RequestCallback)) {
@@ -481,6 +477,8 @@ library MessageLib {
         uint128 amount;
         uint128 remoteExtraGasLimit;
         uint128 extraGasLimit;
+        // The originator of the transfer (the real sender), forwarded to the destination-side bridging hook.
+        bytes32 sender;
     }
 
     function deserializeInitiateTransferShares(bytes memory data)
@@ -496,7 +494,8 @@ library MessageLib {
             receiver: data.toBytes32(27),
             amount: data.toUint128(59),
             remoteExtraGasLimit: data.toUint128(75),
-            extraGasLimit: data.toUint128(91)
+            extraGasLimit: data.toUint128(91),
+            sender: data.toBytes32(107)
         });
     }
 
@@ -509,7 +508,8 @@ library MessageLib {
             t.receiver,
             t.amount,
             t.remoteExtraGasLimit,
-            t.extraGasLimit
+            t.extraGasLimit,
+            t.sender
         );
     }
 
@@ -602,40 +602,33 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UntrustedContractUpdate
+    //    ManagerCallFromSpoke
     //---------------------------------------
 
-    struct UntrustedContractUpdate {
+    struct ManagerCallFromSpoke {
         uint64 poolId;
-        bytes16 scId;
         bytes32 target;
         bytes32 sender;
         uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
-    function deserializeUntrustedContractUpdate(bytes memory data)
-        internal
-        pure
-        returns (UntrustedContractUpdate memory)
-    {
-        require(messageType(data) == MessageType.UntrustedContractUpdate, UnknownMessageType());
-        uint16 payloadLength = data.toUint16(105);
-        return UntrustedContractUpdate({
+    function deserializeManagerCallFromSpoke(bytes memory data) internal pure returns (ManagerCallFromSpoke memory) {
+        require(messageType(data) == MessageType.ManagerCallFromSpoke, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(89);
+        return ManagerCallFromSpoke({
             poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            target: data.toBytes32(25),
-            sender: data.toBytes32(57),
-            extraGasLimit: data.toUint128(89),
-            payload: data.slice(107, payloadLength)
+            target: data.toBytes32(9),
+            sender: data.toBytes32(41),
+            extraGasLimit: data.toUint128(73),
+            payload: data.slice(91, payloadLength)
         });
     }
 
-    function serialize(UntrustedContractUpdate memory t) internal pure returns (bytes memory) {
+    function serialize(ManagerCallFromSpoke memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UntrustedContractUpdate,
+            MessageType.ManagerCallFromSpoke,
             t.poolId,
-            t.scId,
             t.target,
             t.sender,
             t.extraGasLimit,
@@ -851,50 +844,6 @@ library MessageLib {
             t.nonce,
             t.extraGasLimit
         );
-    }
-
-    //---------------------------------------
-    //   SetMaxAssetPriceAge
-    //---------------------------------------
-
-    struct SetMaxAssetPriceAge {
-        uint64 poolId;
-        bytes16 scId;
-        uint128 assetId;
-        uint64 maxPriceAge;
-    }
-
-    function deserializeSetMaxAssetPriceAge(bytes memory data) internal pure returns (SetMaxAssetPriceAge memory) {
-        require(messageType(data) == MessageType.SetMaxAssetPriceAge, UnknownMessageType());
-        return SetMaxAssetPriceAge({
-            poolId: data.toUint64(1),
-            scId: data.toBytes16(9),
-            assetId: data.toUint128(25),
-            maxPriceAge: data.toUint64(41)
-        });
-    }
-
-    function serialize(SetMaxAssetPriceAge memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetMaxAssetPriceAge, t.poolId, t.scId, t.assetId, t.maxPriceAge);
-    }
-
-    //---------------------------------------
-    //   SetMaxSharePriceAge
-    //---------------------------------------
-
-    struct SetMaxSharePriceAge {
-        uint64 poolId;
-        bytes16 scId;
-        uint64 maxPriceAge;
-    }
-
-    function deserializeSetMaxSharePriceAge(bytes memory data) internal pure returns (SetMaxSharePriceAge memory) {
-        require(messageType(data) == MessageType.SetMaxSharePriceAge, UnknownMessageType());
-        return SetMaxSharePriceAge({poolId: data.toUint64(1), scId: data.toBytes16(9), maxPriceAge: data.toUint64(25)});
-    }
-
-    function serialize(SetMaxSharePriceAge memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetMaxSharePriceAge, t.poolId, t.scId, t.maxPriceAge);
     }
 
     //---------------------------------------

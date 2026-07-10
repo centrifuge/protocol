@@ -9,9 +9,12 @@ import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
+import {MessageLib, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {IMessageProcessor} from "../../src/core/messaging/interfaces/IMessageProcessor.sol";
-import {IBalanceSheetGatewayHandler} from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
-import {MessageType, MessageLib, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {
+    ISpokeGatewayHandler,
+    IBalanceSheetGatewayHandler
+} from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
 
 import "forge-std/Test.sol";
 
@@ -67,7 +70,7 @@ contract TestMessageSourceClassification is Test {
     function _cases() internal view returns (Case[] memory cases) {
         uint64 p = poolId.raw();
 
-        cases = new Case[](23);
+        cases = new Case[](21);
 
         // Hub->spoke: only valid coming from the pool's home chain.
         cases[0] = Case(
@@ -137,34 +140,24 @@ contract TestMessageSourceClassification is Test {
             HOME_CHAIN
         );
         cases[10] = Case(
-            "SetMaxAssetPriceAge",
-            MessageLib.SetMaxAssetPriceAge({poolId: p, scId: bytes16("sc"), assetId: 1, maxPriceAge: 0}).serialize(),
-            HOME_CHAIN
-        );
-        cases[11] = Case(
-            "SetMaxSharePriceAge",
-            MessageLib.SetMaxSharePriceAge({poolId: p, scId: bytes16("sc"), maxPriceAge: 0}).serialize(),
-            HOME_CHAIN
-        );
-        cases[12] = Case(
             "RequestCallback",
             MessageLib.RequestCallback({
                     poolId: p, scId: bytes16("sc"), assetId: 1, extraGasLimit: 0, payload: bytes("")
                 }).serialize(),
             HOME_CHAIN
         );
-        cases[13] = Case(
+        cases[11] = Case(
             "SetRequestManager",
             MessageLib.SetRequestManager({poolId: p, manager: bytes32("manager")}).serialize(),
             HOME_CHAIN
         );
-        cases[14] = Case(
+        cases[12] = Case(
             "ManagerCall",
             MessageLib.ManagerCall({poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")})
                 .serialize(),
             HOME_CHAIN
         );
-        cases[15] = Case(
+        cases[13] = Case(
             "UpdateManager",
             MessageLib.UpdateManager({
                     poolId: p, kind: uint8(ManagerKind.Adapter), who: bytes32("manager"), canManage: true
@@ -174,7 +167,7 @@ contract TestMessageSourceClassification is Test {
 
         // Spoke->hub (the exclusion list in messageSourceCentrifugeId): unrestricted (0), except
         // UpdateHoldingAmount/Request which carry their own asset-origin check.
-        cases[16] = Case(
+        cases[14] = Case(
             "InitiateTransferShares",
             MessageLib.InitiateTransferShares({
                     poolId: p,
@@ -183,11 +176,12 @@ contract TestMessageSourceClassification is Test {
                     receiver: bytes32("receiver"),
                     amount: 1,
                     remoteExtraGasLimit: 0,
-                    extraGasLimit: 0
+                    extraGasLimit: 0,
+                    sender: bytes32("sender")
                 }).serialize(),
             0
         );
-        cases[17] = Case(
+        cases[15] = Case(
             "UpdateHoldingAmount",
             MessageLib.UpdateHoldingAmount({
                     poolId: p,
@@ -203,7 +197,7 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             FOREIGN_CHAIN
         );
-        cases[18] = Case(
+        cases[16] = Case(
             "UpdateShares",
             MessageLib.UpdateShares({
                     poolId: p,
@@ -217,7 +211,7 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             0
         );
-        cases[19] = Case(
+        cases[17] = Case(
             "Request",
             MessageLib.Request({
                     poolId: p,
@@ -228,11 +222,10 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             FOREIGN_CHAIN
         );
-        cases[20] = Case(
-            "UntrustedContractUpdate",
-            MessageLib.UntrustedContractUpdate({
+        cases[18] = Case(
+            "ManagerCallFromSpoke",
+            MessageLib.ManagerCallFromSpoke({
                     poolId: p,
-                    scId: bytes16("sc"),
                     target: bytes32("target"),
                     sender: bytes32("sender"),
                     extraGasLimit: 0,
@@ -242,12 +235,12 @@ contract TestMessageSourceClassification is Test {
         );
 
         // Mainnet-only messages: must come from centrifugeId=1.
-        cases[21] = Case(
+        cases[19] = Case(
             "ScheduleUpgrade",
             MessageLib.ScheduleUpgrade({target: bytes32(bytes20(address(1)))}).serialize(),
             HOME_CHAIN
         );
-        cases[22] = Case(
+        cases[20] = Case(
             "CancelUpgrade", MessageLib.CancelUpgrade({target: bytes32(bytes20(address(1)))}).serialize(), HOME_CHAIN
         );
     }
@@ -299,12 +292,12 @@ contract TestFile is TestCommon {
         assertEq(address(processor.gateway()), address(23));
     }
 
-    function testFileSpoke() public {
+    function testFileSpokeHandler() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IMessageProcessor.File("spoke", address(23));
-        processor.file("spoke", address(23));
-        assertEq(address(processor.spoke()), address(23));
+        emit IMessageProcessor.File("spokeHandler", address(23));
+        processor.file("spokeHandler", address(23));
+        assertEq(address(processor.spokeHandler()), address(23));
     }
 
     function testFileBalanceSheet() public {
@@ -315,26 +308,18 @@ contract TestFile is TestCommon {
         assertEq(address(processor.balanceSheet()), address(23));
     }
 
-    function testFileVaultRegistry() public {
+    function testFileEnvoy() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IMessageProcessor.File("vaultRegistry", address(23));
-        processor.file("vaultRegistry", address(23));
-        assertEq(address(processor.vaultRegistry()), address(23));
-    }
-
-    function testFileContractUpdater() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageProcessor.File("contractUpdater", address(23));
-        processor.file("contractUpdater", address(23));
-        assertEq(address(processor.contractUpdater()), address(23));
+        emit IMessageProcessor.File("envoy", address(23));
+        processor.file("envoy", address(23));
+        assertEq(address(processor.envoy()), address(23));
     }
 }
 
-/// @dev Source/self-origin classification (CannotBeReceivedLocally, SourceMismatch) now lives in Gateway,
-///      enforced before a message ever reaches MessageProcessor - see Gateway.t.sol. This only checks
-///      MessageProcessor's own dispatch to MultiAdapter.setAdapters.
+/// @dev Source/self-origin classification now lives in Gateway, enforced before a message ever reaches
+///      MessageProcessor - see Gateway.t.sol. This only checks MessageProcessor's own dispatch to
+///      MultiAdapter.setAdapters.
 contract TestHandleSetPoolAdapters is TestCommon {
     using MessageLib for *;
 
@@ -367,6 +352,7 @@ contract TestHandleUpdateManager is TestCommon {
     address multiAdapter = makeAddr("multiAdapter");
     address balanceSheet = makeAddr("balanceSheet");
     address gateway = makeAddr("gateway");
+    address spokeHandler = makeAddr("spokeHandler");
     PoolId poolId = newPoolId(HUB_ID, 1);
     address who = makeAddr("who");
 
@@ -375,6 +361,7 @@ contract TestHandleUpdateManager is TestCommon {
         processor.file("multiAdapter", multiAdapter);
         processor.file("balanceSheet", balanceSheet);
         processor.file("gateway", gateway);
+        processor.file("spokeHandler", spokeHandler);
         vm.stopPrank();
     }
 
@@ -413,17 +400,21 @@ contract TestHandleUpdateManager is TestCommon {
         processor.handle(HUB_ID, _message(ManagerKind.Gateway));
     }
 
-    function testErrInvalidMessageForSpokeKind() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(IMessageProcessor.InvalidMessage.selector, uint8(MessageType.UpdateManager))
+    function testDispatchesToSpokeManager() public {
+        _wireTargets();
+        vm.mockCall(spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateManager.selector), "");
+        vm.expectCall(
+            spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateManager.selector, poolId, who, true)
         );
         vm.prank(AUTH);
         processor.handle(HUB_ID, _message(ManagerKind.Spoke));
     }
 
-    function testErrInvalidMessageForBridgerKind() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(IMessageProcessor.InvalidMessage.selector, uint8(MessageType.UpdateManager))
+    function testDispatchesToSpokeBridger() public {
+        _wireTargets();
+        vm.mockCall(spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateBridger.selector), "");
+        vm.expectCall(
+            spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateBridger.selector, poolId, who, true)
         );
         vm.prank(AUTH);
         processor.handle(HUB_ID, _message(ManagerKind.Bridger));

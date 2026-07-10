@@ -28,7 +28,7 @@ import {
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
@@ -62,7 +62,7 @@ contract SyncDepositTestHelper is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeV3_1_0.vaultDetails(vault);
 
         vm.expectEmit();
         emit IBalanceSheet.Issue(poolId, scId, address(0), self, pricePoolPerShare, shares);
@@ -138,7 +138,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        IVault asyncVault_ = vaultRegistry.vault(
+        IVault asyncVault_ = spokeV3_1_0.vault(
             syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager()
         );
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
@@ -201,7 +201,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         asyncVault.requestRedeem(shareBalance, self, self);
         assertEq(asyncVault.pendingRedeemRequest(0, self), shareBalance);
 
-        vaultRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
+        spokeRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 

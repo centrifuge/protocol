@@ -14,13 +14,18 @@ import {ITransferHook, HookData} from "../../core/spoke/interfaces/ITransferHook
 contract FreezeOnly is BaseTransferHook {
     constructor(
         address root_,
+        address envoy_,
         address spoke_,
         address balanceSheet_,
         address crosschainSource_,
         address deployer,
         address poolEscrowProvider_,
         address poolEscrow_
-    ) BaseTransferHook(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
+    )
+        BaseTransferHook(
+            root_, envoy_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
+        )
+    {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(address from, address to, uint256, HookData calldata hookData)

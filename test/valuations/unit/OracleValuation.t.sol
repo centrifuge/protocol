@@ -9,7 +9,6 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {IManagerCallFromSpoke} from "../../../src/core/utils/interfaces/IManagerCall.sol";
 
 import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
 import {IOracleValuation} from "../../../src/valuations/interfaces/IOracleValuation.sol";
@@ -33,7 +32,6 @@ contract OracleValuationTest is Test {
 
     address hub = address(new IsContract());
     address hubRegistry = address(new IsContract());
-    address contractUpdater = address(new IsContract());
     address envoy = makeAddr("envoy");
     address feeder = makeAddr("feeder");
     address notFeeder = makeAddr("notFeeder");
@@ -61,7 +59,7 @@ contract OracleValuationTest is Test {
     }
 
     function _deployValuation() internal {
-        valuation = new OracleValuation(IHub(hub), IHubRegistry(hubRegistry), contractUpdater, envoy);
+        valuation = new OracleValuation(IHub(hub), IHubRegistry(hubRegistry), envoy);
     }
 
     /// @dev Drives feeder management through `fromHub` as the Envoy would.
@@ -84,7 +82,6 @@ contract OracleValuationConstructorTests is OracleValuationTest {
     function testConstructorSetsImmutables() public view {
         assertEq(address(valuation.hub()), hub);
         assertEq(address(valuation.hubRegistry()), hubRegistry);
-        assertEq(valuation.contractUpdater(), contractUpdater);
         assertEq(valuation.envoy(), envoy);
     }
 }
@@ -120,18 +117,6 @@ contract OracleValuationUpdateFeederTests is OracleValuationTest {
         vm.expectRevert(IOracleValuation.UnexpectedValue.selector);
         vm.prank(envoy);
         valuation.fromHub{value: 1}(POOL_A, abi.encode(uint16(0), feeder.toBytes32(), true));
-    }
-
-    /// @dev Direction boundary: OracleValuation is a hub-only target — it implements
-    ///      `IManagerCallFromHub.fromHub` ONLY, never `IManagerCallFromSpoke.fromSpoke`. So the untrusted
-    ///      spoke path (`Envoy.callFromSpoke` -> `target.fromSpoke`) can never reach it (nonexistent
-    ///      selector), which would otherwise let a spoke actor self-grant as a feeder. Freezes the guarantee
-    ///      on the real contract; adding `fromSpoke` later trips this.
-    function testFromSpokeUnreachable() public {
-        vm.prank(envoy);
-        vm.expectRevert();
-        IManagerCallFromSpoke(address(valuation))
-            .fromSpoke(POOL_A, abi.encode(uint16(0), feeder.toBytes32(), true), 0, bytes32(0));
     }
 
     function testUpdateFeederMultipleFeeders() public {
@@ -412,7 +397,7 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
     }
 }
 
-contract OracleValuationUntrustedCallTests is OracleValuationTest {
+contract OracleValuationFromSpokeTests is OracleValuationTest {
     using CastLib for *;
 
     uint16 constant REMOTE_CENTRIFUGE_ID = 5;
@@ -424,43 +409,68 @@ contract OracleValuationUntrustedCallTests is OracleValuationTest {
         _updateFeeder(POOL_A, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32(), true);
     }
 
-    function testUntrustedCallSuccess() public {
+    /// @dev Direction boundary: `fromSpoke` only performs feeder-validated price updates; feeder management
+    ///      is reachable via `fromHub` (hub-supervised) exclusively. `fromSpoke` never touches the feeder
+    ///      mapping, so a spoke actor cannot self-grant as a feeder even though the selector now exists.
+    function testFromSpokeCannotManageFeeders() public {
+        bytes32 spokeActor = makeAddr("spokeActor").toBytes32();
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18));
+
+        // A non-feeder spoke actor cannot use fromSpoke (it is not registered as a feeder).
+        vm.prank(envoy);
+        vm.expectRevert(IOracleValuation.NotFeeder.selector);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, spokeActor);
+
+        // The feeder mapping is untouched: fromSpoke has no path to grant feeder status.
+        assertEq(valuation.feeder(POOL_A, REMOTE_CENTRIFUGE_ID, spokeActor), false);
+    }
+
+    function testFromSpokeUnexpectedValue() public {
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18));
+
+        vm.deal(envoy, 1 ether);
+        vm.expectRevert(IOracleValuation.UnexpectedValue.selector);
+        vm.prank(envoy);
+        valuation.fromSpoke{value: 1}(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+    }
+
+    function testFromSpokeSuccess() public {
         D18 price = d18(1.5e18);
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), price.raw());
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), price.raw());
 
         vm.expectEmit(true, true, true, true);
         emit IOracleValuation.UpdatePrice(POOL_A, SC_1, C6, price);
 
-        vm.prank(contractUpdater);
-        valuation.untrustedCall(POOL_A, SC_1, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
 
         (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), price.raw());
         assertTrue(isValid);
     }
 
-    function testUntrustedCallNotContractUpdater() public {
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), uint128(1e18));
+    function testFromSpokeNotEnvoy() public {
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18));
 
-        vm.expectRevert(IOracleValuation.NotAuthorized.selector);
+        vm.expectRevert(IOracleValuation.NotEnvoy.selector);
         vm.prank(makeAddr("random"));
-        valuation.untrustedCall(POOL_A, SC_1, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
     }
 
-    function testUntrustedCallNotFeeder() public {
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), uint128(1e18));
+    function testFromSpokeNotFeeder() public {
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18));
 
         vm.expectRevert(IOracleValuation.NotFeeder.selector);
-        vm.prank(contractUpdater);
-        valuation.untrustedCall(POOL_A, SC_1, payload, REMOTE_CENTRIFUGE_ID, notFeeder.toBytes32());
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, notFeeder.toBytes32());
     }
 
-    function testUntrustedCallWrongCentrifugeId() public {
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), uint128(1e18));
+    function testFromSpokeWrongCentrifugeId() public {
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18));
 
         // Feeder is registered for REMOTE_CENTRIFUGE_ID, not 999
         vm.expectRevert(IOracleValuation.NotFeeder.selector);
-        vm.prank(contractUpdater);
-        valuation.untrustedCall(POOL_A, SC_1, payload, 999, remoteFeeder.toBytes32());
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, 999, remoteFeeder.toBytes32());
     }
 }

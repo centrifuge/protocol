@@ -68,7 +68,7 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHandler.initiateTransferShares{value: COST}(
-            CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), 0, 0, REFUND
+            CHAIN_A, CHAIN_B, PoolId.wrap(0), ShareClassId.wrap(0), bytes32(""), bytes32(""), 0, 0, REFUND
         );
 
         vm.stopPrank();
@@ -167,7 +167,7 @@ contract TestInitiateTransferSharesHook is TestCommon {
     function testHookIsCalledAndResultForwarded() public {
         vm.prank(AUTH);
         hubHandler.initiateTransferShares{value: COST}(
-            CHAIN_A, CHAIN_B, POOL_A, SC_A, bytes32("receiver"), 100, 0, REFUND
+            CHAIN_A, CHAIN_B, POOL_A, SC_A, bytes32("sender"), bytes32("receiver"), 100, 0, REFUND
         );
     }
 }

@@ -7,6 +7,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ITrustedContractUpdate} from "../../../../src/core/utils/interfaces/IContractUpdate.sol";
 
 import {IOnchainPM} from "../../../../src/managers/spoke/interfaces/IOnchainPM.sol";
@@ -1261,7 +1262,9 @@ contract OnchainPMFactoryTest is Test {
 
 contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     function testNewOnchainPMSuccess() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+        );
 
         IOnchainPM exec = factory.newOnchainPM(POOL_A);
 
@@ -1270,14 +1273,18 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     }
 
     function testNewOnchainPMInvalidPoolId() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_B), abi.encode(false));
+        vm.mockCall(
+            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_B), abi.encode(false)
+        );
 
         vm.expectRevert(IOnchainPMFactory.InvalidPoolId.selector);
         factory.newOnchainPM(POOL_B);
     }
 
     function testNewOnchainPMAlreadyDeployedReverts() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+        );
 
         factory.newOnchainPM(POOL_A);
 
@@ -1287,7 +1294,9 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     }
 
     function testNewOnchainPMEventEmission() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+        );
 
         vm.recordLogs();
         IOnchainPM exec = factory.newOnchainPM(POOL_A);
@@ -1300,7 +1309,9 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     }
 
     function testGetAddressMatchesDeploy() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+        );
 
         address predicted = factory.getAddress(POOL_A);
         IOnchainPM deployed = factory.newOnchainPM(POOL_A);

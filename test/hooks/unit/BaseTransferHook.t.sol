@@ -61,13 +61,18 @@ contract TestableBaseTransferHook is BaseTransferHook {
 
     constructor(
         address root_,
+        address envoy_,
         address spoke_,
         address balanceSheet_,
         address crosschainSource_,
         address deployer,
         address poolEscrowProvider_,
         address poolEscrow_
-    ) BaseTransferHook(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
+    )
+        BaseTransferHook(
+            root_, envoy_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
+        )
+    {}
 
     function checkERC20Transfer(
         address from,
@@ -102,6 +107,7 @@ contract BaseTransferHookTestBase is Test {
     MockPoolEscrowProvider mockPoolEscrowProvider;
 
     address deployer = makeAddr("deployer");
+    address envoy = makeAddr("envoy");
     address crosschainSource = makeAddr("crosschainSource");
     address balanceSheet = makeAddr("balanceSheet");
     address poolEscrow;
@@ -134,6 +140,7 @@ contract BaseTransferHookTestBase is Test {
         vm.prank(deployer);
         hook = new TestableBaseTransferHook(
             address(mockRoot),
+            envoy,
             address(mockSpoke),
             balanceSheet,
             crosschainSource,
@@ -208,6 +215,7 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
         vm.prank(deployer);
         new TestableBaseTransferHook(
             address(mockRoot),
+            envoy,
             address(mockSpoke),
             balanceSheet,
             balanceSheet, // Same as balanceSheet - should fail
@@ -613,14 +621,14 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
 
     function testUnknownTrustedCall() public {
         // Create payload with invalid enum value
-        bytes memory invalidPayload = abi.encode(uint8(255), bytes32(0), false);
+        bytes memory invalidPayload = abi.encode(SC_1.raw(), uint8(255), bytes32(0), false);
 
         vm.expectRevert(IBaseTransferHook.UnknownTrustedCall.selector);
-        vm.prank(deployer);
-        hook.trustedCall(POOL_A, SC_1, invalidPayload);
+        vm.prank(envoy);
+        hook.fromHub(POOL_A, invalidPayload);
     }
 
-    function testTrustedCallUpdateManagerSuccess() public {
+    function testFromHubUpdateManagerSuccess() public {
         // Mock the share token to exist
         vm.mockCall(
             address(mockSpoke),
@@ -629,18 +637,19 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         );
 
         address managerAddress = makeAddr("manager");
-        bytes memory payload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
 
-        vm.prank(deployer);
+        vm.prank(envoy);
         vm.expectEmit();
         emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, true);
-        hook.trustedCall(POOL_A, SC_1, payload);
+        hook.fromHub(POOL_A, payload);
 
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
     }
 
-    function testTrustedCallUpdateManagerDisable() public {
+    function testFromHubUpdateManagerDisable() public {
         // Mock the share token to exist
         vm.mockCall(
             address(mockSpoke),
@@ -651,25 +660,27 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         address managerAddress = makeAddr("manager");
 
         // First enable
-        bytes memory enablePayload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
-        vm.prank(deployer);
+        bytes memory enablePayload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
+        vm.prank(envoy);
         vm.expectEmit();
         emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, true);
-        hook.trustedCall(POOL_A, SC_1, enablePayload);
+        hook.fromHub(POOL_A, enablePayload);
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
 
         // Then disable
-        bytes memory disablePayload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), false);
-        vm.prank(deployer);
+        bytes memory disablePayload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), false
+        );
+        vm.prank(envoy);
         vm.expectEmit();
         emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, false);
-        hook.trustedCall(POOL_A, SC_1, disablePayload);
+        hook.fromHub(POOL_A, disablePayload);
         assertFalse(hook.manager(address(mockShareToken), managerAddress));
     }
 
-    function testTrustedCallShareTokenDoesNotExist() public {
+    function testFromHubShareTokenDoesNotExist() public {
         // Mock the share token to NOT exist (return address(0))
         vm.mockCall(
             address(mockSpoke),
@@ -678,28 +689,24 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         );
 
         address managerAddress = makeAddr("manager");
-        bytes memory payload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
-
-        vm.expectRevert(BaseTransferHook.ShareTokenDoesNotExist.selector);
-        vm.prank(deployer);
-        hook.trustedCall(POOL_A, SC_1, payload);
-    }
-
-    function testTrustedCallUnauthorized() public {
-        vm.mockCall(
-            address(mockSpoke),
-            abi.encodeWithSelector(bytes4(keccak256("shareToken(uint64,bytes16)")), POOL_A.raw(), SC_1.raw()),
-            abi.encode(address(mockShareToken))
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
         );
 
-        address managerAddress = makeAddr("manager");
-        bytes memory payload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
+        vm.expectRevert(BaseTransferHook.ShareTokenDoesNotExist.selector);
+        vm.prank(envoy);
+        hook.fromHub(POOL_A, payload);
+    }
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(user1); // Not authorized
-        hook.trustedCall(POOL_A, SC_1, payload);
+    function testFromHubNotEnvoy() public {
+        address managerAddress = makeAddr("manager");
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
+
+        vm.expectRevert(IBaseTransferHook.NotEnvoy.selector);
+        vm.prank(user1); // Not the envoy
+        hook.fromHub(POOL_A, payload);
     }
 }
 
@@ -737,6 +744,7 @@ contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase 
         vm.prank(deployer);
         hookWithFastPath = new TestableBaseTransferHook(
             address(mockRoot),
+            envoy,
             address(mockSpoke),
             balanceSheet,
             crosschainSource,

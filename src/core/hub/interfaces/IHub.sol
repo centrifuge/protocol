@@ -68,10 +68,6 @@ interface IHub is IBatchedMulticall {
     );
     event SetBridgingHook(PoolId indexed poolId, address hook);
     event ManagerCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 target, bytes payload);
-    event SetMaxAssetPriceAge(PoolId indexed poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge);
-    event SetMaxSharePriceAge(
-        uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, uint64 maxPriceAge
-    );
     event ForwardTransferShares(
         uint16 indexed fromCentrifugeId,
         uint16 indexed toCentrifugeId,
@@ -474,36 +470,12 @@ interface IHub is IBatchedMulticall {
     /// @param refund Address to receive excess gas refund
     function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
 
-    /// @notice Set the max price age per share of a share class
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param maxPriceAge Timestamp until the price become invalid
-    /// @param refund Address to receive excess gas refund
-    function setMaxSharePriceAge(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable;
-
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / ASSET_UNIT
     /// @param poolId The pool identifier
     /// @param scId Identifier of the share class
     /// @param assetId Identifier of the asset
     /// @param refund Address to receive excess gas refund
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable;
-
-    /// @notice Set the max price age per asset of a share class
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id
-    /// @param maxPriceAge Timestamp until the price become invalid
-    /// @param refund Address to receive excess gas refund
-    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable;
 
     //----------------------------------------------------------------------------------------------
     // Manager: Envoy calls

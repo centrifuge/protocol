@@ -39,9 +39,13 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         hub.notifyShareClass{value: 0}(POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(0), FM);
         vm.stopPrank();
 
-        shareToken = IShareToken(spoke.shareToken(POOL_A, SC_1));
+        shareToken = IShareToken(spokeRegistry.shareToken(POOL_A, SC_1));
         vm.prank(address(balanceSheet));
         shareToken.mint(investor, 3 * AMOUNT);
+
+        // Allow the investor to initiate cross-chain share transfers
+        vm.prank(address(spokeHandler));
+        spokeRegistry.updateBridger(POOL_A, investor, true);
 
         hook = new BridgeCircuitBreaker(address(this), address(hubHandler), address(circuitBreakerGuard));
 
@@ -70,7 +74,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         bytes32 receiver = bytes32(uint256(uint160(makeAddr("receiver"))));
         vm.prank(investor);
         vm.expectRevert(IBridgeCircuitBreaker.Paused.selector);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), 3 * AMOUNT);
     }
 
@@ -93,7 +97,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         bytes32 receiver = bytes32(uint256(uint160(makeAddr("receiver"))));
 
         vm.prank(investor);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), 2 * AMOUNT);
 
         vm.prank(investor);
@@ -106,13 +110,13 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
                 uint256(window)
             )
         );
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), 2 * AMOUNT);
 
         // After window expires, the rolling window resets and a new transfer succeeds
         vm.warp(block.timestamp + window + 1);
         vm.prank(investor);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), AMOUNT);
     }
 
@@ -121,7 +125,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         uint128 rateMax = AMOUNT - 1;
         uint32 window = 3600;
         bytes32 receiver = bytes32(uint256(uint160(makeAddr("receiver"))));
-        bytes32 sender_ = bytes32(0);
+        bytes32 sender_ = bytes32(bytes20(investor));
 
         _fromHub(
             abi.encode(
@@ -135,7 +139,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
 
         vm.prank(investor);
         vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), 3 * AMOUNT);
 
         _fromHub(
@@ -160,17 +164,17 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         );
 
         vm.prank(investor);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), 2 * AMOUNT);
 
         vm.prank(investor);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), AMOUNT);
 
         // No authorizations left — hook blocks again, shares returned
         vm.prank(investor);
         vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), AMOUNT);
     }
 
@@ -179,7 +183,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         uint128 rateMax = AMOUNT - 1;
         uint32 window = 3600;
         bytes32 receiver = bytes32(uint256(uint160(makeAddr("receiver"))));
-        bytes32 sender_ = bytes32(0);
+        bytes32 sender_ = bytes32(bytes20(investor));
 
         _fromHub(
             abi.encode(
@@ -215,7 +219,53 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
 
         vm.prank(investor);
         vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
-        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, AMOUNT, 0);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
         assertEq(shareToken.balanceOf(investor), 3 * AMOUNT);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAuthorizationIsKeyedPerSender() public {
+        address investor2 = makeAddr("investor2");
+        vm.prank(address(balanceSheet));
+        shareToken.mint(investor2, AMOUNT);
+        vm.prank(address(spokeHandler));
+        spokeRegistry.updateBridger(POOL_A, investor2, true);
+
+        uint128 rateMax = AMOUNT - 1;
+        uint32 window = 3600;
+        bytes32 receiver = bytes32(uint256(uint160(makeAddr("receiver"))));
+
+        _fromHub(
+            abi.encode(
+                IBridgeCircuitBreaker.ConfigKind.SetRateLimit,
+                ShareClassId.unwrap(SC_1),
+                LOCAL_CENTRIFUGE_ID,
+                rateMax,
+                window
+            )
+        );
+
+        // Authorize a large transfer for `investor` only
+        _fromHub(
+            abi.encode(
+                IBridgeCircuitBreaker.ConfigKind.AuthorizeTransfer,
+                ShareClassId.unwrap(SC_1),
+                LOCAL_CENTRIFUGE_ID,
+                bytes32(bytes20(investor)),
+                receiver,
+                AMOUNT
+            )
+        );
+
+        // `investor2` cannot consume `investor`'s authorization despite matching receiver/amount
+        vm.prank(investor2);
+        vm.expectRevert(IBridgeCircuitBreaker.TransferNotAuthorized.selector);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor2, investor2, AMOUNT, 0, 0, investor2);
+        assertEq(shareToken.balanceOf(investor2), AMOUNT);
+
+        // The authorized sender still goes through
+        vm.prank(investor);
+        spoke.crosschainTransferShares(TARGET, POOL_A, SC_1, receiver, investor, investor, AMOUNT, 0, 0, investor);
+        assertEq(shareToken.balanceOf(investor), 2 * AMOUNT);
     }
 }

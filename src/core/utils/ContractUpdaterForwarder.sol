@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ContractUpdateLib} from "./ContractUpdateLib.sol";
 import {IManagerCallFromHub} from "./interfaces/IManagerCall.sol";
+import {IContractUpdaterForwarder} from "./interfaces/IContractUpdate.sol";
 
 import {IContractUpdateGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
 
@@ -19,12 +20,9 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 ///         `trustedCall`. Reached only through the Envoy: `Hub.managerCall` addresses this contract for a
 ///         contract update, and the manifest pins this address (see {StdManifest._checkManagerCall}). The
 ///         address is deterministic (CREATE3), so the same value is the target on every chain.
-contract ContractUpdaterForwarder is IManagerCallFromHub {
+contract ContractUpdaterForwarder is IManagerCallFromHub, IContractUpdaterForwarder {
     address public immutable envoy;
     IContractUpdateGatewayHandler public immutable contractUpdater;
-
-    error NotEnvoy();
-    error UnexpectedValue();
 
     constructor(address envoy_, IContractUpdateGatewayHandler contractUpdater_) {
         envoy = envoy_;

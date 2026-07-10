@@ -7,10 +7,10 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
-import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
-import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -48,7 +48,7 @@ contract SpokeRestrictionTest is CentrifugeIntegrationTest {
 
     /// forge-config: default.isolate = true
     function testFreezeAndUnfreeze() public {
-        IShareToken shareToken = spoke.shareToken(POOL_A, SC_1);
+        IShareToken shareToken = spokeRegistry.shareToken(POOL_A, SC_1);
         uint64 validUntil = uint64(block.timestamp + 7 days);
 
         hub.updateRestriction{value: 0}(
@@ -153,19 +153,19 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
     }
 
     function _assertVaultSetup(address vaultAddress, bool isLinked) internal view {
-        IShareToken token_ = spoke.shareToken(POOL_A, SC_1);
+        IShareToken token_ = spokeRegistry.shareToken(POOL_A, SC_1);
         address linkedVault = IShareToken(token_).vault(address(asset));
 
-        assertTrue(spoke.isPoolActive(POOL_A));
+        assertTrue(spokeRegistry.isPoolActive(POOL_A));
 
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(IBaseVault(vaultAddress));
+        VaultDetails memory vaultDetails = spokeV3_1_0.vaultDetails(IBaseVault(vaultAddress));
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
         assertEq(address(asset), vaultDetails.asset, "vault asset mismatch");
         assertEq(uint256(0), vaultDetails.tokenId, "vault tokenId mismatch");
         assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {
-            assertTrue(vaultRegistry.isLinked(IBaseVault(vaultAddress)));
+            assertTrue(spokeV3_1_0.isLinked(IBaseVault(vaultAddress)));
 
             assertEq(vaultAddress, linkedVault, "vault address mismatch");
             AsyncVault vault = AsyncVault(vaultAddress);
@@ -178,13 +178,13 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
             assertEq(vault.wards(address(this)), 0);
             assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
-            assertFalse(vaultRegistry.isLinked(IBaseVault(vaultAddress)));
+            assertFalse(spokeV3_1_0.isLinked(IBaseVault(vaultAddress)));
             assertEq(linkedVault, address(0), "Share link to vault requires linkVault");
         }
     }
 
     function _assertShareSetup() internal view {
-        ShareToken shareToken = ShareToken(address(spoke.shareToken(POOL_A, SC_1)));
+        ShareToken shareToken = ShareToken(address(spokeRegistry.shareToken(POOL_A, SC_1)));
 
         assertEq(shareToken.wards(address(spoke)), 1);
         assertEq(shareToken.wards(address(this)), 0);
@@ -201,12 +201,18 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         _registerErc20Asset(assetDecimals_);
 
         vm.prank(address(messageProcessor));
-        spoke.setRequestManager(POOL_A, asyncRequestManager);
+        spokeHandler.setRequestManager(POOL_A, asyncRequestManager);
+
+        // Deploy and link via SpokeHandler (the only entry point for factory calls), then unlink to reach
+        // the deployed-but-unlinked state (there is no standalone deploy-without-link operation).
+        vm.prank(address(messageProcessor));
+        spokeHandler.updateVault(POOL_A, SC_1, assetId, address(asyncVaultFactory), VaultUpdateKind.DeployAndLink);
+        address vaultAddr = IShareToken(spokeRegistry.shareToken(POOL_A, SC_1)).vault(address(asset));
 
         vm.prank(address(messageProcessor));
-        IVault vault = vaultRegistry.deployVault(POOL_A, SC_1, assetId, asyncVaultFactory);
+        spokeHandler.updateVault(POOL_A, SC_1, assetId, vaultAddr, VaultUpdateKind.Unlink);
 
-        _assertVaultSetup(address(vault), false);
+        _assertVaultSetup(vaultAddr, false);
         _assertShareSetup();
     }
 
@@ -217,15 +223,14 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         _registerErc20Asset(assetDecimals_);
 
         vm.prank(address(messageProcessor));
-        spoke.setRequestManager(POOL_A, asyncRequestManager);
+        spokeHandler.setRequestManager(POOL_A, asyncRequestManager);
 
+        // Deploy and link via SpokeHandler (the only entry point for factory calls)
         vm.prank(address(messageProcessor));
-        IVault vault = vaultRegistry.deployVault(POOL_A, SC_1, assetId, asyncVaultFactory);
+        spokeHandler.updateVault(POOL_A, SC_1, assetId, address(asyncVaultFactory), VaultUpdateKind.DeployAndLink);
+        address vaultAddr = IShareToken(spokeRegistry.shareToken(POOL_A, SC_1)).vault(address(asset));
 
-        vm.prank(address(messageProcessor));
-        vaultRegistry.linkVault(POOL_A, SC_1, assetId, vault);
-
-        _assertVaultSetup(address(vault), true);
+        _assertVaultSetup(vaultAddr, true);
         _assertShareSetup();
     }
 }

@@ -103,16 +103,6 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeSetMaxAssetPriceAge() public {
-        MessageLib.deserializeSetMaxAssetPriceAge(_prepareFor());
-    }
-
-    /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeSetMaxSharePriceAge() public {
-        MessageLib.deserializeSetMaxSharePriceAge(_prepareFor());
-    }
-
-    /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeRequest() public {
         MessageLib.deserializeRequest(_prepareFor());
     }
@@ -128,8 +118,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeUntrustedContractUpdate() public {
-        MessageLib.deserializeUntrustedContractUpdate(_prepareFor());
+    function testDeserializeManagerCallFromSpoke() public {
+        MessageLib.deserializeManagerCallFromSpoke(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -309,7 +299,8 @@ contract TestMessageLibIdentities is Test {
         bytes32 receiver,
         uint128 amount,
         uint128 remoteExtraGasLimit,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        bytes32 sender
     ) public pure {
         MessageLib.InitiateTransferShares memory a = MessageLib.InitiateTransferShares({
             poolId: poolId,
@@ -318,7 +309,8 @@ contract TestMessageLibIdentities is Test {
             receiver: receiver,
             amount: amount,
             remoteExtraGasLimit: remoteExtraGasLimit,
-            extraGasLimit: extraGasLimit
+            extraGasLimit: extraGasLimit,
+            sender: sender
         });
         MessageLib.InitiateTransferShares memory b = MessageLib.deserializeInitiateTransferShares(a.serialize());
 
@@ -327,6 +319,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.centrifugeId, b.centrifugeId);
         assertEq(a.receiver, b.receiver);
         assertEq(a.amount, b.amount);
+        assertEq(a.sender, b.sender);
         assertEq(a.remoteExtraGasLimit, b.remoteExtraGasLimit);
         assertEq(a.extraGasLimit, b.extraGasLimit);
 
@@ -584,50 +577,19 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
     }
 
-    function testSetMaxAssetPriceAge(uint64 poolId, bytes16 scId, uint128 assetId, uint64 maxPriceAge) public pure {
-        MessageLib.SetMaxAssetPriceAge memory a =
-            MessageLib.SetMaxAssetPriceAge({poolId: poolId, scId: scId, assetId: assetId, maxPriceAge: maxPriceAge});
-        MessageLib.SetMaxAssetPriceAge memory b = MessageLib.deserializeSetMaxAssetPriceAge(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.assetId, b.assetId);
-        assertEq(a.maxPriceAge, b.maxPriceAge);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
-    }
-
-    function testSetMaxSharePriceAge(uint64 poolId, bytes16 scId, uint64 maxPriceAge) public pure {
-        MessageLib.SetMaxSharePriceAge memory a =
-            MessageLib.SetMaxSharePriceAge({poolId: poolId, scId: scId, maxPriceAge: maxPriceAge});
-        MessageLib.SetMaxSharePriceAge memory b = MessageLib.deserializeSetMaxSharePriceAge(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.maxPriceAge, b.maxPriceAge);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
-    }
-
-    function testUntrustedContractUpdate(
+    function testManagerCallFromSpoke(
         uint64 poolId,
-        bytes16 scId,
         bytes32 target,
         bytes32 sender,
         uint128 extraGasLimit,
         bytes memory payload
     ) public pure {
-        MessageLib.UntrustedContractUpdate memory a = MessageLib.UntrustedContractUpdate({
-            poolId: poolId, scId: scId, target: target, sender: sender, extraGasLimit: extraGasLimit, payload: payload
+        MessageLib.ManagerCallFromSpoke memory a = MessageLib.ManagerCallFromSpoke({
+            poolId: poolId, target: target, sender: sender, extraGasLimit: extraGasLimit, payload: payload
         });
-        MessageLib.UntrustedContractUpdate memory b = MessageLib.deserializeUntrustedContractUpdate(a.serialize());
+        MessageLib.ManagerCallFromSpoke memory b = MessageLib.deserializeManagerCallFromSpoke(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
         assertEq(a.target, b.target);
         assertEq(a.payload, b.payload);
         assertEq(a.sender, b.sender);
@@ -669,8 +631,6 @@ contract TestMessageLibSourceCentrifugeId is Test {
         expected[uint256(MessageType.ExecuteTransferShares)] = 1;
         expected[uint256(MessageType.UpdateRestriction)] = 1;
         expected[uint256(MessageType.UpdateVault)] = 1;
-        expected[uint256(MessageType.SetMaxAssetPriceAge)] = 1;
-        expected[uint256(MessageType.SetMaxSharePriceAge)] = 1;
         expected[uint256(MessageType.RequestCallback)] = 1;
         expected[uint256(MessageType.SetRequestManager)] = 1;
         expected[uint256(MessageType.UpdateManager)] = 1;
@@ -688,7 +648,7 @@ contract TestMessageLibSourceCentrifugeId is Test {
         // Unrestricted spoke->hub messages (0 = any source permitted).
         expected[uint256(MessageType.InitiateTransferShares)] = 0;
         expected[uint256(MessageType.UpdateShares)] = 0;
-        expected[uint256(MessageType.UntrustedContractUpdate)] = 0;
+        expected[uint256(MessageType.ManagerCallFromSpoke)] = 0;
 
         // _Invalid has no source restriction.
         expected[uint256(MessageType._Invalid)] = 0;

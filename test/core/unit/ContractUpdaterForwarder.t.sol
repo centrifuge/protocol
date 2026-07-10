@@ -5,6 +5,7 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {ContractUpdateLib} from "../../../src/core/utils/ContractUpdateLib.sol";
 import {ContractUpdaterForwarder} from "../../../src/core/utils/ContractUpdaterForwarder.sol";
+import {IContractUpdaterForwarder} from "../../../src/core/utils/interfaces/IContractUpdate.sol";
 import {IContractUpdateGatewayHandler} from "../../../src/core/messaging/interfaces/IGatewayHandlers.sol";
 
 import "forge-std/Test.sol";
@@ -26,7 +27,7 @@ contract ContractUpdaterForwarderTest is Test {
         bytes memory payload = ContractUpdateLib.wrap(SC_A, target, inner);
 
         vm.prank(makeAddr("notEnvoy"));
-        vm.expectRevert(ContractUpdaterForwarder.NotEnvoy.selector);
+        vm.expectRevert(IContractUpdaterForwarder.NotEnvoy.selector);
         forwarder.fromHub(POOL_A, payload);
     }
 
@@ -35,7 +36,7 @@ contract ContractUpdaterForwarderTest is Test {
 
         vm.deal(envoy, 1 ether);
         vm.prank(envoy);
-        vm.expectRevert(ContractUpdaterForwarder.UnexpectedValue.selector);
+        vm.expectRevert(IContractUpdaterForwarder.UnexpectedValue.selector);
         forwarder.fromHub{value: 1}(POOL_A, payload);
     }
 

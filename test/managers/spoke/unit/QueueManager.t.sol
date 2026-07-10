@@ -50,7 +50,7 @@ contract QueueManagerTest is Test {
     address balanceSheet = address(new IsContract());
     address gateway = address(new MockGateway());
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address unauthorized = makeAddr("unauthorized");
     address auth = makeAddr("auth");
 
@@ -77,7 +77,7 @@ contract QueueManagerTest is Test {
     }
 
     function _deployManager() internal {
-        queueManager = new QueueManager(contractUpdater, IBalanceSheet(address(balanceSheet)), auth);
+        queueManager = new QueueManager(envoy, IBalanceSheet(address(balanceSheet)), auth);
     }
 
     function _mockQueuedShares(
@@ -121,18 +121,18 @@ contract QueueManagerTest is Test {
 
 contract QueueManagerConstructorTest is QueueManagerTest {
     function testConstructor() public view {
-        assertEq(queueManager.contractUpdater(), contractUpdater);
+        assertEq(queueManager.envoy(), envoy);
         assertEq(address(queueManager.balanceSheet()), address(balanceSheet));
     }
 }
 
 contract QueueManagerUpdateContractFailureTests is QueueManagerTest {
     function testInvalidUpdater(address notContractUpdater) public {
-        vm.assume(notContractUpdater != contractUpdater);
+        vm.assume(notContractUpdater != envoy);
 
-        vm.expectRevert(IQueueManager.NotContractUpdater.selector);
+        vm.expectRevert(IQueueManager.NotEnvoy.selector);
         vm.prank(notContractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(DEFAULT_MIN_DELAY, uint64(0)));
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), DEFAULT_MIN_DELAY, uint64(0)));
     }
 }
 
@@ -141,8 +141,8 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
         vm.expectEmit();
         emit IQueueManager.UpdateQueueConfig(POOL_A, SC_1, DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS);
 
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), DEFAULT_MIN_DELAY, DEFAULT_EXTRA_GAS));
 
         (uint64 minDelay, uint64 lastSync, uint128 extraGasLimit) = queueManager.scQueueState(POOL_A, SC_1);
         assertEq(minDelay, DEFAULT_MIN_DELAY);
@@ -151,11 +151,11 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
     }
 
     function testUpdateMultipleShareClasses() public {
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint64(1000), uint64(500)));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), uint64(1000), uint64(500)));
 
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_2, abi.encode(uint64(2000), uint64(1000)));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_2.raw(), uint64(2000), uint64(1000)));
 
         (uint64 minDelay1,, uint128 extraGasLimit1) = queueManager.scQueueState(POOL_A, SC_1);
         (uint64 minDelay2,, uint128 extraGasLimit2) = queueManager.scQueueState(POOL_A, SC_2);
@@ -169,8 +169,8 @@ contract QueueManagerUpdateContractSuccessTests is QueueManagerTest {
 
 contract QueueManagerSyncFailureTests is QueueManagerTest {
     function testMinDelayNotElapsed() public {
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(DEFAULT_MIN_DELAY, uint64(0)));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), DEFAULT_MIN_DELAY, uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -297,8 +297,8 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
 
     /// forge-config: default.isolate = true
     function testSyncWithZeroMinDelay() public {
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint8(0), uint64(0), uint64(0)));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), uint64(0), uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -314,8 +314,8 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
 
     /// forge-config: default.isolate = true
     function testMinDelayElapsedAfterTime() public {
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint8(0), DEFAULT_MIN_DELAY, uint64(0)));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), DEFAULT_MIN_DELAY, uint64(0)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);
@@ -334,8 +334,8 @@ contract QueueManagerSyncSuccessTests is QueueManagerTest {
     function testSyncWithExtraGasLimit(uint128 extraGasLimit) public {
         extraGasLimit = uint128(bound(extraGasLimit, 0, 50_000_000));
 
-        vm.prank(contractUpdater);
-        queueManager.trustedCall(POOL_A, SC_1, abi.encode(uint64(0), uint64(extraGasLimit)));
+        vm.prank(envoy);
+        queueManager.fromHub(POOL_A, abi.encode(SC_1.raw(), uint64(0), uint64(extraGasLimit)));
 
         _mockQueuedShares(POOL_A, SC_1, 100, true, 0);
         _mockQueuedAssets(POOL_A, SC_1, ASSET_1, 100, 0);

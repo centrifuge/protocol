@@ -56,7 +56,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         MockERC20(vault.asset()).approve(address(vault), assets);
 
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
 
@@ -138,11 +138,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             // ghost tracking
             sumOfRedeemRequests[vault.share()] += shares; // E-2
             requestRedeemShares[to][vault.share()] += shares;
-            userRequestRedeemed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][to] += shares;
+            userRequestRedeemed[vault.scId()][spokeV3_1_0.vaultDetails(vault).assetId][to] += shares;
 
             userRequestRedeemedAssets[
                 vault.scId()
-            ][vaultRegistry.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
+            ][spokeV3_1_0.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
 
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true
@@ -174,7 +174,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
         bytes32 controllerBytes = controller.toBytes32();
 
         _captureShareQueueState(poolId, scId);
@@ -289,7 +289,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         _captureShareQueueState(poolId, scId);
 
@@ -375,7 +375,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shareUserB4 = IShareToken(vault.share()).balanceOf(_getActor());
         uint256 shareEscrowB4 = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
         (uint128 pendingBefore,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, _getActor().toBytes32()
+            vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId, _getActor().toBytes32()
         );
 
         // NOTE: external calls above so need to prank directly here
@@ -411,7 +411,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         (uint128 pendingAfter,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, _getActor().toBytes32()
+            vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId, _getActor().toBytes32()
         );
 
         // Processed Deposit | E-2 | Global-1
@@ -426,11 +426,11 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             sumOfSyncDepositsAsset[vault.asset()] += assets;
             sumOfSyncDepositsShare[vault.share()] += shares;
-            userDepositProcessed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
-            userRequestDeposited[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
+            userDepositProcessed[vault.scId()][spokeV3_1_0.vaultDetails(vault).assetId][_getActor()] += assets;
+            userRequestDeposited[vault.scId()][spokeV3_1_0.vaultDetails(vault).assetId][_getActor()] += assets;
 
             // Track cumulative assets deposited for withdrawal proportionality property
-            AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+            AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
             bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
             ghost_cumulativeAssetsDeposited[assetKey] += assets;
         }
@@ -476,7 +476,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bool isAsyncVault = Helpers.isAsyncVault(address(vault));
 
         (uint128 pendingBefore,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, to.toBytes32()
+            vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId, to.toBytes32()
         );
 
         // NOTE: external calls above so need to prank directly here
@@ -511,7 +511,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         (uint128 pendingAfter,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, to.toBytes32()
+            vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId, to.toBytes32()
         );
 
         // Processed Deposit | E-2
@@ -519,8 +519,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
         if (!isAsyncVault) {
             ghost_netSharePosition[keccak256(abi.encode(vault.poolId(), vault.scId()))] += int256(uint256(shares)); // encodes the share key; not state variable because of stack too deep
-            userRequestDeposited[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
-            userDepositProcessed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
+            userRequestDeposited[vault.scId()][spokeV3_1_0.vaultDetails(vault).assetId][_getActor()] += assets;
+            userDepositProcessed[vault.scId()][spokeV3_1_0.vaultDetails(vault).assetId][_getActor()] += assets;
             sumOfSyncDepositsAsset[vault.asset()] += assets;
 
             sumOfSyncDepositsShare[vault.share()] += shares;
@@ -530,7 +530,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             executedInvestments[vault.share()] += shares;
 
             // Track cumulative assets deposited for withdrawal proportionality property
-            AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+            AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
             bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
             ghost_cumulativeAssetsDeposited[assetKey] += assets;
         }

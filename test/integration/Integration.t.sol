@@ -98,12 +98,12 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32(bytes8(POOL_A.raw())));
     }
 
-    function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
+    function _syncManagerMaxReserveMsg(ShareClassId scId, AssetId assetId, uint128 maxReserve)
         internal
         pure
         returns (bytes memory)
     {
-        return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
+        return abi.encode(scId.raw(), uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
     }
 }
 

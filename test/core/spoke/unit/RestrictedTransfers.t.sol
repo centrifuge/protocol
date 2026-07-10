@@ -25,6 +25,7 @@ contract FullRestrictionsTest is Test {
         token = new ShareToken(18);
         fullRestrictionsHook = new FullRestrictions(
             address(root),
+            makeAddr("envoy"),
             spoke,
             makeAddr("balanceSheet"),
             makeAddr("crosschainSource"),

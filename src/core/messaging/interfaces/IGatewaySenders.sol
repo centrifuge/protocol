@@ -5,6 +5,7 @@ import {D18} from "../../../misc/types/D18.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
+import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {VaultUpdateKind, ManagerKind} from "../libraries/MessageLib.sol";
 
@@ -136,24 +137,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    function sendSetMaxAssetPriceAge(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable;
-
-    /// @notice Creates and send the message
-    function sendSetMaxSharePriceAge(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable;
-
-    /// @notice Creates and send the message
     function sendRequestCallback(
         PoolId poolId,
         ShareClassId scId,
@@ -188,6 +171,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
+        bytes32 sender,
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
@@ -229,21 +213,44 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         address refund
     ) external payable;
 
-    /// @notice Creates and sends an UntrustedContractUpdate message
+    /// @notice Creates and sends a ManagerCallFromSpoke message, routed on the destination to the target's
+    ///         `IManagerCallFromSpoke.fromSpoke` via the Envoy. The target validates `(centrifugeId, sender)`.
     /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param target The hub-side target contract (as bytes32)
+    /// @param target The destination target contract (as bytes32)
+    /// @param payload The action payload (any scId is encoded here)
     /// @param sender The spoke-side initiator (as bytes32)
-    /// @param payload The update payload
     /// @param extraGasLimit Additional gas for cross-chain execution
     /// @param refund Address to refund excess payment
-    function sendUntrustedContractUpdate(
+    function sendManagerSpokeCall(
         PoolId poolId,
-        ShareClassId scId,
         bytes32 target,
         bytes calldata payload,
         bytes32 sender,
         uint128 extraGasLimit,
+        address refund
+    ) external payable;
+
+    /// @notice Creates and send the message
+    function sendInitializeHolding(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 valuation,
+        AccountId asset,
+        AccountId equity,
+        AccountId gain,
+        AccountId loss,
+        address refund
+    ) external payable;
+
+    /// @notice Creates and send the message
+    function sendInitializeLiability(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 valuation,
+        AccountId expense,
+        AccountId liability,
         address refund
     ) external payable;
 }

@@ -55,6 +55,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         vm.startPrank(address(protocolGuardian.safe()));
         correctHook = new FullRestrictions(
             address(root),
+            address(envoy),
             address(spoke),
             address(balanceSheet),
             address(spoke),

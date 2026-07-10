@@ -53,14 +53,14 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Initial share price on spoke
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerShare(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
 
         // Register asset (same-chain short-circuit: also registers on hub via hubHandler)
         assetId = spoke.registerAsset{value: 0}(LOCAL_CENTRIFUGE_ID, address(asset), 0, address(this));
 
         // Initial asset price on spoke
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, assetId, d18(1, 1), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerAsset(POOL_A, SC_1, assetId, d18(1, 1), uint64(block.timestamp));
 
         // Set request managers (hub-side: batchRequestManager, spoke-side: asyncRequestManager)
         hub.setRequestManager{value: 0}(
@@ -92,14 +92,14 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             address(this)
         );
 
-        vault = AsyncVault(IShareToken(spoke.shareToken(POOL_A, SC_1)).vault(address(asset)));
+        vault = AsyncVault(IShareToken(spokeRegistry.shareToken(POOL_A, SC_1)).vault(address(asset)));
     }
 
     /// Simulates the hub sending back deposit fulfillment messages to the spoke.
     /// Prices are hardcoded to 1:1 (matching MockCentrifugeChain.isFulfilledDepositRequest behaviour).
     function _fulfillDeposit(AssetId assetId, address investor, uint128 assetAmount, uint128 shareAmount) internal {
         vm.prank(address(messageProcessor));
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             POOL_A,
             SC_1,
             assetId,
@@ -108,7 +108,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         );
 
         vm.prank(address(messageProcessor));
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             POOL_A,
             SC_1,
             assetId,
@@ -117,7 +117,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         );
 
         vm.prank(address(messageProcessor));
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             POOL_A,
             SC_1,
             assetId,
@@ -143,9 +143,9 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Updating with same values confirms reads are correct (no-op)
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerShare(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, assetId, d18(1, 1), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerAsset(POOL_A, SC_1, assetId, d18(1, 1), uint64(block.timestamp));
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1e6);
@@ -175,7 +175,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Confirm price still 1:1 after claim
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerShare(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
 
         // Assert share/asset conversion (shares have 12 more decimals than assets)
         assertEq(shareToken.totalSupply(), 100000000000000000000);
@@ -186,7 +186,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Price update to 1.2
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, D18.wrap(1200000000000000000), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerShare(POOL_A, SC_1, D18.wrap(1200000000000000000), uint64(block.timestamp));
 
         assertEq(vault.totalAssets(), 120000000);
         assertEq(vault.convertToShares(120000000), 100000000000000000000);
@@ -195,7 +195,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Asset price halved: 1 pool unit = 2 asset units, so 1 share = 1.2 pool = 2.4 assets
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerAsset(POOL_A, SC_1, assetId, D18.wrap(0.5e18), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerAsset(POOL_A, SC_1, assetId, D18.wrap(0.5e18), uint64(block.timestamp));
 
         assertEq(vault.totalAssets(), 240000000);
         assertEq(vault.convertToShares(240000000), 100000000000000000000);
@@ -214,14 +214,15 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         assertEq(vault.pricePerShare(), 1e6);
 
         vm.prank(address(messageProcessor));
-        spoke.updatePricePoolPerShare(POOL_A, SC_1, D18.wrap(1.2e18), uint64(block.timestamp));
+        spokeHandler.updatePricePoolPerShare(POOL_A, SC_1, D18.wrap(1.2e18), uint64(block.timestamp));
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);
 
         // Unlink vault — price reads should still work since they go through the share class
-        vm.prank(address(messageProcessor));
-        vaultRegistry.unlinkVault(POOL_A, SC_1, assetId, vault);
+        hub.updateVault{value: 0}(
+            POOL_A, SC_1, assetId, bytes32(bytes20(address(vault))), VaultUpdateKind.Unlink, 0, address(this)
+        );
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));
         assertEq(vault.pricePerShare(), 1.2e6);

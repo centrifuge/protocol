@@ -18,13 +18,12 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
-import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
+import {VaultDetails, ISpokeV3_1_0} from "../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 /// @title  Sync Manager
 /// @notice This is the main contract for synchronous ERC-4626 deposits.
@@ -33,9 +32,10 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     using CastLib for *;
     using BytesLib for bytes;
 
-    ISpoke public spoke;
+    address public envoy;
+    ISpokeV3_1_0 public spoke;
     IBalanceSheet public balanceSheet;
-    IVaultRegistry public vaultRegistry;
+    ISpokeV3_1_0 public vaultRegistry;
 
     mapping(PoolId => mapping(ShareClassId => ISyncDepositValuation)) public valuation;
     mapping(PoolId => mapping(ShareClassId => mapping(address asset => mapping(uint256 tokenId => uint128)))) public
@@ -49,35 +49,42 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
 
     /// @inheritdoc ISyncManager
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = ISpoke(data);
-        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
+        if (what == "spoke") spoke = ISpokeV3_1_0(data);
+        else if (what == "vaultRegistry") vaultRegistry = ISpokeV3_1_0(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
+        else if (what == "envoy") envoy = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external auth {
-        uint8 kindValue = abi.decode(payload, (uint8));
+    /// @inheritdoc IManagerCallFromHub
+    /// @dev The share class id is encoded in `payload` (fromHub carries no scId).
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
+
+        (bytes16 scId_, uint8 kindValue) = abi.decode(payload, (bytes16, uint8));
         require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
+        ShareClassId scId = ShareClassId.wrap(scId_);
+        require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
 
         TrustedCall kind = TrustedCall(kindValue);
         if (kind == TrustedCall.Valuation) {
-            (, bytes32 valuation_) = abi.decode(payload, (uint8, bytes32));
-            require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-
-            setValuation(poolId, scId, valuation_.toAddress());
+            (,, bytes32 valuation_) = abi.decode(payload, (bytes16, uint8, bytes32));
+            _setValuation(poolId, scId, valuation_.toAddress());
         } else if (kind == TrustedCall.MaxReserve) {
-            (, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (uint8, uint128, uint128));
-            require(address(spoke.shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
-
+            (,, uint128 assetId, uint128 maxReserve_) = abi.decode(payload, (bytes16, uint8, uint128, uint128));
             (address asset, uint256 tokenId) = spoke.idToAsset(AssetId.wrap(assetId));
-            setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
+            _setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
         }
     }
 
     /// @inheritdoc ISyncManager
     function setValuation(PoolId poolId, ShareClassId scId, address valuation_) public auth {
+        _setValuation(poolId, scId, valuation_);
+    }
+
+    function _setValuation(PoolId poolId, ShareClassId scId, address valuation_) internal {
         valuation[poolId][scId] = ISyncDepositValuation(valuation_);
 
         emit SetValuation(poolId, scId, address(valuation_));
@@ -87,6 +94,12 @@ contract SyncManager is Auth, Recoverable, ISyncManager {
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
         public
         auth
+    {
+        _setMaxReserve(poolId, scId, asset, tokenId, maxReserve_);
+    }
+
+    function _setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve_)
+        internal
     {
         maxReserve[poolId][scId][asset][tokenId] = maxReserve_;
 

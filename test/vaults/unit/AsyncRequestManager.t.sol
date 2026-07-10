@@ -9,7 +9,6 @@ import {IERC7575} from "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
@@ -18,7 +17,7 @@ import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet, WithdrawMode} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpokeV3_1_0, VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -57,9 +56,9 @@ contract AsyncRequestManagerTest is Test {
     address immutable RECEIVER = makeAddr("RECEIVER");
     address immutable CONTROLLER = makeAddr("CONTROLLER");
 
-    ISpoke spoke = ISpoke(address(new IsContract()));
+    ISpokeV3_1_0 spoke = ISpokeV3_1_0(address(new IsContract()));
     IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
-    IVaultRegistry vaultRegistry = IVaultRegistry(address(new IsContract()));
+    ISpokeV3_1_0 vaultRegistry = ISpokeV3_1_0(address(new IsContract()));
     ISubsidyManager subsidyManager = ISubsidyManager(address(new IsContract()));
     IShareToken shareToken = IShareToken(address(new IsContract()));
     IPoolEscrow poolEscrow = IPoolEscrow(address(new IsContract()));

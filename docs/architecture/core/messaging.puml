@@ -7,23 +7,27 @@ skinparam linetype ortho
 package messaging {
     interface IMessageDispatcher
     interface IMessageProcessor
+    class Gateway
+    class MultiAdapter
+    interface IAdapter
 }
 
-class Gateway
-class MultiAdapter
 class Spoke
+class SpokeHandler
+class Hub
 class HubHandler
 
-interface IAdapter
 
-Spoke <-> IMessageDispatcher
-HubHandler <-> IMessageDispatcher
-IMessageProcessor --> HubHandler
-IMessageProcessor --> Spoke
+Spoke --> IMessageDispatcher
+Hub --> IMessageDispatcher
+IMessageDispatcher -up-> SpokeHandler
+IMessageDispatcher -up-> HubHandler
+IMessageProcessor -up-> HubHandler
+IMessageProcessor -up-> SpokeHandler
 
 IMessageDispatcher --> Gateway
 
-Gateway --> IMessageProcessor
+Gateway -up-> IMessageProcessor
 Gateway <-down-> MultiAdapter
 MultiAdapter <-down-> "n" IAdapter
 

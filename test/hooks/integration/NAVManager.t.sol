@@ -190,7 +190,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
 
         vm.prank(address(root));
         hubHandler.initiateTransferShares{value: 0.1 ether}(
-            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), sharesTransferred, 0, manager
+            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32(0), bytes32("receiver"), sharesTransferred, 0, manager
         );
 
         (uint128 navHub2, uint128 issuanceHub, uint128 transferredInHub, uint128 transferredOutHub,,) =
@@ -367,7 +367,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
 
         vm.prank(address(root));
         hubHandler.initiateTransferShares{value: 0.1 ether}(
-            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32("receiver"), 100e18, 0, manager
+            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32(0), bytes32("receiver"), 100e18, 0, manager
         );
 
         // issuance is -100 on source network after transfer

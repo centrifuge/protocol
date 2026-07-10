@@ -45,8 +45,8 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
     /// forge-config: default.isolate = true
     function testSuccess() public {
         uint128 extraGasLimit = 500;
-        vm.prank(address(contractUpdater));
-        queueManager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(uint64(0), extraGasLimit));
+        vm.prank(address(envoy));
+        queueManager.fromHub(POOL_A, abi.encode(defaultTypedShareClassId.raw(), uint64(0), extraGasLimit));
 
         depositSync(vault1, user, DEFAULT_AMOUNT);
         depositSync(vault2, user, DEFAULT_AMOUNT / 2);

@@ -315,7 +315,7 @@ abstract contract BeforeAfter is Setup {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 _priceAsset) {
+        try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 _priceAsset) {
             _structToUpdate.pricePoolPerAsset[poolId][scId][assetId] = _priceAsset;
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
@@ -339,7 +339,7 @@ abstract contract BeforeAfter is Setup {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare) {
+        try spokeRegistry.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare) {
             _structToUpdate.pricePoolPerShare[poolId][scId] = _priceShare;
         } catch (bytes memory) {
             /* reason */

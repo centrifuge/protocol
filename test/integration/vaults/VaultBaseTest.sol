@@ -10,17 +10,16 @@ import {IERC6909Fungible} from "../../../src/misc/interfaces/IERC6909.sol";
 
 import {MockAdapter} from "../../core/mocks/MockAdapter.sol";
 
-import {Spoke} from "../../../src/core/spoke/Spoke.sol";
 import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
-import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
-import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
+import {ISpokeRegistry, VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
 
@@ -43,18 +42,18 @@ contract MockCentrifugeChainDirect is Test {
     using UpdateRestrictionMessageLib for *;
     using RequestCallbackMessageLib for *;
 
-    Spoke public spoke;
-    VaultRegistry public vaultRegistry;
+    SpokeHandler public spokeHandler;
+    ISpokeRegistry public vaultRegistry;
     SyncManager public syncManager;
 
-    constructor(Spoke spoke_, VaultRegistry vaultRegistry_, SyncManager syncManager_) {
-        spoke = spoke_;
+    constructor(SpokeHandler spokeHandler_, ISpokeRegistry vaultRegistry_, SyncManager syncManager_) {
+        spokeHandler = spokeHandler_;
         vaultRegistry = vaultRegistry_;
         syncManager = syncManager_;
     }
 
     function addPool(uint64 poolId) public {
-        spoke.addPool(PoolId.wrap(poolId));
+        spokeHandler.addPool(PoolId.wrap(poolId));
     }
 
     function addShareClass(
@@ -66,7 +65,9 @@ contract MockCentrifugeChainDirect is Test {
         bytes32 salt,
         address hook
     ) public {
-        spoke.addShareClass(PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook);
+        spokeHandler.addShareClass(
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+        );
     }
 
     function addShareClass(
@@ -81,7 +82,7 @@ contract MockCentrifugeChainDirect is Test {
     }
 
     function updateMember(uint64 poolId, bytes16 scId, address user, uint64 validUntil) public {
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             UpdateRestrictionMessageLib.UpdateRestrictionMember(user.toBytes32(), validUntil).serialize()
@@ -89,7 +90,7 @@ contract MockCentrifugeChainDirect is Test {
     }
 
     function freeze(uint64 poolId, bytes16 scId, address user) public {
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             UpdateRestrictionMessageLib.UpdateRestrictionFreeze(user.toBytes32()).serialize()
@@ -97,7 +98,7 @@ contract MockCentrifugeChainDirect is Test {
     }
 
     function unfreeze(uint64 poolId, bytes16 scId, address user) public {
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze(user.toBytes32()).serialize()
@@ -105,13 +106,13 @@ contract MockCentrifugeChainDirect is Test {
     }
 
     function updatePricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 computedAt) public {
-        spoke.updatePricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), D18.wrap(price), computedAt);
+        spokeHandler.updatePricePoolPerShare(PoolId.wrap(poolId), ShareClassId.wrap(scId), D18.wrap(price), computedAt);
     }
 
     function updatePricePoolPerAsset(uint64 poolId, bytes16 scId, uint128 assetId, uint128 price, uint64 computedAt)
         public
     {
-        spoke.updatePricePoolPerAsset(
+        spokeHandler.updatePricePoolPerAsset(
             PoolId.wrap(poolId), ShareClassId.wrap(scId), AssetId.wrap(assetId), D18.wrap(price), computedAt
         );
     }
@@ -127,7 +128,7 @@ contract MockCentrifugeChainDirect is Test {
     ) public {
         isApprovedDeposits(poolId, scId, assetId, fulfilledAssetAmount, d18(1, 1));
         isIssuedShares(poolId, scId, assetId, fulfilledShareAmount, d18(1, 1));
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
@@ -143,7 +144,7 @@ contract MockCentrifugeChainDirect is Test {
     function isApprovedDeposits(uint64 poolId, bytes16 scId, uint128 assetId, uint128 assets, D18 pricePoolPerAsset)
         public
     {
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
@@ -156,7 +157,7 @@ contract MockCentrifugeChainDirect is Test {
     function isIssuedShares(uint64 poolId, bytes16 scId, uint128 assetId, uint128 shares, D18 pricePoolPerShare)
         public
     {
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
@@ -175,7 +176,7 @@ contract MockCentrifugeChainDirect is Test {
         uint128 cancelledShareAmount
     ) public {
         isRevokedShares(poolId, scId, assetId, fulfilledAssetAmount, fulfilledShareAmount, d18(1, 1));
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
@@ -196,7 +197,7 @@ contract MockCentrifugeChainDirect is Test {
         uint128 shareAmount,
         D18 pricePoolPerShare
     ) public {
-        spoke.requestCallback(
+        spokeHandler.requestCallback(
             PoolId.wrap(poolId),
             ShareClassId.wrap(scId),
             AssetId.wrap(assetId),
@@ -277,9 +278,11 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         poolEscrowFactory.rely(address(this));
         tokenFactory.rely(address(this));
         spoke.rely(address(this));
+        spokeHandler.rely(address(this));
+        spokeRegistry.rely(address(this));
+        spokeV3_1_0.rely(address(this));
         balanceSheet.rely(address(this));
         contractUpdater.rely(address(this));
-        vaultRegistry.rely(address(this));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));
         asyncRequestManager.rely(address(this));
@@ -313,9 +316,9 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         multiAdapter.setAdapters(OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length));
 
         // Deploy direct chain simulator and give it auth on relevant contracts
-        centrifugeChain = new MockCentrifugeChainDirect(spoke, vaultRegistry, syncManager);
-        spoke.rely(address(centrifugeChain));
-        vaultRegistry.rely(address(centrifugeChain));
+        centrifugeChain = new MockCentrifugeChainDirect(spokeHandler, spokeRegistry, syncManager);
+        spokeHandler.rely(address(centrifugeChain));
+        spokeRegistry.rely(address(centrifugeChain));
         syncManager.rely(address(centrifugeChain));
 
         // Deploy test assets
@@ -340,17 +343,17 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         address asset,
         uint256 assetTokenId
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        try spoke.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
+        try spokeRegistry.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
         catch {
-            if (spoke.pool(POOL_A) == 0) {
+            if (!spokeRegistry.isPoolActive(POOL_A)) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
             centrifugeChain.addShareClass(POOL_A.raw(), scId, "name", "symbol", shareTokenDecimals, hook);
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        try spoke.assetToId(asset, assetTokenId) {
-            assetId = spoke.assetToId(asset, assetTokenId).raw();
+        try spokeRegistry.assetToId(asset, assetTokenId) {
+            assetId = spokeRegistry.assetToId(asset, assetTokenId).raw();
         } catch {
             assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
             centrifugeChain.updatePricePoolPerAsset(
@@ -358,8 +361,8 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
             );
         }
 
-        if (address(spoke.requestManager(POOL_A)) == address(0)) {
-            spoke.setRequestManager(POOL_A, asyncRequestManager);
+        if (address(spokeRegistry.requestManager(POOL_A)) == address(0)) {
+            spokeRegistry.setRequestManager(POOL_A, asyncRequestManager);
         }
         balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
         balanceSheet.updateManager(POOL_A, address(syncManager), true);
@@ -367,11 +370,11 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
-        vaultRegistry.updateVault(
+        spokeHandler.updateVault(
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
-        vaultAddress = IShareToken(spoke.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
+        vaultAddress = IShareToken(spokeRegistry.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
         poolId = POOL_A.raw();
     }
 
@@ -402,7 +405,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         vm.startPrank(_investor);
         erc20.approve(_vault, amount);
         vault.requestDeposit(amount, _investor, _investor);
-        uint128 assetId = spoke.assetToId(address(erc20), erc20TokenId).raw();
+        uint128 assetId = spokeRegistry.assetToId(address(erc20), erc20TokenId).raw();
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(),
             vault.scId().raw(),

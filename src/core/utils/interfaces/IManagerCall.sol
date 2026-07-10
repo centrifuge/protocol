@@ -20,9 +20,10 @@ interface IManagerCallFromHub {
     function fromHub(PoolId poolId, bytes calldata payload) external payable;
 }
 
-/// @notice Spoke-direction target surface for the payable `ManagerCall` path. Dormant: not yet wired.
-///         Bypasses the Hub/manifest by construction, so the target MUST validate `sender`.
-/// @dev    No current target implements this; it exists to lock the selector for future spoke targets.
+/// @notice Spoke-direction target surface for the payable `ManagerCall` path. Reached via the
+///         `ManagerCallFromSpoke` message -> `Envoy.callFromSpoke`. Bypasses the Hub/manifest by
+///         construction, so the target MUST validate `(centrifugeId, sender)`.
+/// @dev    Implemented by e.g. `OracleValuation` for feeder-validated remote price updates.
 ///         Distinct from {IManagerCallFromHub} — that split is the direction boundary; do not collapse them.
 interface IManagerCallFromSpoke {
     /// @notice Triggers a manager action on a spoke-direction target. Caller MUST be the `Envoy`.

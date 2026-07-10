@@ -44,12 +44,14 @@ src/
 │   │   ├── ShareClassManager.sol # Share class logic
 │   │   └── interfaces/
 │   ├── spoke/              # Spoke-side contracts
-│   │   ├── Spoke.sol       # Simplified spoke logic
-│   │   ├── VaultRegistry.sol # Vault registration
+│   │   ├── Spoke.sol       # User-facing spoke ops (transfers, asset registration, manager calls)
+│   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices
+│   │   ├── SpokeHandler.sol # Inbound cross-chain message handling
 │   │   ├── BalanceSheet.sol # Balance tracking
 │   │   ├── ShareToken.sol  # ERC20 share tokens
 │   │   ├── PoolEscrow.sol  # Pool-specific escrow
 │   │   ├── factories/      # Token & escrow factories
+│   │   ├── legacy/         # SpokeV3_1_0 compatibility facade
 │   │   └── interfaces/
 │   ├── messaging/          # Message infrastructure
 │   │   ├── Gateway.sol     # Cross-chain message routing
@@ -61,8 +63,9 @@ src/
 │   ├── libraries/
 │   │   └── PricingLib.sol  # Pricing calculations
 │   └── utils/
+│       ├── Envoy.sol       # Stable msg.sender anchor for manager calls (never redeployed)
 │       ├── BatchedMulticall.sol
-│       └── ContractUpdater.sol # Contract update handler
+│       └── ContractUpdater.sol # Legacy contract update handler (+ ContractUpdaterForwarder bridge)
 ├── admin/                  # Admin & governance
 │   ├── Root.sol           # Root authority
 │   ├── OpsGuardian.sol    # Operational guardian
@@ -194,13 +197,18 @@ There is no direct Root access on testnet or mainnet. All privileged operations 
 | ProtocolGuardian | Multisig Safe | EOA                            | Protocol upgrades, adapter config |
 | OpsGuardian      | Multisig Safe | EOA (same as ProtocolGuardian) | Pool operations, manager updates  |
 
+## Coding Style
+
+Contract style, structure, and declaration-ordering conventions live in `.claude/rules/coding-style.md`, path-scoped to `src/**` so they load only when editing contracts.
+
 ## Critical Coding Rules
 
 ### Language & Compilation
 - Solidity 0.8.28, Cancun EVM
-- Refactor "Stack too deep" errors instead of enabling `via_ir`, because `via_ir` changes compilation behavior and can mask real complexity issues
 - Use custom errors only: `error NotAuthorized();` (more gas efficient than string reverts)
 - Prefix interfaces with `I` (e.g., `IVault`, `ISpoke`)
+- Fix all compiler warnings (unused params, state mutability, unreachable code)
+- Refactor "Stack too deep" errors instead of enabling `via_ir`, because `via_ir` changes compilation behavior and can mask real complexity issues. In order of preference: group parameters into structs, extract helper functions, minimize locals by reading storage/memory directly
 
 ### Access Control (Ward Pattern)
 
@@ -219,19 +227,15 @@ Use custom types to prevent cross-pool operations that could route funds incorre
 ```solidity
 type PoolId is uint64;
 type AssetId is uint128;
-type ShareClassId is uint64;
+type ShareClassId is bytes16;
 ```
 - Use custom types for all IDs (raw uints bypass the type system's protection)
 - Use `CastLib.toBytes32(address)` for address→bytes32 conversion (the manual `bytes32(uint256(uint160(controller)))` pattern is error-prone)
 
 ### Core Patterns
-- Follow CEI (Checks-Effects-Interactions) pattern to prevent reentrancy in vault operations
 - Asset resolution: Use `spoke.assetToId(assetAddress, tokenId)` for consistent ID lookup (for standard ERC20 assets, `tokenId` is `0`)
-- Interface casting: Declare interface type explicitly before use for clarity
+- Interface casting: Declare interface type explicitly before use for clarity, and verify interface compatibility before calling:
 
-## Common Patterns & Anti-Patterns
-
-### Interface Resolution Patterns
 ```solidity
 // V2 vaults - use base interface
 IBaseVault vault = IBaseVault(vaultAddress);
@@ -245,45 +249,6 @@ uint256 pending = vault.pendingDepositRequest(user);
 ISpokeGatewayHandler handler = ISpokeGatewayHandler(address(spoke));
 handler.updateRestriction(poolId, scId, restrictionUpdate);
 ```
-- Always verify interface compatibility before calling
-- Prefer avoiding try-catch in tests; if possible, use `vm.expectRevert` instead for clearer failure assertions
-
-### State Validation
-```solidity
-// Always check contract states before operations
-require(spoke.isPoolActive(poolId), "Pool not active");
-require(IAuth(address(spoke)).wards(address(this)) == 1, "No permission");
-```
-
-### Storage Anti-Patterns
-**Problem**: Constants or storage variables in base contracts unused by all children
-**Solution**: Move to specific derived contracts that actually use them
-**Rule**: If only one child contract uses a constant, declare it there, not in the shared base
-
-### Inheritance Best Practices
-
-Use `super.execute()` to reuse parent logic, because duplicating code leads to inconsistencies when the parent changes:
-```solidity
-// Recommended: Extend parent logic
-function execute() public override {
-    super.execute();
-    // Add child-specific logic
-}
-
-// Avoid: Duplicating parent logic creates maintenance burden
-function execute() public override {
-    // Copy-pasted parent logic (will diverge over time)
-    // Child logic
-}
-```
-
-### Stack Too Deep Solutions
-
-When a function exceeds 16 local variable slots, refactor using these techniques (in order of preference):
-1. **Group parameters into structs** - Reduces stack slots and improves readability
-2. **Extract helper functions** - Split complex calculations into smaller functions
-3. **Use storage/memory efficiently** - Minimize local variables by reading directly
-4. **Refactor instead of using `via_ir`** - The `via_ir` flag masks complexity issues
 
 ## Testing Conventions
 
@@ -298,25 +263,17 @@ When a function exceeds 16 local variable slots, refactor using these techniques
 - `vm.prank(addr)` / `vm.startPrank(addr)` for caller impersonation
 - `makeAddr("name")` for deterministic test addresses
 - `bound(val, min, max)` for constraining fuzz inputs
+- Prefer avoiding try-catch in tests; if possible, use `vm.expectRevert` instead for clearer failure assertions
 
-## Code Quality Checklist
-
-### Code Review & Cleanup
-- **Storage**: Remove redundant variables, unused constants, unnecessary initializations
-- **Inheritance**: Use `super.execute()` instead of duplicating parent logic
-- **Interfaces**: Ensure consistent asset ID resolution (`spoke.assetToId`)
-- **Gas**: Optimize storage layout, remove redundant operations
-- **Compiler**: Fix all warnings (unused params, state mutability, unreachable code)
-
-### Critical Review Points (Priority Order)
+## Review Checklist (Priority Order)
 
 1. **Access Control** (highest priority): Ward pattern implementation on all admin/privileged state-changing functions
 2. **CEI Compliance**: Checks→Effects→Interactions order to prevent reentrancy
 3. **State Validation**: Check assumptions before operations (e.g., pool exists, sufficient balance)
 4. **Custom Types**: Use PoolId, AssetId, ShareClassId instead of raw uints
 5. **Cross-chain**: Verify deployment consistency across networks
-6. **Integration**: Manager contracts and hook implementations
-7. **Custom Errors**: Descriptive and properly used
+6. **Coding Style conformance**: inheritance/business-logic split, control flow, SSA, LOC target, core vs periphery placement, aesthetics (see `.claude/rules/coding-style.md`)
+7. **Gas & storage**: Optimize storage layout, remove redundant variables and operations
 
 ## Reference Documentation
 

@@ -38,6 +38,7 @@ contract ShareTokenTest is Test {
 
         fullRestrictionsHook = new MockFullRestrictions(
             address(new MockRoot()),
+            makeAddr("envoy"),
             spoke,
             makeAddr("balanceSheet"),
             makeAddr("crosschainSource"),

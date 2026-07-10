@@ -39,8 +39,8 @@ abstract contract OnOffRampBaseTest is BaseTest {
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
         assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId, address(this));
-        spoke.addPool(POOL_A);
-        spoke.addShareClass(
+        spokeHandler.addPool(POOL_A);
+        spokeHandler.addShareClass(
             POOL_A,
             defaultTypedShareClassId,
             "testShareClass",
@@ -49,13 +49,13 @@ abstract contract OnOffRampBaseTest is BaseTest {
             bytes32(""),
             address(fullRestrictionsHook)
         );
-        spoke.updatePricePoolPerShare(
+        spokeHandler.updatePricePoolPerShare(
             POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
-        spoke.updatePricePoolPerAsset(
+        spokeHandler.updatePricePoolPerAsset(
             POOL_A, defaultTypedShareClassId, assetId, defaultPricePoolPerShare, uint64(block.timestamp)
         );
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             POOL_A,
             defaultTypedShareClassId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
@@ -104,24 +104,16 @@ contract OnOffRampIntegrationTest is OnOffRampBaseTest {
 
         // Enable onramp
         vm.prank(address(contractUpdater));
-        manager.trustedCall(
-            POOL_A, defaultTypedShareClassId, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), defaultAssetId, true)
-        );
+        manager.fromHub(POOL_A, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), defaultAssetId, true));
 
         // Enable relayer
         vm.prank(address(contractUpdater));
-        manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer.toBytes32(), true)
-        );
+        manager.fromHub(POOL_A, abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer.toBytes32(), true));
 
         // Enable offramp destination
         vm.prank(address(contractUpdater));
-        manager.trustedCall(
-            POOL_A,
-            defaultTypedShareClassId,
-            abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
+        manager.fromHub(
+            POOL_A, abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
         );
 
         // Set manager permissions

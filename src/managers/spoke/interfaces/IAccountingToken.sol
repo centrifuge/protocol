@@ -5,9 +5,9 @@ import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../../misc/interface
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 
-interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt, ITrustedContractUpdate {
+interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt, IManagerCallFromHub {
     event UpdateMinter(PoolId indexed poolId, address indexed minter, bool canMint);
     event Mint(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed owner, uint256 tokenId, uint256 amount
@@ -17,11 +17,12 @@ interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt, ITruste
     );
 
     error NotMinter();
-    error NotAuthorized();
+    error NotEnvoy();
+    error UnexpectedValue();
     error ZeroAddress();
 
-    /// @notice The ContractUpdater that manages minter permissions.
-    function contractUpdater() external view returns (address);
+    /// @notice The Envoy that routes manifest-supervised manager calls (minter permissions).
+    function envoy() external view returns (address);
 
     /// @notice Whether an address is an authorized minter for a pool.
     function minters(PoolId poolId, address who) external view returns (bool);

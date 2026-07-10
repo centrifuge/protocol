@@ -14,7 +14,6 @@ import {AssetId} from "../../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IShareToken} from "../../../../../src/core/spoke/interfaces/IShareToken.sol";
-import {ContractUpdateLib} from "../../../../../src/core/utils/ContractUpdateLib.sol";
 import {IVault, VaultKind} from "../../../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib.sol";
 
@@ -150,13 +149,13 @@ contract InvestmentFlowExecutor is Test {
         // If vault is not linked, link it temporarily for validation
         // Many previously linked vaults have been unlinked pre-migration to block investments,
         // but we still need to validate they work correctly post-migration
-        AssetId assetId = report.core.spoke.assetToId(gql.assetAddress, 0);
-        if (!report.core.vaultRegistry.isLinked(IVault(gql.vault))) {
+        AssetId assetId = report.core.spoke.spokeRegistry().assetToId(gql.assetAddress, 0);
+        if (!report.core.spokeV3_1_0.isLinked(IVault(gql.vault))) {
             console.log("LINKING for validation: %s [%s]", gql.vault, tokenName);
             PoolId poolId = PoolId.wrap(gql.poolIdRaw);
             ShareClassId scId = ShareClassId.wrap(gql.tokenIdRaw);
             vm.prank(address(report.core.root));
-            report.core.vaultRegistry.linkVault(poolId, scId, assetId, IVault(gql.vault));
+            report.core.spokeRegistry.linkVault(poolId, scId, assetId, IVault(gql.vault));
         }
 
         console.log("VALIDATING: %s [%s] (%s)", gql.vault, tokenName, gql.kind);
@@ -184,7 +183,7 @@ contract InvestmentFlowExecutor is Test {
         ctx.localCentrifugeId = localCentrifugeId;
         ctx.poolId = PoolId.wrap(gql.poolIdRaw);
         ctx.scId = ShareClassId.wrap(gql.tokenIdRaw);
-        ctx.assetId = report.core.spoke.assetToId(gql.assetAddress, 0);
+        ctx.assetId = report.core.spoke.spokeRegistry().assetToId(gql.assetAddress, 0);
         ctx.testAmount = _calculateTestAmount(gql.assetDecimals);
         ctx.shareToken = IBaseVault(gql.vault).share();
     }
@@ -259,7 +258,7 @@ contract InvestmentFlowExecutor is Test {
         if (_isShareToken(ctx.gql.assetAddress)) {
             ShareTokenMeta memory stMeta = _shareTokenCache[ctx.gql.assetAddress];
             require(stMeta.exists, "ShareToken not in cache");
-            AssetId sourceAssetId = ctx.report.core.spoke.assetToId(stMeta.depositAsset, 0);
+            AssetId sourceAssetId = ctx.report.core.spoke.spokeRegistry().assetToId(stMeta.depositAsset, 0);
             _configurePrices(
                 ctx.report, stMeta.poolId, stMeta.scId, sourceAssetId, ctx.gql.hubManager, ctx.localCentrifugeId
             );
@@ -298,7 +297,8 @@ contract InvestmentFlowExecutor is Test {
 
         IAsyncRedeemVault vault = IAsyncRedeemVault(ctx.gql.vault);
 
-        uint128 shares = uint128(ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor));
+        uint128 shares =
+            uint128(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor));
 
         vm.startPrank(investor);
         vault.requestRedeem(shares, investor, investor);
@@ -363,20 +363,16 @@ contract InvestmentFlowExecutor is Test {
             );
         }
 
-        // Routed through the unified managerCall transport: the ContractUpdaterForwarder target + wrapped
-        // payload. A contract update carries no value (it forwards to the non-payable `trustedCall`), and the
-        // call is local, so no `msg.value` is attached and the `value` arg is 0.
+        // Routed through the unified managerCall transport directly to the migrated SyncManager target. The
+        // SyncManager consumes the call via `fromHub` (Envoy-gated), which is non-payable, and the call is
+        // local, so no `msg.value` is attached and the `value` arg is 0.
         vm.startPrank(ctx.gql.hubManager);
         ctx.report.core.hub
             .managerCall(
                 ctx.poolId,
                 ctx.localCentrifugeId,
-                address(ctx.report.core.contractUpdaterForwarder).toBytes32(),
-                ContractUpdateLib.wrap(
-                    ctx.scId,
-                    address(ctx.report.syncManager),
-                    _updateContractSyncDepositMaxReserveMsg(ctx.assetId, type(uint128).max)
-                ),
+                address(ctx.report.syncManager).toBytes32(),
+                _syncManagerMaxReserveMsg(ctx.scId, ctx.assetId, type(uint128).max),
                 IntegrationConstants.EXTRA_GAS,
                 0,
                 address(this)
@@ -384,7 +380,8 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
 
         IBaseVault vault = IBaseVault(ctx.gql.vault);
-        uint256 initialShares = ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+        uint256 initialShares =
+            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
 
         vm.startPrank(investor);
         ERC20(vault.asset()).approve(ctx.gql.vault, ctx.testAmount);
@@ -392,7 +389,7 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
 
         assertTrue(
-            ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
+            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
             "Investor should have received shares"
         );
     }
@@ -578,13 +575,14 @@ contract InvestmentFlowExecutor is Test {
         );
         vm.stopPrank();
 
-        uint256 initialShares = ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+        uint256 initialShares =
+            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
         vm.startPrank(investor);
         vault.mint(vault.maxMint(investor), investor);
         vm.stopPrank();
 
         assertTrue(
-            ctx.report.core.spoke.shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
+            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
             "Investor should have received shares"
         );
     }
@@ -886,12 +884,12 @@ contract InvestmentFlowExecutor is Test {
             }).serialize();
     }
 
-    function _updateContractSyncDepositMaxReserveMsg(AssetId assetId, uint128 maxReserve)
+    function _syncManagerMaxReserveMsg(ShareClassId scId, AssetId assetId, uint128 maxReserve)
         internal
         pure
         returns (bytes memory)
     {
-        return abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
+        return abi.encode(scId.raw(), uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
     }
 
     function _formatRevertData(bytes memory data) internal pure returns (string memory) {

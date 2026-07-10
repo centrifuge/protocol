@@ -38,7 +38,5 @@ interface IGasService is IMessageProperties {
     function updateManager() external view returns (uint128);
     function updateHoldingAmount() external view returns (uint128);
     function updateShares() external view returns (uint128);
-    function maxAssetPriceAge() external view returns (uint128);
-    function maxSharePriceAge() external view returns (uint128);
-    function untrustedContractUpdate() external view returns (uint128);
+    function managerCallFromSpoke() external view returns (uint128);
 }

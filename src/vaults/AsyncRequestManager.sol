@@ -26,7 +26,6 @@ import {BytesLib} from "../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
@@ -36,7 +35,7 @@ import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {IBalanceSheet, WithdrawMode} from "../core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultDetails, ISpokeV3_1_0} from "../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {ISubsidyManager} from "../utils/interfaces/ISubsidyManager.sol";
 
@@ -50,9 +49,11 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
 
-    ISpoke public spoke;
+    ISpokeV3_1_0 public spoke;
     IBalanceSheet public balanceSheet;
-    IVaultRegistry public vaultRegistry;
+    // Vault lookups (vaultDetails / vault / isLinked) are served by the SpokeV3_1_0 legacy facade, which
+    // preserves the pre-refactor VaultRegistry ABI this manager was built against.
+    ISpokeV3_1_0 public vaultRegistry;
     ISubsidyManager public subsidyManager;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -68,9 +69,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = ISpoke(data);
+        if (what == "spoke") spoke = ISpokeV3_1_0(data);
         else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistry(data);
+        else if (what == "vaultRegistry") vaultRegistry = ISpokeV3_1_0(data);
         else if (what == "subsidyManager") subsidyManager = ISubsidyManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);

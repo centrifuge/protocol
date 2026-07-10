@@ -17,6 +17,7 @@ contract IsContract {}
 contract SubsidyManagerTest is Test {
     address immutable AUTH = makeAddr("AUTH");
     address immutable ANY = makeAddr("ANY");
+    address immutable ENVOY = makeAddr("ENVOY");
     uint256 constant SUBSIDY_AMOUNT = 1 ether;
     address immutable RECEIVER = makeAddr("RECEIVER");
 
@@ -31,6 +32,8 @@ contract SubsidyManagerTest is Test {
     function setUp() public virtual {
         vm.deal(ANY, 1 ether);
         vm.deal(address(refundEscrow), 1 ether);
+        vm.prank(AUTH);
+        subsidyManager.file("envoy", ENVOY);
     }
 
     function testConstructor() public view {
@@ -153,13 +156,13 @@ contract SubsidyManagerTestWithdrawSubsidy is SubsidyManagerTest {
     }
 }
 
-contract SubsidyManagerTestTrustedCall is SubsidyManagerTest {
+contract SubsidyManagerTestFromHub is SubsidyManagerTest {
     using CastLib for *;
 
-    function testErrNotAuthorized() public {
+    function testErrNotEnvoy() public {
         vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        subsidyManager.trustedCall(POOL_A, SC_PLACEHOLDER, "");
+        vm.expectRevert(ISubsidyManager.NotEnvoy.selector);
+        subsidyManager.fromHub(POOL_A, "");
     }
 
     function testErrRefundEscrowNotDeployed() public {
@@ -169,9 +172,9 @@ contract SubsidyManagerTestTrustedCall is SubsidyManagerTest {
             abi.encode(address(0))
         );
 
-        vm.prank(AUTH);
+        vm.prank(ENVOY);
         vm.expectRevert(ISubsidyManager.RefundEscrowNotDeployed.selector);
-        subsidyManager.trustedCall(POOL_A, SC_PLACEHOLDER, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
+        subsidyManager.fromHub(POOL_A, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
     }
 
     function testErrNotEnoughToWithdraw() public {
@@ -182,9 +185,9 @@ contract SubsidyManagerTestTrustedCall is SubsidyManagerTest {
             abi.encode(emptyRefund)
         );
 
-        vm.prank(AUTH);
+        vm.prank(ENVOY);
         vm.expectRevert(ISubsidyManager.NotEnoughToWithdraw.selector);
-        subsidyManager.trustedCall(POOL_A, SC_PLACEHOLDER, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
+        subsidyManager.fromHub(POOL_A, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
     }
 
     function testWithdrawSubsidy() public {
@@ -199,9 +202,9 @@ contract SubsidyManagerTestTrustedCall is SubsidyManagerTest {
             abi.encode()
         );
 
-        vm.prank(AUTH);
+        vm.prank(ENVOY);
         vm.expectEmit();
         emit ISubsidyManager.WithdrawSubsidy(POOL_A, RECEIVER, SUBSIDY_AMOUNT);
-        subsidyManager.trustedCall(POOL_A, SC_PLACEHOLDER, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
+        subsidyManager.fromHub(POOL_A, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
     }
 }

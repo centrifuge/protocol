@@ -9,7 +9,8 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -90,7 +91,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Step 2
     function spoke_addPool() public updateGhosts asAdmin {
-        spoke.addPool(_getPool());
+        spokeHandler.addPool(_getPool());
     }
 
     // Step 3
@@ -105,7 +106,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         bytes16 scId = bytes16(scIdAsUint);
         address hook = address(fullRestrictions);
 
-        spoke.addShareClass(
+        spokeHandler.addShareClass(
             _getPool(),
             ShareClassId.wrap(scId),
             name,
@@ -114,7 +115,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             keccak256(abi.encodePacked(_getPool(), scId)),
             hook
         );
-        address newToken = address(spoke.shareToken(_getPool(), ShareClassId.wrap(scId)));
+        address newToken = address(spokeRegistry.shareToken(_getPool(), ShareClassId.wrap(scId)));
 
         _addShareClassId(scId);
         _addShareClassToPool(_getPool(), ShareClassId.wrap(scId));
@@ -123,22 +124,31 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         return (newToken, scId);
     }
 
-    // Step 4 - deploy the pool
-    function spoke_deployVault(bool isAsync) public updateGhostsWithType(OpType.ADMIN) asAdmin returns (address) {
-        address vault;
-        if (isAsync) {
-            vault = address(vaultRegistry.deployVault(_getPool(), _getShareClassId(), _getAssetId(), asyncVaultFactory));
-        } else {
-            vault = address(vaultRegistry.deployVault(_getPool(), _getShareClassId(), _getAssetId(), syncVaultFactory));
-        }
+    // Step 4 - deploy and link the vault (via SpokeHandler, which is the only entry point for factory calls)
+    function spoke_deployAndLinkVault(bool isAsync)
+        public
+        updateGhostsWithType(OpType.ADMIN)
+        asAdmin
+        returns (address)
+    {
+        address factory = isAsync ? address(asyncVaultFactory) : address(syncVaultFactory);
+        PoolId poolId = _getPool();
+        ShareClassId scId = _getShareClassId();
+        AssetId assetId = _getAssetId();
+
+        spokeHandler.updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink);
+
+        IShareToken shareToken_ = spokeRegistry.shareToken(poolId, scId);
+        (address asset,) = spokeRegistry.idToAsset(assetId);
+        address vault = IShareToken(shareToken_).vault(asset);
 
         _addVault(vault);
 
         return vault;
     }
 
-    function spoke_deployVault_clamped() public returns (address) {
-        return spoke_deployVault(true);
+    function spoke_deployAndLinkVault_clamped() public returns (address) {
+        return spoke_deployAndLinkVault(true);
     }
 
     // Step 5 - set the request manager
@@ -146,7 +156,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         IBaseVault vaultInstance = IBaseVault(vault);
         PoolId poolId = vaultInstance.poolId();
 
-        spoke.setRequestManager(poolId, asyncRequestManager);
+        spokeHandler.setRequestManager(poolId, asyncRequestManager);
     }
 
     // Step 6- link the vault
@@ -156,7 +166,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vaultInstance.scId();
         AssetId assetId = _getAssetId();
 
-        vaultRegistry.linkVault(poolId, scId, assetId, IBaseVault(vault));
+        spokeRegistry.linkVault(poolId, scId, assetId, IBaseVault(vault));
     }
 
     function spoke_linkVault_clamped() public {
@@ -165,14 +175,14 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Extra 7 - remove the vault
     function spoke_unlinkVault() public updateGhosts asAdmin {
-        vaultRegistry.unlinkVault(_getPool(), _getShareClassId(), _getAssetId(), IBaseVault(_getVault()));
+        spokeRegistry.unlinkVault(_getPool(), _getShareClassId(), _getAssetId(), IBaseVault(_getVault()));
     }
 
     /**
      * NOTE: All of these are implicitly clamped using values set in shortcut_deployNewTokenPoolAndShare
      */
     function spoke_updateMember(uint64 validUntil) public updateGhosts asAdmin {
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             _getPool(),
             _getShareClassId(),
             UpdateRestrictionMessageLib.serialize(
@@ -190,16 +200,16 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
-        spoke.updatePricePoolPerShare(poolId, scId, D18.wrap(price), computedAt);
-        spoke.updatePricePoolPerAsset(poolId, scId, assetId, D18.wrap(price), computedAt);
+        spokeHandler.updatePricePoolPerShare(poolId, scId, D18.wrap(price), computedAt);
+        spokeHandler.updatePricePoolPerAsset(poolId, scId, assetId, D18.wrap(price), computedAt);
     }
 
     function spoke_updateShareMetadata(string memory tokenName, string memory tokenSymbol) public updateGhosts asAdmin {
-        spoke.updateShareMetadata(_getPool(), _getShareClassId(), tokenName, tokenSymbol);
+        spokeHandler.updateShareMetadata(_getPool(), _getShareClassId(), tokenName, tokenSymbol);
     }
 
     function spoke_freeze() public updateGhosts asAdmin {
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             _getPool(),
             _getShareClassId(),
             UpdateRestrictionMessageLib.serialize(
@@ -209,7 +219,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     function spoke_unfreeze() public updateGhosts asAdmin {
-        spoke.updateRestriction(
+        spokeHandler.updateRestriction(
             _getPool(),
             _getShareClassId(),
             UpdateRestrictionMessageLib.serialize(

@@ -84,6 +84,9 @@ struct ContractsConfig {
     address hub;
     address tokenFactory;
     address spoke;
+    address spokeHandler;
+    address spokeRegistry;
+    address spokeV3_1_0;
     address balanceSheet;
     address contractUpdater;
     address contractUpdaterForwarder;
@@ -290,6 +293,9 @@ library Env {
         config.hub = _parseContractAddress(json, "hub");
         config.tokenFactory = _parseContractAddress(json, "tokenFactory");
         config.spoke = _parseContractAddress(json, "spoke");
+        config.spokeHandler = _tryParseContractAddress(json, "spokeHandler");
+        config.spokeRegistry = _tryParseContractAddress(json, "spokeRegistry");
+        config.spokeV3_1_0 = _tryParseContractAddress(json, "spokeV3_1_0");
         config.balanceSheet = _parseContractAddress(json, "balanceSheet");
         config.contractUpdater = _parseContractAddress(json, "contractUpdater");
         // Optional: new in v3.3, absent from earlier deployment manifests.

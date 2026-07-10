@@ -98,7 +98,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     function property_sum_of_pending_redeem_request() public tokenIsSet {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
         address[] memory actors = _getActors();
@@ -196,11 +196,11 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             (uint128 pending, uint32 lastUpdate) = batchRequestManager.depositRequest(
                 _getVault().poolId(),
                 _getVault().scId(),
-                vaultRegistry.vaultDetails(_getVault()).assetId,
+                spokeV3_1_0.vaultDetails(_getVault()).assetId,
                 _getActor().toBytes32()
             );
             (uint32 depositEpochId,,,) = batchRequestManager.epochId(
-                _getVault().poolId(), _getVault().scId(), vaultRegistry.vaultDetails(_getVault()).assetId
+                _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
             );
 
             // Check if this is a fresh user (request not yet processed by Hub)
@@ -222,15 +222,15 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             (uint128 pending, uint32 lastUpdate) = batchRequestManager.redeemRequest(
                 _getVault().poolId(),
                 _getVault().scId(),
-                vaultRegistry.vaultDetails(_getVault()).assetId,
+                spokeV3_1_0.vaultDetails(_getVault()).assetId,
                 _getActor().toBytes32()
             );
             (,, uint32 redeemEpochId,) = batchRequestManager.epochId(
-                _getVault().poolId(), _getVault().scId(), vaultRegistry.vaultDetails(_getVault()).assetId
+                _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
             );
 
             uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(
-                _getVault().poolId(), _getVault().scId(), vaultRegistry.vaultDetails(_getVault()).assetId
+                _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
             );
             // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
             // not change
@@ -498,7 +498,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -514,7 +514,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -530,7 +530,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -546,7 +546,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -561,7 +561,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     function property_cancelled_and_processed_redemptions_soundness() public {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
         address[] memory actors = _getActors();
 
         for (uint256 i; i < actors.length; i++) {
@@ -578,7 +578,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         uint256 totalDeposits;
         for (uint256 i; i < actors.length; i++) {
@@ -612,7 +612,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             (uint128 pending,) = batchRequestManager.depositRequest(poolId, scId, assetId, actors[i].toBytes32());
@@ -635,7 +635,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             (uint128 pending,) = batchRequestManager.redeemRequest(poolId, scId, assetId, actors[i].toBytes32());
@@ -1770,7 +1770,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
 
-        try spoke.shareToken(poolId, scId) returns (IShareToken shareToken) {
+        try spokeRegistry.shareToken(poolId, scId) returns (IShareToken shareToken) {
             uint256 actualSupply = shareToken.totalSupply();
             // escrow holds tokens that have been redeemed
             uint256 balancesSummed = shareToken.balanceOf(_getPoolEscrowAddress());
@@ -1804,7 +1804,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         if (!poolHasShareClass) return;
 
-        try spoke.shareToken(poolId, scId) returns (
+        try spokeRegistry.shareToken(poolId, scId) returns (
             IShareToken /* shareToken */
         ) {}
         catch Error(string memory reason) {
@@ -1849,12 +1849,12 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
                     // EXACT INVARIANT: Use theoretical bounds instead of arbitrary tolerances
                     // Fetch prices for direct PricingLib calls (handles zero prices internally)
-                    D18 pricePerAsset = spoke.pricePoolPerAsset(poolId, shareClasses[j], assetId, true);
-                    D18 pricePerShare = spoke.pricePoolPerShare(poolId, shareClasses[j], false);
+                    D18 pricePerAsset = spokeRegistry.pricePoolPerAsset(poolId, shareClasses[j], assetId, true);
+                    D18 pricePerShare = spokeRegistry.pricePoolPerShare(poolId, shareClasses[j], false);
 
                     // Get real addresses for proper decimal handling
-                    address shareToken = address(spoke.shareToken(poolId, shareClasses[j]));
-                    (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+                    address shareToken = address(spokeRegistry.shareToken(poolId, shareClasses[j]));
+                    (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
                     // Calculate theoretical bounds only if prices are non-zero
                     uint256 maxTheoreticalShares = (D18.unwrap(pricePerAsset) == 0 || D18.unwrap(pricePerShare) == 0)
@@ -1933,16 +1933,18 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                     // Only validate if we have both withdrawals and revocations
                     if (cumulativeWithdrawn > 0 && cumulativeRevoked > 0) {
                         // Core Invariant 1: Get current prices for proportionality validation
-                        try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 pricePerShare) {
-                            try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
+                        try spokeRegistry.pricePoolPerShare(poolId, scId, false) returns (D18 pricePerShare) {
+                            try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (
+                                D18 pricePerAsset
+                            ) {
                                 // Skip validation if either price is 0 (uninitialized state)
                                 if (D18.unwrap(pricePerShare) == 0 || D18.unwrap(pricePerAsset) == 0) {
                                     continue;
                                 }
 
                                 // Get real addresses for proper decimal handling
-                                address shareToken = address(spoke.shareToken(poolId, scId));
-                                (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+                                address shareToken = address(spokeRegistry.shareToken(poolId, scId));
+                                (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
                                 // Calculate theoretical bounds only if prices are non-zero
                                 uint256 maxTheoreticalAssets = (D18.unwrap(pricePerShare) == 0

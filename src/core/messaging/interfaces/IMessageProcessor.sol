@@ -5,13 +5,7 @@ import {IGateway} from "./IGateway.sol";
 import {IMultiAdapter} from "./IMultiAdapter.sol";
 import {IScheduleAuth} from "./IScheduleAuth.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
-import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IContractUpdateGatewayHandler,
-    IVaultRegistryGatewayHandler
-} from "./IGatewayHandlers.sol";
+import {ISpokeGatewayHandler, IHubGatewayHandler, IBalanceSheetGatewayHandler} from "./IGatewayHandlers.sol";
 
 interface IMessageProcessor is IMessageHandler {
     //----------------------------------------------------------------------------------------------
@@ -40,8 +34,8 @@ interface IMessageProcessor is IMessageHandler {
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
 
-    /// @notice Spoke-side handler for pool, share class, and vault operations
-    function spoke() external view returns (ISpokeGatewayHandler);
+    /// @notice Processes administrative cross-chain messages for pool, share class, and vault operations
+    function spokeHandler() external view returns (ISpokeGatewayHandler);
 
     /// @notice Hub-side handler for investment request processing and share issuance
     function hubHandler() external view returns (IHubGatewayHandler);
@@ -51,12 +45,6 @@ interface IMessageProcessor is IMessageHandler {
 
     /// @notice Spoke-side handler for share and asset balance mutations
     function balanceSheet() external view returns (IBalanceSheetGatewayHandler);
-
-    /// @notice Spoke-side handler for vault deployment and linking
-    function vaultRegistry() external view returns (IVaultRegistryGatewayHandler);
-
-    /// @notice Spoke-side handler for trusted contract reference updates
-    function contractUpdater() external view returns (IContractUpdateGatewayHandler);
 
     //----------------------------------------------------------------------------------------------
     // Administration

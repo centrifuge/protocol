@@ -8,8 +8,8 @@ import {Hub} from "../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
 import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
+import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -108,7 +108,7 @@ contract ForkTestBase is Test {
         returns (address vaultAddr)
     {
         return address(
-            VaultRegistry(config.contracts.vaultRegistry)
+            ISpokeV3_1_0(config.contracts.vaultRegistry)
                 .vault(poolId, shareClassId, assetId, IRequestManager(config.contracts.asyncRequestManager))
         );
     }

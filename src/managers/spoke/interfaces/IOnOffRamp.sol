@@ -7,12 +7,12 @@ import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  IOnOffRamp
 /// @notice Interface for managing onramp (deposits) and offramp (withdrawals) operations for a specific pool and share class
 /// @dev    Combines deposit, withdraw, and contract update functionality with relayer and asset whitelisting
-interface IOnOffRamp is IDepositManager, IWithdrawManager, ITrustedContractUpdate {
+interface IOnOffRamp is IDepositManager, IWithdrawManager, IManagerCallFromHub {
     enum TrustedCall {
         Onramp,
         Relayer,
@@ -28,8 +28,8 @@ interface IOnOffRamp is IDepositManager, IWithdrawManager, ITrustedContractUpdat
     error NotAllowedOnrampAsset();
     error InvalidOfframpDestination();
     error InvalidPoolId();
-    error InvalidShareClassId();
-    error NotContractUpdater();
+    error NotEnvoy();
+    error UnexpectedValue();
     error NotRelayer();
     error ERC6909NotSupported();
     error UnknownTrustedCall();
@@ -43,8 +43,8 @@ interface IOnOffRamp is IDepositManager, IWithdrawManager, ITrustedContractUpdat
     /// @notice Get the accounting token used for minting receipts
     function accountingToken() external view returns (IAccountingToken);
 
-    /// @notice Address authorized to update on/offramp configuration via trusted cross-chain calls
-    function contractUpdater() external view returns (address);
+    /// @notice The Envoy that routes manifest-supervised on/offramp configuration updates
+    function envoy() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);

@@ -13,22 +13,22 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
+contract QueueManager is Auth, IQueueManager, IManagerCallFromHub {
     using CastLib for *;
     using BitmapLib for *;
 
     IGateway public immutable gateway;
-    address public immutable contractUpdater;
+    address public immutable envoy;
     IBalanceSheet public immutable balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
-        contractUpdater = contractUpdater_;
+    constructor(address envoy_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+        envoy = envoy_;
         balanceSheet = balanceSheet_;
         gateway = balanceSheet_.gateway();
     }
@@ -37,11 +37,13 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
-        require(msg.sender == contractUpdater, NotContractUpdater());
+    /// @inheritdoc IManagerCallFromHub
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
 
-        (uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint64, uint64));
+        (bytes16 scId_, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (bytes16, uint64, uint64));
+        ShareClassId scId = ShareClassId.wrap(scId_);
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
         sc.minDelay = minDelay;
         sc.extraGasLimit = extraGasLimit;

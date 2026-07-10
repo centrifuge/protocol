@@ -35,7 +35,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
         _captureShareQueueState(poolId, scId);
 
         // Track authorization - deposit() requires isManager(poolId)
@@ -58,7 +58,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_depositProportionalityTracked[assetKey] = true;
 
         // Get current exchange rate (price per asset in pool terms)
-        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
+        try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 pricePerAsset) {
             // Store weighted average exchange rate
             uint256 totalOps = 1; // Simplified tracking
             if (totalOps == 1) {
@@ -145,7 +145,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
         // Track authorization - noteDeposit() requires isManager(poolId)
@@ -166,7 +166,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_overridePricePoolPerAsset(D18 value) public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         // Track authorization - overridePricePoolPerAsset() requires isManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
@@ -202,7 +202,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     function balanceSheet_resetPricePoolPerAsset() public updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         // Track authorization - resetPricePoolPerAsset() requires isManager(poolId)
         _trackAuthorization(_getActor(), vault.poolId());
@@ -321,7 +321,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
         _captureShareQueueState(poolId, scId);
 
         // Track authorization - withdraw() requires isManager(poolId)
@@ -363,7 +363,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         // Track authorization - reserve() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -414,7 +414,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         // Track authorization - unreserve() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -454,7 +454,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
         // Track authorization - submitQueuedAssets() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);

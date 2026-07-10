@@ -4,15 +4,14 @@ pragma solidity ^0.8.28;
 import {CentrifugeIntegrationTest} from "./Integration.t.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
-import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
-import {IUntrustedContractUpdate} from "../../src/core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromSpoke} from "../../src/core/utils/interfaces/IManagerCall.sol";
 
 import "forge-std/Test.sol";
 
-/// @notice Simple mock that accepts UntrustedContractUpdate calls
-contract MockUntrustedTarget is IUntrustedContractUpdate {
-    function untrustedCall(PoolId, ShareClassId, bytes calldata, uint16, bytes32) external pure {}
+/// @notice Simple mock that accepts ManagerCallFromSpoke calls
+contract MockSpokeTarget is IManagerCallFromSpoke {
+    function fromSpoke(PoolId, bytes calldata, uint16, bytes32) external payable {}
 }
 
 /// @title Gateway Batch Memory Expansion Test
@@ -31,8 +30,8 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
         super.setUp();
         poolId = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
 
-        // Deploy mock target that accepts UntrustedContractUpdate calls
-        target = address(new MockUntrustedTarget());
+        // Deploy mock target that accepts ManagerCallFromSpoke calls
+        target = address(new MockSpokeTarget());
 
         // Create a pool so messages are valid
         vm.prank(address(opsGuardian.opsSafe()));
@@ -43,12 +42,11 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
         vm.store(address(gateway), slot, bytes32(uint256(1)));
     }
 
-    /// @notice Creates an UntrustedContractUpdate message with 0 payload (107 bytes)
+    /// @notice Creates a ManagerCallFromSpoke message with 0 payload (91 bytes)
     function _createMessage() internal view returns (bytes memory) {
         return MessageLib.serialize(
-            MessageLib.UntrustedContractUpdate({
+            MessageLib.ManagerCallFromSpoke({
                 poolId: poolId.raw(),
-                scId: "",
                 target: bytes32(uint256(uint160(target))),
                 sender: "",
                 extraGasLimit: 0,

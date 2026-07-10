@@ -181,11 +181,9 @@ abstract contract TargetFunctions is
             hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(this), true); // register admin actor as a balance sheet manager
         }
 
-        // 5. Deploy new vault and register it
+        // 5. Deploy new vault and register it (DeployAndLink atomically)
         {
-            spoke_deployVault(isAsyncVault);
-
-            spoke_linkVault(address(_getVault()));
+            spoke_deployAndLinkVault(isAsyncVault);
 
             asyncRequestManager.rely(address(_getVault()));
         }
@@ -193,7 +191,7 @@ abstract contract TargetFunctions is
         // 6. Set max reserve for sync vaults to maximum value to allow unlimited deposits (instead of default zero
         // max deposit)
         if (!isAsyncVault) {
-            (address asset, uint256 tokenId) = spoke.idToAsset(_getAssetId());
+            (address asset, uint256 tokenId) = spokeRegistry.idToAsset(_getAssetId());
             syncManager.setMaxReserve(_getPool(), _getShareClassId(), asset, tokenId, type(uint128).max);
         }
 

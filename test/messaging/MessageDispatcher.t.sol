@@ -80,19 +80,13 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendUpdateManager(REMOTE_CHAIN, POOL_A, ManagerKind.BalanceSheet, bytes32(0), true, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendSetMaxAssetPriceAge(POOL_A, SC_A, ASSET_A, 0, REFUND);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendSetMaxSharePriceAge(REMOTE_CHAIN, POOL_A, SC_A, 0, REFUND);
-
-        vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendScheduleUpgrade(REMOTE_CHAIN, bytes32(0), REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendCancelUpgrade(REMOTE_CHAIN, bytes32(0), REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendInitiateTransferShares(REMOTE_CHAIN, POOL_A, SC_A, bytes32(0), 0, 0, 0, REFUND);
+        dispatcher.sendInitiateTransferShares(REMOTE_CHAIN, POOL_A, SC_A, bytes32(0), bytes32(0), 0, 0, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendExecuteTransferShares(LOCAL_CHAIN, REMOTE_CHAIN, POOL_A, SC_A, bytes32(0), 0, 0, REFUND);
@@ -110,7 +104,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendRequest(POOL_A, SC_A, ASSET_A, EMPTY_BYTES, 0, false, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendUntrustedContractUpdate(POOL_A, SC_A, bytes32(0), EMPTY_BYTES, bytes32(0), 0, REFUND);
+        dispatcher.sendManagerSpokeCall(POOL_A, bytes32(0), EMPTY_BYTES, bytes32(0), 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendRequestCallback(POOL_A, SC_A, ASSET_A, EMPTY_BYTES, 0, false, REFUND);
@@ -224,12 +218,12 @@ contract TestFile is TestCommon {
         assertEq(address(dispatcher.hubHandler()), address(23));
     }
 
-    function testFileSpoke() public {
+    function testFileSpokeHandler() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IMessageDispatcher.File("spoke", address(23));
-        dispatcher.file("spoke", address(23));
-        assertEq(address(dispatcher.spoke()), address(23));
+        emit IMessageDispatcher.File("spokeHandler", address(23));
+        dispatcher.file("spokeHandler", address(23));
+        assertEq(address(dispatcher.spokeHandler()), address(23));
     }
 
     function testFileBalanceSheet() public {
@@ -238,22 +232,6 @@ contract TestFile is TestCommon {
         emit IMessageDispatcher.File("balanceSheet", address(23));
         dispatcher.file("balanceSheet", address(23));
         assertEq(address(dispatcher.balanceSheet()), address(23));
-    }
-
-    function testFileVaultRegistry() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageDispatcher.File("vaultRegistry", address(23));
-        dispatcher.file("vaultRegistry", address(23));
-        assertEq(address(dispatcher.vaultRegistry()), address(23));
-    }
-
-    function testFileContractUpdater() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageDispatcher.File("contractUpdater", address(23));
-        dispatcher.file("contractUpdater", address(23));
-        assertEq(address(dispatcher.contractUpdater()), address(23));
     }
 
     function testFileEnvoy() public {

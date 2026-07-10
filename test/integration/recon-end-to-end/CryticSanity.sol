@@ -30,14 +30,13 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function nowDepositEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
         return
-            batchRequestManager.nowDepositEpoch(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId);
+            batchRequestManager.nowDepositEpoch(vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId);
     }
 
     /// @dev Get the current redeem epoch for the current vault
     function nowRedeemEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
-        return
-            batchRequestManager.nowRedeemEpoch(vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId);
+        return batchRequestManager.nowRedeemEpoch(vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId);
     }
 
     /// === SANITY CHECKS === ///
@@ -381,7 +380,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve and revoke
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        spokeRegistry.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         balanceSheet_revoke(100e18);
@@ -458,7 +457,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve for revocations
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spoke.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        spokeRegistry.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         // Execute sequence

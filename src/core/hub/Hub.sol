@@ -485,20 +485,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function setMaxSharePriceAge(
-        PoolId poolId,
-        ShareClassId scId,
-        uint16 centrifugeId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable {
-        _protected(poolId);
-
-        emit SetMaxSharePriceAge(centrifugeId, poolId, scId, maxPriceAge);
-        sender.sendSetMaxSharePriceAge{value: msgValue()}(centrifugeId, poolId, scId, maxPriceAge, refund);
-    }
-
-    /// @inheritdoc IHub
     function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable {
         _protected(poolId);
 
@@ -507,17 +493,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         sender.sendNotifyPricePoolPerAsset{value: msgValue()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
 
         _accrue(poolId, scId);
-    }
-
-    /// @inheritdoc IHub
-    function setMaxAssetPriceAge(PoolId poolId, ShareClassId scId, AssetId assetId, uint64 maxPriceAge, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        emit SetMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
-        sender.sendSetMaxAssetPriceAge{value: msgValue()}(poolId, scId, assetId, maxPriceAge, refund);
     }
 
     //----------------------------------------------------------------------------------------------

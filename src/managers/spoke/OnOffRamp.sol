@@ -13,7 +13,7 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 import {IBalanceSheet, WithdrawMode} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 
 /// @title  OnOffRamp
@@ -28,7 +28,7 @@ contract OnOffRamp is IOnOffRamp {
     using CastLib for *;
 
     PoolId public immutable poolId;
-    address public immutable contractUpdater;
+    address public immutable envoy;
     ShareClassId public immutable scId;
     IBalanceSheet public immutable balanceSheet;
     IAccountingToken public immutable accountingToken;
@@ -40,13 +40,13 @@ contract OnOffRamp is IOnOffRamp {
     constructor(
         PoolId poolId_,
         ShareClassId scId_,
-        address contractUpdater_,
+        address envoy_,
         IBalanceSheet balanceSheet_,
         IAccountingToken accountingToken_
     ) {
         poolId = poolId_;
         scId = scId_;
-        contractUpdater = contractUpdater_;
+        envoy = envoy_;
         balanceSheet = balanceSheet_;
         accountingToken = accountingToken_;
     }
@@ -55,11 +55,12 @@ contract OnOffRamp is IOnOffRamp {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes memory payload) external {
+    /// @inheritdoc IManagerCallFromHub
+    /// @dev This manager is deployed per (poolId, scId); the call's poolId must match and the scId is implicit.
+    function fromHub(PoolId poolId_, bytes calldata payload) external payable {
         require(poolId == poolId_, InvalidPoolId());
-        require(scId == scId_, InvalidShareClassId());
-        require(msg.sender == contractUpdater, NotContractUpdater());
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
 
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
@@ -167,12 +168,12 @@ contract OnOffRamp is IOnOffRamp {
 }
 
 contract OnOffRampFactory is IOnOffRampFactory {
-    address public immutable contractUpdater;
+    address public immutable envoy;
     IBalanceSheet public immutable balanceSheet;
     IAccountingToken public immutable accountingToken;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IAccountingToken accountingToken_) {
-        contractUpdater = contractUpdater_;
+    constructor(address envoy_, IBalanceSheet balanceSheet_, IAccountingToken accountingToken_) {
+        envoy = envoy_;
         balanceSheet = balanceSheet_;
         accountingToken = accountingToken_;
     }
@@ -182,7 +183,7 @@ contract OnOffRampFactory is IOnOffRampFactory {
         balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
 
         OnOffRamp manager = new OnOffRamp{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, contractUpdater, balanceSheet, accountingToken
+            poolId, scId, envoy, balanceSheet, accountingToken
         );
 
         emit DeployOnOffRamp(poolId, scId, address(manager));

@@ -31,8 +31,10 @@ import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
+import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
+import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
+import {SpokeV3_1_0} from "../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
@@ -95,7 +97,9 @@ abstract contract Setup is
     AsyncRequestManager asyncRequestManager;
     SyncManager syncManager;
     Spoke spoke;
-    VaultRegistry vaultRegistry;
+    SpokeV3_1_0 spokeV3_1_0;
+    SpokeRegistry spokeRegistry;
+    SpokeHandler spokeHandler;
     FullRestrictions fullRestrictions;
     IRoot root;
     BalanceSheet balanceSheet;
@@ -201,11 +205,14 @@ abstract contract Setup is
         syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
         tokenFactory = new TokenFactory(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
-        vaultRegistry = new VaultRegistry(address(this));
-        spoke = new Spoke(tokenFactory, address(this));
+        spokeRegistry = new SpokeRegistry(address(this));
+        spokeHandler = new SpokeHandler(spokeRegistry, tokenFactory, poolEscrowFactory, address(this));
+        spoke = new Spoke(address(this));
+        spokeV3_1_0 = new SpokeV3_1_0(address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
-            address(spoke),
+            address(this), // envoy_
+            address(spokeRegistry),
             address(balanceSheet),
             address(spoke), // crosschainSource_ (same chain = spoke)
             address(this),
@@ -221,26 +228,28 @@ abstract contract Setup is
         );
 
         // set dependencies
-        asyncRequestManager.file("spoke", address(spoke));
+        asyncRequestManager.file("spoke", address(spokeV3_1_0));
         asyncRequestManager.file("balanceSheet", address(balanceSheet));
-        asyncRequestManager.file("vaultRegistry", address(vaultRegistry));
-        syncManager.file("spoke", address(spoke));
+        asyncRequestManager.file("vaultRegistry", address(spokeV3_1_0));
+        syncManager.file("spoke", address(spokeV3_1_0));
+        spokeV3_1_0.file("spoke", address(spoke));
+        spokeV3_1_0.file("spokeRegistry", address(spokeRegistry));
+        messageDispatcher.rely(address(spokeV3_1_0));
         syncManager.file("balanceSheet", address(balanceSheet));
-        syncManager.file("vaultRegistry", address(vaultRegistry));
-        vaultRegistry.file("spoke", address(spoke));
-        spoke.file("gateway", address(gateway));
+        syncManager.file("vaultRegistry", address(spokeV3_1_0));
+        spoke.file("spokeRegistry", address(spokeRegistry));
         spoke.file("sender", address(messageDispatcher));
-        spoke.file("tokenFactory", address(tokenFactory));
-        spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        balanceSheet.file("spoke", address(spoke));
+        balanceSheet.file("spoke", address(spokeRegistry));
         balanceSheet.file("sender", address(messageDispatcher));
         balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
 
         balanceSheet.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(spoke);
-        tokenWards[1] = address(balanceSheet);
+        address[] memory tokenWards = new address[](4);
+        tokenWards[0] = address(spokeHandler);
+        tokenWards[1] = address(spoke);
+        tokenWards[2] = address(balanceSheet);
+        tokenWards[3] = address(spokeRegistry);
         tokenFactory.file("wards", tokenWards);
 
         // Set up all spoke permissions
@@ -337,8 +346,11 @@ abstract contract Setup is
         hub.file("sender", address(messageDispatcher));
 
         messageDispatcher.file("hubHandler", address(hubHandler));
-        messageDispatcher.file("spoke", address(spoke));
+        messageDispatcher.file("spokeHandler", address(spokeHandler));
         messageDispatcher.file("balanceSheet", address(balanceSheet));
+
+        // SpokeHandler permissions: messageDispatcher is the same-chain caller
+        spokeHandler.rely(address(messageDispatcher));
 
         // Add missing HubHelpers file configuration (matching HubDeployer)
         hubHandler.file("hub", address(hub));
@@ -374,33 +386,35 @@ abstract contract Setup is
 
     // Note: messageDispatcher is a mock and doesn't have rely function
     function setupSpokePermissions() private {
+        // SpokeRegistry permissions
+        spokeRegistry.rely(address(spokeHandler));
+        spokeRegistry.rely(address(spoke));
+        spokeRegistry.rely(address(root));
+
         // Root endorsements (from CommonDeployer and SpokeDeployer)
         root.endorse(address(balanceSheet));
         root.endorse(address(asyncRequestManager));
 
-        // Rely Spoke (from SpokeDeployer)
+        // Rely SpokeHandler (from SpokeDeployer)
+        tokenFactory.rely(address(spokeHandler));
+        asyncRequestManager.rely(address(spokeHandler));
+        fullRestrictions.rely(address(spokeHandler));
+        poolEscrowFactory.rely(address(spokeHandler));
+
+        // Rely Spoke
         asyncVaultFactory.rely(address(spoke));
-        asyncVaultFactory.rely(address(vaultRegistry));
+        asyncVaultFactory.rely(address(spokeHandler));
         syncVaultFactory.rely(address(spoke));
-        syncVaultFactory.rely(address(vaultRegistry));
+        syncVaultFactory.rely(address(spokeHandler));
         tokenFactory.rely(address(spoke));
-        asyncRequestManager.rely(address(spoke));
         syncManager.rely(address(spoke));
-        fullRestrictions.rely(address(spoke));
-        poolEscrowFactory.rely(address(spoke));
         gateway.rely(address(spoke));
-        vaultRegistry.rely(address(spoke));
 
         // Rely async requests manager
         asyncRequestManager.rely(address(asyncVaultFactory));
         asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
         asyncRequestManager.rely(address(syncManager));
-
-        // Rely VaultRegistry
-        vaultRegistry.rely(address(asyncVaultFactory));
-        vaultRegistry.rely(address(syncVaultFactory));
-        vaultRegistry.rely(address(messageDispatcher));
 
         // Rely sync manager
         syncManager.rely(address(spoke));
@@ -426,7 +440,6 @@ abstract contract Setup is
 
         // Rely Root (from all deployers)
         spoke.rely(address(root));
-        spoke.rely(address(vaultRegistry));
         asyncRequestManager.rely(address(root));
         syncManager.rely(address(root));
         balanceSheet.rely(address(root));
@@ -436,7 +449,6 @@ abstract contract Setup is
         fullRestrictions.rely(address(root));
         gateway.rely(address(root));
         poolEscrowFactory.rely(address(root));
-        vaultRegistry.rely(address(root));
 
         // Rely gateway
         spoke.rely(address(gateway));
@@ -600,7 +612,7 @@ abstract contract Setup is
     function _onShareClassIdChanged(ShareClassId newShareClassId) internal virtual override {
         // Auto-sync share token with the new share class to maintain consistency
         // This prevents ghost variable tracking bugs where _getShareToken() returns a token that doesn't match current (pool, shareClass)
-        address newShareToken = address(spoke.shareToken(_getPool(), newShareClassId));
+        address newShareToken = address(spokeRegistry.shareToken(_getPool(), newShareClassId));
 
         if (newShareToken != address(0)) {
             _setShareToken(newShareToken);

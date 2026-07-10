@@ -8,12 +8,12 @@ import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
 
 contract SubsidyManager is Auth, ISubsidyManager {
     using CastLib for *;
 
+    address public envoy;
     IRefundEscrowFactory public refundEscrowFactory;
 
     constructor(IRefundEscrowFactory refundEscrowFactory_, address deployer) Auth(deployer) {
@@ -23,6 +23,7 @@ contract SubsidyManager is Auth, ISubsidyManager {
     /// @inheritdoc ISubsidyManager
     function file(bytes32 what, address data) external auth {
         if (what == "refundEscrowFactory") refundEscrowFactory = IRefundEscrowFactory(data);
+        else if (what == "envoy") envoy = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -40,6 +41,10 @@ contract SubsidyManager is Auth, ISubsidyManager {
 
     /// @inheritdoc ISubsidyManager
     function withdraw(PoolId poolId, address to, uint256 value) public auth {
+        _withdraw(poolId, to, value);
+    }
+
+    function _withdraw(PoolId poolId, address to, uint256 value) internal {
         IRefundEscrow refund = refundEscrowFactory.get(poolId);
         require(address(refund).code.length > 0, RefundEscrowNotDeployed());
         require(address(refund).balance >= value, NotEnoughToWithdraw());
@@ -61,9 +66,11 @@ contract SubsidyManager is Auth, ISubsidyManager {
         return (address(refund), amount);
     }
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId, bytes memory payload) external auth {
+    /// @inheritdoc IManagerCallFromHub
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
         (bytes32 who, uint256 value) = abi.decode(payload, (bytes32, uint256));
-        withdraw(poolId, who.toAddress(), value);
+        _withdraw(poolId, who.toAddress(), value);
     }
 }

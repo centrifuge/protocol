@@ -13,10 +13,10 @@ import {AccountId} from "../../src/core/types/AccountId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
-import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {ContractUpdaterForwarder} from "../../src/core/utils/ContractUpdaterForwarder.sol";
@@ -112,6 +112,7 @@ abstract contract BaseTestData is LaunchDeployer {
      */
     function loadContractsFromConfig(EnvConfig memory config) internal {
         spoke = Spoke(config.contracts.spoke);
+        spokeRegistry = SpokeRegistry(config.contracts.spokeRegistry);
         hub = Hub(config.contracts.hub);
         shareClassManager = ShareClassManager(config.contracts.shareClassManager);
         redemptionRestrictionsHook = RedemptionRestrictions(config.contracts.redemptionRestrictionsHook);
@@ -321,17 +322,13 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.notifySharePrice(poolId, scId, params.targetCentrifugeId, msg.sender);
         hub.notifyAssetPrice(poolId, scId, params.assetId, msg.sender);
 
-        // Configure sync manager (routed through the unified managerCall transport: the ContractUpdaterForwarder
-        // target + wrapped payload). No value is forwarded here, so the `value` arg is 0 for both local and remote.
+        // Configure sync manager via the managerCall transport, targeting the sync manager directly (its
+        // `fromHub` handler decodes the scId from the payload). No value is forwarded, so `value` is 0.
         hub.managerCall(
             poolId,
             params.targetCentrifugeId,
-            address(contractUpdaterForwarder).toBytes32(),
-            ContractUpdateLib.wrap(
-                scId,
-                address(syncManager),
-                abi.encode(uint8(ISyncManager.TrustedCall.MaxReserve), params.assetId.raw(), type(uint128).max)
-            ),
+            address(syncManager).toBytes32(),
+            abi.encode(scId.raw(), uint8(ISyncManager.TrustedCall.MaxReserve), params.assetId.raw(), type(uint128).max),
             0,
             0,
             msg.sender
@@ -350,7 +347,7 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Test async redemption path for sync vaults
-        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(params.token)));
 
         uint128 testDepositAmount = 1_000e6;
@@ -387,7 +384,7 @@ abstract contract BaseTestData is LaunchDeployer {
         uint16 targetCentrifugeId
     ) internal {
         // Get vault
-        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
         IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
 
         // Submit deposit request
@@ -475,7 +472,7 @@ abstract contract BaseTestData is LaunchDeployer {
      * @dev This is the sync vault test flow from TestData.s.sol
      */
     function testSyncVaultFlow(PoolId poolId, ShareClassId scId, ERC20 token, uint128 investAmount) internal {
-        IShareToken shareToken = IShareToken(spoke.shareToken(poolId, scId));
+        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
         SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
 
         token.approve(address(vault), investAmount);

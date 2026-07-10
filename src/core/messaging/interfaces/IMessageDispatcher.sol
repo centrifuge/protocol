@@ -5,13 +5,7 @@ import {IGateway} from "./IGateway.sol";
 import {IMultiAdapter} from "./IMultiAdapter.sol";
 import {IScheduleAuth} from "./IScheduleAuth.sol";
 import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./IGatewaySenders.sol";
-import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IContractUpdateGatewayHandler,
-    IVaultRegistryGatewayHandler
-} from "./IGatewayHandlers.sol";
+import {ISpokeGatewayHandler, IHubGatewayHandler, IBalanceSheetGatewayHandler} from "./IGatewayHandlers.sol";
 
 import {IEnvoy} from "../../utils/interfaces/IEnvoy.sol";
 
@@ -29,14 +23,17 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
     // View methods
     //----------------------------------------------------------------------------------------------
 
+    /// @notice The chain identifier of the local Centrifuge chain
+    function localCentrifugeId() external view returns (uint16);
+
     /// @notice Routes and batches cross-chain messages between hub and spoke
     function gateway() external view returns (IGateway);
 
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
 
-    /// @notice Spoke-side handler for pool, share class, and vault operations
-    function spoke() external view returns (ISpokeGatewayHandler);
+    /// @notice Processes administrative cross-chain messages for pool, share class, and vault operations
+    function spokeHandler() external view returns (ISpokeGatewayHandler);
 
     /// @notice Processes timelocked rely/deny operations received from remote chains
     function scheduleAuth() external view returns (IScheduleAuth);
@@ -46,12 +43,6 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
 
     /// @notice Spoke-side handler for share and asset balance mutations
     function balanceSheet() external view returns (IBalanceSheetGatewayHandler);
-
-    /// @notice Spoke-side handler for vault deployment and linking
-    function vaultRegistry() external view returns (IVaultRegistryGatewayHandler);
-
-    /// @notice Spoke-side handler for trusted contract reference updates
-    function contractUpdater() external view returns (IContractUpdateGatewayHandler);
 
     /// @notice Hub-side dispatcher for the payable `IManagerCallFromHub` path
     function envoy() external view returns (IEnvoy);

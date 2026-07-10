@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IContractUpdateGatewayHandler} from "../../messaging/interfaces/IGatewayHandlers.sol";
+
 import {PoolId} from "../../types/PoolId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
@@ -10,14 +12,17 @@ interface ITrustedContractUpdate {
     function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external;
 }
 
-interface IUntrustedContractUpdate {
-    /// @notice Triggers an update on the target contract.
-    /// @dev    Sender MUST be validated. Sent by anyone on the spoke side.
-    function untrustedCall(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes calldata payload,
-        uint16 centrifugeId,
-        bytes32 sender
-    ) external;
+interface IContractUpdater {
+    event TrustedContractUpdate(PoolId indexed poolId, ShareClassId indexed scId, address target, bytes payload);
+}
+
+interface IContractUpdaterForwarder {
+    error NotEnvoy();
+    error UnexpectedValue();
+
+    /// @notice The Envoy that routes manifest-supervised manager calls
+    function envoy() external view returns (address);
+
+    /// @notice The legacy ContractUpdater the unwrapped payload is forwarded to
+    function contractUpdater() external view returns (IContractUpdateGatewayHandler);
 }

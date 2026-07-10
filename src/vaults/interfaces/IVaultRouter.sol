@@ -7,7 +7,7 @@ import {IAsyncVault} from "./IAsyncVault.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IBatchedMulticall} from "../../core/utils/interfaces/IBatchedMulticall.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
@@ -171,6 +171,6 @@ interface IVaultRouter is IBatchedMulticall {
     /// @notice Spoke-side entry point for this chain's pool and share class operations
     function spoke() external view returns (ISpoke);
 
-    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
-    function vaultRegistry() external view returns (IVaultRegistry);
+    /// @notice Stores pool, share class, asset, price and vault state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 }

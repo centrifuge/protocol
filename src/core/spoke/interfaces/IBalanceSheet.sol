@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {ISpoke} from "./ISpoke.sol";
 import {IPoolEscrow} from "./IPoolEscrow.sol";
 import {IEndorsements} from "./IEndorsements.sol";
+import {ISpokeRegistry} from "./ISpokeRegistry.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 
@@ -382,9 +382,9 @@ interface IBalanceSheet is IBatchedMulticall {
     // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Returns the spoke contract
-    /// @return The spoke contract instance
-    function spoke() external view returns (ISpoke);
+    /// @notice Returns the spoke registry contract
+    /// @return The spoke registry contract instance
+    function spoke() external view returns (ISpokeRegistry);
 
     /// @notice Returns the message sender contract
     /// @return The message sender contract instance

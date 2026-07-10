@@ -9,12 +9,14 @@ import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
-import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
+import {IManagerCallFromHub, IManagerCallFromSpoke} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  IOracleValuation
 /// @notice Interface for oracle-based asset price feeds with permissioned feeders
-/// @dev    Extends IValuation to provide oracle price updates with feeder access control
-interface IOracleValuation is IValuation, IManagerCallFromHub {
+/// @dev    Extends IValuation to provide oracle price updates with feeder access control.
+///         Feeder management arrives via `fromHub` (hub-supervised); remote price updates arrive via
+///         `fromSpoke` (feeder-validated by this contract).
+interface IOracleValuation is IValuation, IManagerCallFromHub, IManagerCallFromSpoke {
     /// @dev Latest price
     struct Price {
         D18 value;
@@ -25,7 +27,6 @@ interface IOracleValuation is IValuation, IManagerCallFromHub {
     event UpdatePrice(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, D18 newPrice);
     event UpdateFeeder(PoolId indexed poolId, uint16 indexed centrifugeId, bytes32 indexed feeder, bool canFeed);
 
-    error NotAuthorized();
     error NotEnvoy();
     error UnexpectedValue();
     error NotFeeder();

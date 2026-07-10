@@ -18,7 +18,7 @@ import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
-import {VaultDetails, IVaultRegistry} from "../core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
@@ -35,14 +35,14 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     uint256 private constant REQUEST_ID = 0;
 
     ISpoke public immutable spoke;
-    IVaultRegistry public immutable vaultRegistry;
+    ISpokeRegistry public immutable spokeRegistry;
 
-    constructor(IGateway gateway_, ISpoke spoke_, IVaultRegistry vaultRegistry_, address deployer)
+    constructor(IGateway gateway_, ISpoke spoke_, ISpokeRegistry spokeRegistry_, address deployer)
         Auth(deployer)
         BatchedMulticall(gateway_)
     {
         spoke = spoke_;
-        vaultRegistry = vaultRegistry_;
+        spokeRegistry = spokeRegistry_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     {
         require(owner == msgSender() || owner == address(this), InvalidOwner());
 
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
         if (owner == address(this)) {
             _approveMax(vaultDetails.asset, address(vault));
         }
@@ -86,7 +86,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         require(owner == msgSender() || owner == address(this), InvalidOwner());
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
@@ -106,11 +106,22 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     ) external payable protected {
         require(owner == msgSender() || owner == address(this), InvalidOwner());
 
-        vaultRegistry.vaultDetails(vault); // Ensure vault is valid
+        spokeRegistry.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
+        // The router pulls the shares and bridges them (it is the share `owner` on the Spoke), but forwards the
+        // real user as `sender` so attribution and the destination-side circuit breaker key on the user.
         spoke.crosschainTransferShares{value: msgValue()}(
-            centrifugeId, vault.poolId(), vault.scId(), receiver, shares, extraGasLimit, remoteExtraGasLimit, refund
+            centrifugeId,
+            vault.poolId(),
+            vault.scId(),
+            receiver,
+            owner,
+            address(this),
+            shares,
+            extraGasLimit,
+            remoteExtraGasLimit,
+            refund
         );
     }
 
@@ -191,7 +202,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
-        return ISpoke(spoke).shareToken(poolId, scId).vault(asset);
+        return spokeRegistry.shareToken(poolId, scId).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

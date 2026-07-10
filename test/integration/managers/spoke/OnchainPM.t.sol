@@ -8,6 +8,7 @@ import {IMulticall} from "../../../../src/misc/interfaces/IMulticall.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
 import {WeirollTarget, OnchainPMTestBase} from "../../../managers/spoke/OnchainPMTestBase.sol";
@@ -232,6 +233,7 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     SlippageGuard guard;
 
     address spoke = makeAddr("spoke");
+    address spokeRegistry = makeAddr("spokeRegistry");
     address balanceSheet = makeAddr("balanceSheet");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
@@ -258,24 +260,33 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
         );
 
         // Setup mocks for the guard
-        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken));
+        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.spokeRegistry.selector), abi.encode(spokeRegistry));
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(shareToken)
+        );
         vm.mockCall(shareToken, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(assetA, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(assetB, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, assetA, uint256(0)), abi.encode(ASSET_ID_1)
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, assetA, uint256(0)),
+            abi.encode(ASSET_ID_1)
         );
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, assetB, uint256(0)), abi.encode(ASSET_ID_2)
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, assetB, uint256(0)),
+            abi.encode(ASSET_ID_2)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
             abi.encode(PRICE_ONE)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_2, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_2, true),
             abi.encode(PRICE_ONE)
         );
     }

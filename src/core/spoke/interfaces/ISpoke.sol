@@ -1,48 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IShareToken} from "./IShareToken.sol";
-import {IVault, VaultKind} from "./IVault.sol";
+import {ISpokeRegistry} from "./ISpokeRegistry.sol";
 
-import {D18} from "../../../misc/types/D18.sol";
-
-import {IGateway} from "../../messaging/interfaces/IGateway.sol";
 import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.sol";
 
-import {Price} from "../types/Price.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
+import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IRequestManager} from "../../interfaces/IRequestManager.sol";
-import {ITokenFactory} from "../factories/interfaces/ITokenFactory.sol";
-import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
-import {IPoolEscrowFactory} from "../factories/interfaces/IPoolEscrowFactory.sol";
-
-/// @dev Centrifuge pools
-struct Pool {
-    /// @dev Timestamp of pool creation
-    uint64 createdAt;
-}
-
-/// @dev Each Centrifuge pool is associated to 1 or more share classes
-struct ShareClassDetails {
-    IShareToken shareToken;
-    /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
-    Price pricePoolPerShare;
-}
-
-/// @dev Eech share token maps to a pool and share class
-struct TokenDetails {
-    PoolId poolId;
-    ShareClassId scId;
-}
-
-struct AssetIdKey {
-    /// @dev The address of the asset
-    address asset;
-    /// @dev The ERC6909 token id or 0, if the underlying asset is an ERC20
-    uint256 tokenId;
-}
 
 interface ISpoke {
     //----------------------------------------------------------------------------------------------
@@ -60,55 +26,17 @@ interface ISpoke {
         uint8 decimals,
         bool isInitialization
     );
-    event AddPool(PoolId indexed poolId);
-    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, IShareToken token);
-    event DeployVault(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        address indexed asset,
-        uint256 tokenId,
-        IVaultFactory factory,
-        IVault vault,
-        VaultKind kind
-    );
-    event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
-    event UpdateAssetPrice(
-        PoolId indexed poolId,
-        ShareClassId indexed scId,
-        address indexed asset,
-        uint256 tokenId,
-        D18 price,
-        uint64 computedAt
-    );
-    event UpdateSharePrice(PoolId indexed poolId, ShareClassId indexed scId, D18 price, uint64 computedAt);
     event InitiateTransferShares(
         uint16 centrifugeId,
         PoolId indexed poolId,
         ShareClassId indexed scId,
         address indexed sender,
+        address owner,
         bytes32 destinationAddress,
         uint128 amount
     );
-    event ExecuteTransferShares(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed receiver, uint128 amount
-    );
-    event LinkVault(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IVault vault
-    );
-    event UnlinkVault(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IVault vault
-    );
-    event UpdateMaxSharePriceAge(PoolId indexed poolId, ShareClassId indexed scId, uint64 maxPriceAge);
-    event UpdateMaxAssetPriceAge(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, uint64 maxPriceAge
-    );
-    event UntrustedContractUpdate(
-        uint16 indexed centrifugeId,
-        PoolId indexed poolId,
-        ShareClassId scId,
-        bytes32 target,
-        bytes payload,
-        address indexed sender
+    event ManagerCall(
+        uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 target, bytes payload, address indexed sender
     );
 
     //----------------------------------------------------------------------------------------------
@@ -118,52 +46,30 @@ interface ISpoke {
     error FileUnrecognizedParam();
     error TooFewDecimals();
     error TooManyDecimals();
-    error PoolAlreadyAdded();
-    error InvalidPool();
-    error ShareClassAlreadyRegistered();
-    error InvalidHook();
-    error OldMetadata();
-    error CannotSetOlderPrice();
-    error OldHook();
-    error UnknownVault();
-    error UnknownAsset();
-    error MalformedVaultUpdateMessage();
-    error InvalidFactory();
-    error InvalidPrice();
     error AssetMissingDecimals();
-    error ShareTokenDoesNotExist();
     error LocalTransferNotAllowed();
-    error CrossChainTransferNotAllowed();
-    error ShareTokenTransferFailed();
-    error TransferFromFailed();
     error InvalidRequestManager();
-    error RequestManagerNotSet();
-    error InvalidManager();
-    error InvalidVault();
-    error AlreadyLinkedVault();
-    error AlreadyUnlinkedVault();
+    error NotBridger();
+    error NotManager();
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Stores pool, share class, asset, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
+
+    /// @notice Dispatches cross-chain messages from this spoke to the hub chain
+    function sender() external view returns (ISpokeMessageSender);
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'gateway', 'investmentManager', 'tokenFactory', or 'gasService'
+    /// @param what Accepts "spokeRegistry", "sender"
     /// @param data The new address
     function file(bytes32 what, address data) external;
-
-    /// @notice Links a share token to a pool and share class
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param shareToken The share token contract
-    function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken) external;
-
-    /// @notice Updates a share token's vault reference for a specific asset
-    /// @param poolId The pool ID
-    /// @param scId The share class ID
-    /// @param asset The asset address
-    /// @param vault The vault address to set (or address(0) to unset)
-    function setShareTokenVault(PoolId poolId, ShareClassId scId, address asset, address vault) external;
 
     //----------------------------------------------------------------------------------------------
     // Outgoing methods
@@ -175,6 +81,11 @@ interface ISpoke {
     /// @param poolId The centrifuge pool id
     /// @param scId The share class id
     /// @param receiver A bytes32 representation of the receiver address
+    /// @param sender The originator of the transfer; attributed in the event and forwarded to the
+    ///        destination-side bridging hook (e.g. the circuit breaker). A router/bridge passes the real user.
+    /// @param owner The account whose shares are transferred and burned; must hold the bridger role and be
+    ///        `msg.sender` unless the caller is a ward (e.g. a router bridging shares it pulled, or the
+    ///        SpokeV3_1_0 compatibility layer forwarding the original caller).
     /// @param amount The amount of tokens to transfer
     /// @param extraGasLimit Extra gas limit used for computation on the intermediary hub
     /// @param remoteExtraGasLimit Extra gas limit used for computation in the destination chain
@@ -184,27 +95,12 @@ interface ISpoke {
         PoolId poolId,
         ShareClassId scId,
         bytes32 receiver,
+        address sender,
+        address owner,
         uint128 amount,
         uint128 extraGasLimit,
         uint128 remoteExtraGasLimit,
         address refund
-    ) external payable;
-
-    /// @notice Transfers share class tokens to a cross-chain recipient address (legacy)
-    /// @dev Maintained for retrocompatibility. New implementers should use the above
-    /// @param centrifugeId The centrifuge id of chain to where the shares are transferred
-    /// @param poolId The centrifuge pool id
-    /// @param scId The share class id
-    /// @param receiver A bytes32 representation of the receiver address
-    /// @param amount The amount of tokens to transfer
-    /// @param remoteExtraGasLimit Extra gas limit used for computation in the destination chain
-    function crosschainTransferShares(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 receiver,
-        uint128 amount,
-        uint128 remoteExtraGasLimit
     ) external payable;
 
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
@@ -221,20 +117,55 @@ interface ISpoke {
         payable
         returns (AssetId assetId);
 
-    /// @notice Initiates an update to a hub-side contract from spoke
+    /// @notice Initiates a spoke-direction manager call to a destination contract, routed through the Envoy
+    ///         to the target's `IManagerCallFromSpoke.fromSpoke`.
     /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param target The hub-side target contract (as bytes32 for cross-chain compatibility)
-    /// @param payload The update payload
+    /// @param target The destination target contract (as bytes32 for cross-chain compatibility)
+    /// @param payload The action payload (any share class id is encoded here)
     /// @param extraGasLimit Additional gas for cross-chain execution
     /// @param refund Address to refund excess payment
-    /// @dev Permissionless by choice, forwards caller's address to recipient for permission validation
-    function updateContract(
+    /// @dev Permissionless by choice, forwards caller's address to the target for permission validation
+    function managerCall(PoolId poolId, bytes32 target, bytes calldata payload, uint128 extraGasLimit, address refund)
+        external
+        payable;
+
+    /// @notice Initializes a holding on the hub for a pool's share class and asset. Callable by a spoke manager.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @param valuation The valuation contract (on the hub) as bytes32
+    /// @param asset The asset account id
+    /// @param equity The equity account id
+    /// @param gain The gain account id
+    /// @param loss The loss account id
+    /// @param refund Address to refund excess payment
+    function initializeHolding(
         PoolId poolId,
         ShareClassId scId,
-        bytes32 target,
-        bytes calldata payload,
-        uint128 extraGasLimit,
+        AssetId assetId,
+        bytes32 valuation,
+        AccountId asset,
+        AccountId equity,
+        AccountId gain,
+        AccountId loss,
+        address refund
+    ) external payable;
+
+    /// @notice Initializes a liability on the hub for a pool's share class and asset. Callable by a spoke manager.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @param valuation The valuation contract (on the hub) as bytes32
+    /// @param expense The expense account id
+    /// @param liability The liability account id
+    /// @param refund Address to refund excess payment
+    function initializeLiability(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 valuation,
+        AccountId expense,
+        AccountId liability,
         address refund
     ) external payable;
 
@@ -255,135 +186,4 @@ interface ISpoke {
         bool unpaid,
         address refund
     ) external payable;
-
-    //----------------------------------------------------------------------------------------------
-    // View methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @notice Returns the asset address and tokenId associated with a given asset id.
-    /// @dev Reverts if asset id does not exist
-    ///
-    /// @param assetId The underlying internal uint128 assetId.
-    /// @return asset The address of the asset linked to the given asset id.
-    /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    function idToAsset(AssetId assetId) external view returns (address asset, uint256 tokenId);
-
-    /// @notice Returns assetId given the asset address and tokenId.
-    /// @dev Reverts if asset id does not exist
-    ///
-    /// @param asset The address of the asset linked to the given asset id.
-    /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    /// @return assetId The underlying internal uint128 assetId.
-    function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
-
-    /// @notice Returns poolId and shareClassId given a share token address
-    /// @dev Reverts if share token does not exist
-    ///
-    /// @param shareToken_ The address of the share token
-    /// @return poolId The pool id associated with the share token
-    /// @return scId The share class id associated with the share token
-    function shareTokenDetails(address shareToken_) external view returns (PoolId poolId, ShareClassId scId);
-
-    /// @notice Returns whether the given pool id is active
-    /// @param poolId The pool id
-    /// @return Whether the pool is active
-    function isPoolActive(PoolId poolId) external view returns (bool);
-
-    /// @notice Returns the share class token for a given pool and share class id
-    /// @dev Reverts if share class does not exists
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @return The address of the share token
-    function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
-
-    /// @notice Returns the price per share for a given pool and share class
-    /// @dev The provided price is defined as POOL_UNIT/SHARE_UNIT
-    /// @dev Conditionally checks if price is valid
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param checkValidity Whether to check if the price is valid
-    /// @return price The pool price per share
-    function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) external view returns (D18 price);
-
-    /// @notice Returns the price per asset for a given pool, share class and the underlying asset id
-    /// @dev The provided price is defined as POOL_UNIT/ASSET_UNIT
-    /// @dev Conditionally checks if price is valid
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to know the POOL_UNIT/ASSET_UNIT
-    /// @param checkValidity Whether to check if the price is valid
-    /// @return price The pool price per asset unit
-    function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
-        external
-        view
-        returns (D18 price);
-
-    /// @notice Returns both prices per pool for a given pool, share class and the underlying asset id
-    /// @dev The provided prices are defined as POOL_UNIT/ASSET_UNIT and POOL_UNIT/SHARE_UNIT
-    /// @dev Conditionally checks if prices are valid
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to know pool price per asset
-    /// @param checkValidity Whether to check if the prices are valid
-    /// @return pricePoolPerAsset The pool price per asset unit, i.e. POOL_UNIT/ASSET_UNIT
-    /// @return pricePoolPerShare The pool price per share unit, i.e. POOL_UNIT/SHARE_UNIT
-    function pricesPoolPer(PoolId poolId, ShareClassId scId, AssetId assetId, bool checkValidity)
-        external
-        view
-        returns (D18 pricePoolPerAsset, D18 pricePoolPerShare);
-
-    /// @notice Returns the age related markers for a share class price
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @return computedAt The timestamp when this price was computed
-    /// @return maxAge The maximum age this price is allowed to have
-    /// @return validUntil The timestamp until this price is valid
-    function markersPricePoolPerShare(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
-
-    /// @notice Returns the age related markers for an asset price
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id for which we want to know pool price per asset
-    /// @return computedAt The timestamp when this price was computed
-    /// @return maxAge The maximum age this price is allowed to have
-    /// @return validUntil The timestamp until this price is valid
-    function markersPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        view
-        returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
-
-    /// @notice Returns the request manager for a given pool
-    /// @param poolId The pool id
-    /// @return manager The request manager for the pool
-    function requestManager(PoolId poolId) external view returns (IRequestManager manager);
-
-    /// @notice Routes and batches cross-chain messages between hub and spoke
-    function gateway() external view returns (IGateway);
-
-    /// @notice Deploys share tokens for new share classes on this spoke chain
-    function tokenFactory() external view returns (ITokenFactory);
-
-    /// @notice Dispatches cross-chain messages from this spoke to the hub chain
-    function sender() external view returns (ISpokeMessageSender);
-
-    /// @notice Deploys pool-specific escrow contracts that custody assets and shares
-    function poolEscrowFactory() external view returns (IPoolEscrowFactory);
-
-    /// @notice Pool registration details, returns 0 if the pool has not been created on this spoke
-    /// @param poolId The pool id
-    /// @return createdAt The timestamp of pool creation
-    function pool(PoolId poolId) external view returns (uint64 createdAt);
-
-    /// @notice Returns the share class details for a given pool and share class id
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @return shareToken The share token contract
-    /// @return pricePoolPerShare The price of the share class in pool denomination
-    function shareClass(PoolId poolId, ShareClassId scId)
-        external
-        view
-        returns (IShareToken shareToken, Price memory pricePoolPerShare);
 }

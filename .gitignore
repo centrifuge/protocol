@@ -33,3 +33,7 @@ script/registry/package-lock.json
 
 ## Benchmarking
 src/admin/GasService_temp.*.sol
+
+## Local tooling artifacts (Claude Code skills & generated reports)
+.claude/skills/
+x-ray/

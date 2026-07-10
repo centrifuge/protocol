@@ -10,13 +10,18 @@ import {Mock} from "../../mocks/Mock.sol";
 contract MockFullRestrictions is FullRestrictions, Mock {
     constructor(
         address root_,
+        address envoy_,
         address spoke_,
         address balanceSheet_,
         address crosschainSource_,
         address deployer,
         address poolEscrowProvider_,
         address poolEscrow_
-    ) FullRestrictions(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
+    )
+        FullRestrictions(
+            root_, envoy_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
+        )
+    {}
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public

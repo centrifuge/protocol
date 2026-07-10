@@ -7,11 +7,10 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
+import {ISpokeV3_1_0} from "../../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";
 
@@ -228,7 +227,7 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedContractUpdate {
+interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCallFromHub {
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
@@ -241,14 +240,19 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
     error UnknownTrustedCall();
+    error NotEnvoy();
+    error UnexpectedValue();
 
     enum TrustedCall {
         Valuation,
         MaxReserve
     }
 
+    /// @notice The Envoy that routes manifest-supervised valuation/max-reserve updates
+    function envoy() external view returns (address);
+
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spoke', 'balanceSheet', 'vaultRegistry' or 'envoy'.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -276,13 +280,14 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
         external;
 
     /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpoke);
+    function spoke() external view returns (ISpokeV3_1_0);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
 
-    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
-    function vaultRegistry() external view returns (IVaultRegistry);
+    /// @notice Legacy spoke facade exposing the pre-refactor vault-registry lookups
+    ///         (vault details and (poolId, scId, asset) -> deployed vault)
+    function vaultRegistry() external view returns (ISpokeV3_1_0);
 
     /// @notice Price source contract used for sync deposit pricing on a given pool and share class
     function valuation(PoolId poolId, ShareClassId scId) external view returns (ISyncDepositValuation);
@@ -369,8 +374,9 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
 
-    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
-    function vaultRegistry() external view returns (IVaultRegistry);
+    /// @notice Legacy spoke facade exposing the pre-refactor vault-registry lookups
+    ///         (vault details and (poolId, scId, asset) -> deployed vault)
+    function vaultRegistry() external view returns (ISpokeV3_1_0);
 
     /// @notice Manages gas subsidies for cross-chain message costs, funded per-pool
     function subsidyManager() external view returns (ISubsidyManager);

@@ -6,9 +6,9 @@ The `Spoke` module manages the local state and operations for pools and share cl
 
 ### `Spoke`
 
-The `Spoke` contract serves as the local registry and coordination hub for all pool operations on a given chain. It manages pool and share class registration, tracks asset mappings between local addresses and global `AssetId`s, and coordinates cross-chain share transfers. The contract integrates with `TokenFactory` to deploy `ShareToken` instances, `PoolEscrowFactory` to create pool-specific escrows, and the `Gateway`'s message sender to communicate state changes to other chains.
+The `Spoke` contract is the coordination hub for user-facing pool operations on a given chain: cross-chain share transfers, asset registration, request forwarding, and manager calls. Pool and share class registration, asset mappings between local addresses and global `AssetId`s, prices, and vault state live in `SpokeRegistry`, while inbound cross-chain messages are handled by `SpokeHandler`. It uses the `Gateway`'s message sender to communicate state changes to other chains.
 
-The `Spoke` maintains price feeds for assets within each pool and share class, enabling local price lookups and validation. It handles asset registration with decimal validation and metadata extraction from ERC20 or ERC6909 tokens. For cross-chain operations, it enforces transfer restrictions via the `ShareToken`'s hook system, burns shares locally, and dispatches transfer messages to destination chains. The contract also provides request manager assignment per pool and supports untrusted contract update messages for extensibility.
+The `Spoke` handles asset registration with decimal validation and metadata extraction from ERC20 or ERC6909 tokens. For cross-chain operations, it enforces transfer restrictions via the `ShareToken`'s hook system, burns shares locally, and dispatches transfer messages to destination chains. It forwards investment requests to the pool's request manager and routes manager calls to their targets. Pool, share class, asset, and vault state, along with prices and their local lookups, live in `SpokeRegistry`.
 
 ### `ShareToken`
 
@@ -32,8 +32,8 @@ The following diagram shows how deposits and withdrawals impact the state of the
 
 The contract exposes deposit, withdraw, reserve, and unreserve operations, all auth-protected and typically called by the `BalanceSheet`. Available balance calculations subtract reserved amounts from totals, ensuring reserved funds cannot be double-spent. The escrow extends the base `Escrow` contract with share class-level accounting and is deployed deterministically per pool by `PoolEscrowFactory`.
 
-### `VaultRegistry`
+### `SpokeRegistry`
 
-`VaultRegistry` manages vault deployment, linking, and unlinking for pool share classes and assets. It supports three vault update kinds: deploy-and-link (using a factory), link (existing vault), and unlink (remove association). The registry tracks vault details including the associated pool, share class, asset, and request manager, enabling reverse lookups from vault address to pool context.
+`SpokeRegistry` is the on-chain registry for the spoke. It tracks pool and share class registration, asset mappings between local addresses and global `AssetId`s, the per-pool request manager, and prices per share class and asset. It also manages vault deployment, linking, and unlinking across three update kinds: deploy-and-link (using a factory), link (existing vault), and unlink (remove association), tracking vault details including the associated pool, share class, asset, and request manager for reverse lookups from a vault address to its pool context.
 
 Vault deployment validates that async vaults have an associated request manager configured on the `Spoke`, preventing misconfigured deployments. Linking registers the vault in both forward (pool/shareClass/asset/manager → vault) and reverse (vault → details) mappings, while unlinking removes these associations and emits events for state tracking. The registry is called by the `Gateway`'s message processor when vault updates arrive from the `Hub`, ensuring vault configuration stays synchronized across chains.

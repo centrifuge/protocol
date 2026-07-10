@@ -13,8 +13,7 @@ import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IValuation} from "../core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
-import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
-import {IUntrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub, IManagerCallFromSpoke} from "../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  OracleValuation
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
@@ -22,9 +21,9 @@ import {IUntrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.
 /// @dev    Setup: add feeders via `fromHub` (`hub.managerCall` -> `Envoy`, manifest-supervised), set this
 ///         contract as the valuation for one or more assets, and rely it as a hub manager to call
-///         `hub.updateHoldingValue()`. Price updates: local via `setPrice()`, remote via `untrustedCall()`;
-///         both validate the caller against the `feeder` mapping.
-contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
+///         `hub.updateHoldingValue()`. Price updates: local via `setPrice()`, remote via `fromSpoke()`
+///         (`spoke.managerCall` -> `Envoy`); both validate the caller against the `feeder` mapping.
+contract OracleValuation is IOracleValuation {
     using CastLib for *;
 
     /// @dev centrifugeId used for local feeders (as opposed to remote/cross-chain feeders).
@@ -32,17 +31,15 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
 
     IHub public immutable hub;
     address public immutable envoy;
-    address public immutable contractUpdater;
     IHubRegistry public immutable hubRegistry;
 
     /// @dev centrifugeId=LOCAL for local feeders, otherwise the source chain ID for remote feeders.
     mapping(PoolId => mapping(uint16 centrifugeId => mapping(bytes32 => bool))) public feeder;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId base => Price))) public pricePoolPerAsset;
 
-    constructor(IHub hub_, IHubRegistry hubRegistry_, address contractUpdater_, address envoy_) {
+    constructor(IHub hub_, IHubRegistry hubRegistry_, address envoy_) {
         hub = hub_;
         hubRegistry = hubRegistry_;
-        contractUpdater = contractUpdater_;
         envoy = envoy_;
     }
 
@@ -50,13 +47,17 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
     // Administration
     //----------------------------------------------------------------------------------------------
 
+    /// @dev The Envoy is the only authorized caller of `fromHub`/`fromSpoke`, and neither forwards value.
+    modifier onlyEnvoy() {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
+        _;
+    }
+
     /// @inheritdoc IManagerCallFromHub
     /// @dev Adds/removes a price feeder. No outgoing message, so value is rejected.
     ///      Feeder details are encoded in `payload` (single action, no discriminator).
-    function fromHub(PoolId poolId, bytes calldata payload) external payable {
-        require(msg.sender == envoy, NotEnvoy());
-        require(msg.value == 0, UnexpectedValue());
-
+    function fromHub(PoolId poolId, bytes calldata payload) external payable onlyEnvoy {
         (uint16 centrifugeId, bytes32 feeder_, bool canFeed) = abi.decode(payload, (uint16, bytes32, bool));
         feeder[poolId][centrifugeId][feeder_] = canFeed;
         emit UpdateFeeder(poolId, centrifugeId, feeder_, canFeed);
@@ -72,18 +73,17 @@ contract OracleValuation is IOracleValuation, IUntrustedContractUpdate {
         _setPrice(poolId, scId, assetId, newPrice);
     }
 
-    /// @inheritdoc IUntrustedContractUpdate
-    function untrustedCall(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes calldata payload,
-        uint16 centrifugeId,
-        bytes32 sender
-    ) external {
-        require(msg.sender == contractUpdater, NotAuthorized());
+    /// @inheritdoc IManagerCallFromSpoke
+    /// @dev Remote price update by a registered feeder. No outgoing message, so value is rejected.
+    ///      The share class id is encoded in `payload` (fromSpoke carries no scId).
+    function fromSpoke(PoolId poolId, bytes calldata payload, uint16 centrifugeId, bytes32 sender)
+        external
+        payable
+        onlyEnvoy
+    {
         require(feeder[poolId][centrifugeId][sender], NotFeeder());
-        (uint128 assetId, uint128 newPrice) = abi.decode(payload, (uint128, uint128));
-        _setPrice(poolId, scId, AssetId.wrap(assetId), D18.wrap(newPrice));
+        (bytes16 scId, uint128 assetId, uint128 newPrice) = abi.decode(payload, (bytes16, uint128, uint128));
+        _setPrice(poolId, ShareClassId.wrap(scId), AssetId.wrap(assetId), D18.wrap(newPrice));
     }
 
     function _setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) internal {

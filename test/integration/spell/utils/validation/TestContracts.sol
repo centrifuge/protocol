@@ -10,8 +10,10 @@ import {Gateway} from "../../../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../../../src/core/hub/HubRegistry.sol";
 import {BalanceSheet} from "../../../../../src/core/spoke/BalanceSheet.sol";
-import {VaultRegistry} from "../../../../../src/core/spoke/VaultRegistry.sol";
+import {SpokeHandler} from "../../../../../src/core/spoke/SpokeHandler.sol";
+import {SpokeRegistry} from "../../../../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
+import {SpokeV3_1_0} from "../../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../../../../../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../../../../../src/core/hub/ShareClassManager.sol";
 import {TokenFactory} from "../../../../../src/core/spoke/factories/TokenFactory.sol";
@@ -83,9 +85,11 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         BalanceSheet(c.balanceSheet),
         TokenFactory(c.tokenFactory),
         ContractUpdater(c.contractUpdater),
+        SpokeHandler(c.spokeHandler),
+        SpokeRegistry(c.spokeRegistry),
+        SpokeV3_1_0(c.spokeV3_1_0),
         ContractUpdaterForwarder(c.contractUpdaterForwarder),
         Envoy(c.envoy),
-        VaultRegistry(c.vaultRegistry),
         HubRegistry(c.hubRegistry),
         Accounting(c.accounting),
         Holdings(c.holdings),

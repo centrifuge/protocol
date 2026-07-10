@@ -15,7 +15,8 @@ interface IQueueManager {
         PoolId indexed poolId, ShareClassId indexed scId, uint64 newMinDelay, uint128 newExtraGasLimit
     );
 
-    error NotContractUpdater();
+    error NotEnvoy();
+    error UnexpectedValue();
     error MinDelayNotElapsed();
     error NoUpdateForAsset();
     error InsufficientFunds();
@@ -29,8 +30,8 @@ interface IQueueManager {
     /// @notice Routes and batches cross-chain messages between hub and spoke
     function gateway() external view returns (IGateway);
 
-    /// @notice Address authorized to update queue configuration via trusted cross-chain calls
-    function contractUpdater() external view returns (address);
+    /// @notice The Envoy that routes manifest-supervised queue configuration updates
+    function envoy() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
