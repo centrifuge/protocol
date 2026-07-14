@@ -281,17 +281,13 @@ contract TestAdapterIsolation is Script, Constants {
         Hub(h.contracts.hub).addShareClass(poolId, shareName, shareSymbol, shareClassMeta);
 
         if (HubRegistry(h.contracts.hubRegistry).isRegistered(assetId)) {
+            AccountId[4] memory accounts;
+            accounts[0] = AccountId.wrap(0x01);
+            accounts[1] = AccountId.wrap(0x02);
+            accounts[2] = AccountId.wrap(0x03);
+            accounts[3] = AccountId.wrap(0x04);
             Hub(h.contracts.hub)
-                .initializeHolding(
-                    poolId,
-                    scId,
-                    assetId,
-                    IdentityValuation(h.contracts.identityValuation),
-                    AccountId.wrap(0x01),
-                    AccountId.wrap(0x02),
-                    AccountId.wrap(0x03),
-                    AccountId.wrap(0x04)
-                );
+                .initializeHolding(poolId, scId, assetId, IdentityValuation(h.contracts.identityValuation), accounts);
         }
         Hub(h.contracts.hub).updateSharePrice(poolId, scId, d18(1, 1), uint64(block.timestamp));
 

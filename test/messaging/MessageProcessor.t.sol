@@ -13,7 +13,8 @@ import {MessageLib, ManagerKind} from "../../src/core/messaging/libraries/Messag
 import {IMessageProcessor} from "../../src/core/messaging/interfaces/IMessageProcessor.sol";
 import {
     ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler
+    IBalanceSheetGatewayHandler,
+    IHubGatewayHandler
 } from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
 
 import "forge-std/Test.sol";
@@ -398,16 +399,6 @@ contract TestHandleUpdateManager is TestCommon {
         vm.expectCall(gateway, abi.encodeWithSelector(IGateway.updateManager.selector, poolId, who, true));
         vm.prank(AUTH);
         processor.handle(HUB_ID, _message(ManagerKind.Gateway));
-    }
-
-    function testDispatchesToSpokeManager() public {
-        _wireTargets();
-        vm.mockCall(spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateManager.selector), "");
-        vm.expectCall(
-            spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateManager.selector, poolId, who, true)
-        );
-        vm.prank(AUTH);
-        processor.handle(HUB_ID, _message(ManagerKind.Spoke));
     }
 
     function testDispatchesToSpokeBridger() public {

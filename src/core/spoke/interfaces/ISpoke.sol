@@ -7,7 +7,6 @@ import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.so
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
-import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
 interface ISpoke {
@@ -50,7 +49,6 @@ interface ISpoke {
     error LocalTransferNotAllowed();
     error InvalidRequestManager();
     error NotBridger();
-    error NotManager();
 
     //----------------------------------------------------------------------------------------------
     // View methods
@@ -128,46 +126,6 @@ interface ISpoke {
     function managerCall(PoolId poolId, bytes32 target, bytes calldata payload, uint128 extraGasLimit, address refund)
         external
         payable;
-
-    /// @notice Initializes a holding on the hub for a pool's share class and asset. Callable by a spoke manager.
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @param valuation The valuation contract (on the hub) as bytes32
-    /// @param asset The asset account id
-    /// @param equity The equity account id
-    /// @param gain The gain account id
-    /// @param loss The loss account id
-    /// @param refund Address to refund excess payment
-    function initializeHolding(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 valuation,
-        AccountId asset,
-        AccountId equity,
-        AccountId gain,
-        AccountId loss,
-        address refund
-    ) external payable;
-
-    /// @notice Initializes a liability on the hub for a pool's share class and asset. Callable by a spoke manager.
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @param valuation The valuation contract (on the hub) as bytes32
-    /// @param expense The expense account id
-    /// @param liability The liability account id
-    /// @param refund Address to refund excess payment
-    function initializeLiability(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 valuation,
-        AccountId expense,
-        AccountId liability,
-        address refund
-    ) external payable;
 
     /// @notice Handles a request originating from the Spoke side
     /// @param poolId The pool id

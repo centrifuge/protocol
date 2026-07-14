@@ -11,7 +11,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
-import {AccountType} from "../../../../src/core/hub/interfaces/IHub.sol";
+import {AccountKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
@@ -777,11 +777,11 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         AssetId assetId = _getAssetId();
 
         if (_before.ghostHolding[poolId][scId][assetId] > _after.ghostHolding[poolId][scId][assetId]) {
-            // loop over all account types defined in IHub::AccountType
-            for (uint8 kind = 0; kind < 6; kind++) {
-                // Skip Loss account (kind=2) as it's expected to increase when holding value decreases
+            // loop over all settlement slots defined in IHub::AccountKind
+            for (uint8 kind = 0; kind < 4; kind++) {
+                // Skip the ValueDecrease (loss) slot, as it's expected to increase when holding value decreases
                 // This is correct double-entry accounting: when assets decrease, losses increase
-                if (kind == uint8(AccountType.Loss)) {
+                if (kind == uint8(AccountKind.ValueDecrease)) {
                     continue;
                 }
 
@@ -803,11 +803,8 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        // Check if this holding is a liability to determine the correct account type
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType accountType = isLiability ? AccountType.Liability : AccountType.Asset;
-
-        AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(accountType));
+        // The holding's own account is always the AmountDebit slot (asset/expense side)
+        AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountKind.AmountDebit));
         (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 

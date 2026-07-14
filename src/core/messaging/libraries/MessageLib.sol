@@ -49,7 +49,6 @@ enum ManagerKind {
     BalanceSheet,
     Adapter,
     Gateway,
-    Spoke,
     Bridger
 }
 

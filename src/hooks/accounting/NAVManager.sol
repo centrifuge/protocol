@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {INAVManager, INAVHook} from "./interfaces/INAVManager.sol";
+import {INAVManager, INAVHook, NAVAccount} from "./interfaces/INAVManager.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IHoldings} from "../../core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../core/hub/interfaces/IValuation.sol";
-import {IHub, AccountType} from "../../core/hub/interfaces/IHub.sol";
+import {IHub, AccountKind} from "../../core/hub/interfaces/IHub.sol";
 import {ISnapshotHook} from "../../core/hub/interfaces/ISnapshotHook.sol";
-import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 import {IAccounting, JournalEntry} from "../../core/hub/interfaces/IAccounting.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../core/types/AccountId.sol";
+import {IManagerCallFromHub, IManagerCallFromSpoke} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @dev Assumes all assets in a pool are shared across all share classes, not segregated.
 contract NAVManager is INAVManager {
@@ -22,7 +22,9 @@ contract NAVManager is INAVManager {
     IAccounting public immutable accounting;
 
     mapping(PoolId => INAVHook) public navHook;
+    mapping(PoolId => IValuation) public defaultValuation;
     mapping(PoolId => mapping(uint16 centrifugeId => bool)) public initialized;
+    mapping(PoolId => mapping(uint16 centrifugeId => mapping(bytes32 => bool))) public manager;
 
     constructor(IHub hub_, address envoy_) {
         hub = hub_;
@@ -32,7 +34,7 @@ contract NAVManager is INAVManager {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Manager call (manifest-supervised configuration)
+    // Manager call
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IManagerCallFromHub
@@ -43,35 +45,54 @@ contract NAVManager is INAVManager {
         ManagerCall kind = ManagerCall(abi.decode(payload, (uint8)));
         if (kind == ManagerCall.SetNavHook) {
             (, address navHook_) = abi.decode(payload, (uint8, address));
-            _setNAVHook(poolId, INAVHook(navHook_));
+            navHook[poolId] = INAVHook(navHook_);
+            emit SetNavHook(poolId, navHook_);
         } else if (kind == ManagerCall.InitializeNetwork) {
             (, uint16 centrifugeId) = abi.decode(payload, (uint8, uint16));
             _initializeNetwork(poolId, centrifugeId);
         } else if (kind == ManagerCall.InitializeHolding) {
-            (, ShareClassId scId, AssetId assetId, address valuation) =
-                abi.decode(payload, (uint8, ShareClassId, AssetId, address));
-            _initializeHolding(poolId, scId, assetId, IValuation(valuation));
+            (, ShareClassId scId, AssetId assetId) = abi.decode(payload, (uint8, ShareClassId, AssetId));
+            _initializeHolding(poolId, scId, assetId);
         } else if (kind == ManagerCall.InitializeLiability) {
-            (, ShareClassId scId, AssetId assetId, address valuation) =
-                abi.decode(payload, (uint8, ShareClassId, AssetId, address));
-            _initializeLiability(poolId, scId, assetId, IValuation(valuation));
+            (, ShareClassId scId, AssetId assetId) = abi.decode(payload, (uint8, ShareClassId, AssetId));
+            _initializeLiability(poolId, scId, assetId);
         } else if (kind == ManagerCall.UpdateHoldingValuation) {
             (, ShareClassId scId, AssetId assetId, address valuation) =
                 abi.decode(payload, (uint8, ShareClassId, AssetId, address));
             _updateHoldingValuation(poolId, scId, assetId, IValuation(valuation));
+        } else if (kind == ManagerCall.UpdateManager) {
+            (, uint16 centrifugeId, bytes32 who, bool canManage) = abi.decode(payload, (uint8, uint16, bytes32, bool));
+            manager[poolId][centrifugeId][who] = canManage;
+            emit UpdateManager(poolId, centrifugeId, who, canManage);
+        } else if (kind == ManagerCall.SetDefaultValuation) {
+            (, address valuation) = abi.decode(payload, (uint8, address));
+            defaultValuation[poolId] = IValuation(valuation);
+            emit SetDefaultValuation(poolId, IValuation(valuation));
         } else {
             (, uint16 centrifugeId) = abi.decode(payload, (uint8, uint16));
             _closeGainLoss(poolId, centrifugeId);
         }
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Administration
-    //----------------------------------------------------------------------------------------------
+    /// @inheritdoc IManagerCallFromSpoke
+    /// @dev Spoke-side holding/liability init, reached via the permissionless `spoke.managerCall`, so the
+    ///      origin `sender` is checked against the per-pool `manager` allowlist (set hub-side via `fromHub`).
+    ///      The downstream `hub.initializeHolding` is still manifest-supervised. Other actions stay hub-only.
+    function fromSpoke(PoolId poolId, bytes calldata payload, uint16 centrifugeId, bytes32 sender) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
+        require(manager[poolId][centrifugeId][sender], NotManager());
 
-    function _setNAVHook(PoolId poolId, INAVHook navHook_) internal {
-        navHook[poolId] = navHook_;
-        emit SetNavHook(poolId, address(navHook_));
+        ManagerCall kind = ManagerCall(abi.decode(payload, (uint8)));
+        if (kind == ManagerCall.InitializeHolding) {
+            (, ShareClassId scId, AssetId assetId) = abi.decode(payload, (uint8, ShareClassId, AssetId));
+            _initializeHolding(poolId, scId, assetId);
+        } else if (kind == ManagerCall.InitializeLiability) {
+            (, ShareClassId scId, AssetId assetId) = abi.decode(payload, (uint8, ShareClassId, AssetId));
+            _initializeLiability(poolId, scId, assetId);
+        } else {
+            revert UnsupportedSpokeCall();
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -91,37 +112,36 @@ contract NAVManager is INAVManager {
         emit InitializeNetwork(poolId, centrifugeId);
     }
 
-    function _initializeHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) internal {
+    function _initializeHolding(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
         uint16 centrifugeId = assetId.centrifugeId();
-        require(initialized[poolId][centrifugeId], NotInitialized());
-
-        AccountId assetAccount_ = assetAccount(assetId);
-
-        hub.createAccount(poolId, assetAccount_, true);
-        hub.initializeHolding(
+        _createHolding(
             poolId,
             scId,
             assetId,
-            valuation,
-            assetAccount_,
-            equityAccount(centrifugeId),
-            gainAccount(centrifugeId),
-            lossAccount(centrifugeId)
+            _accounts(
+                assetAccount(assetId), equityAccount(centrifugeId), gainAccount(centrifugeId), lossAccount(centrifugeId)
+            )
         );
-
         emit InitializeHolding(poolId, scId, assetId);
     }
 
-    function _initializeLiability(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) internal {
-        uint16 centrifugeId = assetId.centrifugeId();
-        require(initialized[poolId][centrifugeId], NotInitialized());
-
-        AccountId expenseAccount_ = expenseAccount(assetId);
-
-        hub.createAccount(poolId, expenseAccount_, true);
-        hub.initializeLiability(poolId, scId, assetId, valuation, expenseAccount_, liabilityAccount(centrifugeId));
-
+    function _initializeLiability(PoolId poolId, ShareClassId scId, AssetId assetId) internal {
+        // A liability has no gain/loss, so it reuses its single account for the credit and both value slots.
+        AccountId liability = liabilityAccount(assetId.centrifugeId());
+        _createHolding(poolId, scId, assetId, _accounts(expenseAccount(assetId), liability, liability, liability));
         emit InitializeLiability(poolId, scId, assetId);
+    }
+
+    /// @dev Creates only `accounts[0]`, the per-asset debit account; the other slots are per-network
+    ///      accounts already created in `_initializeNetwork` and reused across holdings.
+    function _createHolding(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId[4] memory accounts) private {
+        require(initialized[poolId][assetId.centrifugeId()], NotInitialized());
+
+        IValuation valuation = defaultValuation[poolId];
+        require(address(valuation) != address(0), ValuationNotSet());
+
+        hub.createAccount(poolId, accounts[0], true);
+        hub.initializeHolding(poolId, scId, assetId, valuation, accounts);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -245,31 +265,43 @@ contract NAVManager is INAVManager {
 
     /// @inheritdoc INAVManager
     function assetAccount(AssetId assetId) public pure returns (AccountId) {
-        return withAssetId(assetId, uint16(AccountType.Asset));
+        return withAssetId(assetId, uint16(NAVAccount.Asset));
     }
 
     /// @inheritdoc INAVManager
     function expenseAccount(AssetId assetId) public pure returns (AccountId) {
-        return withAssetId(assetId, uint16(AccountType.Expense));
+        return withAssetId(assetId, uint16(NAVAccount.Expense));
     }
 
     /// @inheritdoc INAVManager
     function equityAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, uint16(AccountType.Equity));
+        return withCentrifugeId(centrifugeId, uint16(NAVAccount.Equity));
     }
 
     /// @inheritdoc INAVManager
     function liabilityAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, uint16(AccountType.Liability));
+        return withCentrifugeId(centrifugeId, uint16(NAVAccount.Liability));
     }
 
     /// @inheritdoc INAVManager
     function gainAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, uint16(AccountType.Gain));
+        return withCentrifugeId(centrifugeId, uint16(NAVAccount.Gain));
     }
 
     /// @inheritdoc INAVManager
     function lossAccount(uint16 centrifugeId) public pure returns (AccountId) {
-        return withCentrifugeId(centrifugeId, uint16(AccountType.Loss));
+        return withCentrifugeId(centrifugeId, uint16(NAVAccount.Loss));
+    }
+
+    /// @dev Assembles the four settlement slots in AccountKind order (debit, credit, value increase, value decrease).
+    function _accounts(AccountId debit, AccountId credit, AccountId valueIncrease, AccountId valueDecrease)
+        private
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = debit;
+        accounts[1] = credit;
+        accounts[2] = valueIncrease;
+        accounts[3] = valueDecrease;
     }
 }

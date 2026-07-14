@@ -223,10 +223,8 @@ contract StdManifest is IStdManifest {
             || selector == IHub.setAccountMetadata.selector
             || selector == IHub.updateJournal.selector
             || selector == IHub.initializeHolding.selector
-            || selector == IHub.initializeLiability.selector
             || selector == IHub.updateHoldingValue.selector
             || selector == IHub.updateHoldingValuation.selector
-            || selector == IHub.updateHoldingIsLiability.selector
             || selector == IHub.setHoldingAccountId.selector;
     }
 

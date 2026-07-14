@@ -24,7 +24,6 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     mapping(PoolId => mapping(ShareClassId => ShareClassDetails)) public shareClass;
 
     // Roles
-    mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(address => bool)) public bridger;
 
     // Assets & prices
@@ -80,12 +79,6 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     //----------------------------------------------------------------------------------------------
     // Roles
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc ISpokeRegistry
-    function updateManager(PoolId poolId, address who, bool canManage) external auth {
-        manager[poolId][who] = canManage;
-        emit UpdateManager(poolId, who, canManage);
-    }
 
     /// @inheritdoc ISpokeRegistry
     function updateBridger(PoolId poolId, address who, bool canBridge) external auth {

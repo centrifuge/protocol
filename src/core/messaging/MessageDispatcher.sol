@@ -18,7 +18,6 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {AccountId} from "../types/AccountId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
@@ -325,7 +324,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             if (kind == ManagerKind.BalanceSheet) balanceSheet.updateManager(poolId, whoAddr, canManage);
             else if (kind == ManagerKind.Adapter) multiAdapter.updateManager(poolId, whoAddr, canManage);
             else if (kind == ManagerKind.Gateway) gateway.updateManager(poolId, whoAddr, canManage);
-            else if (kind == ManagerKind.Spoke) spokeHandler.updateManager(poolId, whoAddr, canManage);
             else if (kind == ManagerKind.Bridger) spokeHandler.updateBridger(poolId, whoAddr, canManage);
             else revert InvalidManagerKind();
             SafeTransferLib.safeTransferETH(refund, msg.value);
@@ -586,32 +584,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 refund
             );
         }
-    }
-
-    /// @inheritdoc ISpokeMessageSender
-    /// @dev No-op for now: the holding-initialization message is not yet wired. Refunds any value.
-    function sendInitializeHolding(
-        PoolId,
-        ShareClassId,
-        AssetId,
-        bytes32,
-        AccountId,
-        AccountId,
-        AccountId,
-        AccountId,
-        address refund
-    ) external payable auth {
-        SafeTransferLib.safeTransferETH(refund, msg.value);
-    }
-
-    /// @inheritdoc ISpokeMessageSender
-    /// @dev No-op for now: the liability-initialization message is not yet wired. Refunds any value.
-    function sendInitializeLiability(PoolId, ShareClassId, AssetId, bytes32, AccountId, AccountId, address refund)
-        external
-        payable
-        auth
-    {
-        SafeTransferLib.safeTransferETH(refund, msg.value);
     }
 
     /// @inheritdoc IHubMessageSender

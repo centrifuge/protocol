@@ -7,9 +7,23 @@ import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {AccountId} from "../../../core/types/AccountId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {IHoldings} from "../../../core/hub/interfaces/IHoldings.sol";
+import {IValuation} from "../../../core/hub/interfaces/IValuation.sol";
 import {IAccounting} from "../../../core/hub/interfaces/IAccounting.sol";
 import {ISnapshotHook} from "../../../core/hub/interfaces/ISnapshotHook.sol";
-import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
+import {IManagerCallFromHub, IManagerCallFromSpoke} from "../../../core/utils/interfaces/IManagerCall.sol";
+
+/// @dev NAVManager's own accounting taxonomy, used only to derive distinct {AccountId}s per role.
+///      Distinct from the core {AccountKind} settlement slots, which these accounts are mapped to.
+///      The ordinals are load-bearing: they seed on-chain AccountId derivation, so reordering or
+///      inserting values would silently repoint existing pools' accounts. Append only.
+enum NAVAccount {
+    Asset,
+    Equity,
+    Loss,
+    Gain,
+    Expense,
+    Liability
+}
 
 /// @title  INAVHook
 /// @notice Interface for receiving net asset value (NAV) update callbacks
@@ -39,7 +53,7 @@ interface INAVHook {
 /// @title  INAVManager
 /// @notice Manager for multi-network net asset value (NAV) accounting and price calculations
 /// @dev    Tracks NAV across multiple networks using double-entry accounting accounts
-interface INAVManager is ISnapshotHook, IManagerCallFromHub {
+interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpoke {
     /// @notice Discriminator encoded as the first field of the `fromHub` payload; selects the action.
     enum ManagerCall {
         SetNavHook,
@@ -47,10 +61,14 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub {
         InitializeHolding,
         InitializeLiability,
         UpdateHoldingValuation,
-        CloseGainLoss
+        CloseGainLoss,
+        UpdateManager,
+        SetDefaultValuation
     }
 
     event SetNavHook(PoolId indexed poolId, address indexed navHook);
+    event SetDefaultValuation(PoolId indexed poolId, IValuation indexed valuation);
+    event UpdateManager(PoolId indexed poolId, uint16 indexed centrifugeId, bytes32 indexed who, bool canManage);
     event InitializeNetwork(PoolId indexed poolId, uint16 indexed centrifugeId);
     event InitializeHolding(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event InitializeLiability(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
@@ -72,6 +90,9 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub {
     error ExceedsMaxAccounts();
     error InvalidStateOfAccounts();
     error InvalidNAVHook();
+    error UnsupportedSpokeCall();
+    error NotManager();
+    error ValuationNotSet();
 
     //----------------------------------------------------------------------------------------------
     // Immutables
@@ -101,6 +122,19 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub {
     /// @notice Get the NAV hook
     /// @param poolId The pool ID
     function navHook(PoolId poolId) external view returns (INAVHook);
+
+    /// @notice Get the default valuation applied to every holding and liability initialized on a pool
+    /// @dev    Required setup step: must be set via the `SetDefaultValuation` manager call before any
+    ///         `InitializeHolding` or `InitializeLiability`, which revert with `ValuationNotSet` otherwise.
+    /// @param poolId The pool ID
+    function defaultValuation(PoolId poolId) external view returns (IValuation);
+
+    /// @notice Check whether an address may drive spoke-side holding/liability initialization for a pool
+    ///         on a network, via the permissionless `spoke.managerCall` -> `fromSpoke` path
+    /// @param poolId The pool ID
+    /// @param centrifugeId The Centrifuge ID of the network
+    /// @param who The manager address, encoded as bytes32
+    function manager(PoolId poolId, uint16 centrifugeId, bytes32 who) external view returns (bool);
 
     //----------------------------------------------------------------------------------------------
     // Holding updates

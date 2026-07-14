@@ -261,11 +261,6 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         console2.log("Pool and share class with liability holding deployed");
 
-        // Verify that the holding is marked as a liability
-        bool isLiab = holdings.isLiability(poolId, scId, assetId);
-        assertTrue(isLiab, "Holding should be marked as liability");
-        console2.log("Verified holding is marked as liability:", isLiab);
-
         // Set a price using transient valuation if needed for value updates
         transientValuation_setPrice_clamped(1e18);
         console2.log("Set initial price to 1e18");
@@ -319,27 +314,13 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Verify the final holding value is still nonzero
         assertTrue(finalValue > 0, "Final holding value should remain nonzero");
 
-        // Verify the holding is still marked as a liability
-        bool stillLiab = holdings.isLiability(poolId, scId, assetId);
-        assertTrue(stillLiab, "Holding should still be marked as liability");
-
         console2.log("Test completed: hub_updateHoldingValue successfully reached liability branch");
     }
 
     // forge test --match-test test_shortcut_liability_vs_regular_holding -vvv
     function test_shortcut_liability_vs_regular_holding() public {
-        // Test 1: Deploy with regular holding (isLiability = false)
+        // Test 1: Deploy with regular holding (mapped to gain/loss/equity slots)
         shortcut_deployNewTokenPoolAndShare(18, 18, false, false, true, false);
-
-        IBaseVault vault1 = IBaseVault(_getVault());
-        PoolId poolId1 = vault1.poolId();
-        ShareClassId scId1 = vault1.scId();
-        AssetId assetId1 = _getAssetId();
-
-        // Verify it's NOT a liability
-        bool isLiab1 = holdings.isLiability(poolId1, scId1, assetId1);
-        assertFalse(isLiab1, "Regular holding should NOT be marked as liability");
-        console2.log("Regular holding verified - isLiability:", isLiab1);
 
         // Reset for second test (this is a simple demonstration)
         // In a real fuzzing scenario, you'd typically have separate test functions

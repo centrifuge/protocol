@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {IValuation} from "./interfaces/IValuation.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
-import {IHoldings, Holding, HoldingAccount, Snapshot} from "./interfaces/IHoldings.sol";
+import {IHoldings, Holding, Snapshot} from "./interfaces/IHoldings.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -45,8 +45,7 @@ contract Holdings is Auth, IHoldings {
         ShareClassId scId,
         AssetId assetId,
         IValuation valuation_,
-        bool isLiability_,
-        HoldingAccount[] memory accounts
+        AccountId[4] memory accounts
     ) external auth {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
@@ -55,13 +54,12 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) == address(0), AlreadyInitialized());
 
         holding_.valuation = valuation_;
-        holding_.isLiability = isLiability_;
 
-        for (uint256 i; i < accounts.length; i++) {
-            accountId[poolId][scId][assetId][accounts[i].kind] = accounts[i].accountId;
+        for (uint256 i; i < 4; i++) {
+            accountId[poolId][scId][assetId][uint8(i)] = accounts[i];
         }
 
-        emit Initialize(poolId, scId, assetId, valuation_, isLiability_, accounts);
+        emit Initialize(poolId, scId, assetId, valuation_, accounts);
     }
 
     /// @inheritdoc IHoldings
@@ -87,19 +85,6 @@ contract Holdings is Auth, IHoldings {
         holding_.valuation = valuation_;
 
         emit UpdateValuation(poolId, scId, assetId, valuation_);
-    }
-
-    /// @inheritdoc IHoldings
-    /// @dev There can be remaining asset value if the amount was decreased with a lower price, blocking the update.
-    ///      In this case, a manager needs to call `update` first to sync the value to zero.
-    function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability_) external auth {
-        Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
-        require(holding_.assetAmount == 0 && holding_.assetAmountValue == 0, HoldingNotZero());
-
-        holding_.isLiability = isLiability_;
-
-        emit UpdateIsLiability(poolId, scId, assetId, isLiability_);
     }
 
     /// @inheritdoc IHoldings
@@ -235,14 +220,6 @@ contract Holdings is Auth, IHoldings {
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         return holding_.valuation;
-    }
-
-    /// @inheritdoc IHoldings
-    function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
-        Holding storage holding_ = holding[poolId][scId][assetId];
-        require(address(holding_.valuation) != address(0), HoldingNotFound());
-
-        return holding_.isLiability;
     }
 
     //----------------------------------------------------------------------------------------------

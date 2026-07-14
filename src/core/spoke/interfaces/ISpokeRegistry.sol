@@ -53,7 +53,6 @@ interface ISpokeRegistry {
     event AddPool(PoolId indexed poolId);
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, IShareToken token);
     event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
-    event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
     event UpdateBridger(PoolId indexed poolId, address indexed who, bool canBridge);
     event UpdateAssetPrice(
         PoolId indexed poolId,
@@ -122,12 +121,6 @@ interface ISpokeRegistry {
     /// @param poolId The pool identifier
     /// @param manager The request manager contract
     function setRequestManager(PoolId poolId, IRequestManager manager) external;
-
-    /// @notice Grants or revokes the pool manager role for an address
-    /// @param poolId The pool identifier
-    /// @param who The address whose role is updated
-    /// @param canManage Whether the address is a manager
-    function updateManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Grants or revokes the bridger role for an address, gating cross-chain share transfers
     /// @param poolId The pool identifier
@@ -259,9 +252,6 @@ interface ISpokeRegistry {
     /// @param poolId The pool id
     /// @return manager The request manager for the pool
     function requestManager(PoolId poolId) external view returns (IRequestManager manager);
-
-    /// @notice Returns whether an address holds the pool manager role
-    function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice Returns whether an address holds the bridger role for a pool
     function bridger(PoolId poolId, address who) external view returns (bool);

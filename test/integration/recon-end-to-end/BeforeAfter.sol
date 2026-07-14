@@ -204,7 +204,7 @@ abstract contract BeforeAfter is Setup {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        (, _structToUpdate.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
+        (, _structToUpdate.ghostHolding[poolId][scId][assetId],) = holdings.holding(poolId, scId, assetId);
     }
 
     function _updateActorRedeemRequests(bool before) internal {

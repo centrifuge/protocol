@@ -77,6 +77,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         vm.stopPrank();
 
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.SetNavHook), address(simplePriceManager)));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.SetDefaultValuation), address(valuation)));
 
         valuation.setPrice(POOL_A, scId, asset1, d18(1, 1));
         valuation.setPrice(POOL_A, scId, asset2, d18(1, 1));
@@ -96,12 +97,10 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CP));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
 
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1, address(valuation)));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset2, address(valuation)));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3, address(valuation)));
-        _navManagerCall(
-            abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, liabilityAsset, address(valuation))
-        );
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset2));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, liabilityAsset));
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
@@ -354,7 +353,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
 
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CP));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3, address(valuation)));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3));
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(

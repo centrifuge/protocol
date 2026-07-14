@@ -82,10 +82,7 @@ contract TestData is BaseTestData {
             asyncScId,
             wBtcId,
             identityValuation,
-            AccountId.wrap(0x05),
-            AccountId.wrap(0x02),
-            AccountId.wrap(0x03),
-            AccountId.wrap(0x04)
+            _holdingAccounts(AccountId.wrap(0x05), AccountId.wrap(0x02), AccountId.wrap(0x03), AccountId.wrap(0x04))
         );
         hub.updateHoldingValue(asyncPoolId, asyncScId, wBtcId);
 

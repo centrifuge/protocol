@@ -6,18 +6,18 @@ import {d18} from "../../../../src/misc/types/D18.sol";
 import {MockValuation} from "../../../core/mocks/MockValuation.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
+import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
-import {IHub, AccountType} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IManagerCallFromSpoke} from "../../../../src/core/utils/interfaces/IManagerCall.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {AccountId, withCentrifugeId, withAssetId} from "../../../../src/core/types/AccountId.sol";
 
 import {NAVManager} from "../../../../src/hooks/accounting/NAVManager.sol";
-import {INAVManager, INAVHook} from "../../../../src/hooks/accounting/interfaces/INAVManager.sol";
+import {NAVAccount, INAVManager, INAVHook} from "../../../../src/hooks/accounting/interfaces/INAVManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -52,6 +52,8 @@ contract NAVManagerTest is Test {
 
         mockValuation = new MockValuation(IHubRegistry(hubRegistry));
         mockValuation.setPrice(POOL_A, SC_1, asset1, d18(1, 1));
+
+        _setDefaultValuation(POOL_A, mockValuation);
     }
 
     function _setupMocks() internal {
@@ -59,7 +61,6 @@ contract NAVManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.holdings.selector), abi.encode(holdings));
         vm.mockCall(hub, abi.encodeWithSelector(IHub.createAccount.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.initializeHolding.selector), abi.encode());
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.initializeLiability.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValuation.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateJournal.selector), abi.encode());
@@ -102,18 +103,21 @@ contract NAVManagerTest is Test {
         navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), centrifugeId));
     }
 
-    function _initializeHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) internal {
+    function _setDefaultValuation(PoolId poolId, IValuation valuation) internal {
         vm.prank(envoy);
-        navManager.fromHub(
-            poolId, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, assetId, address(valuation))
-        );
+        navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.SetDefaultValuation), address(valuation)));
     }
 
-    function _initializeLiability(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) internal {
+    // The valuation is fixed per-pool via `_setDefaultValuation` (done in setUp), so it is no longer
+    // passed per init; the trailing arg is kept for call-site readability.
+    function _initializeHolding(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation) internal {
         vm.prank(envoy);
-        navManager.fromHub(
-            poolId, abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, assetId, address(valuation))
-        );
+        navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, assetId));
+    }
+
+    function _initializeLiability(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation) internal {
+        vm.prank(envoy);
+        navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, assetId));
     }
 
     function _updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) internal {
@@ -126,6 +130,28 @@ contract NAVManagerTest is Test {
     function _closeGainLoss(PoolId poolId, uint16 centrifugeId) internal {
         vm.prank(envoy);
         navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), centrifugeId));
+    }
+
+    function _expectedHoldingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = asset;
+        accounts[1] = equity;
+        accounts[2] = gain;
+        accounts[3] = loss;
+    }
+
+    function _expectedLiabilityAccounts(AccountId expense, AccountId liability)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = expense;
+        accounts[1] = liability;
+        accounts[2] = liability;
+        accounts[3] = liability;
     }
 }
 
@@ -185,6 +211,16 @@ contract NAVManagerConfigureTest is NAVManagerTest {
         assertEq(address(navManager.navHook(POOL_A)), address(0));
     }
 
+    function testSetDefaultValuationSuccess() public {
+        assertEq(address(navManager.defaultValuation(POOL_B)), address(0));
+
+        vm.expectEmit(true, true, false, false);
+        emit INAVManager.SetDefaultValuation(POOL_B, mockValuation);
+        _setDefaultValuation(POOL_B, mockValuation);
+
+        assertEq(address(navManager.defaultValuation(POOL_B)), address(mockValuation));
+    }
+
     function testInitializeNetworkSuccess() public {
         vm.expectCall(
             address(hub),
@@ -230,7 +266,7 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     }
 
     function testInitializeHoldingSuccess() public {
-        AccountId expectedAssetAccount = withAssetId(asset1, uint16(AccountType.Asset));
+        AccountId expectedAssetAccount = withAssetId(asset1, uint16(NAVAccount.Asset));
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
@@ -243,10 +279,12 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
                 SC_1,
                 asset1,
                 mockValuation,
-                expectedAssetAccount,
-                navManager.equityAccount(CENTRIFUGE_ID_1),
-                navManager.gainAccount(CENTRIFUGE_ID_1),
-                navManager.lossAccount(CENTRIFUGE_ID_1)
+                _expectedHoldingAccounts(
+                    expectedAssetAccount,
+                    navManager.equityAccount(CENTRIFUGE_ID_1),
+                    navManager.gainAccount(CENTRIFUGE_ID_1),
+                    navManager.lossAccount(CENTRIFUGE_ID_1)
+                )
             )
         );
 
@@ -259,14 +297,27 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     }
 
     function testInitializeHoldingNotInitialized() public {
+        vm.prank(envoy);
         vm.expectRevert(INAVManager.NotInitialized.selector);
-        _initializeHolding(POOL_A, SC_1, AssetId.wrap(uint128(3) << 64 | 300), mockValuation);
+        navManager.fromHub(
+            POOL_A,
+            abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, AssetId.wrap(uint128(3) << 64 | 300))
+        );
+    }
+
+    function testInitializeHoldingValuationNotSet() public {
+        // POOL_B has no default valuation set (only POOL_A does, in setUp), so init must revert.
+        _initializeNetwork(POOL_B, CENTRIFUGE_ID_1);
+
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.ValuationNotSet.selector);
+        navManager.fromHub(POOL_B, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset1));
     }
 
     function testInitializeHoldingSameAssetTwice() public {
         _initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
-        AccountId expectedAssetAccount = withAssetId(asset1, uint16(AccountType.Asset));
+        AccountId expectedAssetAccount = withAssetId(asset1, uint16(NAVAccount.Asset));
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
@@ -278,6 +329,148 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
     }
 }
 
+contract NAVManagerFromSpokeTest is NAVManagerTest {
+    bytes32 constant SPOKE_MANAGER = bytes32("spokeManager");
+
+    function setUp() public override {
+        super.setUp();
+        _initializeNetwork(POOL_A, CENTRIFUGE_ID_1);
+    }
+
+    function _allowManager(bytes32 who, bool canManage) internal {
+        vm.prank(envoy);
+        navManager.fromHub(
+            POOL_A, abi.encode(uint8(INAVManager.ManagerCall.UpdateManager), CENTRIFUGE_ID_1, who, canManage)
+        );
+    }
+
+    function _initHoldingPayload() internal view returns (bytes memory) {
+        return abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset1);
+    }
+
+    function _initLiabilityPayload() internal view returns (bytes memory) {
+        return abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), SC_1, asset1);
+    }
+
+    function testUpdateManagerSetsAllowlist() public {
+        assertFalse(navManager.manager(POOL_A, CENTRIFUGE_ID_1, SPOKE_MANAGER));
+
+        vm.expectEmit();
+        emit INAVManager.UpdateManager(POOL_A, CENTRIFUGE_ID_1, SPOKE_MANAGER, true);
+        _allowManager(SPOKE_MANAGER, true);
+
+        assertTrue(navManager.manager(POOL_A, CENTRIFUGE_ID_1, SPOKE_MANAGER));
+    }
+
+    function testFromSpokeInitializeHolding() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        AccountId expectedAssetAccount = withAssetId(asset1, uint16(NAVAccount.Asset));
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(
+                IHub.initializeHolding.selector,
+                POOL_A,
+                SC_1,
+                asset1,
+                mockValuation,
+                _expectedHoldingAccounts(
+                    expectedAssetAccount,
+                    navManager.equityAccount(CENTRIFUGE_ID_1),
+                    navManager.gainAccount(CENTRIFUGE_ID_1),
+                    navManager.lossAccount(CENTRIFUGE_ID_1)
+                )
+            )
+        );
+
+        vm.prank(envoy);
+        navManager.fromSpoke(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeInitializeLiability() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        AccountId expectedExpenseAccount = withAssetId(asset1, uint16(NAVAccount.Expense));
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(
+                IHub.initializeHolding.selector,
+                POOL_A,
+                SC_1,
+                asset1,
+                mockValuation,
+                _expectedLiabilityAccounts(expectedExpenseAccount, navManager.liabilityAccount(CENTRIFUGE_ID_1))
+            )
+        );
+
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.InitializeLiability(POOL_A, SC_1, asset1);
+
+        vm.prank(envoy);
+        navManager.fromSpoke(POOL_A, _initLiabilityPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeErrNotManager() public {
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NotManager.selector);
+        navManager.fromSpoke(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    /// @dev The allowlist is keyed by pool: a manager of POOL_A must not be able to act on POOL_B.
+    function testFromSpokeErrCrossPoolManager() public {
+        _allowManager(SPOKE_MANAGER, true); // allowed on POOL_A only
+
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NotManager.selector);
+        navManager.fromSpoke(POOL_B, _initHoldingPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    /// @dev The allowlist is also keyed by network: an allowance on one network must not leak to another.
+    function testFromSpokeErrCrossNetworkManager() public {
+        _allowManager(SPOKE_MANAGER, true); // allowed on CENTRIFUGE_ID_1 only
+
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NotManager.selector);
+        navManager.fromSpoke(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_2, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeErrRevokedManager() public {
+        _allowManager(SPOKE_MANAGER, true);
+        _allowManager(SPOKE_MANAGER, false);
+
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NotManager.selector);
+        navManager.fromSpoke(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeErrNotEnvoy() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        vm.prank(unauthorized);
+        vm.expectRevert(INAVManager.NotEnvoy.selector);
+        navManager.fromSpoke(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeUnexpectedValue() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        vm.deal(envoy, 1 ether);
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.UnexpectedValue.selector);
+        navManager.fromSpoke{value: 1}(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeErrUnsupportedCall() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        // Hook/network configuration is not reachable from the spoke.
+        bytes memory payload = abi.encode(uint8(INAVManager.ManagerCall.SetNavHook), address(navHook));
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.UnsupportedSpokeCall.selector);
+        navManager.fromSpoke(POOL_A, payload, CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+}
+
 contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     function setUp() public override {
         super.setUp();
@@ -285,7 +478,7 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     }
 
     function testInitializeLiabilitySuccess() public {
-        AccountId expectedExpenseAccount = withAssetId(asset1, uint16(AccountType.Expense));
+        AccountId expectedExpenseAccount = withAssetId(asset1, uint16(NAVAccount.Expense));
 
         vm.expectCall(
             address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedExpenseAccount, true)
@@ -293,13 +486,12 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
         vm.expectCall(
             address(hub),
             abi.encodeWithSelector(
-                IHub.initializeLiability.selector,
+                IHub.initializeHolding.selector,
                 POOL_A,
                 SC_1,
                 asset1,
                 mockValuation,
-                expectedExpenseAccount,
-                navManager.liabilityAccount(CENTRIFUGE_ID_1)
+                _expectedLiabilityAccounts(expectedExpenseAccount, navManager.liabilityAccount(CENTRIFUGE_ID_1))
             )
         );
 
@@ -312,8 +504,9 @@ contract NAVManagerLiabilityInitializationTest is NAVManagerTest {
     }
 
     function testInitializeLiabilityNotInitialized() public {
+        vm.prank(envoy);
         vm.expectRevert(INAVManager.NotInitialized.selector);
-        _initializeLiability(POOL_A, SC_1, asset2, mockValuation);
+        navManager.fromHub(POOL_A, abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), SC_1, asset2));
     }
 }
 
@@ -516,25 +709,25 @@ contract NAVManagerCloseGainLossTest is NAVManagerTest {
 
 contract NAVManagerHelperFunctionsTest is NAVManagerTest {
     function testEquityAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Equity));
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(NAVAccount.Equity));
         AccountId actual = navManager.equityAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
 
     function testLiabilityAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Liability));
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(NAVAccount.Liability));
         AccountId actual = navManager.liabilityAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
 
     function testGainAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Gain));
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(NAVAccount.Gain));
         AccountId actual = navManager.gainAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
 
     function testLossAccount() public view {
-        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(AccountType.Loss));
+        AccountId expected = withCentrifugeId(CENTRIFUGE_ID_1, uint16(NAVAccount.Loss));
         AccountId actual = navManager.lossAccount(CENTRIFUGE_ID_1);
         assertEq(actual.raw(), expected.raw());
     }
@@ -543,7 +736,7 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
         _initializeNetwork(POOL_A, CENTRIFUGE_ID_1);
         _initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
-        AccountId expected = withAssetId(asset1, uint16(AccountType.Asset));
+        AccountId expected = withAssetId(asset1, uint16(NAVAccount.Asset));
         AccountId actual = navManager.assetAccount(asset1);
         assertEq(actual.raw(), expected.raw());
     }
@@ -552,7 +745,7 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
         _initializeNetwork(POOL_A, CENTRIFUGE_ID_1);
         _initializeLiability(POOL_A, SC_1, asset1, mockValuation);
 
-        AccountId expected = withAssetId(asset1, uint16(AccountType.Expense));
+        AccountId expected = withAssetId(asset1, uint16(NAVAccount.Expense));
         AccountId actual = navManager.expenseAccount(asset1);
         assertEq(actual.raw(), expected.raw());
     }

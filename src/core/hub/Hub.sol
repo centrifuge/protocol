@@ -2,16 +2,16 @@
 pragma solidity 0.8.28;
 
 import {IFeeHook} from "./interfaces/IFeeHook.sol";
+import {IHoldings} from "./interfaces/IHoldings.sol";
 import {IManifest} from "./interfaces/IManifest.sol";
 import {IValuation} from "./interfaces/IValuation.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
 import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
-import {IHoldings, HoldingAccount} from "./interfaces/IHoldings.sol";
 import {IAccounting, JournalEntry} from "./interfaces/IAccounting.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
-import {IHub, VaultUpdateKind, ManagerKind, AccountType} from "./interfaces/IHub.sol";
+import {IHub, VaultUpdateKind, ManagerKind, AccountKind} from "./interfaces/IHub.sol";
 import {IHubRequestManagerCallback} from "./interfaces/IHubRequestManagerCallback.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -309,56 +309,16 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         ShareClassId scId,
         AssetId assetId,
         IValuation valuation,
-        AccountId assetAccount,
-        AccountId equityAccount,
-        AccountId gainAccount,
-        AccountId lossAccount
+        AccountId[4] calldata accounts
     ) external payable {
         _protected(poolId);
 
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
-        require(
-            assetAccount != equityAccount && assetAccount != gainAccount && assetAccount != lossAccount,
-            IHub.InvalidAccountCombination()
-        );
-        require(
-            accounting.exists(poolId, assetAccount) && accounting.exists(poolId, equityAccount)
-                && accounting.exists(poolId, lossAccount) && accounting.exists(poolId, gainAccount),
-            IAccounting.AccountDoesNotExist()
-        );
+        for (uint256 i; i < accounts.length; i++) {
+            require(accounting.exists(poolId, accounts[i]), IAccounting.AccountDoesNotExist());
+        }
 
-        holdings.initialize(
-            poolId,
-            scId,
-            assetId,
-            valuation,
-            false,
-            holdingAccounts(assetAccount, equityAccount, gainAccount, lossAccount)
-        );
-
-        // If increase/decrease was called before initialize, we add journal entries for this
-        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
-    }
-
-    /// @inheritdoc IHub
-    function initializeLiability(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        IValuation valuation,
-        AccountId expenseAccount,
-        AccountId liabilityAccount
-    ) external payable {
-        _protected(poolId);
-
-        require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
-        require(expenseAccount != liabilityAccount, IHub.InvalidAccountCombination());
-        require(
-            accounting.exists(poolId, expenseAccount) && accounting.exists(poolId, liabilityAccount),
-            IAccounting.AccountDoesNotExist()
-        );
-
-        holdings.initialize(poolId, scId, assetId, valuation, true, liabilityAccounts(expenseAccount, liabilityAccount));
+        holdings.initialize(poolId, scId, assetId, valuation, accounts);
 
         // If increase/decrease was called before initialize, we add journal entries for this
         _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
@@ -382,16 +342,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _protected(poolId);
 
         holdings.updateValuation(poolId, scId, assetId, valuation);
-    }
-
-    /// @inheritdoc IHub
-    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        holdings.updateIsLiability(poolId, scId, assetId, isLiability);
     }
 
     /// @inheritdoc IHub
@@ -550,7 +500,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     /// @notice Create credit & debit entries for the deposit or withdrawal of a holding.
-    ///         This updates the asset/expense as well as the equity/liability accounts.
+    ///         This posts against the AmountDebit and AmountCredit account slots.
     function updateAccountingAmount(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
         payable
@@ -563,16 +513,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         internal
     {
         if (diff == 0) return;
-
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditType = isLiability ? AccountType.Liability : AccountType.Equity;
-        _journal(poolId, scId, assetId, isPositive, diff, debitType, creditType);
+        if (isPositive) _journal(poolId, scId, assetId, diff, AccountKind.AmountDebit, AccountKind.AmountCredit);
+        else _journal(poolId, scId, assetId, diff, AccountKind.AmountCredit, AccountKind.AmountDebit);
     }
 
     /// @inheritdoc IHub
     /// @notice Create credit & debit entries for the increase or decrease in the value of a holding.
-    ///         This updates the asset/expense as well as the gain/loss accounts.
+    ///         This posts against the AmountDebit slot and the ValueIncrease/ValueDecrease account slots.
     function updateAccountingValue(PoolId poolId, ShareClassId scId, AssetId assetId, bool isPositive, uint128 diff)
         external
         payable
@@ -585,67 +532,28 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         internal
     {
         if (diff == 0) return;
-
-        bool isLiability = holdings.isLiability(poolId, scId, assetId);
-        AccountType debitType = isLiability ? AccountType.Expense : AccountType.Asset;
-        AccountType creditType =
-            isLiability ? AccountType.Liability : (isPositive ? AccountType.Gain : AccountType.Loss);
-        _journal(poolId, scId, assetId, isPositive, diff, debitType, creditType);
+        if (isPositive) _journal(poolId, scId, assetId, diff, AccountKind.AmountDebit, AccountKind.ValueIncrease);
+        else _journal(poolId, scId, assetId, diff, AccountKind.ValueDecrease, AccountKind.AmountDebit);
     }
 
-    /// @dev Unlock, post the debit/credit pair (swapped when `isPositive` is false), then lock.
+    /// @dev Unlock, post the debit/credit pair against the given account slots, then lock.
     function _journal(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        bool isPositive,
         uint128 diff,
-        AccountType debitType,
-        AccountType creditType
+        AccountKind debitKind,
+        AccountKind creditKind
     ) private {
         accounting.unlock(poolId);
-        AccountId debitAcct = holdings.accountId(poolId, scId, assetId, uint8(debitType));
-        AccountId creditAcct = holdings.accountId(poolId, scId, assetId, uint8(creditType));
-        if (isPositive) {
-            accounting.addDebit(debitAcct, diff);
-            accounting.addCredit(creditAcct, diff);
-        } else {
-            accounting.addDebit(creditAcct, diff);
-            accounting.addCredit(debitAcct, diff);
-        }
+        accounting.addDebit(holdings.accountId(poolId, scId, assetId, uint8(debitKind)), diff);
+        accounting.addCredit(holdings.accountId(poolId, scId, assetId, uint8(creditKind)), diff);
         accounting.lock();
     }
 
     //----------------------------------------------------------------------------------------------
     //  View methods
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IHub
-    function holdingAccounts(
-        AccountId assetAccount,
-        AccountId equityAccount,
-        AccountId gainAccount,
-        AccountId lossAccount
-    ) public pure returns (HoldingAccount[] memory) {
-        HoldingAccount[] memory accounts = new HoldingAccount[](4);
-        accounts[0] = HoldingAccount(assetAccount, uint8(AccountType.Asset));
-        accounts[1] = HoldingAccount(equityAccount, uint8(AccountType.Equity));
-        accounts[2] = HoldingAccount(gainAccount, uint8(AccountType.Gain));
-        accounts[3] = HoldingAccount(lossAccount, uint8(AccountType.Loss));
-        return accounts;
-    }
-
-    /// @inheritdoc IHub
-    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
-        public
-        pure
-        returns (HoldingAccount[] memory)
-    {
-        HoldingAccount[] memory accounts = new HoldingAccount[](2);
-        accounts[0] = HoldingAccount(expenseAccount, uint8(AccountType.Expense));
-        accounts[1] = HoldingAccount(liabilityAccount, uint8(AccountType.Liability));
-        return accounts;
-    }
 
     /// @inheritdoc IHub
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) public view returns (D18) {

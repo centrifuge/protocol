@@ -162,26 +162,6 @@ contract SpokeRegistryTestSetRequestManager is SpokeRegistryTest {
     }
 }
 
-contract SpokeRegistryTestUpdateManager is SpokeRegistryTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateManager(POOL_A, ANY, true);
-    }
-
-    function testUpdateManager() public {
-        vm.prank(AUTH);
-        vm.expectEmit();
-        emit ISpokeRegistry.UpdateManager(POOL_A, ANY, true);
-        registry.updateManager(POOL_A, ANY, true);
-        assertEq(registry.manager(POOL_A, ANY), true);
-
-        vm.prank(AUTH);
-        registry.updateManager(POOL_A, ANY, false);
-        assertEq(registry.manager(POOL_A, ANY), false);
-    }
-}
-
 contract SpokeRegistryTestUpdateBridger is SpokeRegistryTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);

@@ -146,11 +146,6 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     }
 
     /// @inheritdoc ISpokeGatewayHandler
-    function updateManager(PoolId poolId, address who, bool canManage) external auth {
-        spokeRegistry.updateManager(poolId, who, canManage);
-    }
-
-    /// @inheritdoc ISpokeGatewayHandler
     function updateBridger(PoolId poolId, address who, bool canBridge) external auth {
         spokeRegistry.updateBridger(poolId, who, canBridge);
     }

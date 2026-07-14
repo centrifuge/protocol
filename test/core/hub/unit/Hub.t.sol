@@ -75,6 +75,17 @@ contract TestCommon is Test {
         hub.file("feeHook", address(feeHook));
         hub.file("sender", address(sender));
     }
+
+    function _holdingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = asset;
+        accounts[1] = equity;
+        accounts[2] = gain;
+        accounts[3] = loss;
+    }
 }
 
 contract TestMainMethodsChecks is TestCommon {
@@ -151,15 +162,7 @@ contract TestMainMethodsChecks is TestCommon {
             ShareClassId.wrap(0),
             AssetId.wrap(0),
             IValuation(address(0)),
-            AccountId.wrap(0),
-            AccountId.wrap(0),
-            AccountId.wrap(0),
-            AccountId.wrap(0)
-        );
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.initializeLiability(
-            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)), AccountId.wrap(0), AccountId.wrap(0)
+            _holdingAccounts(AccountId.wrap(0), AccountId.wrap(0), AccountId.wrap(0), AccountId.wrap(0))
         );
 
         vm.expectRevert(IHub.NotManager.selector);
@@ -167,9 +170,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.updateHoldingIsLiability(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), true);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));
@@ -250,33 +250,8 @@ contract TestInitializeHolding is TestCommon {
             SC_A,
             ASSET_A,
             IValuation(address(1)),
-            AccountId.wrap(1),
-            AccountId.wrap(1),
-            AccountId.wrap(1),
-            AccountId.wrap(1)
+            _holdingAccounts(AccountId.wrap(1), AccountId.wrap(1), AccountId.wrap(1), AccountId.wrap(1))
         );
-    }
-}
-
-contract TestInitializeLiability is TestCommon {
-    function testErrAssetNotFound() public {
-        vm.mockCall(
-            address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
-        );
-
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(
-            hub.initializeLiability.selector,
-            SC_A,
-            ASSET_A,
-            IValuation(address(1)),
-            AccountId.wrap(1),
-            AccountId.wrap(1)
-        );
-
-        vm.prank(ADMIN);
-        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IValuation(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }
 

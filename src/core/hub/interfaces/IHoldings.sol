@@ -16,12 +16,6 @@ struct Holding {
     uint128 assetAmount;
     uint128 assetAmountValue;
     IValuation valuation; // Used for existence
-    bool isLiability;
-}
-
-struct HoldingAccount {
-    AccountId accountId;
-    uint8 kind;
 }
 
 struct Snapshot {
@@ -39,12 +33,7 @@ interface IHoldings {
 
     /// @notice Emitted when a holding is initialized
     event Initialize(
-        PoolId indexed,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        IValuation valuation,
-        bool isLiability,
-        HoldingAccount[] accounts
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, IValuation valuation, AccountId[4] accounts
     );
 
     /// @notice Emitted when a holding is increased
@@ -75,11 +64,6 @@ interface IHoldings {
     /// @notice Emitted when a holding valuation is updated
     event UpdateValuation(
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, IValuation valuation
-    );
-
-    /// @notice Emitted when a holding is updated to a liability, or vice versa
-    event UpdateIsLiability(
-        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, bool isLiability
     );
 
     /// @notice Emitted when an account is for a holding is set
@@ -116,8 +100,6 @@ interface IHoldings {
 
     error InvalidNonce(uint64 expected, uint64 actual);
 
-    error HoldingNotZero();
-
     //----------------------------------------------------------------------------------------------
     // Holding creation & updates
     //----------------------------------------------------------------------------------------------
@@ -128,15 +110,13 @@ interface IHoldings {
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
     /// @param valuation The valuation contract to use for pricing
-    /// @param isLiability Whether this holding represents a liability
     /// @param accounts Array of holding accounts to initialize
     function initialize(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         IValuation valuation,
-        bool isLiability,
-        HoldingAccount[] memory accounts
+        AccountId[4] memory accounts
     ) external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment
@@ -177,13 +157,6 @@ interface IHoldings {
     /// @param assetId The asset identifier
     /// @param valuation The new valuation contract to use
     function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation) external;
-
-    /// @notice Updates whether the holding is a liability
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @param isLiability Whether this holding is a liability
-    function updateIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability) external;
 
     /// @notice Sets an account id for a specific kind
     /// @param poolId The pool identifier
@@ -267,13 +240,6 @@ interface IHoldings {
     /// @return The valuation contract
     function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IValuation);
 
-    /// @notice Returns if the holding is a liability
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @return Whether the holding is a liability
-    function isLiability(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool);
-
     /// @notice Returns an account id for a specific kind
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
@@ -299,9 +265,8 @@ interface IHoldings {
     /// @return assetAmount The amount of assets held
     /// @return assetAmountValue The value of assets held in pool currency
     /// @return valuation The valuation contract used for pricing
-    /// @return isLiability Whether the holding represents a liability
     function holding(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
-        returns (uint128 assetAmount, uint128 assetAmountValue, IValuation valuation, bool isLiability);
+        returns (uint128 assetAmount, uint128 assetAmountValue, IValuation valuation);
 }

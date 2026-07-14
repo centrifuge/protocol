@@ -189,17 +189,6 @@ contract SpokeHandlerTestSetRequestManager is SpokeHandlerTest {
         handler.setRequestManager(POOL_A, requestManager);
     }
 
-    function testUpdateManager() public {
-        vm.mockCall(
-            address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.updateManager.selector, POOL_A, ANY, true),
-            abi.encode()
-        );
-
-        vm.prank(AUTH);
-        handler.updateManager(POOL_A, ANY, true);
-    }
-
     function testUpdateBridger() public {
         vm.mockCall(
             address(spokeRegistry),

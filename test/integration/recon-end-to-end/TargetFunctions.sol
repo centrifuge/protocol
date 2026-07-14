@@ -19,7 +19,6 @@ import {D18} from "../../../src/misc/types/D18.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
-import {AccountType} from "../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../src/core/hub/interfaces/IValuation.sol";
 
@@ -31,6 +30,17 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 // Dependencies
 
 // Component
+
+/// @dev Local account-role taxonomy, used only to derive distinct account IDs for the fuzzer.
+///      Maps onto core settlement slots ({AccountKind}) inside hub_initializeHolding/Liability.
+enum AccountType {
+    Asset,
+    Equity,
+    Loss,
+    Gain,
+    Expense,
+    Liability
+}
 
 abstract contract TargetFunctions is
     BaseTargetFunctions,

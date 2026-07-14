@@ -19,7 +19,6 @@ import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
-import {AccountId} from "../types/AccountId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
@@ -39,11 +38,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
     ISpokeRegistry public spokeRegistry;
 
     constructor(address deployer) Auth(deployer) {}
-
-    modifier onlyManager(PoolId poolId) {
-        require(spokeRegistry.manager(poolId, msg.sender), NotManager());
-        _;
-    }
 
     //----------------------------------------------------------------------------------------------
     // Administration
@@ -94,36 +88,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
         sender.sendRegisterAsset{value: msg.value}(centrifugeId, assetId, decimals, refund);
-    }
-
-    /// @inheritdoc ISpoke
-    function initializeHolding(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 valuation,
-        AccountId asset,
-        AccountId equity,
-        AccountId gain,
-        AccountId loss,
-        address refund
-    ) external payable onlyManager(poolId) {
-        sender.sendInitializeHolding{value: msg.value}(
-            poolId, scId, assetId, valuation, asset, equity, gain, loss, refund
-        );
-    }
-
-    /// @inheritdoc ISpoke
-    function initializeLiability(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 valuation,
-        AccountId expense,
-        AccountId liability,
-        address refund
-    ) external payable onlyManager(poolId) {
-        sender.sendInitializeLiability{value: msg.value}(poolId, scId, assetId, valuation, expense, liability, refund);
     }
 
     //----------------------------------------------------------------------------------------------

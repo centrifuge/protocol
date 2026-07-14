@@ -430,6 +430,17 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
     }
 
+    function _holdingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = asset;
+        accounts[1] = equity;
+        accounts[2] = gain;
+        accounts[3] = loss;
+    }
+
     function _createPool() internal {
         vm.startPrank(address(h.protocolGuardian.safe()));
         h.opsGuardian.createPool(POOL_A, FM, USD_ID);
@@ -464,7 +475,11 @@ contract EndToEndFlows is EndToEndUtils {
 
         h.hub
             .initializeHolding(
-                POOL_A, SC_1, s_.usdcId, h.oracleValuation, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+                POOL_A,
+                SC_1,
+                s_.usdcId,
+                h.oracleValuation,
+                _holdingAccounts(ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT)
             );
         h.hub.setRequestManager{value: GAS}(
             POOL_A,
@@ -918,7 +933,7 @@ contract EndToEndFlows is EndToEndUtils {
         s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         // CHECKS
-        (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, USDC_AMOUNT_1, "expected amount");
         assertEq(value, assetToPool(USDC_AMOUNT_1), "expected value");
 
@@ -935,7 +950,7 @@ contract EndToEndFlows is EndToEndUtils {
         s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
         s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
-        (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, 0, "expected amount");
         assertEq(value, assetToPool(0), "expected value");
 
@@ -1022,7 +1037,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
         assertEq(s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
 
-        (uint128 amount, uint128 value,,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
+        (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, USDC_AMOUNT_1 / 5);
         assertEq(value, assetToPool(USDC_AMOUNT_1 / 5));
 

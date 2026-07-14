@@ -102,6 +102,17 @@ abstract contract BaseTestData is LaunchDeployer {
         bytes32 shareClassMeta; // share class metadata
     }
 
+    function _holdingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = asset;
+        accounts[1] = equity;
+        accounts[2] = gain;
+        accounts[3] = loss;
+    }
+
     //----------------------------------------------------------------------------------------------
     // CONFIGURATION
     //----------------------------------------------------------------------------------------------
@@ -207,10 +218,7 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             params.assetId,
             identityValuation,
-            AccountId.wrap(0x01),
-            AccountId.wrap(0x02),
-            AccountId.wrap(0x03),
-            AccountId.wrap(0x04)
+            _holdingAccounts(AccountId.wrap(0x01), AccountId.wrap(0x02), AccountId.wrap(0x03), AccountId.wrap(0x04))
         );
 
         // Deploy vault
@@ -300,10 +308,7 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             params.assetId,
             identityValuation,
-            AccountId.wrap(0x01),
-            AccountId.wrap(0x02),
-            AccountId.wrap(0x03),
-            AccountId.wrap(0x04)
+            _holdingAccounts(AccountId.wrap(0x01), AccountId.wrap(0x02), AccountId.wrap(0x03), AccountId.wrap(0x04))
         );
 
         // Deploy vault

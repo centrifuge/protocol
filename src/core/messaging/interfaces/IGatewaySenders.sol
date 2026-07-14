@@ -5,7 +5,6 @@ import {D18} from "../../../misc/types/D18.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
-import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {VaultUpdateKind, ManagerKind} from "../libraries/MessageLib.sol";
 
@@ -227,30 +226,6 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
         bytes calldata payload,
         bytes32 sender,
         uint128 extraGasLimit,
-        address refund
-    ) external payable;
-
-    /// @notice Creates and send the message
-    function sendInitializeHolding(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 valuation,
-        AccountId asset,
-        AccountId equity,
-        AccountId gain,
-        AccountId loss,
-        address refund
-    ) external payable;
-
-    /// @notice Creates and send the message
-    function sendInitializeLiability(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 valuation,
-        AccountId expense,
-        AccountId liability,
         address refund
     ) external payable;
 }

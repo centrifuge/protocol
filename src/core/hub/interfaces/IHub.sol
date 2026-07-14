@@ -2,11 +2,11 @@
 pragma solidity >=0.5.0;
 
 import {IFeeHook} from "./IFeeHook.sol";
+import {IHoldings} from "./IHoldings.sol";
 import {IManifest} from "./IManifest.sol";
 import {IValuation} from "./IValuation.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
-import {IHoldings, HoldingAccount} from "./IHoldings.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 import {IShareClassManager} from "./IShareClassManager.sol";
@@ -24,20 +24,19 @@ import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 
-/// @notice Account types used by Hub
-enum AccountType {
-    /// @notice Account for tracking assets
-    Asset,
-    /// @notice Account for tracking equities
-    Equity,
-    /// @notice Account for tracking losses
-    Loss,
-    /// @notice Account for tracking profits
-    Gain,
-    /// @notice Account for tracking expenses
-    Expense,
-    /// @notice Account for tracking liabilities
-    Liability
+/// @notice Account slots a settlement event posts against. The pool assigns an AccountId to each slot
+///         at initializeHolding; core has no opinion on their accounting meaning.
+/// @dev There are exactly four slots by design. Holdings with different accounting semantics (an asset
+///      vs a liability, say) are distinguished by which account is assigned to each slot, not by adding
+///      more slots: a liability is a holding whose counterpart slots point at a liability-normal account.
+/// @dev Migration note: v3.1.0 used AccountType {Asset, Equity, Loss=2, Gain=3, Expense, Liability}. The slot
+///      ordinals differ, so the migration spell must map AccountType.Loss (2) -> AccountKind.ValueDecrease (3)
+///      and AccountType.Gain (3) -> AccountKind.ValueIncrease (2) when repointing existing holding accounts.
+enum AccountKind {
+    AmountDebit, // the holding's own account (asset/expense side)
+    AmountCredit, // amount-change counterpart (equity/liability side)
+    ValueIncrease, // revaluation-increase counterpart (gain side)
+    ValueDecrease // revaluation-decrease counterpart (loss side)
 }
 
 /// @notice Interface with all methods available in the system used by actors
@@ -95,9 +94,6 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Dispatched when an invalid centrifuge ID is set in the pool ID.
     error InvalidPoolId();
-
-    /// @notice Dispatched when an invalid combination of account IDs is passed.
-    error InvalidAccountCombination();
 
     error InvalidRequestManager();
 
@@ -343,47 +339,22 @@ interface IHub is IBatchedMulticall {
     function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable;
 
     /// @notice Create a new holding associated to the asset in a share class.
-    ///         It will register the different accounts used for holdings.
+    ///         It registers the accounts posted against for each settlement slot ({AccountKind}).
     ///         The accounts have to be created beforehand.
     ///         The same account can be used for different kinds.
-    ///         e.g.: The equity, gain, and loss account can be the same account.
+    ///         e.g.: The AmountCredit, ValueIncrease, and ValueDecrease account can be the same account.
     ///         They can also be shared across assets.
-    ///         e.g.: All assets can use the same equity account.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
     /// @param valuation Used to transform between payment assets and pool currency
-    /// @param assetAccount Used to track the asset value
-    /// @param equityAccount Used to track the equity value
-    /// @param gainAccount Used to track the gain value
-    /// @param lossAccount Used to track the loss value
+    /// @param accounts The accounts assigned to each settlement slot (indexed by {AccountKind})
     function initializeHolding(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         IValuation valuation,
-        AccountId assetAccount,
-        AccountId equityAccount,
-        AccountId gainAccount,
-        AccountId lossAccount
-    ) external payable;
-
-    /// @notice Create a new liability associated to the asset in a share class.
-    ///         It will register the different accounts used for holdings.
-    ///         The accounts have to be created beforehand.
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @param valuation Used to transform between the holding asset and pool currency
-    /// @param expenseAccount Used to track the expense value
-    /// @param liabilityAccount Used to track the liability value
-    function initializeLiability(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        IValuation valuation,
-        AccountId expenseAccount,
-        AccountId liabilityAccount
+        AccountId[4] calldata accounts
     ) external payable;
 
     /// @notice Updates the pool currency value of this holding based of the associated valuation
@@ -398,15 +369,6 @@ interface IHub is IBatchedMulticall {
     /// @param assetId The asset identifier
     /// @param valuation Used to transform between the holding asset and pool currency
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
-        external
-        payable;
-
-    /// @notice Updates whether the holding represents a liability or not
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param assetId The asset identifier
-    /// @param isLiability Whether the holding is a liability
-    function updateHoldingIsLiability(PoolId poolId, ShareClassId scId, AssetId assetId, bool isLiability)
         external
         payable;
 
@@ -529,28 +491,6 @@ interface IHub is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
-
-    /// @notice Helper to construct holding accounts array
-    /// @param assetAccount Account for tracking assets
-    /// @param equityAccount Account for tracking equity
-    /// @param gainAccount Account for tracking gains
-    /// @param lossAccount Account for tracking losses
-    /// @return accounts Array of holding accounts
-    function holdingAccounts(
-        AccountId assetAccount,
-        AccountId equityAccount,
-        AccountId gainAccount,
-        AccountId lossAccount
-    ) external pure returns (HoldingAccount[] memory accounts);
-
-    /// @notice Helper to construct liability accounts array
-    /// @param expenseAccount Account for tracking expenses
-    /// @param liabilityAccount Account for tracking liabilities
-    /// @return accounts Array of holding accounts
-    function liabilityAccounts(AccountId expenseAccount, AccountId liabilityAccount)
-        external
-        pure
-        returns (HoldingAccount[] memory accounts);
 
     /// @notice Get the price per asset for a holding
     /// @param poolId The pool identifier

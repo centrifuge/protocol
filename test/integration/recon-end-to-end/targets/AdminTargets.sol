@@ -181,16 +181,13 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
 
-        hub.initializeHolding(
-            poolId,
-            scId,
-            assetId,
-            valuation,
-            AccountId.wrap(assetAccountAsUint),
-            AccountId.wrap(equityAccountAsUint),
-            AccountId.wrap(lossAccountAsUint),
-            AccountId.wrap(gainAccountAsUint)
-        );
+        AccountId[4] memory accounts;
+        accounts[0] = AccountId.wrap(assetAccountAsUint);
+        accounts[1] = AccountId.wrap(equityAccountAsUint);
+        accounts[2] = AccountId.wrap(gainAccountAsUint);
+        accounts[3] = AccountId.wrap(lossAccountAsUint);
+
+        hub.initializeHolding(poolId, scId, assetId, valuation, accounts);
     }
 
     function hub_initializeHolding_clamped(
@@ -225,14 +222,14 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
 
-        hub.initializeLiability(
-            poolId,
-            scId,
-            assetId,
-            valuation,
-            AccountId.wrap(expenseAccountAsUint),
-            AccountId.wrap(liabilityAccountAsUint)
-        );
+        AccountId liabilityAccount = AccountId.wrap(liabilityAccountAsUint);
+        AccountId[4] memory accounts;
+        accounts[0] = AccountId.wrap(expenseAccountAsUint);
+        accounts[1] = liabilityAccount;
+        accounts[2] = liabilityAccount;
+        accounts[3] = liabilityAccount;
+
+        hub.initializeHolding(poolId, scId, assetId, valuation, accounts);
     }
 
     function hub_initializeLiability_clamped(
@@ -457,32 +454,6 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     //         : IValuation(address(transientValuation));
     //     hub_updateHoldingValuation(assetId.raw(), valuation);
     // }
-
-    function hub_updateHoldingIsLiability(uint128 assetIdAsUint, bool isLiability) public updateGhosts {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = AssetId.wrap(assetIdAsUint);
-        hub.updateHoldingIsLiability(poolId, scId, assetId, isLiability);
-    }
-
-    /// NOTE: When using NAVManager/Accounting, changing isLiability requires the corresponding accountId
-    ///       to be set, otherwise holdings value won't be tracked in accounting.
-    /// @dev Early return is intentional — calling without a configured accountId always reverts in Hub,
-    ///      so the guard avoids wasting fuzzer cycles on guaranteed reverts (not a clamping concern).
-    function hub_updateHoldingIsLiability_clamped(bool isLiability) public {
-        PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
-
-        uint8 targetAccountType = isLiability ? 5 : 0;
-        AccountId accountId = holdings.accountId(poolId, scId, assetId, targetAccountType);
-
-        if (accountId.raw() == 0) {
-            return;
-        }
-
-        hub_updateHoldingIsLiability(_getAssetId().raw(), isLiability);
-    }
 
     function hub_updateRestriction(uint16 chainId, uint256 payloadAsUint) public updateGhosts {
         PoolId poolId = _getPool();

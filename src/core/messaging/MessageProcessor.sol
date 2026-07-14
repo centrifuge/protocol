@@ -173,7 +173,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
             if (managerKind == ManagerKind.BalanceSheet) balanceSheet.updateManager(poolId, who, m.canManage);
             else if (managerKind == ManagerKind.Adapter) multiAdapter.updateManager(poolId, who, m.canManage);
             else if (managerKind == ManagerKind.Gateway) gateway.updateManager(poolId, who, m.canManage);
-            else if (managerKind == ManagerKind.Spoke) spokeHandler.updateManager(poolId, who, m.canManage);
             else if (managerKind == ManagerKind.Bridger) spokeHandler.updateBridger(poolId, who, m.canManage);
             else revert InvalidMessage(uint8(kind));
         } else if (kind == MessageType.UpdateHoldingAmount) {

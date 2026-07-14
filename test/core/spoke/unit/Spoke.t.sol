@@ -8,7 +8,6 @@ import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
@@ -465,95 +464,5 @@ contract SpokeTestRequest is SpokeTest {
 
         vm.prank(address(requestManager));
         spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, true, REFUND);
-    }
-}
-
-contract SpokeTestInitializeHolding is SpokeTest {
-    bytes32 constant VALUATION = bytes32("valuation");
-    AccountId constant ASSET_ACCOUNT = AccountId.wrap(1);
-    AccountId constant EQUITY_ACCOUNT = AccountId.wrap(2);
-    AccountId constant GAIN_ACCOUNT = AccountId.wrap(3);
-    AccountId constant LOSS_ACCOUNT = AccountId.wrap(4);
-    AccountId constant EXPENSE_ACCOUNT = AccountId.wrap(5);
-    AccountId constant LIABILITY_ACCOUNT = AccountId.wrap(6);
-
-    function _mockManager(address who, bool value) internal {
-        vm.mockCall(
-            address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.manager.selector, POOL_A, who),
-            abi.encode(value)
-        );
-    }
-
-    function testInitializeHoldingErrNotManager() public {
-        _mockManager(ANY, false);
-
-        vm.prank(ANY);
-        vm.expectRevert(ISpoke.NotManager.selector);
-        spoke.initializeHolding{value: COST}(
-            POOL_A, SC_1, ASSET_ID_20, VALUATION, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT, REFUND
-        );
-    }
-
-    function testInitializeHolding() public {
-        _mockManager(ANY, true);
-
-        vm.mockCall(
-            address(sender),
-            COST,
-            abi.encodeWithSelector(
-                ISpokeMessageSender.sendInitializeHolding.selector,
-                POOL_A,
-                SC_1,
-                ASSET_ID_20,
-                VALUATION,
-                ASSET_ACCOUNT,
-                EQUITY_ACCOUNT,
-                GAIN_ACCOUNT,
-                LOSS_ACCOUNT,
-                REFUND
-            ),
-            abi.encode()
-        );
-
-        vm.prank(ANY);
-        spoke.initializeHolding{value: COST}(
-            POOL_A, SC_1, ASSET_ID_20, VALUATION, ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT, REFUND
-        );
-    }
-
-    function testInitializeLiabilityErrNotManager() public {
-        _mockManager(ANY, false);
-
-        vm.prank(ANY);
-        vm.expectRevert(ISpoke.NotManager.selector);
-        spoke.initializeLiability{value: COST}(
-            POOL_A, SC_1, ASSET_ID_20, VALUATION, EXPENSE_ACCOUNT, LIABILITY_ACCOUNT, REFUND
-        );
-    }
-
-    function testInitializeLiability() public {
-        _mockManager(ANY, true);
-
-        vm.mockCall(
-            address(sender),
-            COST,
-            abi.encodeWithSelector(
-                ISpokeMessageSender.sendInitializeLiability.selector,
-                POOL_A,
-                SC_1,
-                ASSET_ID_20,
-                VALUATION,
-                EXPENSE_ACCOUNT,
-                LIABILITY_ACCOUNT,
-                REFUND
-            ),
-            abi.encode()
-        );
-
-        vm.prank(ANY);
-        spoke.initializeLiability{value: COST}(
-            POOL_A, SC_1, ASSET_ID_20, VALUATION, EXPENSE_ACCOUNT, LIABILITY_ACCOUNT, REFUND
-        );
     }
 }
