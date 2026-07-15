@@ -14,6 +14,7 @@ import {Test} from "forge-std/Test.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {FoundryAsserts} from "@chimera/FoundryAsserts.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 /// @dev sanity tests for the fuzzing suite setup
 // forge test --match-contract CryticSanity --match-path test/integration/recon-end-to-end/CryticSanity.sol -vv
@@ -361,7 +362,8 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve and revoke
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spokeRegistry.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        IShareToken(address(spokeRegistry.shareToken(vault.poolId(), vault.scId())))
+            .approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         balanceSheet_revoke(100e18);
@@ -438,7 +440,8 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         // Approve for revocations
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
-        spokeRegistry.shareToken(vault.poolId(), vault.scId()).approve(address(balanceSheet), type(uint256).max);
+        IShareToken(address(spokeRegistry.shareToken(vault.poolId(), vault.scId())))
+            .approve(address(balanceSheet), type(uint256).max);
         vm.stopPrank();
 
         // Execute sequence

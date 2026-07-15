@@ -12,7 +12,7 @@ import {PoolId, newPoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 
-import {UpdateRestrictionMessageLib} from "../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Script.sol";
 

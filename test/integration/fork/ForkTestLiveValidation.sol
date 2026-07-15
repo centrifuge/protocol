@@ -17,7 +17,6 @@ import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
 import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
@@ -40,6 +39,7 @@ import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {LayerZeroAdapter} from "../../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
 
@@ -271,7 +271,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         config.contracts.identityValuation = address(report.identityValuation);
 
         // Spoke contracts
-        config.contracts.tokenFactory = address(report.core.tokenFactory);
+        config.contracts.shareTokenRegistrar = address(report.core.shareTokenRegistrar);
         config.contracts.balanceSheet = address(report.core.balanceSheet);
         config.contracts.spoke = address(report.core.spoke);
         config.contracts.spokeHandler = address(report.core.spokeHandler);
@@ -325,7 +325,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(config.contracts.shareClassManager, "ShareClassManager");
         vm.label(config.contracts.hub, "Hub");
         vm.label(config.contracts.identityValuation, "IdentityValuation");
-        vm.label(config.contracts.tokenFactory, "TokenFactory");
+        vm.label(config.contracts.shareTokenRegistrar, "ShareTokenRegistrar");
         vm.label(config.contracts.balanceSheet, "BalanceSheet");
         vm.label(config.contracts.spoke, "Spoke");
         vm.label(config.contracts.contractUpdater, "ContractUpdater");
@@ -398,7 +398,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // From CoreDeployer - Spoke contracts
         _validateRootWard(config.contracts.poolEscrowFactory);
-        _validateRootWard(config.contracts.tokenFactory);
+        _validateRootWard(config.contracts.shareTokenRegistrar);
         _validateRootWard(config.contracts.spoke);
         _validateRootWard(config.contracts.balanceSheet);
         _validateRootWard(config.contracts.contractUpdater);
@@ -567,7 +567,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // ==================== SPOKE SIDE (CoreDeployer) ====================
 
         _validateWard(config.contracts.messageDispatcher, config.contracts.spoke);
-        _validateWard(config.contracts.tokenFactory, config.contracts.spoke);
+        _validateWard(config.contracts.shareTokenRegistrar, config.contracts.spoke);
+        _validateWard(config.contracts.shareTokenRegistrar, config.contracts.balanceSheet);
+        _validateWard(config.contracts.shareTokenRegistrar, config.contracts.spokeRegistry);
         _validateWard(config.contracts.poolEscrowFactory, config.contracts.spoke);
         if (config.contracts.vaultRegistry != address(0)) {
             _validateWard(config.contracts.spoke, config.contracts.vaultRegistry);

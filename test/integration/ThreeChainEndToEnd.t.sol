@@ -11,7 +11,6 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
-import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {ISpokeHandler} from "../../src/core/spoke/interfaces/ISpokeHandler.sol";
 
@@ -20,6 +19,8 @@ import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {FullDeployer} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
+
+import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
 
 enum CrossChainDirection {
     WithIntermediaryHub, // (spoke in C) -> (hub in A) -> (spoke in B)
@@ -91,7 +92,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         // B: Mint shares
         vm.startPrank(BSM);
-        IShareToken shareTokenB = IShareToken(origin.spokeRegistry.shareToken(POOL_A, SC_1));
+        IShareToken shareTokenB = IShareToken(address(origin.spokeRegistry.shareToken(POOL_A, SC_1)));
         origin.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, AMOUNT);
         origin.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
         vm.stopPrank();
@@ -99,6 +100,10 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
 
         vm.prank(address(origin.spokeHandler));
         origin.spokeRegistry.updateBridger(POOL_A, INVESTOR_A, true);
+
+        // The Spoke pulls the shares via a standard transferFrom, so the investor approves it.
+        vm.prank(INVESTOR_A);
+        shareTokenB.approve(address(origin.spoke), AMOUNT);
 
         // B: Initiate transfer of shares
         vm.expectEmit();
@@ -140,7 +145,7 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         );
 
         // C: Transfer expected to be pending on A due to message being unpaid
-        IShareToken shareTokenC = IShareToken(dest.spokeRegistry.shareToken(POOL_A, SC_1));
+        IShareToken shareTokenC = IShareToken(address(dest.spokeRegistry.shareToken(POOL_A, SC_1)));
 
         // If hub is not source, then message will be pending as unpaid on hub until repaid
         if (direction == CrossChainDirection.WithIntermediaryHub) {

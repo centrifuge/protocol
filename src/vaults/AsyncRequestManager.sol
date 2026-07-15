@@ -23,6 +23,7 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {IEscrow} from "../misc/interfaces/IEscrow.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
@@ -30,13 +31,13 @@ import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
-import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {ESCROW_HOOK_ID} from "../core/spoke/interfaces/ITransferHook.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {IBalanceSheet, WithdrawMode} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails, ISpokeV3_1_0} from "../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
+import {IShareToken} from "../token/interfaces/IShareToken.sol";
+import {ESCROW_HOOK_ID} from "../token/interfaces/ITransferHook.sol";
 import {ISubsidyManager} from "../utils/interfaces/ISubsidyManager.sol";
 
 /// @title  Async Request Manager
@@ -274,6 +275,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         address poolEscrow_ = address(balanceSheet.escrow(poolId));
         balanceSheet.transferSharesFrom(poolId, scId, poolEscrow_, poolEscrow_, address(this), shareAmount);
 
+        SafeTransferLib.safeApprove(address(spoke.shareToken(poolId, scId)), address(balanceSheet), shareAmount);
         balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.revoke(poolId, scId, shareAmount);
         balanceSheet.resetPricePoolPerShare(poolId, scId);

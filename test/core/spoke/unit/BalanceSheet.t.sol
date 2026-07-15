@@ -12,8 +12,8 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IEndorsements} from "../../../../src/core/spoke/interfaces/IEndorsements.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ISpokeMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
@@ -22,7 +22,7 @@ import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfac
 
 import {IRoot} from "../../../../src/admin/interfaces/IRoot.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -52,6 +52,7 @@ contract BalanceSheetTest is Test {
     address erc6909 = address(new IsContract());
     address erc20 = address(new IsContract());
     address share = address(new IsContract());
+    address registrar = address(new IsContract());
     address escrow = address(new IsContract());
     IPoolEscrowProvider escrowProvider = IPoolEscrowProvider(makeAddr("EscrowProvider"));
 
@@ -95,8 +96,8 @@ contract BalanceSheetTest is Test {
         );
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
-            abi.encode(share)
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
+            abi.encode(share, registrar)
         );
         vm.mockCall(
             address(spokeRegistry),
@@ -150,18 +151,20 @@ contract BalanceSheetTest is Test {
     }
 
     function _mockShareMint(uint128 amount) internal {
-        vm.mockCall(share, abi.encodeWithSelector(IShareToken.mint.selector, TO, amount), abi.encode());
+        vm.mockCall(registrar, abi.encodeWithSelector(IRegistrar.mint.selector, share, TO, amount), abi.encode());
     }
 
-    function _mockShareBurn(uint128 amount) internal {
-        vm.mockCall(share, abi.encodeWithSelector(IShareToken.burn.selector, balanceSheet, amount), abi.encode());
-    }
-
-    function _mockShareAuthTransferFrom(address from, address to, uint128 amount) internal {
+    function _mockShareBurn(address from, uint128 amount) internal {
         vm.mockCall(
             share,
-            abi.encodeWithSelector(IShareToken.authTransferFrom.selector, from, from, to, amount),
+            abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(balanceSheet), amount),
             abi.encode(true)
+        );
+        vm.mockCall(share, abi.encodeWithSelector(IERC20.approve.selector, registrar, amount), abi.encode(true));
+        vm.mockCall(
+            registrar,
+            abi.encodeWithSelector(IRegistrar.burn.selector, share, address(balanceSheet), amount),
+            abi.encode()
         );
     }
 
@@ -517,8 +520,7 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
     }
 
     function testRevoke() public {
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
 
         vm.prank(MANAGER);
         vm.expectEmit();
@@ -531,8 +533,7 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
     }
 
     function testRevokeTwice() public {
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
 
         vm.startPrank(MANAGER);
         balanceSheet.revoke(POOL_A, SC_1, AMOUNT);
@@ -544,8 +545,7 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
     }
 
     function testRevokeOverridingPrice() public {
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
 
         vm.startPrank(MANAGER);
         balanceSheet.overridePricePoolPerShare(POOL_A, SC_1, IDENTITY_PRICE);
@@ -559,8 +559,7 @@ contract BalanceSheetTestRevoke is BalanceSheetTest {
 contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     function testIssueAndThenRevokeSameAmount() public {
         _mockShareMint(AMOUNT);
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
 
         vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
@@ -573,8 +572,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testIssueAndThenRevokeAndThenIssueSameAmount() public {
         _mockShareMint(AMOUNT);
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
 
         vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
@@ -588,8 +586,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testIssueAndThenRevokeWithLessAmount() public {
         _mockShareMint(AMOUNT);
-        _mockShareBurn(AMOUNT / 4);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT / 4);
+        _mockShareBurn(MANAGER, AMOUNT / 4);
 
         vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
@@ -602,8 +599,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
 
     function testIssueAndThenRevokeWithMoreAmount() public {
         _mockShareMint(AMOUNT);
-        _mockShareBurn(2 * AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), 2 * AMOUNT);
+        _mockShareBurn(MANAGER, 2 * AMOUNT);
 
         vm.startPrank(MANAGER);
         balanceSheet.issue(POOL_A, SC_1, TO, AMOUNT);
@@ -615,8 +611,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     }
 
     function testRevokeAndThenIssueAndThenRevokeSameAmount() public {
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
         _mockShareMint(AMOUNT);
 
         vm.startPrank(MANAGER);
@@ -630,8 +625,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     }
 
     function testRevokeAndThenIssueSameAmount() public {
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
         _mockShareMint(AMOUNT);
 
         vm.startPrank(MANAGER);
@@ -644,8 +638,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     }
 
     function testRevokeAndThenIssueWithLessAmount() public {
-        _mockShareBurn(AMOUNT / 4);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT / 4);
+        _mockShareBurn(MANAGER, AMOUNT / 4);
         _mockShareMint(AMOUNT);
 
         vm.startPrank(MANAGER);
@@ -658,8 +651,7 @@ contract BalanceSheetTestIssueAndRevokeCombinations is BalanceSheetTest {
     }
 
     function testRevokeAndThenIssueWithMoreAmount() public {
-        _mockShareBurn(2 * AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), 2 * AMOUNT);
+        _mockShareBurn(MANAGER, 2 * AMOUNT);
         _mockShareMint(AMOUNT);
 
         vm.startPrank(MANAGER);
@@ -833,8 +825,7 @@ contract BalanceSheetTestSubmitQueuedShares is BalanceSheetTest {
     }
 
     function testSubmitQueuedSharesWithDeltaNegative() public {
-        _mockShareBurn(AMOUNT);
-        _mockShareAuthTransferFrom(MANAGER, address(balanceSheet), AMOUNT);
+        _mockShareBurn(MANAGER, AMOUNT);
         _mockSendUpdateShares(AMOUNT, !IS_ISSUANCE, IS_SNAPSHOT, 0);
 
         vm.startPrank(MANAGER);
@@ -885,9 +876,9 @@ contract BalanceSheetTestTransferSharesFrom is BalanceSheetTest {
     function testTransferSharesFrom() public {
         vm.mockCall(address(root), abi.encodeWithSelector(IEndorsements.endorsed.selector, FROM), abi.encode(false));
         vm.mockCall(
-            share,
-            abi.encodeWithSelector(IShareToken.authTransferFrom.selector, SENDER, FROM, TO, AMOUNT),
-            abi.encode(true)
+            registrar,
+            abi.encodeWithSelector(IRegistrar.authTransferFrom.selector, share, SENDER, FROM, TO, AMOUNT),
+            abi.encode()
         );
 
         vm.prank(MANAGER);

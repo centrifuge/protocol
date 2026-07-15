@@ -8,15 +8,16 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultUpdateKind, ManagerKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 contract AssetShareConversionTest is CentrifugeIntegrationTest {
     using CastLib for *;
@@ -49,7 +50,18 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         hub.notifyPool{value: 0}(poolId, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            poolId, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(fullRestrictionsHook))), address(this)
+            poolId, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), address(this)
+        );
+
+        // Token deploys hookless (v3.1+); set the restriction hook via the registrar's Envoy path
+        hub.managerCall{value: 0}(
+            poolId,
+            LOCAL_CENTRIFUGE_ID,
+            address(shareTokenRegistrar).toBytes32(),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), SC_1, address(fullRestrictionsHook)),
+            0,
+            0,
+            address(this)
         );
 
         // Initial share price on spoke
@@ -93,7 +105,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             address(this)
         );
 
-        vault = AsyncVault(IShareToken(spokeRegistry.shareToken(poolId, SC_1)).vault(address(asset)));
+        vault = AsyncVault(address(spokeRegistry.vault(poolId, SC_1, assetId, spokeRegistry.requestManager(poolId))));
     }
 
     /// Simulates the hub sending back deposit fulfillment messages to the spoke.

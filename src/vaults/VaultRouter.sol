@@ -20,6 +20,8 @@ import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
+import {IShareToken} from "../token/interfaces/IShareToken.sol";
+
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
 ///         It removes the need to know about all other contracts and simplifies the way to interact with the protocol.
@@ -109,8 +111,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         spokeRegistry.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
-        // The router pulls the shares and bridges them (it is the share `owner` on the Spoke), but forwards the
-        // real user as `sender` so attribution and the destination-side circuit breaker key on the user.
+        _approveMax(vault.share(), address(spoke));
         spoke.crosschainTransferShares{value: msgValue()}(
             centrifugeId,
             vault.poolId(),
@@ -202,7 +203,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
-        return spokeRegistry.shareToken(poolId, scId).vault(asset);
+        return IShareToken(address(spokeRegistry.shareToken(poolId, scId))).vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

@@ -7,11 +7,11 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {SpokeV3_1_0} from "../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
-import {ISpokeV3_1_0} from "../../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import "forge-std/Test.sol";
+
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
@@ -51,19 +51,11 @@ contract SpokeV3_1_0Test is Test {
         );
     }
 
-    /// @dev The v3.1.0 6-arg signature enforces the transfer restriction against the destination-chain
-    ///      pseudo-address, then forwards the caller as the share `owner` to Spoke (extraGasLimit 0, refund the
-    ///      caller). The pseudo-address convention lives in this facade, not in the immutable core.
+    /// @dev The v3.1.0 6-arg signature forwards the caller as the share `owner` to Spoke (extraGasLimit 0, refund
+    ///      the caller). The transfer-restriction check now lives in core Spoke via the registrar, not in this facade.
     function testCrosschainTransferSharesForwardsCallerAsOwner() public {
         uint128 remoteExtraGasLimit = 100;
 
-        vm.mockCall(
-            address(share),
-            abi.encodeWithSelector(
-                IShareToken.checkTransferRestriction.selector, GROVE, address(uint160(REMOTE_CENTRIFUGE_ID)), AMOUNT
-            ),
-            abi.encode(true)
-        );
         vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.crosschainTransferShares.selector), abi.encode());
 
         vm.expectCall(
@@ -89,18 +81,6 @@ contract SpokeV3_1_0Test is Test {
         vm.prank(GROVE);
         spokeV3_1_0.crosschainTransferShares{value: COST}(
             REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, remoteExtraGasLimit
-        );
-    }
-
-    function testCrosschainTransferSharesRestrictionBlocked() public {
-        vm.mockCall(
-            address(share), abi.encodeWithSelector(IShareToken.checkTransferRestriction.selector), abi.encode(false)
-        );
-
-        vm.prank(GROVE);
-        vm.expectRevert(ISpokeV3_1_0.CrossChainTransferNotAllowed.selector);
-        spokeV3_1_0.crosschainTransferShares{value: COST}(
-            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 100
         );
     }
 }

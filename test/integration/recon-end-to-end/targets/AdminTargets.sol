@@ -14,7 +14,6 @@ import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
@@ -26,6 +25,7 @@ import {OpType} from "../BeforeAfter.sol";
 import {Helpers} from "../utils/Helpers.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Dependencies
 
@@ -318,14 +318,16 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub_notifyPool(CENTRIFUGE_CHAIN_ID);
     }
 
-    function hub_notifyShareClass(uint16 centrifugeId, uint256 hookAsUint) public updateGhosts {
+    function hub_notifyShareClass(uint16 centrifugeId) public updateGhosts {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        hub.notifyShareClass{value: MAX_MESSAGE_COST}(poolId, scId, centrifugeId, bytes32(hookAsUint), _getActor());
+        hub.notifyShareClass{value: MAX_MESSAGE_COST}(
+            poolId, scId, centrifugeId, bytes32(bytes20(address(shareTokenRegistrar))), _getActor()
+        );
     }
 
-    function hub_notifyShareClass_clamped(uint256 hookAsUint) public {
-        hub_notifyShareClass(CENTRIFUGE_CHAIN_ID, hookAsUint);
+    function hub_notifyShareClass_clamped() public {
+        hub_notifyShareClass(CENTRIFUGE_CHAIN_ID);
     }
 
     function hub_notifySharePrice(uint16 centrifugeId) public updateGhostsWithType(OpType.UPDATE) {

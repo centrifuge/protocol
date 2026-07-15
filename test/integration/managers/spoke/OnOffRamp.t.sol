@@ -5,13 +5,15 @@ import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {IERC6909ExclOperator} from "../../../../src/misc/interfaces/IERC6909.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";
 import {IOnOffRamp} from "../../../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 
 import {AssetId, VaultBaseTest as BaseTest, ShareClassId} from "../../vaults/VaultBaseTest.sol";
+
+import {IShareTokenRegistrar} from "../../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 abstract contract OnOffRampBaseTest is BaseTest {
     using CastLib for *;
@@ -41,13 +43,16 @@ abstract contract OnOffRampBaseTest is BaseTest {
         assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId, address(this));
         spokeHandler.addPool(POOL_A);
         spokeHandler.addShareClass(
+            POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), shareTokenRegistrar
+        );
+        vm.prank(shareTokenRegistrar.envoy());
+        shareTokenRegistrar.fromHub(
             POOL_A,
-            defaultTypedShareClassId,
-            "testShareClass",
-            "tsc",
-            defaultDecimals,
-            bytes32(""),
-            address(fullRestrictionsHook)
+            abi.encode(
+                uint8(IShareTokenRegistrar.RegistrarCall.SetHook),
+                defaultTypedShareClassId.raw(),
+                address(fullRestrictionsHook)
+            )
         );
         spokeHandler.updatePricePoolPerShare(
             POOL_A, defaultTypedShareClassId, defaultPricePoolPerShare, uint64(block.timestamp)

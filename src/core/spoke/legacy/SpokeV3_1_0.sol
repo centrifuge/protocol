@@ -13,10 +13,10 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ISpoke} from "../interfaces/ISpoke.sol";
 import {IVault} from "../interfaces/IVault.sol";
-import {IShareToken} from "../interfaces/IShareToken.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {ISpokeRegistry} from "../interfaces/ISpokeRegistry.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
+import {IShareToken} from "../../../token/interfaces/IShareToken.sol";
 
 /// @notice Thin wrapper over Spoke and SpokeRegistry to offer a Spoke v3.1.0 like interface
 contract SpokeV3_1_0 is Auth, Recoverable, ReentrancyProtection, ISpokeV3_1_0 {
@@ -61,8 +61,6 @@ contract SpokeV3_1_0 is Auth, Recoverable, ReentrancyProtection, ISpokeV3_1_0 {
     }
 
     /// @inheritdoc ISpokeV3_1_0
-    /// @dev Preserves the v3.1.0 signature. Forwards the original caller as the share `owner`, so the caller
-    ///      must hold the bridger role. This contract must be a ward of Spoke to bridge on the caller's behalf.
     function crosschainTransferShares(
         uint16 centrifugeId,
         PoolId poolId,
@@ -71,14 +69,6 @@ contract SpokeV3_1_0 is Auth, Recoverable, ReentrancyProtection, ISpokeV3_1_0 {
         uint128 amount,
         uint128 remoteExtraGasLimit
     ) external payable {
-        // The destination chain is encoded as a pseudo-address for the transfer-restriction check. This
-        // convention lives here in the facade rather than in the immutable core.
-        IShareToken share = spokeRegistry.shareToken(poolId, scId);
-        require(
-            share.checkTransferRestriction(msg.sender, address(uint160(centrifugeId)), amount),
-            CrossChainTransferNotAllowed()
-        );
-
         spoke.crosschainTransferShares{value: msg.value}(
             centrifugeId, poolId, scId, receiver, msg.sender, msg.sender, amount, 0, remoteExtraGasLimit, msg.sender
         );
@@ -105,7 +95,7 @@ contract SpokeV3_1_0 is Auth, Recoverable, ReentrancyProtection, ISpokeV3_1_0 {
 
     /// @inheritdoc ISpokeV3_1_0
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken) {
-        return spokeRegistry.shareToken(poolId, scId);
+        return IShareToken(address(spokeRegistry.shareToken(poolId, scId)));
     }
 
     /// @inheritdoc ISpokeV3_1_0

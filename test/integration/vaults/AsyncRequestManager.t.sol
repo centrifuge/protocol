@@ -2,10 +2,12 @@
 pragma solidity 0.8.28;
 pragma abicoder v2;
 
-import {VaultBaseTest as BaseTest, IShareToken, VaultKind} from "./VaultBaseTest.sol";
+import {VaultBaseTest as BaseTest, VaultKind} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract AsyncRequestManagerTest is BaseTest {
     function testSuccess(uint128 depositAmount) public {

@@ -11,16 +11,17 @@ import {PoolId} from "../src/core/types/PoolId.sol";
 import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {IShareToken} from "../src/core/spoke/interfaces/IShareToken.sol";
 import {IPoolEscrowProvider} from "../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Root} from "../src/admin/Root.sol";
 
-import {FullRestrictions} from "../src/hooks/transfer/FullRestrictions.sol";
-import {FreelyTransferable} from "../src/hooks/transfer/FreelyTransferable.sol";
+import {FullRestrictions} from "../src/token/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/token/hooks/FreelyTransferable.sol";
 
 import {console} from "forge-std/console.sol";
 import {stdJson} from "forge-std/StdJson.sol";
+
+import {IShareToken} from "../src/token/interfaces/IShareToken.sol";
 
 struct TokenInstanceData {
     PoolId poolId;

@@ -2,17 +2,17 @@
 pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
-import {FullRestrictions} from "../../../src/hooks/transfer/FullRestrictions.sol";
+import {FullRestrictions} from "../../../src/token/hooks/FullRestrictions.sol";
 
 import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
+import {ESCROW_HOOK_ID} from "../../../src/token/interfaces/ITransferHook.sol";
 
 contract MockPoolEscrow {
     PoolId public immutable poolId;

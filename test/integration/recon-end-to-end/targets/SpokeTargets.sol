@@ -9,16 +9,16 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {IShareTokenRegistrar} from "../../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 // Dependencies
 
@@ -113,9 +113,12 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             symbol,
             decimals,
             keccak256(abi.encodePacked(_getPool(), scId)),
-            hook
+            shareTokenRegistrar
         );
         address newToken = address(spokeRegistry.shareToken(_getPool(), ShareClassId.wrap(scId)));
+        shareTokenRegistrar.fromHub(
+            _getPool(), abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), scId, hook)
+        );
 
         _addShareClassId(scId);
         _addShareClassToPool(_getPool(), ShareClassId.wrap(scId));
@@ -138,9 +141,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
         spokeHandler.updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink);
 
-        IShareToken shareToken_ = spokeRegistry.shareToken(poolId, scId);
-        (address asset,) = spokeRegistry.idToAsset(assetId);
-        address vault = IShareToken(shareToken_).vault(asset);
+        address vault = address(spokeRegistry.vault(poolId, scId, assetId, spokeRegistry.requestManager(poolId)));
 
         _addVault(vault);
 

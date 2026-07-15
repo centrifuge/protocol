@@ -48,9 +48,8 @@ src/
 │   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices
 │   │   ├── SpokeHandler.sol # Inbound cross-chain message handling
 │   │   ├── BalanceSheet.sol # Balance tracking
-│   │   ├── ShareToken.sol  # ERC20 share tokens
 │   │   ├── PoolEscrow.sol  # Pool-specific escrow
-│   │   ├── factories/      # Token & escrow factories
+│   │   ├── factories/      # Escrow & vault factories
 │   │   ├── legacy/         # SpokeV3_1_0 compatibility facade
 │   │   └── interfaces/
 │   ├── messaging/          # Message infrastructure
@@ -85,12 +84,6 @@ src/
 │   ├── BaseVaults.sol     # Base implementations
 │   └── factories/
 ├── hooks/                 # Hook implementations
-│   ├── transfer/          # Share token transfer restrictions
-│   │   ├── BaseTransferHook.sol # Base hook logic
-│   │   ├── FreelyTransferable.sol
-│   │   ├── FreezeOnly.sol
-│   │   ├── FullRestrictions.sol
-│   │   └── RedemptionRestrictions.sol
 │   ├── bridge/            # Cross-chain bridging hooks
 │   │   └── BridgeCircuitBreaker.sol # Pause + rate limit on outbound transfers
 │   └── accounting/        # NAV & price hooks
@@ -103,6 +96,15 @@ src/
 │   ├── AxelarAdapter.sol
 │   ├── ChainlinkAdapter.sol
 │   └── LayerZeroAdapter.sol
+├── token/                 # Share token implementations
+│   ├── ShareToken.sol     # ERC20 share tokens
+│   ├── ShareTokenRegistrar.sol # Deploys & operates ShareTokens (IRegistrar)
+│   └── hooks/             # Share token transfer restrictions
+│       ├── BaseTransferHook.sol # Base hook logic
+│       ├── FreelyTransferable.sol
+│       ├── FreezeOnly.sol
+│       ├── FullRestrictions.sol
+│       └── RedemptionRestrictions.sol
 ├── utils/                  # Utilities
 │   ├── RefundEscrow.sol   # Refund handling
 │   ├── RefundEscrowFactory.sol

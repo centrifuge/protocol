@@ -6,7 +6,7 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7575} from "../../../src/misc/interfaces/IERC7575.sol";
-import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
+import {IERC20, IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
@@ -15,7 +15,6 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet, WithdrawMode} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeV3_1_0, VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
@@ -28,6 +27,7 @@ import {IAsyncRequestManager, REASON_DEPOSIT, REASON_REDEEM} from "../../../src/
 
 import "forge-std/Test.sol";
 
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {ISubsidyManager} from "../../../src/utils/interfaces/ISubsidyManager.sol";
 
 contract IsContract {}
@@ -145,6 +145,7 @@ contract AsyncRequestManagerTest is Test {
         vm.mockCall(
             address(shareToken), abi.encodeWithSelector(shareToken.checkTransferRestriction.selector), abi.encode(true)
         );
+        vm.mockCall(address(shareToken), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
         vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(6)));
         vm.mockCall(
             address(shareToken), abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(18))

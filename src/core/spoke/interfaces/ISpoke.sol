@@ -46,6 +46,7 @@ interface ISpoke {
     error TooManyDecimals();
     error AssetMissingDecimals();
     error LocalTransferNotAllowed();
+    error CrossChainTransferNotAllowed();
     error InvalidRequestManager();
     error NotBridger();
 
@@ -82,7 +83,9 @@ interface ISpoke {
     ///        destination-side bridging hook (e.g. the circuit breaker). A router/bridge passes the real user.
     /// @param owner The account whose shares are transferred and burned; must hold the bridger role and be
     ///        `msg.sender` unless the caller is a ward (e.g. a router bridging shares it pulled, or the
-    ///        SpokeV3_1_0 compatibility layer forwarding the original caller).
+    ///        SpokeV3_1_0 compatibility layer forwarding the original caller). Must have granted this contract
+    ///        an ERC20 allowance for `amount` (optionally via permit); the shares are pulled with a standard
+    ///        transferFrom so the flow works for share tokens without a force-transfer mechanism.
     /// @param amount The amount of tokens to transfer
     /// @param extraGasLimit Extra gas limit used for computation on the intermediary hub
     /// @param remoteExtraGasLimit Extra gas limit used for computation in the destination chain

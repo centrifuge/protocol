@@ -388,7 +388,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 registrar, address refund)
         external
         payable
     {
@@ -401,7 +401,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
         sender.sendNotifyShareClass{value: msgValue()}(
-            centrifugeId, poolId, scId, name, symbol, decimals, salt, hook, refund
+            centrifugeId, poolId, scId, name, symbol, decimals, salt, registrar, refund
         );
     }
 
@@ -416,17 +416,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
         sender.sendNotifyShareMetadata{value: msgValue()}(centrifugeId, poolId, scId, name, symbol, refund);
-    }
-
-    /// @inheritdoc IHub
-    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        external
-        payable
-    {
-        _protected(poolId);
-
-        emit UpdateShareHook(centrifugeId, poolId, scId, hook);
-        sender.sendUpdateShareHook{value: msgValue()}(centrifugeId, poolId, scId, hook, refund);
     }
 
     /// @inheritdoc IHub

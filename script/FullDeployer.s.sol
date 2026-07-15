@@ -18,7 +18,6 @@ import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 import {SpokeV3_1_0} from "../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
-import {TokenFactory} from "../src/core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
@@ -30,13 +29,13 @@ import {ISafe} from "../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../src/admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../src/hooks/transfer/FreezeOnly.sol";
+import {FreezeOnly} from "../src/token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../src/hooks/accounting/NAVManager.sol";
-import {FullRestrictions} from "../src/hooks/transfer/FullRestrictions.sol";
-import {FreelyTransferable} from "../src/hooks/transfer/FreelyTransferable.sol";
+import {FullRestrictions} from "../src/token/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../src/token/hooks/FreelyTransferable.sol";
 import {BridgeCircuitBreaker} from "../src/hooks/bridge/BridgeCircuitBreaker.sol";
 import {SimplePriceManager} from "../src/hooks/accounting/SimplePriceManager.sol";
-import {RedemptionRestrictions} from "../src/hooks/transfer/RedemptionRestrictions.sol";
+import {RedemptionRestrictions} from "../src/token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../src/managers/spoke/OnOffRamp.sol";
@@ -67,6 +66,7 @@ import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../src/utils/RefundEscrowFactory.sol";
+import {ShareTokenRegistrar} from "../src/token/ShareTokenRegistrar.sol";
 import {
     Constants,
     CoreReport,
@@ -145,7 +145,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
     Spoke public spoke;
     BalanceSheet public balanceSheet;
-    TokenFactory public tokenFactory;
+    ShareTokenRegistrar public shareTokenRegistrar;
     ContractUpdater public contractUpdater;
     SpokeRegistry public spokeRegistry;
     SpokeHandler public spokeHandler;
@@ -326,10 +326,10 @@ contract FullDeployer is BaseDeployer, Constants {
         );
 
         // Spoke
-        tokenFactory = TokenFactory(
+        shareTokenRegistrar = ShareTokenRegistrar(
             create3(
-                createSalt("tokenFactory", V3_1),
-                abi.encodePacked(type(TokenFactory).creationCode, abi.encode(root, batcher))
+                createSalt("shareTokenRegistrar", V3_X),
+                abi.encodePacked(type(ShareTokenRegistrar).creationCode, abi.encode(root, batcher))
             )
         );
 
@@ -360,9 +360,7 @@ contract FullDeployer is BaseDeployer, Constants {
         spokeHandler = SpokeHandler(
             create3(
                 createSalt("spokeHandler", V3_X),
-                abi.encodePacked(
-                    type(SpokeHandler).creationCode, abi.encode(spokeRegistry, tokenFactory, poolEscrowFactory, batcher)
-                )
+                abi.encodePacked(type(SpokeHandler).creationCode, abi.encode(spokeRegistry, poolEscrowFactory, batcher))
             )
         );
 
@@ -760,7 +758,7 @@ contract FullDeployer is BaseDeployer, Constants {
             poolEscrowFactory,
             spoke,
             balanceSheet,
-            tokenFactory,
+            shareTokenRegistrar,
             contractUpdater,
             spokeHandler,
             spokeRegistry,

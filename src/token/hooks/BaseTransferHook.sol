@@ -15,14 +15,15 @@ import {BitmapLib} from "../../misc/libraries/BitmapLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 import {IPoolEscrowProvider} from "../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../core/spoke/interfaces/ITransferHook.sol";
 
 import {IRoot} from "../../admin/interfaces/IRoot.sol";
+
+import {IShareToken} from "../interfaces/IShareToken.sol";
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../interfaces/ITransferHook.sol";
 
 /// @title  BaseTransferHook
 /// @notice Abstract base contract for share token transfer restrictions that provides memberlist management,

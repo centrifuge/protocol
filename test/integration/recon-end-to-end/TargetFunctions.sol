@@ -17,7 +17,6 @@ import {BalanceSheetTargets} from "./targets/BalanceSheetTargets.sol";
 import {D18} from "../../../src/misc/types/D18.sol";
 
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../src/core/hub/interfaces/IValuation.sol";
@@ -25,6 +24,7 @@ import {IValuation} from "../../../src/core/hub/interfaces/IValuation.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {MockERC20} from "@recon/MockERC20.sol";
+import {ShareToken} from "../../../src/token/ShareToken.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 // Dependencies

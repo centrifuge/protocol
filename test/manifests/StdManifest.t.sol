@@ -739,12 +739,6 @@ contract StdManifestTest is Test {
         assertEq(_delayOf(d), DELAY);
     }
 
-    function testUpdateShareHookNeedsAuthorization() public {
-        bytes memory d =
-            abi.encodeWithSelector(IHub.updateShareHook.selector, POOL_A, SC_A, uint16(1), bytes32(0), address(0));
-        assertEq(_delayOf(d), DELAY);
-    }
-
     function testUpdateVaultNeedsAuthorization() public {
         // Every vault update (deploy/link/unlink) is timelocked.
         bytes memory d = abi.encodeWithSelector(IHub.updateVault.selector, POOL_A, SC_A, uint8(0));

@@ -3,11 +3,13 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {RedemptionRestrictions} from "../../../src/hooks/transfer/RedemptionRestrictions.sol";
+import {RedemptionRestrictions} from "../../../src/token/hooks/RedemptionRestrictions.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest, VaultKind} from "../vaults/VaultBaseTest.sol";
 
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;

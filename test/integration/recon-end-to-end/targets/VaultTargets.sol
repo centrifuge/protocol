@@ -8,7 +8,6 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -22,6 +21,7 @@ import {Helpers} from "../utils/Helpers.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Dependencies
 

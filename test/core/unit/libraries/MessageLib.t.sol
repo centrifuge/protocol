@@ -63,11 +63,6 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeNotifyShareHook() public {
-        MessageLib.deserializeUpdateShareHook(_prepareFor());
-    }
-
-    /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeInitiateTransferShares() public {
         MessageLib.deserializeInitiateTransferShares(_prepareFor());
     }
@@ -206,10 +201,10 @@ contract TestMessageLibIdentities is Test {
         bytes32 symbol,
         uint8 decimals,
         bytes32 salt,
-        bytes32 hook
+        bytes32 registrar
     ) public pure {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
-            poolId: poolId, scId: scId, name: name, symbol: symbol, decimals: decimals, salt: salt, hook: hook
+            poolId: poolId, scId: scId, name: name, symbol: symbol, decimals: decimals, salt: salt, registrar: registrar
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
 
@@ -221,7 +216,7 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.symbol, b.symbol);
         assertEq(a.decimals, b.decimals);
         assertEq(a.salt, b.salt);
-        assertEq(a.hook, b.hook);
+        assertEq(a.registrar, b.registrar);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -273,19 +268,6 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(slicedName, b.name);
         assertEq(a.symbol, b.symbol);
-
-        assertEq(a.serialize().messageLength(), a.serialize().length);
-        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
-    }
-
-    function testUpdateShareHook(uint64 poolId, bytes16 scId, bytes32 hook) public pure {
-        MessageLib.UpdateShareHook memory a = MessageLib.UpdateShareHook({poolId: poolId, scId: scId, hook: hook});
-        MessageLib.UpdateShareHook memory b = MessageLib.deserializeUpdateShareHook(a.serialize());
-
-        assertEq(a.poolId, b.poolId);
-        assertEq(a.scId, b.scId);
-        assertEq(a.hook, b.hook);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -627,7 +609,6 @@ contract TestMessageLibSourceCentrifugeId is Test {
         expected[uint256(MessageType.NotifyPricePoolPerShare)] = 1;
         expected[uint256(MessageType.NotifyPricePoolPerAsset)] = 1;
         expected[uint256(MessageType.NotifyShareMetadata)] = 1;
-        expected[uint256(MessageType.UpdateShareHook)] = 1;
         expected[uint256(MessageType.ExecuteTransferShares)] = 1;
         expected[uint256(MessageType.UpdateRestriction)] = 1;
         expected[uint256(MessageType.UpdateVault)] = 1;

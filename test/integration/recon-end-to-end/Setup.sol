@@ -39,7 +39,6 @@ import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {TokenFactory} from "../../../src/core/spoke/factories/TokenFactory.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
@@ -49,7 +48,7 @@ import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassMa
 import {Root} from "../../../src/admin/Root.sol";
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
-import {FullRestrictions} from "../../../src/hooks/transfer/FullRestrictions.sol";
+import {FullRestrictions} from "../../../src/token/hooks/FullRestrictions.sol";
 
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
@@ -66,6 +65,7 @@ import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
 import {SubsidyManager} from "../../../src/utils/SubsidyManager.sol";
 import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
+import {ShareTokenRegistrar} from "../../../src/token/ShareTokenRegistrar.sol";
 
 // Hub
 
@@ -90,7 +90,7 @@ abstract contract Setup is
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncVaultFactory;
-    TokenFactory tokenFactory;
+    ShareTokenRegistrar shareTokenRegistrar;
     PoolEscrowFactory poolEscrowFactory;
     RefundEscrowFactory refundEscrowFactory;
 
@@ -203,10 +203,10 @@ abstract contract Setup is
         syncManager = new SyncManager(address(this));
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
-        tokenFactory = new TokenFactory(address(this), address(this));
+        shareTokenRegistrar = new ShareTokenRegistrar(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spokeRegistry = new SpokeRegistry(address(this));
-        spokeHandler = new SpokeHandler(spokeRegistry, tokenFactory, poolEscrowFactory, address(this));
+        spokeHandler = new SpokeHandler(spokeRegistry, poolEscrowFactory, address(this));
         spoke = new Spoke(address(this));
         spokeV3_1_0 = new SpokeV3_1_0(address(this));
         fullRestrictions = new FullRestrictions(
@@ -245,12 +245,6 @@ abstract contract Setup is
 
         balanceSheet.file("gateway", address(gateway));
         poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        address[] memory tokenWards = new address[](4);
-        tokenWards[0] = address(spokeHandler);
-        tokenWards[1] = address(spoke);
-        tokenWards[2] = address(balanceSheet);
-        tokenWards[3] = address(spokeRegistry);
-        tokenFactory.file("wards", tokenWards);
 
         // Set up all spoke permissions
         setupSpokePermissions();
@@ -396,9 +390,11 @@ abstract contract Setup is
         root.endorse(address(asyncRequestManager));
 
         // Rely SpokeHandler (from SpokeDeployer)
-        tokenFactory.rely(address(spokeHandler));
+        shareTokenRegistrar.rely(address(spokeHandler));
+        shareTokenRegistrar.file("envoy", address(this));
+        shareTokenRegistrar.file("spokeRegistry", address(spokeRegistry));
         asyncRequestManager.rely(address(spokeHandler));
-        fullRestrictions.rely(address(spokeHandler));
+        fullRestrictions.rely(address(shareTokenRegistrar));
         poolEscrowFactory.rely(address(spokeHandler));
 
         // Rely Spoke
@@ -406,7 +402,9 @@ abstract contract Setup is
         asyncVaultFactory.rely(address(spokeHandler));
         syncVaultFactory.rely(address(spoke));
         syncVaultFactory.rely(address(spokeHandler));
-        tokenFactory.rely(address(spoke));
+        shareTokenRegistrar.rely(address(spoke));
+        shareTokenRegistrar.rely(address(balanceSheet));
+        shareTokenRegistrar.rely(address(spokeRegistry));
         syncManager.rely(address(spoke));
         gateway.rely(address(spoke));
 
@@ -445,7 +443,7 @@ abstract contract Setup is
         balanceSheet.rely(address(root));
         asyncVaultFactory.rely(address(root));
         syncVaultFactory.rely(address(root));
-        tokenFactory.rely(address(root));
+        shareTokenRegistrar.rely(address(root));
         fullRestrictions.rely(address(root));
         gateway.rely(address(root));
         poolEscrowFactory.rely(address(root));

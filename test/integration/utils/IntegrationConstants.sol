@@ -50,7 +50,8 @@ library IntegrationConstants {
     address constant HUB = 0x9c8454A506263549f07c80698E276e3622077098;
     address constant HUB_HELPERS = 0xA30D9E76a80675A719d835a74d09683AD2CB71EE; // v3.1: REMOVED (functionality moved to Hub)
     address constant IDENTITY_VALUATION = 0x3b8FaE903a6511f9707A2f45747a0de3B747711f;
-    address constant TOKEN_FACTORY = 0xC8eDca090b772C48BcE5Ae14Eb7dd517cd70A32C;
+    /// @dev Placeholder: updated once the ShareTokenRegistrar is deployed
+    address constant SHARE_TOKEN_REGISTRAR = address(0);
     address constant BALANCE_SHEET = 0xBcC8D02d409e439D98453C0b1ffa398dFFb31fda;
     address constant SPOKE = 0xd30Da1d7F964E5f6C2D9fE2AAA97517F6B23FA2B;
     address constant CONTRACT_UPDATER = 0x8dD5a3d4e9ec54388dAd23B8a1f3B2159B2f2D85;

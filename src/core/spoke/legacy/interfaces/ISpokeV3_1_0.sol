@@ -6,9 +6,9 @@ import {D18} from "../../../../misc/types/D18.sol";
 import {PoolId} from "../../../types/PoolId.sol";
 import {AssetId} from "../../../types/AssetId.sol";
 import {IVault} from "../../interfaces/IVault.sol";
-import {IShareToken} from "../../interfaces/IShareToken.sol";
 import {ShareClassId} from "../../../types/ShareClassId.sol";
 import {IRequestManager} from "../../../interfaces/IRequestManager.sol";
+import {IShareToken} from "../../../../token/interfaces/IShareToken.sol";
 import {VaultDetails, ISpokeRegistry} from "../../interfaces/ISpokeRegistry.sol";
 
 /// @title  ISpokeV3_1_0
@@ -24,7 +24,6 @@ interface ISpokeV3_1_0 {
 
     error FileUnrecognizedParam();
     error InvalidRequestManager();
-    error CrossChainTransferNotAllowed();
 
     //----------------------------------------------------------------------------------------------
     // Administration

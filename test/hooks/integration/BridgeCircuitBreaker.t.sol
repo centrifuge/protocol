@@ -3,13 +3,13 @@ pragma solidity 0.8.28;
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {BridgeCircuitBreaker} from "../../../src/hooks/bridge/BridgeCircuitBreaker.sol";
 import {IBridgeCircuitBreaker} from "../../../src/hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
 
 import {ICircuitBreakerGuard} from "../../../src/managers/spoke/guards/interfaces/ICircuitBreakerGuard.sol";
 
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
 
 contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
@@ -36,12 +36,18 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         vm.startPrank(FM);
         hub.addShareClass(POOL_A, "Test", "T", bytes32(bytes8(POOL_A.raw())));
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, FM);
-        hub.notifyShareClass{value: 0}(POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(0), FM);
+        hub.notifyShareClass{value: 0}(
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), FM
+        );
         vm.stopPrank();
 
-        shareToken = IShareToken(spokeRegistry.shareToken(POOL_A, SC_1));
-        vm.prank(address(balanceSheet));
+        shareToken = IShareToken(address(spokeRegistry.shareToken(POOL_A, SC_1)));
+        vm.prank(address(shareTokenRegistrar));
         shareToken.mint(investor, 3 * AMOUNT);
+
+        // The Spoke pulls the shares via a standard transferFrom, so the investor approves it.
+        vm.prank(investor);
+        shareToken.approve(address(spoke), type(uint256).max);
 
         // Allow the investor to initiate cross-chain share transfers
         vm.prank(address(spokeHandler));
@@ -226,8 +232,10 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
     /// forge-config: default.isolate = true
     function testAuthorizationIsKeyedPerSender() public {
         address investor2 = makeAddr("investor2");
-        vm.prank(address(balanceSheet));
+        vm.prank(address(shareTokenRegistrar));
         shareToken.mint(investor2, AMOUNT);
+        vm.prank(investor2);
+        shareToken.approve(address(spoke), type(uint256).max);
         vm.prank(address(spokeHandler));
         spokeRegistry.updateBridger(POOL_A, investor2, true);
 

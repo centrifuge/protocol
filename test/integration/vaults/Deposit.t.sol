@@ -6,7 +6,6 @@ import {
     AsyncVault,
     VaultBaseTest as BaseTest,
     ERC20,
-    IShareToken,
     MockAdapter,
     PoolId,
     ShareClassId,
@@ -25,6 +24,8 @@ import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;

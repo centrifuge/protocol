@@ -20,6 +20,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  MessageDispatcher
@@ -89,11 +90,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         string memory symbol,
         uint8 decimals,
         bytes32 salt,
-        bytes32 hook,
+        bytes32 registrar,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spokeHandler.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
+            spokeHandler.addShareClass(poolId, scId, name, symbol, decimals, salt, IRegistrar(registrar.toAddress()));
             SafeTransferLib.safeTransferETH(refund, msg.value);
         } else {
             _send(
@@ -105,7 +106,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                         symbol: symbol.toBytes32(),
                         decimals: decimals,
                         salt: salt,
-                        hook: hook
+                        registrar: registrar
                     }).serialize(),
                 false,
                 refund
@@ -131,25 +132,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.NotifyShareMetadata({
                         poolId: poolId.raw(), scId: scId.raw(), name: name, symbol: symbol.toBytes32()
                     }).serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
-    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook, address refund)
-        external
-        payable
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            spokeHandler.updateShareHook(poolId, scId, hook.toAddress());
-            SafeTransferLib.safeTransferETH(refund, msg.value);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.UpdateShareHook({poolId: poolId.raw(), scId: scId.raw(), hook: hook}).serialize(),
                 false,
                 refund
             );

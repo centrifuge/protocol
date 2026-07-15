@@ -207,7 +207,8 @@ interface IBalanceSheet is IBatchedMulticall {
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable;
 
     /// @notice Revoke share tokens
-    /// @dev Decreases the total issuance
+    /// @dev Decreases the total issuance. The shares are pulled from the caller (`msgSender()`), which must
+    ///      have granted this balance sheet an ERC20 allowance of `shares` beforehand.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param shares The number of shares to revoke

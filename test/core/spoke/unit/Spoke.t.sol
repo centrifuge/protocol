@@ -4,19 +4,21 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
-import {IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
+import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ISpokeMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
+
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Need it to overpass a mockCall issue: https://github.com/foundry-rs/foundry/issues/10703
 contract IsContract {}
@@ -35,6 +37,7 @@ contract SpokeTest is Test {
     ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
+    IRegistrar registrar = IRegistrar(address(new IsContract()));
     IRequestManager requestManager = IRequestManager(address(new IsContract()));
 
     address erc20 = address(new IsContract());
@@ -87,8 +90,8 @@ contract SpokeTest is Test {
     function _mockShareToken() internal {
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
-            abi.encode(share)
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
+            abi.encode(share, registrar)
         );
 
         vm.mockCall(address(share), abi.encodeWithSelector(share.hook.selector), abi.encode(address(0)));
@@ -199,25 +202,35 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 
     function _mockCrossTransferShare(address sender_, bool value) public {
         vm.mockCall(
-            address(share),
-            abi.encodeWithSelector(share.checkTransferRestriction.selector, sender_, REMOTE_CENTRIFUGE_ID, AMOUNT),
+            address(registrar),
+            abi.encodeWithSelector(
+                IRegistrar.canTransferCrosschain.selector, address(share), sender_, REMOTE_CENTRIFUGE_ID, AMOUNT
+            ),
             abi.encode(value)
         );
 
         vm.mockCall(
             address(share),
-            abi.encodeWithSelector(share.authTransferFrom.selector, sender_, sender_, spoke, AMOUNT),
+            abi.encodeWithSelector(IERC20.transferFrom.selector, sender_, address(spoke), AMOUNT),
             abi.encode(true)
         );
 
-        vm.mockCall(address(share), abi.encodeWithSelector(share.burn.selector, spoke, AMOUNT), abi.encode());
+        vm.mockCall(
+            address(share), abi.encodeWithSelector(IERC20.approve.selector, registrar, AMOUNT), abi.encode(true)
+        );
+
+        vm.mockCall(
+            address(registrar),
+            abi.encodeWithSelector(IRegistrar.burn.selector, address(share), address(spoke), AMOUNT),
+            abi.encode()
+        );
     }
 
     function testErrShareTokenDoesNotExists() public {
-        // Mock shareToken to revert
+        // Mock the share token lookup to revert
         vm.mockCallRevert(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
             abi.encodeWithSelector(ISpokeRegistry.ShareTokenDoesNotExist.selector)
         );
 
@@ -235,6 +248,17 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         vm.expectRevert(ISpoke.LocalTransferNotAllowed.selector);
         spoke.crosschainTransferShares{value: COST}(
             LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), ANY, ANY, AMOUNT, 0, 0, REFUND
+        );
+    }
+
+    function testErrCrossChainTransferNotAllowed() public {
+        _mockShareToken();
+        _mockCrossTransferShare(ANY, false);
+
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.CrossChainTransferNotAllowed.selector);
+        spoke.crosschainTransferShares{value: COST}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), ANY, ANY, AMOUNT, 0, 0, REFUND
         );
     }
 

@@ -47,10 +47,10 @@ import {MAX_MESSAGE_COST} from "../../src/admin/interfaces/IGasService.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
-import {FreezeOnly} from "../../src/hooks/transfer/FreezeOnly.sol";
-import {FullRestrictions} from "../../src/hooks/transfer/FullRestrictions.sol";
-import {RedemptionRestrictions} from "../../src/hooks/transfer/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {FreezeOnly} from "../../src/token/hooks/FreezeOnly.sol";
+import {FullRestrictions} from "../../src/token/hooks/FullRestrictions.sol";
+import {RedemptionRestrictions} from "../../src/token/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
@@ -70,7 +70,10 @@ import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../
 import "forge-std/Test.sol";
 
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
+import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
 import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
+import {ShareTokenRegistrar} from "../../src/token/ShareTokenRegistrar.sol";
+import {IShareTokenRegistrar} from "../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 /// End to end testing assuming two full deployments in two different chains
 ///
@@ -133,6 +136,7 @@ contract EndToEndDeployment is Test {
         SpokeRegistry spokeRegistry;
         SpokeHandler spokeHandler;
         ISpokeV3_1_0 vaultRegistry;
+        ShareTokenRegistrar shareTokenRegistrar;
         // Vaults
         VaultRouter router;
         SubsidyManager subsidyManager;
@@ -299,6 +303,7 @@ contract EndToEndDeployment is Test {
         s_.spokeRegistry = deploy.spokeRegistry();
         s_.spokeHandler = deploy.spokeHandler();
         s_.vaultRegistry = ISpokeV3_1_0(address(deploy.spokeV3_1_0()));
+        s_.shareTokenRegistrar = deploy.shareTokenRegistrar();
         s_.router = deploy.vaultRouter();
         s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
@@ -460,6 +465,20 @@ contract EndToEndFlows is EndToEndUtils {
         s_.spoke.registerAsset{value: GAS}(h.centrifugeId, address(s_.usdc), 0, ANY);
     }
 
+    /// @dev Sets the SC_1 hook via the registrar's Envoy path (Hub.managerCall -> registrar.fromHub).
+    function _setHook(CSpoke memory s_, address hook) internal {
+        bool local = s_.centrifugeId == h.centrifugeId;
+        h.hub.managerCall{value: local ? 0 : GAS}(
+            POOL_A,
+            s_.centrifugeId,
+            address(s_.shareTokenRegistrar).toBytes32(),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), SC_1, hook),
+            0,
+            0,
+            REFUND
+        );
+    }
+
     function _configurePoolInSpoke(CSpoke memory s_) internal {
         if (h.centrifugeId != s_.centrifugeId) {
             _configureBasePoolWithCustomAdapters(s_);
@@ -470,8 +489,9 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId, REFUND);
         h.hub.notifyShareClass{value: GAS}(
-            POOL_A, SC_1, s_.centrifugeId, address(s_.redemptionRestrictionsHook).toBytes32(), REFUND
+            POOL_A, SC_1, s_.centrifugeId, address(s_.shareTokenRegistrar).toBytes32(), REFUND
         );
+        _setHook(s_, address(s_.redemptionRestrictionsHook));
 
         h.hub
             .initializeHolding(
@@ -621,7 +641,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         // CHECKS
         assertEq(
-            s.spokeRegistry.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A),
+            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
             assetToShare(USDC_AMOUNT_1),
             "expected shares"
         );
@@ -758,7 +778,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.stopPrank();
 
         assertEq(
-            s.spokeRegistry.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A),
+            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
             assetToShare(USDC_AMOUNT_1),
             "shares issued via batched managerCall"
         );
@@ -827,7 +847,7 @@ contract EndToEndFlows is EndToEndUtils {
         vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
 
         assertEq(
-            s.spokeRegistry.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A),
+            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
             assetToShare(USDC_AMOUNT_1),
             "expected shares"
         );
@@ -847,7 +867,7 @@ contract EndToEndFlows is EndToEndUtils {
             IAsyncRedeemVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
-        uint128 shares = uint128(s.spokeRegistry.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
+        uint128 shares = uint128(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A));
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
 
         vm.startPrank(FM);
@@ -908,7 +928,7 @@ contract EndToEndFlows is EndToEndUtils {
             IAsyncRedeemVault(address(s.vaultRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
-        uint128 shares = uint128(s.spokeRegistry.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A));
+        uint128 shares = uint128(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A));
         vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
         vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
 
@@ -917,7 +937,11 @@ contract EndToEndFlows is EndToEndUtils {
         vault.claimCancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
 
         // CHECKS
-        assertEq(s.spokeRegistry.shareToken(POOL_A, SC_1).balanceOf(INVESTOR_A), expectedShares, "expected shares");
+        assertEq(
+            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
+            expectedShares,
+            "expected shares"
+        );
     }
 
     function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
@@ -1010,13 +1034,11 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         h.hub.updateShareClassMetadata(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
         h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId, REFUND);
-        h.hub.updateShareHook{value: GAS}(
-            POOL_A, SC_1, s.centrifugeId, address(s.fullRestrictionsHook).toBytes32(), REFUND
-        );
+        _setHook(s, address(s.fullRestrictionsHook));
 
-        assertEq(s.spokeRegistry.shareToken(POOL_A, SC_1).name(), "Tokenized MMF 2");
-        assertEq(s.spokeRegistry.shareToken(POOL_A, SC_1).symbol(), "MMF2");
-        assertEq(s.spokeRegistry.shareToken(POOL_A, SC_1).hook(), address(s.fullRestrictionsHook));
+        assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).name(), "Tokenized MMF 2");
+        assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).symbol(), "MMF2");
+        assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).hook(), address(s.fullRestrictionsHook));
     }
 
     /// forge-config: default.isolate = true

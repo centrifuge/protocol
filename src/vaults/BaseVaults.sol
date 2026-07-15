@@ -18,9 +18,10 @@ import {IERC7540Operator, IERC7540Redeem, IERC7714, IERC7741, IERC7887Redeem} fr
 import {PoolId} from "../core/types/PoolId.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
+
+import {IShareToken} from "../token/interfaces/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0

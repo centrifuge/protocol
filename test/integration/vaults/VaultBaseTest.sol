@@ -16,14 +16,13 @@ import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {ISpokeRegistry, VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
@@ -34,6 +33,8 @@ import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCa
 import "forge-std/Test.sol";
 
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
+import {ShareTokenRegistrar} from "../../../src/token/ShareTokenRegistrar.sol";
+import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 /// @dev Direct centrifuge chain simulator — calls spoke/vaultRegistry/syncManager directly as a ward
 ///      instead of routing through adapters.
@@ -45,11 +46,18 @@ contract MockCentrifugeChainDirect is Test {
     SpokeHandler public spokeHandler;
     ISpokeRegistry public vaultRegistry;
     SyncManager public syncManager;
+    ShareTokenRegistrar public shareTokenRegistrar;
 
-    constructor(SpokeHandler spokeHandler_, ISpokeRegistry vaultRegistry_, SyncManager syncManager_) {
+    constructor(
+        SpokeHandler spokeHandler_,
+        ISpokeRegistry vaultRegistry_,
+        SyncManager syncManager_,
+        ShareTokenRegistrar shareTokenRegistrar_
+    ) {
         spokeHandler = spokeHandler_;
         vaultRegistry = vaultRegistry_;
         syncManager = syncManager_;
+        shareTokenRegistrar = shareTokenRegistrar_;
     }
 
     function addPool(uint64 poolId) public {
@@ -66,8 +74,14 @@ contract MockCentrifugeChainDirect is Test {
         address hook
     ) public {
         spokeHandler.addShareClass(
-            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, hook
+            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, shareTokenRegistrar
         );
+        if (hook != address(0)) {
+            vm.prank(shareTokenRegistrar.envoy());
+            shareTokenRegistrar.fromHub(
+                PoolId.wrap(poolId), abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), scId, hook)
+            );
+        }
     }
 
     function addShareClass(
@@ -276,7 +290,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         messageDispatcher.rely(address(this));
         messageProcessor.rely(address(this));
         poolEscrowFactory.rely(address(this));
-        tokenFactory.rely(address(this));
+        shareTokenRegistrar.rely(address(this));
         spoke.rely(address(this));
         spokeHandler.rely(address(this));
         spokeRegistry.rely(address(this));
@@ -316,7 +330,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         multiAdapter.setAdapters(OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length));
 
         // Deploy direct chain simulator and give it auth on relevant contracts
-        centrifugeChain = new MockCentrifugeChainDirect(spokeHandler, spokeRegistry, syncManager);
+        centrifugeChain = new MockCentrifugeChainDirect(spokeHandler, spokeRegistry, syncManager, shareTokenRegistrar);
         spokeHandler.rely(address(centrifugeChain));
         spokeRegistry.rely(address(centrifugeChain));
         syncManager.rely(address(centrifugeChain));
@@ -374,7 +388,11 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
-        vaultAddress = IShareToken(spokeRegistry.shareToken(POOL_A, ShareClassId.wrap(scId))).vault(asset);
+        vaultAddress = address(
+            spokeRegistry.vault(
+                POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), spokeRegistry.requestManager(POOL_A)
+            )
+        );
         poolId = POOL_A.raw();
     }
 

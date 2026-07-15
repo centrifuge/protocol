@@ -2,16 +2,15 @@
 pragma solidity 0.8.28;
 
 import {IVault} from "./interfaces/IVault.sol";
-import {IShareToken} from "./interfaces/IShareToken.sol";
+import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {ISpokeHandler} from "./interfaces/ISpokeHandler.sol";
-import {ITransferHook} from "./interfaces/ITransferHook.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
-import {ITokenFactory} from "./factories/interfaces/ITokenFactory.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 import {IPoolEscrowFactory} from "./factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
+import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 
 import {VaultUpdateKind} from "../messaging/libraries/MessageLib.sol";
@@ -28,18 +27,11 @@ import {IRequestManager} from "../interfaces/IRequestManager.sol";
 contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     using CastLib for *;
 
-    ITokenFactory public tokenFactory;
     ISpokeRegistry public spokeRegistry;
     IPoolEscrowFactory public poolEscrowFactory;
 
-    constructor(
-        ISpokeRegistry spokeRegistry_,
-        ITokenFactory tokenFactory_,
-        IPoolEscrowFactory poolEscrowFactory_,
-        address deployer
-    ) Auth(deployer) {
+    constructor(ISpokeRegistry spokeRegistry_, IPoolEscrowFactory poolEscrowFactory_, address deployer) Auth(deployer) {
         spokeRegistry = spokeRegistry_;
-        tokenFactory = tokenFactory_;
         poolEscrowFactory = poolEscrowFactory_;
     }
 
@@ -50,7 +42,6 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     /// @inheritdoc ISpokeHandler
     function file(bytes32 what, address data) external auth {
         if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
-        else if (what == "tokenFactory") tokenFactory = ITokenFactory(data);
         else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -74,11 +65,12 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         string memory symbol,
         uint8 decimals,
         bytes32 salt,
-        address hook
+        IRegistrar registrar
     ) external auth {
-        IShareToken shareToken_ = tokenFactory.newToken(name, symbol, decimals, salt);
-        if (hook != address(0)) shareToken_.file("hook", hook);
-        spokeRegistry.addShareClass(poolId, scId, shareToken_);
+        require(address(registrar) != address(0), InvalidRegistrar());
+
+        address shareToken_ = registrar.newToken(name, symbol, decimals, salt);
+        spokeRegistry.addShareClass(poolId, scId, shareToken_, registrar);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -86,37 +78,23 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         external
         auth
     {
-        IShareToken shareToken_ = spokeRegistry.shareToken(poolId, scId);
-        require(
-            keccak256(bytes(shareToken_.name())) != keccak256(bytes(name))
-                || keccak256(bytes(shareToken_.symbol())) != keccak256(bytes(symbol)),
-            OldMetadata()
-        );
-
-        shareToken_.file("name", name);
-        shareToken_.file("symbol", symbol);
-    }
-
-    /// @inheritdoc ISpokeGatewayHandler
-    function updateShareHook(PoolId poolId, ShareClassId scId, address hook) external auth {
-        IShareToken shareToken_ = spokeRegistry.shareToken(poolId, scId);
-        require(hook != shareToken_.hook(), OldHook());
-        shareToken_.file("hook", hook);
+        (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        registrar.updateMetadata(address(token), name, symbol);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
     function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update) external auth {
-        IShareToken shareToken_ = spokeRegistry.shareToken(poolId, scId);
-        address hook = shareToken_.hook();
-        require(hook != address(0), InvalidHook());
-        ITransferHook(hook).updateRestriction(address(shareToken_), update);
+        (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        registrar.updateRestriction(address(token), update);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
+    /// @dev The shares are minted to this contract and then transferred, so transfer hooks can
+    ///      identify the flow as a crosschain transfer execution (this contract is the crosschain source).
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external auth {
-        IShareToken shareToken_ = spokeRegistry.shareToken(poolId, scId);
-        shareToken_.mint(address(this), amount);
-        shareToken_.transfer(receiver.toAddress(), amount);
+        (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        registrar.mint(address(token), address(this), amount);
+        token.transfer(receiver.toAddress(), amount);
         emit ExecuteTransferShares(poolId, scId, receiver.toAddress(), amount);
     }
 
@@ -130,7 +108,7 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     ) external auth {
         if (kind == VaultUpdateKind.DeployAndLink) {
             (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
-            IShareToken shareToken = spokeRegistry.shareToken(poolId, scId);
+            address shareToken = address(spokeRegistry.shareToken(poolId, scId));
 
             IVault vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken);
 

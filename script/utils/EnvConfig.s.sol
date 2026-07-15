@@ -82,7 +82,7 @@ struct ContractsConfig {
     address holdings;
     address shareClassManager;
     address hub;
-    address tokenFactory;
+    address shareTokenRegistrar;
     address spoke;
     address spokeHandler;
     address spokeRegistry;
@@ -291,7 +291,8 @@ library Env {
         config.holdings = _parseContractAddress(json, "holdings");
         config.shareClassManager = _parseContractAddress(json, "shareClassManager");
         config.hub = _parseContractAddress(json, "hub");
-        config.tokenFactory = _parseContractAddress(json, "tokenFactory");
+        // Not deployed yet: introduced with the IRegistrar share token refactor
+        config.shareTokenRegistrar = _tryParseContractAddress(json, "shareTokenRegistrar");
         config.spoke = _parseContractAddress(json, "spoke");
         config.spokeHandler = _tryParseContractAddress(json, "spokeHandler");
         config.spokeRegistry = _tryParseContractAddress(json, "spokeRegistry");

@@ -21,7 +21,6 @@ import {SpokeV3_1_0} from "../core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../core/utils/ContractUpdater.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../core/hub/ShareClassManager.sol";
-import {TokenFactory} from "../core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../core/spoke/factories/PoolEscrowFactory.sol";
@@ -34,12 +33,12 @@ import {ISafe} from "../admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../hooks/transfer/FreezeOnly.sol";
+import {FreezeOnly} from "../token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../hooks/accounting/NAVManager.sol";
-import {FullRestrictions} from "../hooks/transfer/FullRestrictions.sol";
-import {FreelyTransferable} from "../hooks/transfer/FreelyTransferable.sol";
+import {FullRestrictions} from "../token/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../token/hooks/FreelyTransferable.sol";
 import {SimplePriceManager} from "../hooks/accounting/SimplePriceManager.sol";
-import {RedemptionRestrictions} from "../hooks/transfer/RedemptionRestrictions.sol";
+import {RedemptionRestrictions} from "../token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
@@ -60,6 +59,7 @@ import {ChainlinkAdapter} from "../adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../utils/RefundEscrowFactory.sol";
+import {ShareTokenRegistrar} from "../token/ShareTokenRegistrar.sol";
 import {IInterchainSecurityModule} from "../adapters/interfaces/IHyperlaneAdapter.sol";
 
 struct CoreReport {
@@ -70,7 +70,7 @@ struct CoreReport {
     PoolEscrowFactory poolEscrowFactory;
     Spoke spoke;
     BalanceSheet balanceSheet;
-    TokenFactory tokenFactory;
+    ShareTokenRegistrar shareTokenRegistrar;
     ContractUpdater contractUpdater;
     SpokeHandler spokeHandler;
     SpokeRegistry spokeRegistry;
@@ -152,7 +152,7 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.rely(root);
 
         report.poolEscrowFactory.rely(root);
-        report.tokenFactory.rely(root);
+        report.shareTokenRegistrar.rely(root);
         report.spoke.rely(root);
         report.balanceSheet.rely(root);
         report.contractUpdater.rely(root);
@@ -203,8 +203,12 @@ contract CoreActionBatcher is Constants {
         // Rely spokeHandler
         report.spokeHandler.rely(address(report.messageProcessor));
         report.spokeHandler.rely(address(report.messageDispatcher));
-        report.tokenFactory.rely(address(report.spokeHandler));
         report.poolEscrowFactory.rely(address(report.spokeHandler));
+
+        // Rely shareTokenRegistrar: core contracts operate share tokens exclusively through the registrar
+        report.shareTokenRegistrar.rely(address(report.spokeHandler));
+        report.shareTokenRegistrar.rely(address(report.spoke));
+        report.shareTokenRegistrar.rely(address(report.balanceSheet));
 
         // Rely spokeRegistry
         report.spokeRegistry.rely(address(report.spokeHandler));
@@ -264,6 +268,10 @@ contract CoreActionBatcher is Constants {
 
         report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
 
+        // Hook/vault/ward updates arrive via Hub.managerCall -> Envoy -> registrar.fromHub, resolving the token
+        report.shareTokenRegistrar.file("envoy", address(report.envoy));
+        report.shareTokenRegistrar.file("spokeRegistry", address(report.spokeRegistry));
+
         report.spoke.file("spokeRegistry", address(report.spokeRegistry));
         report.spoke.file("sender", address(report.messageDispatcher));
 
@@ -282,15 +290,9 @@ contract CoreActionBatcher is Constants {
         report.opsGuardian.file("opsSafe", address(opsSafe));
         report.protocolGuardian.file("safe", address(protocolSafe));
 
-        address[] memory tokenWards = new address[](4);
-        tokenWards[0] = address(report.spokeHandler);
-        tokenWards[1] = address(report.spoke);
-        tokenWards[2] = address(report.balanceSheet);
-        tokenWards[3] = address(report.spokeRegistry);
-        report.tokenFactory.file("wards", tokenWards);
-
         // Endorse methods
         report.root.endorse(address(report.balanceSheet));
+        report.root.endorse(address(report.spoke));
 
         // Initial configuration
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
@@ -309,7 +311,7 @@ contract CoreActionBatcher is Constants {
 
         report.spoke.deny(address(this));
         report.balanceSheet.deny(address(this));
-        report.tokenFactory.deny(address(this));
+        report.shareTokenRegistrar.deny(address(this));
         report.contractUpdater.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
         report.spokeRegistry.deny(address(this));
@@ -350,10 +352,10 @@ contract NonCoreActionBatcher {
 
         // Rely spokeHandler
         report.asyncRequestManager.rely(address(report.core.spokeHandler));
-        report.freezeOnlyHook.rely(address(report.core.spokeHandler));
-        report.fullRestrictionsHook.rely(address(report.core.spokeHandler));
-        report.freelyTransferableHook.rely(address(report.core.spokeHandler));
-        report.redemptionRestrictionsHook.rely(address(report.core.spokeHandler));
+        report.freezeOnlyHook.rely(address(report.core.shareTokenRegistrar));
+        report.fullRestrictionsHook.rely(address(report.core.shareTokenRegistrar));
+        report.freelyTransferableHook.rely(address(report.core.shareTokenRegistrar));
+        report.redemptionRestrictionsHook.rely(address(report.core.shareTokenRegistrar));
         report.asyncVaultFactory.rely(address(report.core.spokeHandler));
         report.syncDepositVaultFactory.rely(address(report.core.spokeHandler));
 

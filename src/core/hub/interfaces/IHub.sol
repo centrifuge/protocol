@@ -50,7 +50,6 @@ interface IHub is IBatchedMulticall {
     event NotifyShareMetadata(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
     );
-    event UpdateShareHook(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes32 hook);
     event NotifySharePrice(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, D18 poolPerShare, uint64 computedAt
     );
@@ -409,9 +408,9 @@ interface IHub is IBatchedMulticall {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param centrifugeId Chain where CV instance lives
-    /// @param hook The hook address of the share class
+    /// @param registrar The registrar (on the target chain) that deploys and operates the share token
     /// @param refund Address to receive excess gas refund
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
+    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 registrar, address refund)
         external
         payable;
 
@@ -421,16 +420,6 @@ interface IHub is IBatchedMulticall {
     /// @param centrifugeId Chain where CV instance lives
     /// @param refund Address to receive excess gas refund
     function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
-
-    /// @notice Update on a CV instance the hook of a share token
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param centrifugeId Chain where CV instance lives
-    /// @param hook The new hook address
-    /// @param refund Address to receive excess gas refund
-    function updateShareHook(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 hook, address refund)
-        external
-        payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
     /// @param poolId The pool identifier

@@ -426,7 +426,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.deal(FM, 1 ether);
         vm.startPrank(FM);
         hub.notifyPool{value: GAS}(POOL_A, localId, FUNDED);
-        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, bytes32(0), FUNDED);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, bytes32(bytes20(address(shareTokenRegistrar))), FUNDED);
         vm.stopPrank();
 
         uint128 newMaxReserve = 123e6;

@@ -6,10 +6,10 @@ import {Auth, IAuth} from "../../misc/Auth.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {IVault} from "../../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {AsyncVault} from "../AsyncVault.sol";
+import {IShareToken} from "../../token/interfaces/IShareToken.sol";
 import {IAsyncRequestManager} from "../interfaces/IVaultManagers.sol";
 
 /// @title  ERC7540 Vault Factory
@@ -24,7 +24,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
     }
 
     /// @inheritdoc IVaultFactory
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IShareToken token)
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token)
         public
         auth
         returns (IVault)
@@ -32,7 +32,8 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         require(tokenId == 0, UnsupportedTokenId());
 
         bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
-        AsyncVault vault = new AsyncVault{salt: salt}(poolId, scId, asset, token, root, asyncRequestManager);
+        AsyncVault vault =
+            new AsyncVault{salt: salt}(poolId, scId, asset, IShareToken(token), root, asyncRequestManager);
 
         vault.rely(root);
         vault.rely(address(asyncRequestManager));

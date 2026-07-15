@@ -203,7 +203,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(spokeHandler.spokeRegistry()), address(spokeRegistry));
-        assertEq(address(spokeHandler.tokenFactory()), address(tokenFactory));
         assertEq(address(spokeHandler.poolEscrowFactory()), address(poolEscrowFactory));
     }
 
@@ -255,24 +254,23 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(poolEscrowFactory.balanceSheet()), address(balanceSheet));
     }
 
-    function testTokenFactory(address nonWard) public {
+    function testShareTokenRegistrar(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(balanceSheet));
 
-        assertEq(tokenFactory.wards(address(root)), 1);
-        assertEq(tokenFactory.wards(address(spokeHandler)), 1);
-        assertEq(tokenFactory.wards(nonWard), 0);
+        assertEq(shareTokenRegistrar.wards(address(root)), 1);
+        assertEq(shareTokenRegistrar.wards(address(spokeHandler)), 1);
+        assertEq(shareTokenRegistrar.wards(address(spoke)), 1);
+        assertEq(shareTokenRegistrar.wards(address(balanceSheet)), 1);
+        assertEq(shareTokenRegistrar.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(tokenFactory.root()), address(root));
-        assertEq(address(tokenFactory.tokenWards(0)), address(spokeHandler));
-        assertEq(address(tokenFactory.tokenWards(1)), address(spoke));
-        assertEq(address(tokenFactory.tokenWards(2)), address(balanceSheet));
-        assertEq(address(tokenFactory.tokenWards(3)), address(spokeRegistry));
-
-        vm.expectRevert();
-        tokenFactory.tokenWards(4);
+        assertEq(address(shareTokenRegistrar.root()), address(root));
+        assertEq(address(shareTokenRegistrar.envoy()), address(envoy));
+        assertEq(address(shareTokenRegistrar.spokeRegistry()), address(spokeRegistry));
     }
 
     function testContractUpdater(address nonWard) public view {
@@ -535,9 +533,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testFreezeOnly(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(shareTokenRegistrar));
+
         assertEq(freezeOnlyHook.wards(address(root)), 1);
-        assertEq(freezeOnlyHook.wards(address(spokeHandler)), 1);
+        assertEq(freezeOnlyHook.wards(address(shareTokenRegistrar)), 1);
         assertEq(freezeOnlyHook.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -548,9 +547,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testRedemptionRestriction(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(shareTokenRegistrar));
+
         assertEq(redemptionRestrictionsHook.wards(address(root)), 1);
-        assertEq(redemptionRestrictionsHook.wards(address(spokeHandler)), 1);
+        assertEq(redemptionRestrictionsHook.wards(address(shareTokenRegistrar)), 1);
         assertEq(redemptionRestrictionsHook.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -561,9 +561,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testFreelyTransferable(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(shareTokenRegistrar));
+
         assertEq(freelyTransferableHook.wards(address(root)), 1);
-        assertEq(freelyTransferableHook.wards(address(spokeHandler)), 1);
+        assertEq(freelyTransferableHook.wards(address(shareTokenRegistrar)), 1);
         assertEq(freelyTransferableHook.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -574,9 +575,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testFullRestriction(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
+        vm.assume(nonWard != address(shareTokenRegistrar));
+
         assertEq(fullRestrictionsHook.wards(address(root)), 1);
-        assertEq(fullRestrictionsHook.wards(address(spokeHandler)), 1);
+        assertEq(fullRestrictionsHook.wards(address(shareTokenRegistrar)), 1);
         assertEq(fullRestrictionsHook.wards(nonWard), 0);
 
         // dependencies set correctly

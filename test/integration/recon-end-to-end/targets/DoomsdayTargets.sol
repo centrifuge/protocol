@@ -9,7 +9,6 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
 
@@ -24,6 +23,7 @@ import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Dependencies
 

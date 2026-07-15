@@ -22,7 +22,7 @@ abstract contract VMLabeling is Test {
         vm.label(IntegrationConstants.HUB, "Hub");
         vm.label(IntegrationConstants.HUB_HELPERS, "HubHelpers");
         vm.label(IntegrationConstants.IDENTITY_VALUATION, "IdentityValuation");
-        vm.label(IntegrationConstants.TOKEN_FACTORY, "TokenFactory");
+        vm.label(IntegrationConstants.SHARE_TOKEN_REGISTRAR, "ShareTokenRegistrar");
         vm.label(IntegrationConstants.BALANCE_SHEET, "BalanceSheet");
         vm.label(IntegrationConstants.SPOKE, "Spoke");
         vm.label(IntegrationConstants.CONTRACT_UPDATER, "ContractUpdater");

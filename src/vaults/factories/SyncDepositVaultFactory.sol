@@ -7,10 +7,10 @@ import {IAuth} from "../../misc/interfaces/IAuth.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {IVault} from "../../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {SyncDepositVault} from "../SyncDepositVault.sol";
+import {IShareToken} from "../../token/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager, ISyncDepositManager} from "../interfaces/IVaultManagers.sol";
 
 /// @title  Sync Vault Factory
@@ -32,7 +32,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     }
 
     /// @inheritdoc IVaultFactory
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IShareToken token)
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token)
         public
         auth
         returns (IVault)
@@ -40,8 +40,9 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         require(tokenId == 0, UnsupportedTokenId());
 
         bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
-        SyncDepositVault vault =
-            new SyncDepositVault{salt: salt}(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
+        SyncDepositVault vault = new SyncDepositVault{salt: salt}(
+            poolId, scId, asset, IShareToken(token), root, syncDepositManager, asyncRedeemManager
+        );
 
         vault.rely(root);
         vault.rely(address(syncDepositManager));

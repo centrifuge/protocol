@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ISpoke} from "./interfaces/ISpoke.sol";
-import {IShareToken} from "./interfaces/IShareToken.sol";
+import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -10,9 +10,10 @@ import {Recoverable} from "../../misc/Recoverable.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
-import {IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
+import {IERC20, IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {ReentrancyProtection} from "../../misc/ReentrancyProtection.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
 import {MessageLib} from "../messaging/libraries/MessageLib.sol";
 import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
@@ -108,11 +109,15 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
         require(msg.sender == owner || wards[msg.sender] == 1, NotAuthorized());
         require(spokeRegistry.bridger(poolId, owner), NotBridger());
 
-        IShareToken share = IShareToken(spokeRegistry.shareToken(poolId, scId));
+        (IERC20 share, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
+        require(
+            registrar.canTransferCrosschain(address(share), owner, centrifugeId, amount), CrossChainTransferNotAllowed()
+        );
 
-        share.authTransferFrom(owner, owner, address(this), amount);
-        share.burn(address(this), amount);
+        SafeTransferLib.safeTransferFrom(address(share), owner, address(this), amount);
+        SafeTransferLib.safeApprove(address(share), address(registrar), amount);
+        registrar.burn(address(share), address(this), amount);
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, sender_, owner, receiver, amount);
 

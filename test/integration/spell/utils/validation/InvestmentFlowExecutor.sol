@@ -13,11 +13,10 @@ import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IShareToken} from "../../../../../src/core/spoke/interfaces/IShareToken.sol";
 import {IVault, VaultKind} from "../../../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {BatchRequestManagerCallLib} from "../../../../vaults/utils/BatchRequestManagerCallLib.sol";
 
@@ -32,6 +31,7 @@ import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
 import {IntegrationConstants} from "../../../utils/IntegrationConstants.sol";
+import {IShareToken} from "../../../../../src/token/interfaces/IShareToken.sol";
 
 struct VaultGraphQLData {
     address vault;
@@ -297,8 +297,10 @@ contract InvestmentFlowExecutor is Test {
 
         IAsyncRedeemVault vault = IAsyncRedeemVault(ctx.gql.vault);
 
-        uint128 shares =
-            uint128(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor));
+        uint128 shares = uint128(
+            IShareToken(address(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId)))
+                .balanceOf(investor)
+        );
 
         vm.startPrank(investor);
         vault.requestRedeem(shares, investor, investor);
@@ -380,8 +382,9 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
 
         IBaseVault vault = IBaseVault(ctx.gql.vault);
-        uint256 initialShares =
-            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+        uint256 initialShares = IShareToken(
+                address(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId))
+            ).balanceOf(investor);
 
         vm.startPrank(investor);
         ERC20(vault.asset()).approve(ctx.gql.vault, ctx.testAmount);
@@ -389,7 +392,8 @@ contract InvestmentFlowExecutor is Test {
         vm.stopPrank();
 
         assertTrue(
-            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
+            IShareToken(address(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId)))
+                .balanceOf(investor) > initialShares,
             "Investor should have received shares"
         );
     }
@@ -575,14 +579,16 @@ contract InvestmentFlowExecutor is Test {
         );
         vm.stopPrank();
 
-        uint256 initialShares =
-            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor);
+        uint256 initialShares = IShareToken(
+                address(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId))
+            ).balanceOf(investor);
         vm.startPrank(investor);
         vault.mint(vault.maxMint(investor), investor);
         vm.stopPrank();
 
         assertTrue(
-            ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId).balanceOf(investor) > initialShares,
+            IShareToken(address(ctx.report.core.spoke.spokeRegistry().shareToken(ctx.poolId, ctx.scId)))
+                .balanceOf(investor) > initialShares,
             "Investor should have received shares"
         );
     }

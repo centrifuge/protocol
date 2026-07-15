@@ -22,7 +22,6 @@ enum MessageType {
     NotifyPricePoolPerShare,
     NotifyPricePoolPerAsset,
     NotifyShareMetadata,
-    UpdateShareHook,
     InitiateTransferShares,
     ExecuteTransferShares,
     UpdateRestriction,
@@ -77,7 +76,6 @@ library MessageLib {
         (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
         (65  << uint8(MessageType.NotifyPricePoolPerAsset) * 8) +
         (185 << uint8(MessageType.NotifyShareMetadata) * 8) +
-        (57  << uint8(MessageType.UpdateShareHook) * 8) +
         (139  << uint8(MessageType.InitiateTransferShares) * 8) +
         (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
@@ -332,7 +330,7 @@ library MessageLib {
         bytes32 symbol; // utf8
         uint8 decimals;
         bytes32 salt;
-        bytes32 hook;
+        bytes32 registrar;
     }
 
     function deserializeNotifyShareClass(bytes memory data) internal pure returns (NotifyShareClass memory) {
@@ -344,7 +342,7 @@ library MessageLib {
             symbol: data.toBytes32(153),
             decimals: data.toUint8(185),
             salt: data.toBytes32(186),
-            hook: data.toBytes32(218)
+            registrar: data.toBytes32(218)
         });
     }
 
@@ -357,7 +355,7 @@ library MessageLib {
             t.symbol,
             t.decimals,
             t.salt,
-            t.hook
+            t.registrar
         );
     }
 
@@ -443,25 +441,6 @@ library MessageLib {
         return abi.encodePacked(
             MessageType.NotifyShareMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
         );
-    }
-
-    //---------------------------------------
-    //    UpdateShareHook
-    //---------------------------------------
-
-    struct UpdateShareHook {
-        uint64 poolId;
-        bytes16 scId;
-        bytes32 hook;
-    }
-
-    function deserializeUpdateShareHook(bytes memory data) internal pure returns (UpdateShareHook memory) {
-        require(messageType(data) == MessageType.UpdateShareHook, UnknownMessageType());
-        return UpdateShareHook({poolId: data.toUint64(1), scId: data.toBytes16(9), hook: data.toBytes32(25)});
-    }
-
-    function serialize(UpdateShareHook memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.UpdateShareHook, t.poolId, t.scId, t.hook);
     }
 
     //---------------------------------------

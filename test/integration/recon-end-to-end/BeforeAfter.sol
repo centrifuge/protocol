@@ -10,7 +10,6 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {BaseVault} from "../../../src/vaults/BaseVaults.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -18,6 +17,7 @@ import {AsyncInvestmentState} from "../../../src/vaults/interfaces/IVaultManager
 import {UserOrder, EpochId} from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MockERC20} from "@recon/MockERC20.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 enum OpType {
     GENERIC, // generic operations can be performed by both users and admins

@@ -3,11 +3,13 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {FreelyTransferable} from "../../../src/hooks/transfer/FreelyTransferable.sol";
+import {FreelyTransferable} from "../../../src/token/hooks/FreelyTransferable.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest, VaultKind} from "../vaults/VaultBaseTest.sol";
 
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract FreelyTransferableTest is BaseTest {
     using CastLib for *;

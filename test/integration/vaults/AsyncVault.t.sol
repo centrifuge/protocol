@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, PoolId, ShareClassId, VaultKind} from "./VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest, PoolId, ShareClassId, VaultKind} from "./VaultBaseTest.sol";
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
@@ -20,8 +20,8 @@ contract AsyncVaultTest is BaseTest {
         // values set correctly
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId().raw(), scId);
-        IShareToken token = spokeRegistry.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
-        assertEq(address(vault.share()), address(token));
+        address token = address(spokeRegistry.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)));
+        assertEq(address(vault.share()), token);
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);

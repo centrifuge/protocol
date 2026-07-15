@@ -6,7 +6,6 @@ import {
     AsyncVault,
     VaultBaseTest as BaseTest,
     ERC20,
-    IShareToken,
     MockAdapter,
     PoolId,
     SyncDepositVault,
@@ -28,6 +27,9 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "../../../src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
@@ -484,9 +486,16 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testGetVault() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
+
+        // The ERC-7575 vault pointer is set explicitly via the registrar, not implicitly on link.
+        PoolId poolId = vault.poolId();
+        bytes memory payload =
+            abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, vault.scId().raw(), assetId, vault_);
+        vm.prank(shareTokenRegistrar.envoy());
+        shareTokenRegistrar.fromHub(poolId, payload);
 
         assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), address(erc20)), vault_);
     }

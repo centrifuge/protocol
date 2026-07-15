@@ -5,7 +5,6 @@ import {
     AssetId,
     ERC20,
     VaultBaseTest as BaseTest,
-    IShareToken,
     PoolId,
     ShareClassId,
     SyncDepositVault,
@@ -35,6 +34,8 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;

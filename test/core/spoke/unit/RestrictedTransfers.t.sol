@@ -3,16 +3,16 @@ pragma solidity 0.8.28;
 
 import {IERC165} from "../../../../src/misc/interfaces/IERC7575.sol";
 
-import {ShareToken} from "../../../../src/core/spoke/ShareToken.sol";
-import {ITransferHook} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
-
-import {IFreezable} from "../../../../src/hooks/transfer/interfaces/IFreezable.sol";
-import {FullRestrictions} from "../../../../src/hooks/transfer/FullRestrictions.sol";
-import {IMemberlist} from "../../../../src/hooks/transfer/interfaces/IMemberlist.sol";
+import {IFreezable} from "../../../../src/token/hooks/interfaces/IFreezable.sol";
+import {FullRestrictions} from "../../../../src/token/hooks/FullRestrictions.sol";
+import {IMemberlist} from "../../../../src/token/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "../../mocks/MockRoot.sol";
 
 import "forge-std/Test.sol";
+
+import {ShareToken} from "../../../../src/token/ShareToken.sol";
+import {ITransferHook} from "../../../../src/token/interfaces/ITransferHook.sol";
 
 contract FullRestrictionsTest is Test {
     MockRoot root;

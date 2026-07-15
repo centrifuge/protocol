@@ -7,7 +7,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {SpokeV3_1_0} from "../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
@@ -25,7 +25,8 @@ contract VaultRegistryTest is Test {
     address immutable ANY = makeAddr("ANY");
 
     IVaultFactory vaultFactory = IVaultFactory(address(new IsContract()));
-    IShareToken share = IShareToken(address(new IsContract()));
+    address share = address(new IsContract());
+    IRegistrar registrar = IRegistrar(address(new IsContract()));
     IRequestManager requestManager = IRequestManager(address(new IsContract()));
     IVault vault = IVault(address(new IsContract()));
 
@@ -56,9 +57,6 @@ contract VaultRegistryTest is Test {
         vm.prank(AUTH);
         spokeRegistry.rely(address(spokeV3_1_0));
 
-        // Mock share token calls
-        vm.mockCall(address(share), abi.encodeWithSelector(IShareToken.updateVault.selector), abi.encode());
-
         // Mock vault calls
         vm.mockCall(address(vault), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
         vm.mockCall(address(vault), abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
@@ -72,7 +70,7 @@ contract VaultRegistryTest is Test {
 
     function _utilAddShareClass() internal {
         vm.prank(AUTH);
-        spokeRegistry.addShareClass(POOL_A, SC_1, share);
+        spokeRegistry.addShareClass(POOL_A, SC_1, share, registrar);
     }
 
     function _utilRegisterAsset(address asset, uint256 tokenId) internal returns (AssetId assetId) {

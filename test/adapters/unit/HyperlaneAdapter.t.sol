@@ -15,11 +15,8 @@ import {HyperlaneAdapter} from "../../../src/adapters/HyperlaneAdapter.sol";
 import {
     IHyperlaneAdapter,
     IAdapter,
-    IMailbox,
     IPostDispatchHook,
-    IInterchainSecurityModule,
-    HyperlaneSource,
-    HyperlaneDestination
+    IInterchainSecurityModule
 } from "../../../src/adapters/interfaces/IHyperlaneAdapter.sol";
 
 contract MockMailbox is Mock {

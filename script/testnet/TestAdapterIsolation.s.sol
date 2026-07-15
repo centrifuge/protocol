@@ -375,7 +375,7 @@ contract TestAdapterIsolation is Script, Constants {
         console.log("    Added share class on hub:", shareName);
 
         Hub(h.contracts.hub).notifyShareClass{value: xcGasPerCall}(
-            poolId, scId, s.network.centrifugeId, h.contracts.redemptionRestrictionsHook.toBytes32(), msg.sender
+            poolId, scId, s.network.centrifugeId, s.contracts.shareTokenRegistrar.toBytes32(), msg.sender
         );
 
         console.log("    NotifyShareClass sent via", _adapterName(adapter));

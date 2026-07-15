@@ -16,7 +16,6 @@ import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
 import {SpokeV3_1_0} from "../../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../../../../../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../../../../../src/core/hub/ShareClassManager.sol";
-import {TokenFactory} from "../../../../../src/core/spoke/factories/TokenFactory.sol";
 import {MessageProcessor} from "../../../../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../../../../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
@@ -27,12 +26,12 @@ import {GasService} from "../../../../../src/admin/GasService.sol";
 import {OpsGuardian} from "../../../../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../../../../src/admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../../../../../src/hooks/transfer/FreezeOnly.sol";
+import {FreezeOnly} from "../../../../../src/token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../../../../../src/hooks/accounting/NAVManager.sol";
-import {FullRestrictions} from "../../../../../src/hooks/transfer/FullRestrictions.sol";
-import {FreelyTransferable} from "../../../../../src/hooks/transfer/FreelyTransferable.sol";
+import {FullRestrictions} from "../../../../../src/token/hooks/FullRestrictions.sol";
+import {FreelyTransferable} from "../../../../../src/token/hooks/FreelyTransferable.sol";
 import {SimplePriceManager} from "../../../../../src/hooks/accounting/SimplePriceManager.sol";
-import {RedemptionRestrictions} from "../../../../../src/hooks/transfer/RedemptionRestrictions.sol";
+import {RedemptionRestrictions} from "../../../../../src/token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../../../../../src/managers/spoke/QueueManager.sol";
 import {OnOffRampFactory} from "../../../../../src/managers/spoke/OnOffRamp.sol";
@@ -56,6 +55,7 @@ import {ChainlinkAdapter} from "../../../../../src/adapters/ChainlinkAdapter.sol
 import {HyperlaneAdapter} from "../../../../../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../../../../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../../../../src/utils/RefundEscrowFactory.sol";
+import {ShareTokenRegistrar} from "../../../../../src/token/ShareTokenRegistrar.sol";
 import {
     CoreReport,
     NonCoreReport as MainContracts,
@@ -83,7 +83,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         PoolEscrowFactory(c.poolEscrowFactory),
         Spoke(c.spoke),
         BalanceSheet(c.balanceSheet),
-        TokenFactory(c.tokenFactory),
+        ShareTokenRegistrar(c.shareTokenRegistrar),
         ContractUpdater(c.contractUpdater),
         SpokeHandler(c.spokeHandler),
         SpokeRegistry(c.spokeRegistry),

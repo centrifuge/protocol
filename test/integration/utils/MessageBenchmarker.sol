@@ -49,7 +49,6 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.NotifyPricePoolPerShare) return "notifyPricePoolPerShare";
         if (kind == MessageType.NotifyPricePoolPerAsset) return "notifyPricePoolPerAsset";
         if (kind == MessageType.NotifyShareMetadata) return "notifyShareMetadata";
-        if (kind == MessageType.UpdateShareHook) return "updateShareHook";
         if (kind == MessageType.InitiateTransferShares) return "initiateTransferShares";
         if (kind == MessageType.ExecuteTransferShares) return "executeTransferShares";
         if (kind == MessageType.UpdateRestriction) return "updateRestriction";

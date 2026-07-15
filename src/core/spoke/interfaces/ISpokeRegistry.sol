@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IShareToken} from "./IShareToken.sol";
+import {IRegistrar} from "./IRegistrar.sol";
 import {IVault, VaultKind} from "./IVault.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
+import {IERC20} from "../../../misc/interfaces/IERC20.sol";
 
 import {Price} from "../types/Price.sol";
 import {PoolId} from "../../types/PoolId.sol";
@@ -21,9 +22,17 @@ struct Pool {
 
 /// @dev Each Centrifuge pool is associated to 1 or more share classes
 struct ShareClassDetails {
-    IShareToken shareToken;
+    IERC20 shareToken;
+    /// @dev The registrar that operates the share token (standard-specific driver)
+    IRegistrar registrar;
     /// @dev Each share class has an individual price per share class unit in pool denomination (POOL_UNIT/SHARE_UNIT)
     Price pricePoolPerShare;
+}
+
+/// @dev Reverse lookup from a share token address to the pool and share class it backs
+struct TokenDetails {
+    PoolId poolId;
+    ShareClassId scId;
 }
 
 struct AssetIdKey {
@@ -51,7 +60,7 @@ interface ISpokeRegistry {
 
     event File(bytes32 indexed what, address data);
     event AddPool(PoolId indexed poolId);
-    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, IShareToken token);
+    event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, address token, IRegistrar registrar);
     event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
     event UpdateBridger(PoolId indexed poolId, address indexed who, bool canBridge);
     event UpdateAssetPrice(
@@ -87,6 +96,8 @@ interface ISpokeRegistry {
     error PoolAlreadyAdded();
     error InvalidPool();
     error ShareClassAlreadyRegistered();
+    error TokenAlreadyRegistered();
+    error NotAContract();
     error CannotSetOlderPrice();
     error UnknownAsset();
     error ShareTokenDoesNotExist();
@@ -108,14 +119,17 @@ interface ISpokeRegistry {
     /// @notice Adds a share class to the registry
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
-    /// @param shareToken_ The share token contract
-    function addShareClass(PoolId poolId, ShareClassId scId, IShareToken shareToken_) external;
+    /// @param shareToken_ The share token address
+    /// @param registrar_ The registrar that operates the share token
+    function addShareClass(PoolId poolId, ShareClassId scId, address shareToken_, IRegistrar registrar_) external;
 
-    /// @notice Links a share token to a pool and share class
+    /// @notice Links a share token and its registrar to a pool and share class, overwriting any existing link
+    /// @dev Governance-only (not reachable from a hub message); used to attach a registrar to an existing token
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
-    /// @param shareToken_ The share token contract
-    function linkToken(PoolId poolId, ShareClassId scId, IShareToken shareToken_) external;
+    /// @param shareToken_ The share token address
+    /// @param registrar_ The registrar that operates the share token
+    function linkToken(PoolId poolId, ShareClassId scId, address shareToken_, IRegistrar registrar_) external;
 
     /// @notice Sets the request manager for a pool
     /// @param poolId The pool identifier
@@ -185,8 +199,34 @@ interface ISpokeRegistry {
     /// @dev Reverts if share class does not exist
     /// @param poolId The pool id
     /// @param scId The share class id
-    /// @return The address of the share token
-    function shareToken(PoolId poolId, ShareClassId scId) external view returns (IShareToken);
+    /// @return The share token
+    function shareToken(PoolId poolId, ShareClassId scId) external view returns (IERC20);
+
+    /// @notice Returns the registrar operating the share token of a given pool and share class id
+    /// @dev Reverts if share class does not exist
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @return The registrar of the share class
+    function registrar(PoolId poolId, ShareClassId scId) external view returns (IRegistrar);
+
+    /// @notice Returns both the share token and its registrar in a single call
+    /// @dev Reverts if share class does not exist. Avoids re-reading the share class twice when a
+    ///      caller needs to operate the token through its registrar.
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @return token The share token
+    /// @return registrar_ The registrar operating the share token
+    function shareTokenAndRegistrar(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (IERC20 token, IRegistrar registrar_);
+
+    /// @notice Returns the pool and share class a given share token backs
+    /// @dev Reverts if the token is not registered. A token backs at most one share class.
+    /// @param shareToken_ The share token address
+    /// @return poolId The pool id the token backs
+    /// @return scId The share class id the token backs
+    function shareTokenDetails(address shareToken_) external view returns (PoolId poolId, ShareClassId scId);
 
     /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @dev Reverts if asset id does not exist

@@ -7,7 +7,7 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
 
@@ -21,7 +21,8 @@ contract SpokeRegistryTest is Test {
     address immutable AUTH = makeAddr("AUTH");
     address immutable ANY = makeAddr("ANY");
 
-    IShareToken share = IShareToken(address(new IsContract()));
+    address share = address(new IsContract());
+    IRegistrar registrar = IRegistrar(address(new IsContract()));
     IRequestManager requestManager = IRequestManager(address(new IsContract()));
 
     address erc20 = address(new IsContract());
@@ -52,7 +53,7 @@ contract SpokeRegistryTest is Test {
     function _addPoolAndShareClass() internal {
         _addPool();
         vm.prank(AUTH);
-        registry.addShareClass(POOL_A, SC_1, share);
+        registry.addShareClass(POOL_A, SC_1, share, registrar);
     }
 
     function _createAssetId() internal {
@@ -91,13 +92,13 @@ contract SpokeRegistryTestAddShareClass is SpokeRegistryTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.addShareClass(POOL_A, SC_1, share);
+        registry.addShareClass(POOL_A, SC_1, share, registrar);
     }
 
     function testErrInvalidPool() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
-        registry.addShareClass(POOL_A, SC_1, share);
+        registry.addShareClass(POOL_A, SC_1, share, registrar);
     }
 
     function testErrShareClassAlreadyRegistered() public {
@@ -105,7 +106,7 @@ contract SpokeRegistryTestAddShareClass is SpokeRegistryTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.ShareClassAlreadyRegistered.selector);
-        registry.addShareClass(POOL_A, SC_1, share);
+        registry.addShareClass(POOL_A, SC_1, share, registrar);
     }
 
     function testAddShareClass() public {
@@ -113,10 +114,33 @@ contract SpokeRegistryTestAddShareClass is SpokeRegistryTest {
 
         vm.prank(AUTH);
         vm.expectEmit();
-        emit ISpokeRegistry.AddShareClass(POOL_A, SC_1, share);
-        registry.addShareClass(POOL_A, SC_1, share);
+        emit ISpokeRegistry.AddShareClass(POOL_A, SC_1, share, registrar);
+        registry.addShareClass(POOL_A, SC_1, share, registrar);
 
-        assertEq(address(registry.shareToken(POOL_A, SC_1)), address(share));
+        assertEq(address(registry.shareToken(POOL_A, SC_1)), share);
+        assertEq(address(registry.registrar(POOL_A, SC_1)), address(registrar));
+
+        (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(share);
+        assertEq(poolId.raw(), POOL_A.raw());
+        assertEq(scId.raw(), SC_1.raw());
+    }
+
+    function testErrTokenAlreadyRegistered() public {
+        _addPoolAndShareClass();
+
+        // The same token address cannot back a second share class
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.TokenAlreadyRegistered.selector);
+        registry.addShareClass(POOL_A, ShareClassId.wrap(bytes16("sc2")), share, registrar);
+    }
+
+    function testErrNotAContract() public {
+        _addPool();
+
+        // An address with no code (e.g. a not-yet-deployed token) cannot be registered
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.NotAContract.selector);
+        registry.addShareClass(POOL_A, SC_1, makeAddr("noCode"), registrar);
     }
 }
 
@@ -124,16 +148,34 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.linkToken(POOL_A, SC_1, share);
+        registry.linkToken(POOL_A, SC_1, share, registrar);
+    }
+
+    function testErrNotAContract() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.NotAContract.selector);
+        registry.linkToken(POOL_A, SC_1, makeAddr("noCode"), registrar);
     }
 
     function testLinkToken() public {
         vm.prank(AUTH);
         vm.expectEmit();
-        emit ISpokeRegistry.AddShareClass(POOL_A, SC_1, share);
-        registry.linkToken(POOL_A, SC_1, share);
+        emit ISpokeRegistry.AddShareClass(POOL_A, SC_1, share, registrar);
+        registry.linkToken(POOL_A, SC_1, share, registrar);
 
-        assertEq(address(registry.shareToken(POOL_A, SC_1)), address(share));
+        assertEq(address(registry.shareToken(POOL_A, SC_1)), share);
+        assertEq(address(registry.registrar(POOL_A, SC_1)), address(registrar));
+
+        (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(share);
+        assertEq(poolId.raw(), POOL_A.raw());
+        assertEq(scId.raw(), SC_1.raw());
+    }
+}
+
+contract SpokeRegistryTestShareTokenDetails is SpokeRegistryTest {
+    function testErrShareTokenDoesNotExist() public {
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        registry.shareTokenDetails(share);
     }
 }
 

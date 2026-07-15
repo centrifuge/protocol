@@ -2,10 +2,11 @@
 pragma solidity >=0.5.0;
 
 import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
-import {HookData, ITransferHook} from "../../../core/spoke/interfaces/ITransferHook.sol";
 import {IPoolEscrowProvider} from "../../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {IRoot} from "../../../admin/interfaces/IRoot.sol";
+
+import {HookData, ITransferHook} from "../../interfaces/ITransferHook.sol";
 
 /// @title  IBaseTransferHook
 /// @notice Interface for base transfer hook with trusted call functionality

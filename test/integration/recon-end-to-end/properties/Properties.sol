@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {VaultProperties} from "./VaultProperties.sol";
 
 import {D18} from "../../../../src/misc/types/D18.sol";
+import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
@@ -14,7 +15,6 @@ import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {AccountKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
@@ -24,6 +24,7 @@ import {Asserts} from "@chimera/Asserts.sol";
 import {Helpers} from "../utils/Helpers.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {OpType, BeforeAfter} from "../BeforeAfter.sol";
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     using CastLib for *;
@@ -1077,7 +1078,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         // NOTE: Skipping escrow which can have non-zero bal
         systemAddresses[0] = address(asyncVaultFactory);
         systemAddresses[1] = address(syncVaultFactory);
-        systemAddresses[2] = address(tokenFactory);
+        systemAddresses[2] = address(shareTokenRegistrar);
         systemAddresses[3] = address(asyncRequestManager);
         systemAddresses[4] = address(syncManager);
         systemAddresses[5] = address(spoke);
@@ -1767,7 +1768,8 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
 
-        try spokeRegistry.shareToken(poolId, scId) returns (IShareToken shareToken) {
+        try spokeRegistry.shareToken(poolId, scId) returns (IERC20 shareTokenAddr) {
+            IShareToken shareToken = IShareToken(address(shareTokenAddr));
             uint256 actualSupply = shareToken.totalSupply();
             // escrow holds tokens that have been redeemed
             uint256 balancesSummed = shareToken.balanceOf(_getPoolEscrowAddress());
@@ -1802,7 +1804,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         if (!poolHasShareClass) return;
 
         try spokeRegistry.shareToken(poolId, scId) returns (
-            IShareToken /* shareToken */
+            IERC20 /* shareToken */
         ) {}
         catch Error(string memory reason) {
             if (ghost_supplyOperationOccurred[key]) {

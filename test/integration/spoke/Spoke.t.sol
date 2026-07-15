@@ -6,18 +6,19 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
+import {ShareToken} from "../../../src/token/ShareToken.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 contract SpokeRestrictionTest is CentrifugeIntegrationTest {
     using CastLib for *;
@@ -42,13 +43,24 @@ contract SpokeRestrictionTest is CentrifugeIntegrationTest {
         // Push pool and share class to spoke
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(fullRestrictionsHook))), address(this)
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), address(this)
+        );
+
+        // Token deploys hookless (v3.1+); set the restriction hook via the registrar's Envoy path
+        hub.managerCall{value: 0}(
+            POOL_A,
+            LOCAL_CENTRIFUGE_ID,
+            address(shareTokenRegistrar).toBytes32(),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), SC_1, address(fullRestrictionsHook)),
+            0,
+            0,
+            address(this)
         );
     }
 
     /// forge-config: default.isolate = true
     function testFreezeAndUnfreeze() public {
-        IShareToken shareToken = spokeRegistry.shareToken(POOL_A, SC_1);
+        IShareToken shareToken = IShareToken(address(spokeRegistry.shareToken(POOL_A, SC_1)));
         uint64 validUntil = uint64(block.timestamp + 7 days);
 
         hub.updateRestriction{value: 0}(
@@ -140,7 +152,9 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         hub.addShareClass(POOL_A, tokenName, tokenSymbol, bytes32(bytes8(POOL_A.raw())));
 
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, address(this));
-        hub.notifyShareClass{value: 0}(POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(0), address(this));
+        hub.notifyShareClass{value: 0}(
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), address(this)
+        );
     }
 
     function _registerErc20Asset(uint8 decimals_) internal {
@@ -153,8 +167,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
     }
 
     function _assertVaultSetup(address vaultAddress, bool isLinked) internal view {
-        IShareToken token_ = spokeRegistry.shareToken(POOL_A, SC_1);
-        address linkedVault = IShareToken(token_).vault(address(asset));
+        address token_ = address(spokeRegistry.shareToken(POOL_A, SC_1));
 
         assertTrue(spokeRegistry.isPoolActive(POOL_A));
 
@@ -167,7 +180,6 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         if (isLinked) {
             assertTrue(spokeV3_1_0.isLinked(IBaseVault(vaultAddress)));
 
-            assertEq(vaultAddress, linkedVault, "vault address mismatch");
             AsyncVault vault = AsyncVault(vaultAddress);
             assertEq(vault.asset(), address(asset), "asset mismatch");
             assertEq(vault.poolId().raw(), POOL_A.raw(), "poolId mismatch");
@@ -179,14 +191,15 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
             assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
             assertFalse(spokeV3_1_0.isLinked(IBaseVault(vaultAddress)));
-            assertEq(linkedVault, address(0), "Share link to vault requires linkVault");
         }
     }
 
     function _assertShareSetup() internal view {
         ShareToken shareToken = ShareToken(address(spokeRegistry.shareToken(POOL_A, SC_1)));
 
-        assertEq(shareToken.wards(address(spoke)), 1);
+        assertEq(shareToken.wards(address(shareTokenRegistrar)), 1);
+        assertEq(shareToken.wards(address(root)), 1);
+        assertEq(shareToken.wards(address(spoke)), 0);
         assertEq(shareToken.wards(address(this)), 0);
 
         assertEq(shareToken.name(), tokenName, "share class token name mismatch");
@@ -207,7 +220,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         // the deployed-but-unlinked state (there is no standalone deploy-without-link operation).
         vm.prank(address(messageProcessor));
         spokeHandler.updateVault(POOL_A, SC_1, assetId, address(asyncVaultFactory), VaultUpdateKind.DeployAndLink);
-        address vaultAddr = IShareToken(spokeRegistry.shareToken(POOL_A, SC_1)).vault(address(asset));
+        address vaultAddr = address(spokeRegistry.vault(POOL_A, SC_1, assetId, spokeRegistry.requestManager(POOL_A)));
 
         vm.prank(address(messageProcessor));
         spokeHandler.updateVault(POOL_A, SC_1, assetId, vaultAddr, VaultUpdateKind.Unlink);
@@ -228,7 +241,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         // Deploy and link via SpokeHandler (the only entry point for factory calls)
         vm.prank(address(messageProcessor));
         spokeHandler.updateVault(POOL_A, SC_1, assetId, address(asyncVaultFactory), VaultUpdateKind.DeployAndLink);
-        address vaultAddr = IShareToken(spokeRegistry.shareToken(POOL_A, SC_1)).vault(address(asset));
+        address vaultAddr = address(spokeRegistry.vault(POOL_A, SC_1, assetId, spokeRegistry.requestManager(POOL_A)));
 
         _assertVaultSetup(vaultAddr, true);
         _assertShareSetup();

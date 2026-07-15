@@ -36,7 +36,7 @@ import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 ///         - Accounting/price writes, when `onchainAccounting` is set, are gated to the NAVManager /
 ///           SimplePriceManager and run instantly; `updateSharePrice` is further rate/cap-bounded by
 ///           {_checkSharePrice}.
-///         - `updateHubManager`, `setRequestManager`, `updateShareHook`, `updateVault`, `addShareClass`,
+///         - `updateHubManager`, `setRequestManager`, `updateVault`, `addShareClass`,
 ///           `updateManager`, and `setAdapters` are always out of policy.
 ///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
 ///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
@@ -181,7 +181,6 @@ contract StdManifest is IStdManifest {
         // forgefmt: disable-next-item
         if (selector == IHub.updateHubManager.selector ||
             selector == IHub.setRequestManager.selector ||
-            selector == IHub.updateShareHook.selector ||
             selector == IHub.updateVault.selector ||
             selector == IHub.updateCurrency.selector ||
             selector == IHub.addShareClass.selector ||

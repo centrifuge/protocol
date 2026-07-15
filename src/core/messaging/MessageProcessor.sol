@@ -19,6 +19,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  MessageProcessor
@@ -99,7 +100,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.symbol.toString(),
                 m.decimals,
                 m.salt,
-                m.hook.toAddress()
+                IRegistrar(m.registrar.toAddress())
             );
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);
@@ -120,9 +121,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spokeHandler.updateShareMetadata(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
             );
-        } else if (kind == MessageType.UpdateShareHook) {
-            MessageLib.UpdateShareHook memory m = MessageLib.deserializeUpdateShareHook(message);
-            spokeHandler.updateShareHook(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.hook.toAddress());
         } else if (kind == MessageType.InitiateTransferShares) {
             MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
             hubHandler.initiateTransferShares(

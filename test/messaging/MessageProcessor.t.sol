@@ -71,7 +71,7 @@ contract TestMessageSourceClassification is Test {
     function _cases() internal view returns (Case[] memory cases) {
         uint64 p = poolId.raw();
 
-        cases = new Case[](21);
+        cases = new Case[](20);
 
         // Hub->spoke: only valid coming from the pool's home chain.
         cases[0] = Case(
@@ -89,7 +89,7 @@ contract TestMessageSourceClassification is Test {
                     symbol: bytes32("SYM"),
                     decimals: 6,
                     salt: bytes32("salt"),
-                    hook: bytes32("hook")
+                    registrar: bytes32("registrar")
                 }).serialize(),
             HOME_CHAIN
         );
@@ -111,24 +111,19 @@ contract TestMessageSourceClassification is Test {
             HOME_CHAIN
         );
         cases[6] = Case(
-            "UpdateShareHook",
-            MessageLib.UpdateShareHook({poolId: p, scId: bytes16("sc"), hook: bytes32("hook")}).serialize(),
-            HOME_CHAIN
-        );
-        cases[7] = Case(
             "ExecuteTransferShares",
             MessageLib.ExecuteTransferShares({
                     poolId: p, scId: bytes16("sc"), receiver: bytes32("receiver"), amount: 1, extraGasLimit: 0
                 }).serialize(),
             HOME_CHAIN
         );
-        cases[8] = Case(
+        cases[7] = Case(
             "UpdateRestriction",
             MessageLib.UpdateRestriction({poolId: p, scId: bytes16("sc"), extraGasLimit: 0, payload: bytes("")})
                 .serialize(),
             HOME_CHAIN
         );
-        cases[9] = Case(
+        cases[8] = Case(
             "UpdateVault",
             MessageLib.UpdateVault({
                     poolId: p,
@@ -140,25 +135,25 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             HOME_CHAIN
         );
-        cases[10] = Case(
+        cases[9] = Case(
             "RequestCallback",
             MessageLib.RequestCallback({
                     poolId: p, scId: bytes16("sc"), assetId: 1, extraGasLimit: 0, payload: bytes("")
                 }).serialize(),
             HOME_CHAIN
         );
-        cases[11] = Case(
+        cases[10] = Case(
             "SetRequestManager",
             MessageLib.SetRequestManager({poolId: p, manager: bytes32("manager")}).serialize(),
             HOME_CHAIN
         );
-        cases[12] = Case(
+        cases[11] = Case(
             "ManagerCall",
             MessageLib.ManagerCall({poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")})
                 .serialize(),
             HOME_CHAIN
         );
-        cases[13] = Case(
+        cases[12] = Case(
             "UpdateManager",
             MessageLib.UpdateManager({
                     poolId: p, kind: uint8(ManagerKind.Adapter), who: bytes32("manager"), canManage: true
@@ -168,7 +163,7 @@ contract TestMessageSourceClassification is Test {
 
         // Spoke->hub (the exclusion list in messageSourceCentrifugeId): unrestricted (0), except
         // UpdateHoldingAmount/Request which carry their own asset-origin check.
-        cases[14] = Case(
+        cases[13] = Case(
             "InitiateTransferShares",
             MessageLib.InitiateTransferShares({
                     poolId: p,
@@ -182,7 +177,7 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             0
         );
-        cases[15] = Case(
+        cases[14] = Case(
             "UpdateHoldingAmount",
             MessageLib.UpdateHoldingAmount({
                     poolId: p,
@@ -198,7 +193,7 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             FOREIGN_CHAIN
         );
-        cases[16] = Case(
+        cases[15] = Case(
             "UpdateShares",
             MessageLib.UpdateShares({
                     poolId: p,
@@ -212,7 +207,7 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             0
         );
-        cases[17] = Case(
+        cases[16] = Case(
             "Request",
             MessageLib.Request({
                     poolId: p,
@@ -223,7 +218,7 @@ contract TestMessageSourceClassification is Test {
                 }).serialize(),
             FOREIGN_CHAIN
         );
-        cases[18] = Case(
+        cases[17] = Case(
             "ManagerCallFromSpoke",
             MessageLib.ManagerCallFromSpoke({
                     poolId: p,
@@ -236,12 +231,12 @@ contract TestMessageSourceClassification is Test {
         );
 
         // Mainnet-only messages: must come from centrifugeId=1.
-        cases[19] = Case(
+        cases[18] = Case(
             "ScheduleUpgrade",
             MessageLib.ScheduleUpgrade({target: bytes32(bytes20(address(1)))}).serialize(),
             HOME_CHAIN
         );
-        cases[20] = Case(
+        cases[19] = Case(
             "CancelUpgrade", MessageLib.CancelUpgrade({target: bytes32(bytes20(address(1)))}).serialize(), HOME_CHAIN
         );
     }

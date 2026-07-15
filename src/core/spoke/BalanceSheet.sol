@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
-import {IShareToken} from "./interfaces/IShareToken.sol";
 import {IEndorsements} from "./interfaces/IEndorsements.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
@@ -12,6 +12,7 @@ import {Auth} from "../../misc/Auth.sol";
 import {D18, d18} from "../../misc/types/D18.sol";
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
+import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
@@ -148,8 +149,8 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             shareQueue.isPositive = true;
         }
 
-        IShareToken token = spoke.shareToken(poolId, scId);
-        token.mint(to, shares);
+        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
+        registrar.mint(address(token), to, shares);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -166,9 +167,12 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
             shareQueue.isPositive = false;
         }
 
-        IShareToken token = spoke.shareToken(poolId, scId);
-        token.authTransferFrom(msgSender(), msgSender(), address(this), shares);
-        token.burn(address(this), shares);
+        // Pull the shares to this contract (the caller approves this balance sheet, not the registrar),
+        // then grant the registrar an allowance over this contract's balance so it can pull-and-burn.
+        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
+        SafeTransferLib.safeTransferFrom(address(token), msgSender(), address(this), shares);
+        SafeTransferLib.safeApprove(address(token), address(registrar), shares);
+        registrar.burn(address(token), address(this), shares);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -238,8 +242,8 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint256 amount
     ) external payable isManager(poolId) {
         require(!endorsements.endorsed(from), CannotTransferFromEndorsedContract());
-        IShareToken token = spoke.shareToken(poolId, scId);
-        token.authTransferFrom(sender_, from, to, amount);
+        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
+        registrar.authTransferFrom(address(token), sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
     }
 

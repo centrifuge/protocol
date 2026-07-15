@@ -16,7 +16,6 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
-import {IShareToken} from "../../src/core/spoke/interfaces/IShareToken.sol";
 import {WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {ContractUpdaterForwarder} from "../../src/core/utils/ContractUpdaterForwarder.sol";
@@ -25,8 +24,8 @@ import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/M
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
-import {RedemptionRestrictions} from "../../src/hooks/transfer/RedemptionRestrictions.sol";
-import {UpdateRestrictionMessageLib} from "../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {RedemptionRestrictions} from "../../src/token/hooks/RedemptionRestrictions.sol";
+import {UpdateRestrictionMessageLib} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
@@ -47,8 +46,11 @@ import {EnvConfig} from "../utils/EnvConfig.s.sol";
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
+import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
 import {ChainlinkAdapter} from "../../src/adapters/ChainlinkAdapter.sol";
 import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
+import {ShareTokenRegistrar} from "../../src/token/ShareTokenRegistrar.sol";
+import {IShareTokenRegistrar} from "../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 /**
  * @title BaseTestData
@@ -127,6 +129,7 @@ abstract contract BaseTestData is LaunchDeployer {
         hub = Hub(config.contracts.hub);
         shareClassManager = ShareClassManager(config.contracts.shareClassManager);
         redemptionRestrictionsHook = RedemptionRestrictions(config.contracts.redemptionRestrictionsHook);
+        shareTokenRegistrar = ShareTokenRegistrar(config.contracts.shareTokenRegistrar);
         identityValuation = IdentityValuation(config.contracts.identityValuation);
         asyncVaultFactory = AsyncVaultFactory(config.contracts.asyncVaultFactory);
         syncDepositVaultFactory = SyncDepositVaultFactory(config.contracts.syncDepositVaultFactory);
@@ -175,7 +178,16 @@ abstract contract BaseTestData is LaunchDeployer {
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
-            poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
+            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), msg.sender
+        );
+        hub.managerCall(
+            poolId,
+            params.targetCentrifugeId,
+            address(shareTokenRegistrar).toBytes32(),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), scId, address(redemptionRestrictionsHook)),
+            0,
+            0,
+            msg.sender
         );
 
         // Set request manager
@@ -266,7 +278,16 @@ abstract contract BaseTestData is LaunchDeployer {
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
-            poolId, scId, params.targetCentrifugeId, address(redemptionRestrictionsHook).toBytes32(), msg.sender
+            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), msg.sender
+        );
+        hub.managerCall(
+            poolId,
+            params.targetCentrifugeId,
+            address(shareTokenRegistrar).toBytes32(),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetHook), scId, address(redemptionRestrictionsHook)),
+            0,
+            0,
+            msg.sender
         );
 
         // Set request manager
@@ -352,8 +373,8 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Test async redemption path for sync vaults
-        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
-        SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(params.token)));
+        IShareToken shareToken = IShareToken(address(spokeRegistry.shareToken(poolId, scId)));
+        SyncDepositVault vault = SyncDepositVault(_vaultFor(poolId, scId, params.token));
 
         uint128 testDepositAmount = 1_000e6;
         params.token.approve(address(vault), testDepositAmount);
@@ -377,6 +398,13 @@ abstract contract BaseTestData is LaunchDeployer {
         );
     }
 
+    /// @dev Resolve the linked vault from the registry. The ERC-7575 `shareToken.vault(asset)` pointer is no
+    ///      longer set implicitly on link, so it cannot be relied on here.
+    function _vaultFor(PoolId poolId, ShareClassId scId, ERC20 token) internal view returns (address) {
+        AssetId assetId = spokeRegistry.assetToId(address(token), 0);
+        return address(spokeRegistry.vault(poolId, scId, assetId, spokeRegistry.requestManager(poolId)));
+    }
+
     /**
      * @notice Perform full async vault test flow (deposit, withdraw, issue, redeem, etc.)
      * @dev This is the full test flow from TestData.s.sol, extracted for reuse
@@ -389,8 +417,7 @@ abstract contract BaseTestData is LaunchDeployer {
         uint16 targetCentrifugeId
     ) internal {
         // Get vault
-        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
-        IAsyncVault vault = IAsyncVault(shareToken.vault(address(token)));
+        IAsyncVault vault = IAsyncVault(_vaultFor(poolId, scId, token));
 
         // Submit deposit request
         token.approve(address(vault), 1_000_000e6);
@@ -477,8 +504,7 @@ abstract contract BaseTestData is LaunchDeployer {
      * @dev This is the sync vault test flow from TestData.s.sol
      */
     function testSyncVaultFlow(PoolId poolId, ShareClassId scId, ERC20 token, uint128 investAmount) internal {
-        IShareToken shareToken = IShareToken(spokeRegistry.shareToken(poolId, scId));
-        SyncDepositVault vault = SyncDepositVault(shareToken.vault(address(token)));
+        SyncDepositVault vault = SyncDepositVault(_vaultFor(poolId, scId, token));
 
         token.approve(address(vault), investAmount);
         vault.deposit(investAmount, msg.sender);

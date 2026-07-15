@@ -7,6 +7,7 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
+import {IRegistrar} from "../../spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 
 //--------------------------------------------------------------------------------------------------
@@ -81,7 +82,7 @@ interface ISpokeGatewayHandler {
         string memory tokenSymbol,
         uint8 decimals,
         bytes32 salt,
-        address hook
+        IRegistrar registrar
     ) external;
 
     /// @notice Updates the request manager for a pool
@@ -113,11 +114,6 @@ interface ISpokeGatewayHandler {
         external;
 
     /// @notice Updates the hook of a share class token
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  hook The new hook address
-    function updateShareHook(PoolId poolId, ShareClassId scId, address hook) external;
-
     /// @notice Updates the restrictions on a share class token for a specific user
     /// @param  poolId The centrifuge pool id
     /// @param  scId The share class id

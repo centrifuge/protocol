@@ -10,7 +10,8 @@ import {IERC165} from "../misc/interfaces/IERC7575.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {VaultKind} from "../core/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+
+import {IShareToken} from "../token/interfaces/IShareToken.sol";
 
 /// @title  SyncDepositVault
 /// @notice Partially (a)synchronous Tokenized Vault implementation with synchronous deposits

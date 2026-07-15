@@ -8,15 +8,16 @@ import {BitmapLib} from "../../../src/misc/libraries/BitmapLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
-import {IFreezable} from "../../../src/hooks/transfer/interfaces/IFreezable.sol";
-import {BaseTransferHook} from "../../../src/hooks/transfer/BaseTransferHook.sol";
-import {IMemberlist} from "../../../src/hooks/transfer/interfaces/IMemberlist.sol";
-import {IBaseTransferHook} from "../../../src/hooks/transfer/interfaces/IBaseTransferHook.sol";
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/transfer/libraries/UpdateRestrictionMessageLib.sol";
+import {IFreezable} from "../../../src/token/hooks/interfaces/IFreezable.sol";
+import {BaseTransferHook} from "../../../src/token/hooks/BaseTransferHook.sol";
+import {IMemberlist} from "../../../src/token/hooks/interfaces/IMemberlist.sol";
+import {IBaseTransferHook} from "../../../src/token/hooks/interfaces/IBaseTransferHook.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
+
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/token/interfaces/ITransferHook.sol";
 
 contract MockRoot {
     mapping(address => bool) public endorsed;

@@ -37,7 +37,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         string memory symbol,
         uint8 decimals,
         bytes32 salt,
-        bytes32 hook,
+        bytes32 registrar,
         address refund
     ) external payable;
 
@@ -50,11 +50,6 @@ interface IHubMessageSender is ILocalCentrifugeId {
         string memory symbol,
         address refund
     ) external payable;
-
-    /// @notice Creates and send the message
-    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook, address refund)
-        external
-        payable;
 
     /// @notice Creates and send the message
     function sendNotifyPricePoolPerShare(
