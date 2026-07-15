@@ -123,6 +123,7 @@ contract BaseTest is FullDeployer, Test {
         fullRestrictionsHook.rely(address(this));
         freelyTransferableHook.rely(address(this));
         redemptionRestrictionsHook.rely(address(this));
+        tokenBridge.rely(address(this));
         vm.stopPrank();
 
         removeFullDeployerAccess(batcher);

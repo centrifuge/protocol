@@ -435,6 +435,7 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(address(protocolGuardian.gateway()), address(gateway));
         assertEq(address(protocolGuardian.sender()), address(messageDispatcher));
+        assertEq(address(protocolGuardian.tokenBridge()), address(tokenBridge));
     }
 
     function testOpsGuardian() public view {
@@ -442,6 +443,7 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
         assertEq(address(opsGuardian.opsSafe()), address(OPS_SAFE));
         assertEq(address(opsGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(opsGuardian.hub()), address(hub));
+        assertEq(address(opsGuardian.tokenBridge()), address(tokenBridge));
     }
 
     function testSubsidyManager(address nonWard) public view {
@@ -729,6 +731,26 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(chainlinkAdapter.ccipRouter()), CHAINLINK_CCIP_ROUTER);
+    }
+
+    function testTokenBridge(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(contractUpdater));
+
+        assertEq(tokenBridge.wards(address(root)), 1);
+        assertEq(tokenBridge.wards(address(protocolGuardian)), 1);
+        assertEq(tokenBridge.wards(address(opsGuardian)), 1);
+        assertEq(tokenBridge.wards(address(contractUpdater)), 1);
+        assertEq(tokenBridge.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(tokenBridge.spoke()), address(spoke));
+
+        // root endorsements
+        assertEq(root.endorsed(address(tokenBridge)), true);
     }
 }
 

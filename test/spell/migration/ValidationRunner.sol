@@ -52,19 +52,12 @@ import {AsyncVaultFactory} from "../../../src/vaults/factories/AsyncVaultFactory
 import {SyncDepositVaultFactory} from "../../../src/vaults/factories/SyncDepositVaultFactory.sol";
 
 import {CoreReport} from "../../../script/CoreDeployer.s.sol";
+import {FullReport} from "../../../script/FullDeployer.s.sol";
 import {MigrationQueries} from "../../../script/spell/MigrationQueries.sol";
-import {
-    FullActionBatcher,
-    FullDeployer,
-    FullInput,
-    FullReport,
-    noAdaptersInput,
-    defaultTxLimits,
-    CoreInput
-} from "../../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
+import {TokenBridge} from "../../../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../../../src/adapters/WormholeAdapter.sol";
@@ -167,6 +160,7 @@ contract ValidationRunner is Test {
             oracleValuation: OracleValuation(_tryParseAddress(config, "$.contracts.oracleValuation")),
             navManager: NAVManager(_tryParseAddress(config, "$.contracts.navManager")),
             simplePriceManager: SimplePriceManager(_tryParseAddress(config, "$.contracts.simplePriceManager")),
+            tokenBridge: TokenBridge(_tryParseAddress(config, "$.contracts.tokenBridge")),
             wormholeAdapter: WormholeAdapter(_tryParseAddress(config, "$.contracts.wormholeAdapter")),
             axelarAdapter: AxelarAdapter(_tryParseAddress(config, "$.contracts.axelarAdapter")),
             layerZeroAdapter: LayerZeroAdapter(_tryParseAddress(config, "$.contracts.layerZeroAdapter")),

@@ -12,6 +12,7 @@ interface IOpsGuardian {
     error FileUnrecognizedParam();
     error AdaptersAlreadyInitialized();
     error AdapterAlreadyWired();
+    error CentrifugeIdAlreadySet();
 
     event File(bytes32 indexed what, address data);
 
@@ -33,7 +34,7 @@ interface IOpsGuardian {
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external;
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', or 'multiAdapter'
+    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', 'tokenBridge', or 'multiAdapter'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
@@ -42,6 +43,11 @@ interface IOpsGuardian {
     /// @param admin The admin address for the pool
     /// @param currency The currency asset ID for the pool
     function createPool(PoolId poolId, address admin, AssetId currency) external;
+
+    /// @notice Configure TokenBridge chain ID mapping (first-time only)
+    /// @param evmChainId The EVM chain ID
+    /// @param centrifugeId The corresponding Centrifuge chain ID
+    function fileTokenBridgeCentrifugeId(uint256 evmChainId, uint16 centrifugeId) external;
 
     /// @notice Return the linked operational safe
     /// @return The operational safe contract

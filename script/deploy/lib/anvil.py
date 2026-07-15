@@ -161,7 +161,7 @@ class AnvilManager:
         cmd = [
             "anvil",
             "--chain-id", self.chain_id,
-            "--gas-limit", "50000000",
+            "--disable-block-gas-limit",
             "--code-size-limit", "50000",
             "--fork-url", fork_url
         ]

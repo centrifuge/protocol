@@ -38,6 +38,7 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import "forge-std/Script.sol";
 
+import {TokenBridge} from "../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {WormholeAdapter} from "../src/adapters/WormholeAdapter.sol";
@@ -118,6 +119,7 @@ struct FullReport {
     OracleValuation oracleValuation;
     NAVManager navManager;
     SimplePriceManager simplePriceManager;
+    TokenBridge tokenBridge;
     WormholeAdapter wormholeAdapter;
     AxelarAdapter axelarAdapter;
     LayerZeroAdapter layerZeroAdapter;
@@ -137,6 +139,7 @@ contract FullActionBatcher is CoreActionBatcher {
     ) public onlyDeployer {
         // Rely Root
         report.tokenRecoverer.rely(address(report.root));
+        report.tokenBridge.rely(address(report.root));
 
         report.subsidyManager.rely(address(report.root));
         report.refundEscrowFactory.rely(address(report.root));
@@ -172,6 +175,7 @@ contract FullActionBatcher is CoreActionBatcher {
         // Rely contractUpdater
         report.syncManager.rely(address(report.core.contractUpdater));
         report.asyncRequestManager.rely(address(report.core.contractUpdater));
+        report.tokenBridge.rely(address(report.core.contractUpdater));
 
         // Rely protocolGuardian
         report.core.gateway.rely(address(report.protocolGuardian));
@@ -179,6 +183,7 @@ contract FullActionBatcher is CoreActionBatcher {
         report.core.messageDispatcher.rely(address(report.protocolGuardian));
         if (newRoot) report.root.rely(address(report.protocolGuardian));
         report.tokenRecoverer.rely(address(report.protocolGuardian));
+        report.tokenBridge.rely(address(report.protocolGuardian));
         // Permanent ward for ongoing adapter maintenance
         if (address(report.wormholeAdapter) != address(0)) {
             report.wormholeAdapter.rely(address(report.protocolGuardian));
@@ -194,6 +199,7 @@ contract FullActionBatcher is CoreActionBatcher {
         // Rely opsGuardian
         report.core.multiAdapter.rely(address(report.opsGuardian));
         report.core.hub.rely(address(report.opsGuardian));
+        report.tokenBridge.rely(address(report.opsGuardian));
         // Temporal ward for initial adapter wiring
         if (address(report.wormholeAdapter) != address(0)) report.wormholeAdapter.rely(address(report.opsGuardian));
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(address(report.opsGuardian));
@@ -261,6 +267,7 @@ contract FullActionBatcher is CoreActionBatcher {
             report.root.endorse(address(report.core.balanceSheet));
             report.root.endorse(address(report.asyncRequestManager));
             report.root.endorse(address(report.vaultRouter));
+            report.root.endorse(address(report.tokenBridge));
         }
 
         // Connect adapters
@@ -312,6 +319,7 @@ contract FullActionBatcher is CoreActionBatcher {
     function revokeFull(FullReport memory report) public onlyDeployer {
         if (report.root.wards(address(this)) == 1) report.root.deny(address(this));
         report.tokenRecoverer.deny(address(this));
+        report.tokenBridge.deny(address(this));
 
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
@@ -373,6 +381,8 @@ contract FullDeployer is CoreDeployer {
     NAVManager public navManager;
     SimplePriceManager public simplePriceManager;
 
+    TokenBridge public tokenBridge;
+
     ChainlinkAdapter chainlinkAdapter;
     AxelarAdapter axelarAdapter;
     WormholeAdapter wormholeAdapter;
@@ -403,12 +413,19 @@ contract FullDeployer is CoreDeployer {
             )
         );
 
+        tokenBridge = TokenBridge(
+            create3(
+                generateSalt("tokenBridge"),
+                abi.encodePacked(type(TokenBridge).creationCode, abi.encode(spoke, input.core.centrifugeId, batcher))
+            )
+        );
+
         protocolGuardian = ProtocolGuardian(
             create3(
                 generateSalt("protocolGuardian"),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
-                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher)
+                    abi.encode(ISafe(address(batcher)), root, gateway, messageDispatcher, tokenBridge)
                 )
             )
         );
@@ -416,7 +433,9 @@ contract FullDeployer is CoreDeployer {
         opsGuardian = OpsGuardian(
             create3(
                 generateSalt("opsGuardian"),
-                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
+                abi.encodePacked(
+                    type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, tokenBridge, multiAdapter)
+                )
             )
         );
 
@@ -706,6 +725,7 @@ contract FullDeployer is CoreDeployer {
 
         register("navManager", address(navManager));
         register("simplePriceManager", address(simplePriceManager));
+        register("tokenBridge", address(tokenBridge));
 
         if (input.adapters.wormhole.shouldDeploy) register("wormholeAdapter", address(wormholeAdapter));
         if (input.adapters.axelar.shouldDeploy) register("axelarAdapter", address(axelarAdapter));
@@ -750,6 +770,7 @@ contract FullDeployer is CoreDeployer {
             oracleValuation,
             navManager,
             simplePriceManager,
+            tokenBridge,
             wormholeAdapter,
             axelarAdapter,
             layerZeroAdapter,

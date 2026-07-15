@@ -14,12 +14,15 @@ import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 
 import "forge-std/Test.sol";
 
+import {ITokenBridge} from "../../../src/bridge/interfaces/ITokenBridge.sol";
+
 contract IsContract {}
 
 contract OpsGuardianTest is Test {
     ISafe immutable SAFE = ISafe(address(new IsContract()));
     ICreatePool immutable hub = ICreatePool(address(new IsContract()));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(address(new IsContract()));
+    ITokenBridge immutable tokenBridge = ITokenBridge(address(new IsContract()));
 
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable ADMIN = makeAddr("admin");
@@ -33,7 +36,7 @@ contract OpsGuardianTest is Test {
     OpsGuardian opsGuardian;
 
     function setUp() public virtual {
-        opsGuardian = new OpsGuardian(SAFE, hub, multiAdapter);
+        opsGuardian = new OpsGuardian(SAFE, hub, tokenBridge, multiAdapter);
     }
 
     function testOpsGuardian() public view {
@@ -216,5 +219,49 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
         opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
+    }
+}
+
+contract OpsGuardianTestTokenBridge is OpsGuardianTest {
+    function testFileCentrifugeIdSuccess() public {
+        uint256 evmChainId = 23;
+
+        vm.mockCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("chainIdToCentrifugeId(uint256)", evmChainId),
+            abi.encode(uint16(0))
+        );
+        vm.mockCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("file(bytes32,uint256,uint16)", bytes32("centrifugeId"), evmChainId, CENTRIFUGE_ID),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("file(bytes32,uint256,uint16)", bytes32("centrifugeId"), evmChainId, CENTRIFUGE_ID)
+        );
+
+        vm.prank(address(SAFE));
+        opsGuardian.fileTokenBridgeCentrifugeId(evmChainId, CENTRIFUGE_ID);
+    }
+
+    function testFileCentrifugeIdRevertWhenAlreadySet() public {
+        uint256 evmChainId = 23;
+
+        vm.mockCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("chainIdToCentrifugeId(uint256)", evmChainId),
+            abi.encode(uint16(CENTRIFUGE_ID))
+        );
+
+        vm.prank(address(SAFE));
+        vm.expectRevert(IOpsGuardian.CentrifugeIdAlreadySet.selector);
+        opsGuardian.fileTokenBridgeCentrifugeId(evmChainId, CENTRIFUGE_ID);
+    }
+
+    function testFileCentrifugeIdRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
+        opsGuardian.fileTokenBridgeCentrifugeId(23, CENTRIFUGE_ID);
     }
 }
