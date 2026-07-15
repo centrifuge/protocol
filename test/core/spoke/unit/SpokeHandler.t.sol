@@ -151,6 +151,22 @@ contract SpokeHandlerTestAddShareClass is SpokeHandlerTest {
         handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, NO_HOOK);
     }
 
+    function testAddShareClassZeroDecimals() public {
+        vm.mockCall(
+            address(tokenFactory),
+            abi.encodeWithSelector(tokenFactory.newToken.selector, NAME, SYMBOL, uint8(0), SALT),
+            abi.encode(share)
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.addShareClass.selector, POOL_A, SC_1, share),
+            abi.encode()
+        );
+
+        vm.prank(AUTH);
+        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, 0, SALT, NO_HOOK);
+    }
+
     function testAddShareClassWithHook() public {
         vm.mockCall(
             address(tokenFactory),

@@ -282,6 +282,40 @@ contract OracleValuationGetQuoteTests is OracleValuationTest {
     }
 }
 
+contract OracleValuationZeroDecimalsTests is OracleValuationTest {
+    AssetId constant C0 = AssetId.wrap(100); // decimals mocked to 0
+    PoolId constant POOL_C0 = PoolId.wrap(200); // currency decimals mocked to 0
+
+    function setUp() public override {
+        super.setUp();
+        vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", C0), abi.encode(0));
+        vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint64)", POOL_C0), abi.encode(0));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_C0, SC_1, C0), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_B, SC_1, C0), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_C0, SC_1, C18), abi.encode());
+        _enableFeeder(POOL_C0, feeder);
+        _enableFeeder(POOL_B, feeder);
+    }
+
+    // 0-decimal asset into a 0-decimal pool: equal-decimals branch, price applied with no scaling.
+    function testGetQuoteZeroDecAssetZeroDecPool() public {
+        _setPrice(POOL_C0, SC_1, C0, d18(1.5e18));
+        assertEq(valuation.getQuote(POOL_C0, SC_1, C0, 100), 150);
+    }
+
+    // 0-decimal asset into an 18-decimal pool: 1 whole unit becomes 1e18 fine units, exponent-safe.
+    function testGetQuoteZeroDecAssetFinePool() public {
+        _setPrice(POOL_B, SC_1, C0, d18(1e18));
+        assertEq(valuation.getQuote(POOL_B, SC_1, C0, 1), 1e18);
+    }
+
+    // 18-decimal asset into a 0-decimal pool: 1.0 fine unit rounds to 1 whole unit.
+    function testGetQuoteFineAssetZeroDecPool() public {
+        _setPrice(POOL_C0, SC_1, C18, d18(1e18));
+        assertEq(valuation.getQuote(POOL_C0, SC_1, C18, 1e18), 1);
+    }
+}
+
 contract OracleValuationMultiAssetTests is OracleValuationTest {
     function setUp() public override {
         super.setUp();

@@ -196,7 +196,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
     /// forge-config: default.isolate = true
     function testDeployVaultWithoutLinkERC20(uint8 assetDecimals_) public {
-        assetDecimals_ = uint8(bound(assetDecimals_, 2, 18));
+        assetDecimals_ = uint8(bound(assetDecimals_, 0, 18));
         _setUpPoolAndShare();
         _registerErc20Asset(assetDecimals_);
 
@@ -218,7 +218,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
     /// forge-config: default.isolate = true
     function testDeployVaultWithLinkERC20(uint8 assetDecimals_) public {
-        assetDecimals_ = uint8(bound(assetDecimals_, 2, 18));
+        assetDecimals_ = uint8(bound(assetDecimals_, 0, 18));
         _setUpPoolAndShare();
         _registerErc20Asset(assetDecimals_);
 

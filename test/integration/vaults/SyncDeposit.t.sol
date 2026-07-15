@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {
     AssetId,
+    ERC20,
     VaultBaseTest as BaseTest,
     IShareToken,
     PoolId,
@@ -210,6 +211,39 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
+    }
+
+    /// Sync deposit of a 0-decimal asset into an 18-decimal share class (coarse asset, fine shares).
+    /// forge-config: default.isolate = true
+    function testSyncDepositZeroDecimalAsset() public {
+        ERC20 zeroDec = _newErc20("ZeroDec", "ZD", 0);
+
+        // deployVault registers the 0-decimal asset on the spoke and wires prices to 1:1.
+        (uint64 poolId, address vaultAddr, uint128 assetId) = deployVault(
+            VaultKind.SyncDepositAsyncRedeem,
+            18,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(zeroDec),
+            0
+        );
+        SyncDepositVault syncVault = SyncDepositVault(vaultAddr);
+        IShareToken shareToken = IShareToken(address(syncVault.share()));
+        assertEq(assetId != 0, true, "0-decimal asset registered on spoke");
+
+        centrifugeChain.updateMember(poolId, syncVault.scId().raw(), self, type(uint64).max);
+
+        uint128 amount = 100;
+        assertEq(syncVault.previewDeposit(amount), 100e18, "100 whole 0-dec units -> 100.0 fine shares");
+
+        zeroDec.mint(self, amount);
+        zeroDec.approve(address(syncVault), amount);
+        syncVault.deposit(amount, self);
+
+        assertEq(zeroDec.balanceOf(self), 0, "asset spent");
+        assertEq(shareToken.balanceOf(self), 100e18, "shares minted");
+        // pricePerShare = convertToAssets(10 ** 18 shares) = 1 whole 0-dec asset unit.
+        assertEq(syncVault.pricePerShare(), 1, "one fine share worth of assets is 1 whole 0-dec unit");
     }
 
     // --- erc165 checks ---

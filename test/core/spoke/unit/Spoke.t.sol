@@ -113,10 +113,14 @@ contract SpokeTest is Test {
     }
 
     function _mockSendRegisterAsset(AssetId assetId) internal {
+        _mockSendRegisterAsset(assetId, DECIMALS);
+    }
+
+    function _mockSendRegisterAsset(AssetId assetId, uint8 decimals) internal {
         vm.mockCall(
             address(sender),
             COST,
-            abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, DECIMALS),
+            abi.encodeWithSelector(sender.sendRegisterAsset.selector, REMOTE_CENTRIFUGE_ID, assetId, decimals),
             abi.encode()
         );
     }
@@ -349,12 +353,48 @@ contract SpokeTestRegisterAsset is SpokeTest {
         spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, address(0xbeef), TOKEN_1, REFUND);
     }
 
-    function testErrTooFewDecimalsERC20() public {
-        _mockERC20(1);
+    function testRegisterAssetZeroDecimalsERC20() public {
+        _mockERC20(0);
+        _mockNewAssetRegistration(erc20, 0, ASSET_ID_20);
+        _mockSendRegisterAsset(ASSET_ID_20, 0);
 
         vm.prank(ANY);
-        vm.expectRevert(ISpoke.TooFewDecimals.selector);
+        vm.expectEmit();
+        emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_20, erc20, 0, NAME, SYMBOL, 0, true);
         spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, REFUND);
+    }
+
+    function testRegisterAssetOneDecimalERC20() public {
+        _mockERC20(1);
+        _mockNewAssetRegistration(erc20, 0, ASSET_ID_20);
+        _mockSendRegisterAsset(ASSET_ID_20, 1);
+
+        vm.prank(ANY);
+        vm.expectEmit();
+        emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_20, erc20, 0, NAME, SYMBOL, 1, true);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc20, 0, REFUND);
+    }
+
+    function testRegisterAssetZeroDecimalsERC6909() public {
+        _mockERC6909(0, TOKEN_1);
+        _mockNewAssetRegistration(erc6909, TOKEN_1, ASSET_ID_6909_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1, 0);
+
+        vm.prank(ANY);
+        vm.expectEmit();
+        emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, 0, true);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
+    }
+
+    function testRegisterAssetOneDecimalERC6909() public {
+        _mockERC6909(1, TOKEN_1);
+        _mockNewAssetRegistration(erc6909, TOKEN_1, ASSET_ID_6909_1);
+        _mockSendRegisterAsset(ASSET_ID_6909_1, 1);
+
+        vm.prank(ANY);
+        vm.expectEmit();
+        emit ISpoke.RegisterAsset(REMOTE_CENTRIFUGE_ID, ASSET_ID_6909_1, erc6909, TOKEN_1, NAME, SYMBOL, 1, true);
+        spoke.registerAsset{value: COST}(REMOTE_CENTRIFUGE_ID, erc6909, TOKEN_1, REFUND);
     }
 
     function testErrTooManyDecimalsERC20() public {

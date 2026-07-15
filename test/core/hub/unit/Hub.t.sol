@@ -131,6 +131,9 @@ contract TestMainMethodsChecks is TestCommon {
         hub.setPoolMetadata(POOL_A, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
+        hub.updateCurrency(POOL_A, AssetId.wrap(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(0)));
 
         vm.expectRevert(IHub.NotManager.selector);
@@ -224,6 +227,33 @@ contract TestAuthorize is TestCommon {
 
         vm.prank(ADMIN);
         hub.cancelAuthorization(POOL_A, data);
+    }
+}
+
+contract TestUpdateCurrency is TestCommon {
+    function testUpdateCurrencyForwardsToHubRegistry() public {
+        vm.mockCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.updateCurrency.selector, POOL_A, ASSET_A), ""
+        );
+        vm.expectCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.updateCurrency.selector, POOL_A, ASSET_A)
+        );
+
+        vm.prank(ADMIN);
+        hub.updateCurrency(POOL_A, ASSET_A);
+    }
+
+    // The decimals-mismatch guard lives in HubRegistry; the Hub wrapper must not swallow its revert.
+    function testUpdateCurrencyPropagatesMismatchRevert() public {
+        vm.mockCallRevert(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.updateCurrency.selector, POOL_A, ASSET_A),
+            abi.encodeWithSelector(IHubRegistry.CurrencyDecimalsMismatch.selector)
+        );
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IHubRegistry.CurrencyDecimalsMismatch.selector);
+        hub.updateCurrency(POOL_A, ASSET_A);
     }
 }
 

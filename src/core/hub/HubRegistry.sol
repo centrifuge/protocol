@@ -18,15 +18,21 @@ import {PoolId, newPoolId} from "../types/PoolId.sol";
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;
 
-    mapping(AssetId => uint8) internal _decimals;
+    // Assets
+    mapping(AssetId => AssetInfo) public asset;
 
+    // Pools
     mapping(PoolId => bytes) public metadata;
     mapping(PoolId => AssetId) public currency;
-    mapping(PoolId => IManifest) public manifest;
-    mapping(PoolId => IBridgingHook) public bridgingHook;
     mapping(PoolId => mapping(address => bool)) public manager;
-    mapping(PoolId => mapping(bytes32 => address)) public dependency;
+
+    // Policy
+    mapping(PoolId => IManifest) public manifest;
     mapping(bytes32 authId => uint48 validAfter) public authorizedAfter;
+
+    // Dependencies
+    mapping(PoolId => IBridgingHook) public bridgingHook;
+    mapping(PoolId => mapping(bytes32 => address)) public dependency;
     mapping(PoolId => mapping(uint16 centrifugeId => IHubRequestManager)) public hubRequestManager;
 
     constructor(address deployer) Auth(deployer) {}
@@ -37,9 +43,9 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function registerAsset(AssetId assetId, uint8 decimals_) external auth {
-        require(_decimals[assetId] == 0, AssetAlreadyRegistered());
+        require(!asset[assetId].registered, AssetAlreadyRegistered());
 
-        _decimals[assetId] = decimals_;
+        asset[assetId] = AssetInfo(true, decimals_);
 
         emit NewAsset(assetId, decimals_);
     }
@@ -93,6 +99,7 @@ contract HubRegistry is Auth, IHubRegistry {
         require(exists(poolId_), NonExistingPool(poolId_));
         require(!currency_.isNull(), EmptyCurrency());
         require(isRegistered(currency_), AssetNotFound());
+        require(asset[currency_].decimals == asset[currency[poolId_]].decimals, CurrencyDecimalsMismatch());
 
         currency[poolId_] = currency_;
 
@@ -115,6 +122,12 @@ contract HubRegistry is Auth, IHubRegistry {
         hubRequestManager[poolId_][centrifugeId] = manager_;
 
         emit SetHubRequestManager(poolId_, centrifugeId, manager_);
+    }
+
+    /// @inheritdoc IHubRegistry
+    function setBridgingHook(PoolId poolId_, IBridgingHook hook_) external auth {
+        bridgingHook[poolId_] = hook_;
+        emit SetBridgingHook(poolId_, address(hook_));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -189,20 +202,23 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function decimals(AssetId assetId) public view returns (uint8 decimals_) {
-        decimals_ = _decimals[assetId];
-        require(decimals_ > 0, AssetNotFound());
+        AssetInfo memory info = asset[assetId];
+        require(info.registered, AssetNotFound());
+        decimals_ = info.decimals;
     }
 
     /// @inheritdoc IHubRegistry
     function decimals(PoolId poolId_) public view returns (uint8 decimals_) {
-        decimals_ = _decimals[currency[poolId_]];
-        require(decimals_ > 0, AssetNotFound());
+        AssetInfo memory info = asset[currency[poolId_]];
+        require(info.registered, AssetNotFound());
+        decimals_ = info.decimals;
     }
 
     /// @inheritdoc IERC6909Decimals
     function decimals(uint256 asset_) external view returns (uint8 decimals_) {
-        decimals_ = _decimals[AssetId.wrap(asset_.toUint128())];
-        require(decimals_ > 0, AssetNotFound());
+        AssetInfo memory info = asset[AssetId.wrap(asset_.toUint128())];
+        require(info.registered, AssetNotFound());
+        decimals_ = info.decimals;
     }
 
     /// @inheritdoc IHubRegistry
@@ -212,12 +228,6 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function isRegistered(AssetId assetId) public view returns (bool) {
-        return _decimals[assetId] != 0;
-    }
-
-    /// @inheritdoc IHubRegistry
-    function setBridgingHook(PoolId poolId_, IBridgingHook hook_) external auth {
-        bridgingHook[poolId_] = hook_;
-        emit SetBridgingHook(poolId_, address(hook_));
+        return asset[assetId].registered;
     }
 }

@@ -212,7 +212,8 @@ contract HubRegistryTest is Test {
 
         vm.assume(AssetId.unwrap(registry.currency(poolId)) != AssetId.unwrap(currency));
 
-        registry.registerAsset(currency, 18);
+        // Same decimals as the incumbent (USD, 6) so the decimals-mismatch guard permits the swap.
+        registry.registerAsset(currency, 6);
 
         vm.expectEmit();
         emit IHubRegistry.UpdateCurrency(poolId, currency);
@@ -242,5 +243,125 @@ contract HubRegistryTest is Test {
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         assertEq(registry.exists(nonExistingPool), false);
+    }
+
+    function testRegisterAsset(uint8 decimals) public {
+        assertFalse(registry.isRegistered(USD));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.registerAsset(USD, decimals);
+
+        vm.expectEmit();
+        emit IHubRegistry.NewAsset(USD, decimals);
+        registry.registerAsset(USD, decimals);
+
+        assertTrue(registry.isRegistered(USD));
+        assertEq(registry.decimals(USD), decimals);
+        assertEq(registry.decimals(uint256(AssetId.unwrap(USD))), decimals);
+
+        (bool registered, uint8 assetDecimals) = registry.asset(USD);
+        assertTrue(registered);
+        assertEq(assetDecimals, decimals);
+    }
+
+    function testAssetGetter() public {
+        AssetId unregistered = AssetId.wrap(978);
+
+        // Unregistered asset reads as (false, 0), not a revert.
+        (bool registered, uint8 assetDecimals) = registry.asset(unregistered);
+        assertFalse(registered);
+        assertEq(assetDecimals, 0);
+
+        registry.registerAsset(USD, 6);
+
+        (registered, assetDecimals) = registry.asset(USD);
+        assertTrue(registered);
+        assertEq(assetDecimals, 6);
+    }
+
+    function testRegisterAssetZeroDecimals() public {
+        assertFalse(registry.isRegistered(USD));
+
+        registry.registerAsset(USD, 0);
+
+        // A 0-decimal asset is registered, not conflated with "not registered".
+        assertTrue(registry.isRegistered(USD));
+        assertEq(registry.decimals(USD), 0);
+        assertEq(registry.decimals(uint256(AssetId.unwrap(USD))), 0);
+
+        // And usable as a pool currency, whose decimals(PoolId) getter returns 0.
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
+        assertEq(registry.decimals(poolId), 0);
+    }
+
+    function testRegisterAssetRevertsOnDuplicate() public {
+        registry.registerAsset(USD, 6);
+
+        vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
+        registry.registerAsset(USD, 6);
+
+        // A different decimals value does not change the outcome: still reverts, no overwrite.
+        vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
+        registry.registerAsset(USD, 18);
+
+        assertEq(registry.decimals(USD), 6);
+    }
+
+    function testRegisterAssetZeroDecimalsRevertsOnDuplicate() public {
+        registry.registerAsset(USD, 0);
+
+        // The registered flag, not the decimals value, gates re-registration.
+        vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
+        registry.registerAsset(USD, 0);
+    }
+
+    function testDecimalsRevertsOnUnregistered() public {
+        AssetId unregistered = AssetId.wrap(978);
+
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
+        registry.decimals(unregistered);
+
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
+        registry.decimals(uint256(AssetId.unwrap(unregistered)));
+    }
+
+    function testUpdateCurrencyRevertsOnDecimalsMismatch() public {
+        registry.registerAsset(USD, 6); // incumbent pool currency: 6 decimals
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
+
+        // A coarser (0-dec) currency: rejected, pool decimals must stay 6 to match deployed share tokens.
+        AssetId zeroDecCurrency = AssetId.wrap(978);
+        registry.registerAsset(zeroDecCurrency, 0);
+        vm.expectRevert(IHubRegistry.CurrencyDecimalsMismatch.selector);
+        registry.updateCurrency(poolId, zeroDecCurrency);
+
+        AssetId eighteenDecCurrency = AssetId.wrap(979);
+        registry.registerAsset(eighteenDecCurrency, 18);
+        vm.expectRevert(IHubRegistry.CurrencyDecimalsMismatch.selector);
+        registry.updateCurrency(poolId, eighteenDecCurrency);
+
+        // Currency unchanged after both rejected swaps.
+        assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(USD));
+        assertEq(registry.decimals(poolId), 6);
+    }
+
+    function testUpdateCurrencySameDecimalsDifferentAsset() public {
+        registry.registerAsset(USD, 6);
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
+
+        // A different asset with the same 6 decimals: the swap is permitted and pool decimals stay 6.
+        AssetId sameDecCurrency = AssetId.wrap(978);
+        registry.registerAsset(sameDecCurrency, 6);
+
+        vm.expectEmit();
+        emit IHubRegistry.UpdateCurrency(poolId, sameDecCurrency);
+        registry.updateCurrency(poolId, sameDecCurrency);
+
+        assertEq(AssetId.unwrap(registry.currency(poolId)), AssetId.unwrap(sameDecCurrency));
+        assertEq(registry.decimals(poolId), 6);
     }
 }

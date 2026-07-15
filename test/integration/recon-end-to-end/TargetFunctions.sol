@@ -114,7 +114,10 @@ abstract contract TargetFunctions is
 
         // NOTE END TEMPORARY
 
-        decimals = uint8(between(decimals, 6, 24));
+        // Match the protocol's registerAsset bounds [0, 18]. The old upper bound of 24 was dead: the real
+        // spoke.registerAsset enforces MAX_DECIMALS = 18, so 19-24 always reverted TooManyDecimals and wasted
+        // fuzzer cycles. The lower bound now exercises 0-5 decimals after the [2,18] -> [0,18] relaxation.
+        decimals = uint8(between(decimals, 0, 18));
 
         // 1. Deploy new token and register it as an asset
         _newAsset(decimals);

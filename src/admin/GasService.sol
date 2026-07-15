@@ -73,9 +73,9 @@ contract GasService is IGasService {
 
         scheduleUpgrade = _gasValue(159251);
         cancelUpgrade = _gasValue(139744);
-        registerAsset = _gasValue(169451);
+        registerAsset = _gasValue(169573);
         setPoolAdapters = _gasValue(787652); // using MAX_ADAPTER_COUNT
-        request = _gasValue(285188);
+        request = _gasValue(285210);
         notifyPool = _gasValue(1356381); // create escrow case
         notifyShareClass = _gasValue(1964865);
         notifyPricePoolPerShare = _gasValue(175817);
@@ -92,7 +92,7 @@ contract GasService is IGasService {
         updateVaultUnlink = _gasValue(194528);
         setRequestManager = _gasValue(175009);
         updateManager = _gasValue(166442);
-        updateHoldingAmount = _gasValue(365724);
+        updateHoldingAmount = _gasValue(365955);
         updateShares = _gasValue(264295);
         managerCallFromSpoke = _gasValue(150237);
     }

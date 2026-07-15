@@ -12,6 +12,16 @@ import {AssetId} from "../../types/AssetId.sol";
 
 interface IHubRegistry is IERC6909Decimals {
     //----------------------------------------------------------------------------------------------
+    // Structs
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Registration state and decimals of a registered asset.
+    struct AssetInfo {
+        bool registered;
+        uint8 decimals;
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
 
@@ -49,6 +59,9 @@ interface IHubRegistry is IERC6909Decimals {
     error EmptyCurrency();
     error EmptyShareClassManager();
     error AssetNotFound();
+    /// @notice Dispatched when {updateCurrency} targets a currency whose decimals differ from the pool's current
+    ///         currency; pool decimals must stay fixed to match already-deployed share tokens.
+    error CurrencyDecimalsMismatch();
     /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing to classify).
     error NoManifest();
     /// @notice Dispatched when {authorize} targets a call that is currently in policy (nothing to authorize).
@@ -214,6 +227,12 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param assetId The asset identifier
     /// @return Whether the asset is registered
     function isRegistered(AssetId assetId) external view returns (bool);
+
+    /// @notice Returns the registration state and decimals of an asset
+    /// @param assetId The asset identifier
+    /// @return registered Whether the asset is registered
+    /// @return decimals The number of decimals
+    function asset(AssetId assetId) external view returns (bool registered, uint8 decimals);
 
     /// @notice Set or clear the bridging hook for a pool
     /// @param poolId The pool identifier

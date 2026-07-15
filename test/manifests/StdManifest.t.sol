@@ -751,6 +751,12 @@ contract StdManifestTest is Test {
         assertEq(_delayOf(d), DELAY);
     }
 
+    function testUpdateCurrencyNeedsAuthorization() public {
+        // Changing the pool currency is a structural config change and is timelocked.
+        bytes memory d = abi.encodeWithSelector(IHub.updateCurrency.selector, POOL_A, AssetId.wrap(1));
+        assertEq(_delayOf(d), DELAY);
+    }
+
     function _managerCall(ManagerKind kind, bytes32 who_, bool canManage) internal pure returns (bytes memory) {
         return abi.encodeWithSelector(IHub.updateManager.selector, POOL_A, uint16(1), kind, who_, canManage, address(0));
     }

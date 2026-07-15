@@ -177,12 +177,13 @@ contract StdManifest is IStdManifest {
         }
 
         // Out of policy, flat `delay`: hub-manager grant/revoke (delaying revocation stops instant
-        // Supervisor removal), request-manager / hook / vault changes, and adding a share class.
+        // Supervisor removal), request-manager / hook / vault / currency changes, and adding a share class.
         // forgefmt: disable-next-item
         if (selector == IHub.updateHubManager.selector ||
             selector == IHub.setRequestManager.selector ||
             selector == IHub.updateShareHook.selector ||
             selector == IHub.updateVault.selector ||
+            selector == IHub.updateCurrency.selector ||
             selector == IHub.addShareClass.selector ||
             selector == IHub.setAdapters.selector
         ) return delay;

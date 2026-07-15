@@ -31,7 +31,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    uint8 internal constant MIN_DECIMALS = 2;
     uint8 internal constant MAX_DECIMALS = 18;
 
     ISpokeMessageSender public sender;
@@ -67,7 +66,6 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
         uint8 decimals;
 
         decimals = _safeGetAssetDecimals(asset, tokenId);
-        require(decimals >= MIN_DECIMALS, TooFewDecimals());
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
 
         if (tokenId == 0) {

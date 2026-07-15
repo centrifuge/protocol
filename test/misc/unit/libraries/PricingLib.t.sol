@@ -13,7 +13,7 @@ contract PricingLibBaseTest is Test {
     using PricingLib for *;
     using MathLib for uint256;
 
-    uint8 constant MIN_ASSET_DECIMALS = 2;
+    uint8 constant MIN_ASSET_DECIMALS = 0;
     uint8 constant MAX_ASSET_DECIMALS = 18;
     uint8 constant POOL_DECIMALS = 18;
     uint8 constant SHARE_DECIMALS = POOL_DECIMALS;
@@ -21,6 +21,9 @@ contract PricingLibBaseTest is Test {
     uint128 constant MAX_PRICE_POOL_PER_ASSET = 1e30;
     uint128 constant MAX_PRICE_POOL_PER_SHARE = 1e30;
     uint128 constant MAX_AMOUNT = 1e24;
+    // Round-trip fuzz price ceiling: keeps the 18-normalized numerator < uint256.max even with a
+    // uint128.max intermediate, so full-uint128 amounts can be fuzzed without spurious MulDiv overflow.
+    uint128 constant ROUNDTRIP_MAX_PRICE = 1e20;
 }
 
 contract ConvertWithPriceTest is PricingLibBaseTest {
@@ -319,7 +322,10 @@ contract ConvertWithPricesTest is PricingLibBaseTest {
                 bound(
                     priceNumerator_,
                     0,
-                    10 ** baseDecimals * 1e28 / (10 ** quoteDecimals * (baseAmount + 1)) * priceDenominator.raw()
+                    // uint256 cast: at MIN_ASSET_DECIMALS=0 the bound above lets baseAmount reach
+                    // uint128.max, so (baseAmount + 1) would overflow in uint128 arithmetic.
+                    10 ** baseDecimals * 1e28 / (10 ** quoteDecimals * (uint256(baseAmount) + 1))
+                        * priceDenominator.raw()
                 )
             )
         );
@@ -497,7 +503,18 @@ contract AssetToShareAmountTest is PricingLibBaseTest {
             shareAmount, POOL_DECIMALS, assetDecimals, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
         );
 
-        assertApproxEqAbs(assetRoundTrip, assetAmount, 1e20, "Asset->Share->Asset roundtrip target precision excess");
+        // Loss is bounded by the value of one share-ulp expressed in asset units (rounded up) + one asset-ulp,
+        // rather than a fixed constant that would embed a decimals>=2 assumption.
+        uint256 oneShareUlpInAssets = MathLib.mulDiv(
+            pricePoolPerShare.raw(),
+            uint256(10 ** assetDecimals),
+            uint256(10 ** POOL_DECIMALS) * pricePoolPerAsset.raw(),
+            MathLib.Rounding.Up
+        );
+        assertLe(assetRoundTrip, assetAmount, "round-trip must not gain assets");
+        assertApproxEqAbs(
+            assetRoundTrip, assetAmount, oneShareUlpInAssets + 1, "Asset->Share->Asset roundtrip precision excess"
+        );
     }
 }
 
@@ -520,8 +537,10 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
                 bound(
                     pricePoolPerShare_,
                     MIN_PRICE,
+                    // uint256 cast: at MIN_ASSET_DECIMALS=0 the bound above lets shareAmount reach
+                    // uint128.max, so (shareAmount + 1) would overflow in uint128 arithmetic.
                     (10 ** 18 * pricePoolPerAsset.raw() * uint256(type(uint128).max))
-                        / (10 ** assetDecimals * (shareAmount + 1))
+                        / (10 ** assetDecimals * (uint256(shareAmount) + 1))
                 )
             )
         );
@@ -532,7 +551,20 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
         uint256 shareRoundTrip = PricingLib.assetToShareAmount(
             assetAmount, assetDecimals, POOL_DECIMALS, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
         );
-        assertApproxEqAbs(shareRoundTrip, shareAmount, 1e36, "Share->Asset->Share roundtrip target precision excess");
+
+        // Loss is bounded by the value of one asset-ulp expressed in shares (rounded up) + one share-ulp.
+        // A fixed tolerance embeds a decimals>=2 assumption: at assetDecimals=0 a single coarse asset unit
+        // can be worth up to ~1e37 shares, far above the old 1e36 constant.
+        uint256 oneAssetUlpInShares = MathLib.mulDiv(
+            pricePoolPerAsset.raw(),
+            uint256(10 ** POOL_DECIMALS),
+            uint256(10 ** assetDecimals) * pricePoolPerShare.raw(),
+            MathLib.Rounding.Up
+        );
+        assertLe(shareRoundTrip, shareAmount, "round-trip must not gain shares");
+        assertApproxEqAbs(
+            shareRoundTrip, shareAmount, oneAssetUlpInShares + 1, "Share->Asset->Share roundtrip precision excess"
+        );
     }
 
     function testShareToAssetAmount(
@@ -549,8 +581,10 @@ contract ShareToAssetToShareTest is PricingLibBaseTest {
                 bound(
                     pricePoolPerShare_,
                     MIN_PRICE,
+                    // uint256 cast: at MIN_ASSET_DECIMALS=0 the bound above lets shareAmount reach
+                    // uint128.max, so (shareAmount + 1) would overflow in uint128 arithmetic.
                     (10 ** 18 * pricePoolPerAsset.raw() * uint256(type(uint128).max))
-                        / (10 ** assetDecimals * (shareAmount + 1))
+                        / (10 ** assetDecimals * (uint256(shareAmount) + 1))
                 )
             )
         );
@@ -826,5 +860,266 @@ contract MaxConvertibleAssetAmountTest is PricingLibBaseTest {
         return PricingLib.maxConvertibleAssetAmount(
             shareToken_, asset_, tokenId_, maxShares, poolPerShare, poolPerAsset
         );
+    }
+
+    // Numerator scale factor `10 ** assetDecimals` collapses to 1 at assetDecimals = 0.
+    function testMaxConvertibleZeroDecimalAsset() public {
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(uint8(0)));
+
+        // maxShares * 10^0 * poolPerShare / (10^18 * poolPerAsset), equal prices.
+        uint256 maxAssets =
+            PricingLib.maxConvertibleAssetAmount(shareToken, asset, tokenId, type(uint128).max, d18(1, 1), d18(1, 1));
+        assertEq(maxAssets, uint256(type(uint128).max) / 1e18, "assetDecimals=0 collapses scale factor to 1");
+
+        // Converting the reported max back to shares must not overflow uint128.
+        uint128 shares = PricingLib.assetToShareAmount(
+            shareToken, asset, tokenId, uint128(maxAssets), d18(1, 1), d18(1, 1), MathLib.Rounding.Down
+        );
+        assertLe(shares, type(uint128).max, "round-trip of max assets must not overflow");
+    }
+}
+
+/// @dev Explicit 0-decimal conversions in both directions, plus zero-rounding and no-gain round-trip properties.
+contract ZeroDecimalsConversionTest is PricingLibBaseTest {
+    using PricingLib for *;
+    using MathLib for uint256;
+
+    // 0-dec base into 18-dec quote: 1 whole base unit at price 1.0 is 1e18 in fine units.
+    function testConvertWithPriceZeroDecBaseToFineQuote() public pure {
+        assertEq(PricingLib.convertWithPrice(5, 0, 18, d18(1e18), MathLib.Rounding.Down), 5e18);
+        // Extreme-high price 1e30: 1 unit -> 1e30 (1e12 fine tokens).
+        assertEq(PricingLib.convertWithPrice(1, 0, 18, d18(1e30), MathLib.Rounding.Down), 1e30);
+        // Extreme-low price 1 (1e-18): 1 unit -> 1 (smallest fine unit).
+        assertEq(PricingLib.convertWithPrice(1, 0, 18, d18(1), MathLib.Rounding.Down), 1);
+    }
+
+    // 18-dec base into 0-dec quote: 5.0 in fine units at price 1.0 is 5 whole quote units.
+    function testConvertWithPriceFineBaseToZeroDecQuote() public pure {
+        assertEq(PricingLib.convertWithPrice(5e18, 18, 0, d18(1e18), MathLib.Rounding.Down), 5);
+        // Sub-unit fine amount rounds down to 0 whole quote units.
+        assertEq(PricingLib.convertWithPrice(5e17, 18, 0, d18(1e18), MathLib.Rounding.Down), 0);
+        // ...and up to 1.
+        assertEq(PricingLib.convertWithPrice(5e17, 18, 0, d18(1e18), MathLib.Rounding.Up), 1);
+    }
+
+    function testConvertWithReciprocalPriceZeroDec() public pure {
+        // 0-dec base -> 18-dec quote, basePerQuote = 1.0.
+        assertEq(PricingLib.convertWithReciprocalPrice(5, 0, 18, d18(1e18), MathLib.Rounding.Down), 5e18);
+        // 18-dec base -> 0-dec quote, basePerQuote = 1.0.
+        assertEq(PricingLib.convertWithReciprocalPrice(5e18, 18, 0, d18(1e18), MathLib.Rounding.Down), 5);
+    }
+
+    function testConvertWithPricesZeroDec() public pure {
+        // 0-dec base -> 18-dec quote, num == denom == 1.0.
+        assertEq(PricingLib.convertWithPrices(5, 0, 18, d18(1e18), d18(1e18), MathLib.Rounding.Down), 5e18);
+        // 18-dec base -> 0-dec quote.
+        assertEq(PricingLib.convertWithPrices(5e18, 18, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down), 5);
+    }
+
+    // Small fine share amounts convert to 0 whole units of a 0-decimal asset without reverting.
+    function testZeroRoundingToZeroDecimalAsset() public pure {
+        assertEq(
+            PricingLib.shareToAssetAmount(5e17, 18, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down),
+            0,
+            "half a fine unit rounds to 0 whole asset units"
+        );
+        assertEq(
+            PricingLib.shareToAssetAmount(1e18, 18, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down),
+            1,
+            "one fine unit converts to 1 whole asset unit"
+        );
+    }
+
+    // Payout into a 0-decimal asset is monotonic in the share amount (no dips as amount grows).
+    function testZeroDecimalAssetMonotonic(uint128 shareAmount_) public pure {
+        uint128 shareAmount = uint128(bound(shareAmount_, 0, 1e30));
+        uint128 lower = PricingLib.shareToAssetAmount(shareAmount, 18, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down);
+        uint128 higher =
+            PricingLib.shareToAssetAmount(shareAmount + 1e18, 18, 0, d18(1e18), d18(1e18), MathLib.Rounding.Down);
+        assertGe(higher, lower, "payout must be monotonic in share amount");
+    }
+
+    // Round-down asset -> share -> asset over the full [0,18] x [0,18] decimal grid and full price range.
+    // Asserts no value is gained, and the loss is bounded by one intermediate-ulp (in asset units) + one
+    // asset-ulp. Only inputs that would genuinely overflow uint128 inside the conversions are rejected.
+    function testAssetShareRoundTripNoGain(
+        uint128 assetAmount_,
+        uint8 assetDecimals_,
+        uint8 shareDecimals_,
+        uint128 pricePoolPerAsset_,
+        uint128 pricePoolPerShare_
+    ) public pure {
+        uint8 assetDecimals = uint8(bound(assetDecimals_, 0, 18));
+        uint8 shareDecimals = uint8(bound(shareDecimals_, 0, 18));
+        uint128 assetAmount = uint128(bound(assetAmount_, 0, type(uint128).max));
+        // Prices bounded to 1e20 (D18 price 100): with the max 1e18 decimal scaling and a derived
+        // intermediate up to uint128.max, the normalized numerator stays < uint256.max, so neither
+        // conversion can MulDiv-overflow. Amounts still span the full uint128 range.
+        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, ROUNDTRIP_MAX_PRICE)));
+        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, ROUNDTRIP_MAX_PRICE)));
+
+        // asset -> share result mirrors convertWithPrices; reject inputs whose result would overflow uint128.
+        vm.assume(
+            MathLib.mulDiv(
+                pricePoolPerAsset.raw(),
+                uint256(10 ** shareDecimals) * assetAmount,
+                uint256(10 ** assetDecimals) * pricePoolPerShare.raw(),
+                MathLib.Rounding.Down
+            ) <= type(uint128).max
+        );
+        uint128 shareAmount = PricingLib.assetToShareAmount(
+            assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+        );
+
+        // share -> asset result likewise.
+        vm.assume(
+            MathLib.mulDiv(
+                pricePoolPerShare.raw(),
+                uint256(10 ** assetDecimals) * shareAmount,
+                uint256(10 ** shareDecimals) * pricePoolPerAsset.raw(),
+                MathLib.Rounding.Down
+            ) <= type(uint128).max
+        );
+        uint128 assetRoundTrip = PricingLib.shareToAssetAmount(
+            shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
+        );
+
+        // Value of one share-ulp expressed in asset units, rounded up (computed in uint256; the value itself
+        // can exceed uint128 when the price ratio is extreme, which is exactly when the loss is large).
+        uint256 oneShareUlpInAssets = MathLib.mulDiv(
+            pricePoolPerShare.raw(),
+            uint256(10 ** assetDecimals),
+            uint256(10 ** shareDecimals) * pricePoolPerAsset.raw(),
+            MathLib.Rounding.Up
+        );
+
+        assertLe(assetRoundTrip, assetAmount, "round-down asset->share->asset must never gain value");
+        assertLe(
+            uint256(assetAmount) - assetRoundTrip,
+            oneShareUlpInAssets + 1,
+            "round-trip loss within one intermediate-ulp + one target-ulp"
+        );
+    }
+
+    // Symmetric no-gain + tight-loss property for the reverse round-trip.
+    function testShareAssetRoundTripNoGain(
+        uint128 shareAmount_,
+        uint8 assetDecimals_,
+        uint8 shareDecimals_,
+        uint128 pricePoolPerAsset_,
+        uint128 pricePoolPerShare_
+    ) public pure {
+        uint8 assetDecimals = uint8(bound(assetDecimals_, 0, 18));
+        uint8 shareDecimals = uint8(bound(shareDecimals_, 0, 18));
+        uint128 shareAmount = uint128(bound(shareAmount_, 0, type(uint128).max));
+        // See testAssetShareRoundTripNoGain for why prices are capped at ROUNDTRIP_MAX_PRICE.
+        D18 pricePoolPerAsset = d18(uint128(bound(pricePoolPerAsset_, MIN_PRICE, ROUNDTRIP_MAX_PRICE)));
+        D18 pricePoolPerShare = d18(uint128(bound(pricePoolPerShare_, MIN_PRICE, ROUNDTRIP_MAX_PRICE)));
+
+        vm.assume(
+            MathLib.mulDiv(
+                pricePoolPerShare.raw(),
+                uint256(10 ** assetDecimals) * shareAmount,
+                uint256(10 ** shareDecimals) * pricePoolPerAsset.raw(),
+                MathLib.Rounding.Down
+            ) <= type(uint128).max
+        );
+        uint128 assetAmount = PricingLib.shareToAssetAmount(
+            shareAmount, shareDecimals, assetDecimals, pricePoolPerShare, pricePoolPerAsset, MathLib.Rounding.Down
+        );
+
+        vm.assume(
+            MathLib.mulDiv(
+                pricePoolPerAsset.raw(),
+                uint256(10 ** shareDecimals) * assetAmount,
+                uint256(10 ** assetDecimals) * pricePoolPerShare.raw(),
+                MathLib.Rounding.Down
+            ) <= type(uint128).max
+        );
+        uint128 shareRoundTrip = PricingLib.assetToShareAmount(
+            assetAmount, assetDecimals, shareDecimals, pricePoolPerAsset, pricePoolPerShare, MathLib.Rounding.Down
+        );
+
+        // Value of one asset-ulp expressed in share units, rounded up.
+        uint256 oneAssetUlpInShares = MathLib.mulDiv(
+            pricePoolPerAsset.raw(),
+            uint256(10 ** shareDecimals),
+            uint256(10 ** assetDecimals) * pricePoolPerShare.raw(),
+            MathLib.Rounding.Up
+        );
+
+        assertLe(shareRoundTrip, shareAmount, "round-down share->asset->share must never gain value");
+        assertLe(
+            uint256(shareAmount) - shareRoundTrip,
+            oneAssetUlpInShares + 1,
+            "round-trip loss within one intermediate-ulp + one target-ulp"
+        );
+    }
+}
+
+/// @dev calculatePriceAssetPerShare with 0-decimal assets/shares, including the toUint128 overflow boundary.
+contract ZeroDecimalsCalcPriceTest is Test {
+    using PricingLib for *;
+    using MathLib for uint256;
+
+    address asset = makeAddr("Asset");
+    address shareToken = makeAddr("ShareToken");
+
+    function _mockDecimals(uint8 assetDecimals, uint8 shareDecimals) internal {
+        vm.mockCall(asset, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(assetDecimals));
+        vm.mockCall(shareToken, abi.encodeWithSelector(IERC20Metadata.decimals.selector), abi.encode(shareDecimals));
+    }
+
+    // 1 whole asset unit / 1 whole share unit (both 0-dec) is the identity price 1e18.
+    function testZeroDecimalIdentityCorner() public {
+        _mockDecimals(0, 0);
+        D18 price = PricingLib.calculatePriceAssetPerShare(shareToken, 1, asset, 0, 1, MathLib.Rounding.Down);
+        assertEq(price.raw(), 1e18);
+    }
+
+    // 1 whole (0-dec) asset per 1 fine (18-dec) share => 1e36 asset-per-share in 18-dec price units.
+    function testZeroDecimalAssetFineShareCorner() public {
+        _mockDecimals(0, 18);
+        D18 price = PricingLib.calculatePriceAssetPerShare(shareToken, 1, asset, 0, 1, MathLib.Rounding.Down);
+        assertEq(price.raw(), 1e36);
+    }
+
+    // With 0-dec asset and 0-dec share and shares = 1, price raw = assets * 1e18, so the toUint128 cast
+    // reverts once assets exceeds type(uint128).max / 1e18. Pin the boundary so it is documented.
+    function testZeroDecimalPriceOverflowBoundary() public {
+        _mockDecimals(0, 0);
+        uint128 maxAssets = uint128(uint256(type(uint128).max) / 1e18);
+
+        D18 price = PricingLib.calculatePriceAssetPerShare(shareToken, 1, asset, 0, maxAssets, MathLib.Rounding.Down);
+        assertEq(price.raw(), uint256(maxAssets) * 1e18);
+
+        vm.expectRevert(); // MathLib.toUint128 overflow
+        this.calculatePriceAssetPerShare_(shareToken, 1, asset, 0, maxAssets + 1, MathLib.Rounding.Down);
+    }
+
+    // The same overflow class predates this change and scales with the coarse decimal: with a 2-decimal
+    // asset and 0-decimal share, price raw = assets * 1e16 / shares, so with shares = 1 the toUint128 cast
+    // reverts once assets exceeds type(uint128).max / 1e16 (a lower asset threshold than the 0-dec case).
+    function testTwoDecimalPriceOverflowBoundary() public {
+        _mockDecimals(2, 0);
+        uint128 maxAssets = uint128(uint256(type(uint128).max) / 1e16);
+
+        D18 price = PricingLib.calculatePriceAssetPerShare(shareToken, 1, asset, 0, maxAssets, MathLib.Rounding.Down);
+        assertEq(price.raw(), uint256(maxAssets) * 1e16);
+
+        vm.expectRevert(); // MathLib.toUint128 overflow
+        this.calculatePriceAssetPerShare_(shareToken, 1, asset, 0, maxAssets + 1, MathLib.Rounding.Down);
+    }
+
+    // External wrapper so vm.expectRevert can observe the toUint128 revert.
+    function calculatePriceAssetPerShare_(
+        address shareToken_,
+        uint128 shares,
+        address asset_,
+        uint256 tokenId,
+        uint128 assets,
+        MathLib.Rounding rounding
+    ) external view returns (D18) {
+        return PricingLib.calculatePriceAssetPerShare(shareToken_, shares, asset_, tokenId, assets, rounding);
     }
 }

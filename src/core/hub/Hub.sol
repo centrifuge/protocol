@@ -173,6 +173,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
+    function updateCurrency(PoolId poolId, AssetId currency) external {
+        _protected(poolId);
+
+        hubRegistry.updateCurrency(poolId, currency);
+    }
+
+    /// @inheritdoc IHub
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
         external
         payable

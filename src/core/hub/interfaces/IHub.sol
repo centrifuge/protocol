@@ -213,6 +213,13 @@ interface IHub is IBatchedMulticall {
     /// @param metadata Custom metadata to attach
     function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable;
 
+    /// @notice Update the pool's currency
+    /// @dev The new currency MUST have the same decimals as the current one: pool decimals are baked into
+    ///      already-deployed share tokens (immutable), so they cannot change. Reverts otherwise.
+    /// @param poolId The pool identifier
+    /// @param currency The new pool currency asset
+    function updateCurrency(PoolId poolId, AssetId currency) external;
+
     /// @notice Update name & symbol of share class
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
