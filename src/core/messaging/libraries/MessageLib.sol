@@ -80,7 +80,7 @@ library MessageLib {
         (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
         (90  << uint8(MessageType.UpdateVault) * 8) +
-        (107  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
         (75  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.Request) * 8) +
         (57  << uint8(MessageType.RequestCallback) * 8) +
@@ -214,7 +214,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.UpdateVault)) {
             return message.toUint128(74);
         } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
-            return message.toUint128(91);
+            return message.toUint128(75);
         } else if (kind == uint8(MessageType.UpdateShares)) {
             return message.toUint128(59);
         }
@@ -739,7 +739,6 @@ library MessageLib {
         bytes16 scId;
         uint128 assetId;
         uint128 amount;
-        uint128 pricePoolPerAsset;
         uint64 timestamp;
         bool isIncrease;
         bool isSnapshot;
@@ -755,12 +754,11 @@ library MessageLib {
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
             amount: data.toUint128(41),
-            pricePoolPerAsset: data.toUint128(57),
-            timestamp: data.toUint64(73),
-            isIncrease: data.toBool(81),
-            isSnapshot: data.toBool(82),
-            nonce: data.toUint64(83),
-            extraGasLimit: data.toUint128(91)
+            timestamp: data.toUint64(57),
+            isIncrease: data.toBool(65),
+            isSnapshot: data.toBool(66),
+            nonce: data.toUint64(67),
+            extraGasLimit: data.toUint128(75)
         });
     }
 
@@ -771,7 +769,6 @@ library MessageLib {
             t.scId,
             t.assetId,
             t.amount,
-            t.pricePoolPerAsset,
             t.timestamp,
             t.isIncrease,
             t.isSnapshot,

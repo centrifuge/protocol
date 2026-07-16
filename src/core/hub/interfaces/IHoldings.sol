@@ -5,15 +5,18 @@ import {IValuation} from "./IValuation.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
 
-import {D18} from "../../../misc/types/D18.sol";
-
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
 struct Holding {
-    uint128 assetAmount;
+    /// @dev Cumulative amounts, like a token's mint/burn totals. The current amount is derived as
+    ///      `increasedAmount - decreasedAmount`, saturating at zero. Tracking both (rather than a single
+    ///      clamped balance) lets an over-decrease from rounding net against later increases instead of
+    ///      being silently lost, so the hub amount stays reconciled with the spoke's cumulative net.
+    uint128 increasedAmount;
+    uint128 decreasedAmount;
     uint128 assetAmountValue;
     IValuation valuation; // Used for existence
 }
@@ -38,22 +41,12 @@ interface IHoldings {
 
     /// @notice Emitted when a holding is increased
     event Increase(
-        PoolId indexed,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        D18 pricePoolPerAsset,
-        uint128 amount,
-        uint128 increasedValue
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, uint128 increasedValue
     );
 
     /// @notice Emitted when a holding is decreased
     event Decrease(
-        PoolId indexed,
-        ShareClassId indexed scId,
-        AssetId indexed assetId,
-        D18 pricePoolPerAsset,
-        uint128 amount,
-        uint128 decreasedValue
+        PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, uint128 decreasedValue
     );
 
     /// @notice Emitted when the holding is updated
@@ -120,24 +113,34 @@ interface IHoldings {
     ) external;
 
     /// @notice Increments the amount of a holding and updates the value for that increment
+    /// @dev    The realized increment is valued at the hub-side valuation. Before initialization only the
+    ///         amount is tracked (value 0); the value is established when the holding is initialized.
+    ///         An oracle-backed valuation that reverts on a stale or unset price will stall this call until
+    ///         the price is refreshed.
+    ///         An increment first nets off any excess carried by a prior over-decrease (see `decrease`):
+    ///         only the amount above that excess is realized and valued, so an over-decrease can never be
+    ///         re-inflated into overstated value.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
     /// @param amount Amount to increase by
     /// @return value The value the holding has incremented
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of a holding and updates the value for that decrement
+    /// @dev    A decrease beyond the current amount is not clamped away: it accrues against `decreasedAmount`
+    ///         and nets off future increases, so it never reverts (which would stall the ordered message
+    ///         stream) yet never permanently loses the excess. Carrying value is removed pro-rata to the
+    ///         realized decrease, so the returned value exactly mirrors the storage mutation and can never
+    ///         over-journal.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
     /// @param amount Amount to decrease by
     /// @return value The value the holding has decremented
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount)
         external
         returns (uint128 value);
 
@@ -262,7 +265,7 @@ interface IHoldings {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @return assetAmount The amount of assets held
+    /// @return assetAmount The current amount of assets held (derived: increases net of decreases, floored at zero)
     /// @return assetAmountValue The value of assets held in pool currency
     /// @return valuation The valuation contract used for pricing
     function holding(PoolId poolId, ShareClassId scId, AssetId assetId)

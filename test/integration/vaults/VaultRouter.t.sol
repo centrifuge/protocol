@@ -51,7 +51,9 @@ contract VaultRouterTest is BaseTest {
 
     function _testCFGRouterDeposit(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2, since the balance sheet's queued deposit amount is
+        // accounted twice over the request/approve lifecycle (noteDeposit, then unreserve).
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);
@@ -153,7 +155,9 @@ contract VaultRouterTest is BaseTest {
     }
 
     function _testRouterRedeem(uint256 amount, bool snap) internal {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit that funds the redeem is queued twice
+        // (noteDeposit, then unreserve on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
         // deposit
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
@@ -202,9 +206,11 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testRouterDepositIntoMultipleVaults(uint256 amount1, uint256 amount2) public {
-        amount1 = uint128(bound(amount1, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: each deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount1 = uint128(bound(amount1, 4, MAX_UINT128 / 2));
         vm.assume(amount1 % 2 == 0);
-        amount2 = uint128(bound(amount2, 4, MAX_UINT128));
+        amount2 = uint128(bound(amount2, 4, MAX_UINT128 / 2));
         vm.assume(amount2 % 2 == 0);
 
         (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
@@ -241,9 +247,11 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testRouterRedeemFromMultipleVaults(uint256 amount1, uint256 amount2) public {
-        amount1 = uint128(bound(amount1, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposits funding the redeems are each queued twice
+        // (noteDeposit, then unreserve on approval) in the balance sheet's asset accounting.
+        amount1 = uint128(bound(amount1, 4, MAX_UINT128 / 2));
         vm.assume(amount1 % 2 == 0);
-        amount2 = uint128(bound(amount2, 4, MAX_UINT128));
+        amount2 = uint128(bound(amount2, 4, MAX_UINT128 / 2));
         vm.assume(amount2 % 2 == 0);
 
         // deposit
@@ -291,7 +299,9 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testMulticallingDepositClaimAndRequestRedeem(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         // deposit
@@ -324,9 +334,11 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testMulticallingDepositIntoMultipleVaults(uint256 amount1, uint256 amount2) public {
-        amount1 = uint128(bound(amount1, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: each deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount1 = uint128(bound(amount1, 4, MAX_UINT128 / 2));
         vm.assume(amount1 % 2 == 0);
-        amount2 = uint128(bound(amount2, 4, MAX_UINT128));
+        amount2 = uint128(bound(amount2, 4, MAX_UINT128 / 2));
         vm.assume(amount2 % 2 == 0);
 
         (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);

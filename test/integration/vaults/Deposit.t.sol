@@ -56,7 +56,9 @@ contract DepositTest is BaseTest {
 
     function _testDepositMint(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
         uint128 price = 2 * 10 ** 18;
 
@@ -333,7 +335,9 @@ contract DepositTest is BaseTest {
 
     function testDepositMintToReceiver(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
@@ -388,7 +392,9 @@ contract DepositTest is BaseTest {
 
     function testDepositAsEndorsedOperator(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
@@ -753,7 +759,9 @@ contract DepositTest is BaseTest {
     }
 
     function testDepositAsInvestorDirectly(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);

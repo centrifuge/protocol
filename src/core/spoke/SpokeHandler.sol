@@ -12,6 +12,7 @@ import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
 import {VaultUpdateKind} from "../messaging/libraries/MessageLib.sol";
 import {ISpokeGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
@@ -94,7 +95,7 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external auth {
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
         registrar.mint(address(token), address(this), amount);
-        token.transfer(receiver.toAddress(), amount);
+        SafeTransferLib.safeTransfer(address(token), receiver.toAddress(), amount);
         emit ExecuteTransferShares(poolId, scId, receiver.toAddress(), amount);
     }
 

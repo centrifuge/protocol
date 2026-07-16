@@ -104,6 +104,10 @@
 | 102 | balanceSheet_noteDeposit | PoolEscrow.total increases by exactly the amount deposited | ✅ |
 | 103 | balanceSheet_noteDeposit | PoolEscrow.reserved does not change during noteDeposit | ✅ |
 | 104 | balanceSheet_withdraw | Withdrawals should not fail when there's sufficient balance | ✅ |
+| 104a | balanceSheet_withdrawReserved | PoolEscrow.total and PoolEscrow.reserved both decrease by exactly the amount withdrawn | ✅ |
+| 104b | balanceSheet_withdrawReserved | withdrawReserved does not queue a Hub holding decrease (already queued when reserved) | ✅ |
+| 104c | balanceSheet_withdrawShares | withdrawShares moves shares out of the pool escrow with no change to queuedShares | ✅ |
+| 104d | property_escrowBalanceMatchesHoldingTotal | The pool escrow's raw token balance for an asset equals the sum of holding.total across share classes | ✅ |
 | 105 | doomsday_mint | user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision | ✅ |
 | 106 | doomsday_mint | user should always be able to deposit less than maxMint | ✅ |
 | 107 | doomsday_mint | user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision | ✅ |

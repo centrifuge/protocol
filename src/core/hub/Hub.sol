@@ -327,8 +327,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         holdings.initialize(poolId, scId, assetId, valuation, accounts);
 
-        // If increase/decrease was called before initialize, we add journal entries for this
-        _updateAccountingAmount(poolId, scId, assetId, true, holdings.value(poolId, scId, assetId));
+        // If increase/decrease was called before initialize, the tracked amount carries no value yet:
+        // establish it at the valuation and book it as principal.
+        (, uint128 initialValue) = holdings.update(poolId, scId, assetId);
+        _updateAccountingAmount(poolId, scId, assetId, true, initialValue);
     }
 
     /// @inheritdoc IHub

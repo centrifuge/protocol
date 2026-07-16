@@ -12,6 +12,10 @@ pragma solidity >=0.5.0;
 /// @dev    The registrar abstracts only privileged operations; core still moves shares via the token's
 ///         ERC20 `transfer`/`transferFrom`/`approve` directly, so every registrar's token MUST be
 ///         ERC20-transfer-compatible.
+/// @dev    Because the core no longer force-transfers, a registrar's token MUST permit plain ERC20
+///         transfers into the root-endorsed core contracts (Spoke, BalanceSheet): cross-chain transfers
+///         pull the shares in with `transferFrom` and `revoke`/`burn` pulls them in before burning. A
+///         restriction policy that blocks transfers to those endorsed addresses will brick those flows.
 interface IRegistrar {
     /// @notice Deploys (or registers) a new share token for this standard.
     /// @dev    In order to have the same address on different EVMs, `salt` should be used

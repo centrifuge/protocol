@@ -1532,10 +1532,14 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
     /// @dev Property: Asset queue cannot create assets from nothing.
     /// @notice queuedAssets tracks already-executed escrow movements pending hub notification.
-    ///         noteDeposit increases holding.total AND queuedDeposits atomically;
-    ///         noteWithdraw decreases holding.total AND increases queuedWithdrawals atomically.
-    ///         We use holding.total (not availableBalanceOf) because reserve/unreserve
-    ///         affect available but do NOT update the queue.
+    ///         deposit/noteDeposit increase holding.total AND queuedDeposits atomically;
+    ///         withdraw decreases holding.total AND increases queuedWithdrawals atomically.
+    ///         reserve/unreserve do NOT touch holding.total (only holding.reserved), but DO queue a
+    ///         holding decrease/increase respectively, since reserved funds are removed from the
+    ///         hub-accounted holding. withdrawReserved decreases holding.total but does NOT touch the
+    ///         queue again, since the decrease was already queued when the funds were reserved.
+    ///         We use holding.total (not availableBalanceOf) since availableBalanceOf additionally
+    ///         nets out `reserved`, which would double-count the reserve/unreserve queue contribution.
     ///         Invariant: total + queuedWithdrawals >= queuedDeposits
     ///         (i.e., the escrow total before the queued period was non-negative).
     function property_availableGtQueued() public {
@@ -1559,6 +1563,30 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             uint256(queuedDeposits),
             "Asset queue net exceeds prior escrow total"
         );
+    }
+
+    /// @dev Property: The pool escrow's raw token balance for an asset always equals the sum of
+    ///      holding.total across all of the pool's share classes for that asset.
+    /// @notice holding.total now INCLUDES assets backing pending (not-yet-approved) deposit requests,
+    ///         since AsyncRequestManager.requestDeposit calls noteDeposit (crediting holding.total)
+    ///         before reserving the equal amount (crediting holding.reserved, leaving
+    ///         availableBalanceOf = total - reserved unaffected by the pending request).
+    function property_escrowBalanceMatchesHoldingTotal() public assetIsSet {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        address asset = vault.asset();
+
+        PoolEscrow poolEscrow = PoolEscrow(address(balanceSheet.escrow(poolId)));
+        uint256 actualBalance = MockERC20(asset).balanceOf(address(poolEscrow));
+
+        ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+        uint256 aggregatedTotal;
+        for (uint256 i; i < shareClasses.length; i++) {
+            (uint128 total,) = poolEscrow.holding(shareClasses[i], asset, 0);
+            aggregatedTotal += total;
+        }
+
+        eq(actualBalance, aggregatedTotal, "escrow raw balance != aggregated holding.total");
     }
 
     /// @dev Property 2.7: Authorization Boundary Enforcement

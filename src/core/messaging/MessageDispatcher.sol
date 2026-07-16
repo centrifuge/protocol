@@ -75,7 +75,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spokeHandler.addPool(poolId);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize(), false, refund);
         }
@@ -125,7 +125,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spokeHandler.updateShareMetadata(poolId, scId, name, symbol);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -149,7 +149,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (chainId == localCentrifugeId) {
             spokeHandler.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, computedAt);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 chainId,
@@ -173,7 +173,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
             spokeHandler.updatePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset, timestamp);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -201,7 +201,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spokeHandler.updateRestriction(poolId, scId, payload);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -230,7 +230,9 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             envoy.callFromHub{value: value}(poolId, target, payload);
             // Refund any value not forwarded rather than assume `value == msgValue()`: if that Hub
             // precondition ever changes, the remainder is returned instead of silently stranded here.
-            SafeTransferLib.safeTransferETH(refund, msg.value - value);
+            if (msg.value > value) {
+                SafeTransferLib.safeTransferETH(refund, msg.value - value);
+            }
         } else {
             _send(
                 centrifugeId,
@@ -255,7 +257,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spokeHandler.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -281,7 +283,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             spokeHandler.setRequestManager(poolId, IRequestManager(manager.toAddress()));
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -308,7 +310,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             else if (kind == ManagerKind.Gateway) gateway.updateManager(poolId, whoAddr, canManage);
             else if (kind == ManagerKind.Bridger) spokeHandler.updateBridger(poolId, whoAddr, canManage);
             else revert InvalidManagerKind();
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -324,7 +326,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             scheduleAuth.scheduleRely(target.toAddress());
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.ScheduleUpgrade({target: target}).serialize(), false, refund);
         }
@@ -334,7 +336,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     function sendCancelUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             scheduleAuth.cancelRely(target.toAddress());
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.CancelUpgrade({target: target}).serialize(), false, refund);
         }
@@ -397,7 +399,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         if (targetCentrifugeId == localCentrifugeId) {
             // Spoke chain X => Hub chain Y => Spoke chain Y
             spokeHandler.executeTransferShares(poolId, scId, receiver, amount);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 targetCentrifugeId,
@@ -420,23 +422,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         AssetId assetId,
         UpdateData calldata data,
-        D18 pricePoolPerAsset,
         uint128 extraGasLimit,
         address refund
-    ) external payable auth {
+    ) public payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hubHandler.updateHoldingAmount(
-                localCentrifugeId,
-                poolId,
-                scId,
-                assetId,
-                data.netAmount,
-                pricePoolPerAsset,
-                data.isIncrease,
-                data.isSnapshot,
-                data.nonce
+                localCentrifugeId, poolId, scId, assetId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
@@ -445,7 +438,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                         scId: scId.raw(),
                         assetId: assetId.raw(),
                         amount: data.netAmount,
-                        pricePoolPerAsset: pricePoolPerAsset.raw(),
                         timestamp: uint64(block.timestamp),
                         isIncrease: data.isIncrease,
                         isSnapshot: data.isSnapshot,
@@ -456,6 +448,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 refund
             );
         }
+    }
+
+    /// @inheritdoc ISpokeMessageSender
+    /// @dev ABI-compatibility overload for the deployed v3.1.0 BalanceSheet; the price is ignored
+    ///      (the hub values holding deltas at its own valuation).
+    function sendUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        UpdateData calldata data,
+        D18, /* pricePoolPerAsset */
+        uint128 extraGasLimit,
+        address refund
+    ) external payable {
+        sendUpdateHoldingAmount(poolId, scId, assetId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc ISpokeMessageSender
@@ -470,7 +477,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             hubHandler.updateShares(
                 localCentrifugeId, poolId, scId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
@@ -498,7 +505,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     {
         if (centrifugeId == localCentrifugeId) {
             hubHandler.registerAsset(assetId, decimals);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -521,7 +528,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hubHandler.request(poolId, scId, assetId, payload);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
@@ -551,7 +558,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
         if (hubCentrifugeId == localCentrifugeId) {
             envoy.callFromSpoke(poolId, target.toAddress(), payload, localCentrifugeId, sender);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 hubCentrifugeId,
@@ -580,7 +587,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
             spokeHandler.requestCallback(poolId, scId, assetId, payload);
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 assetId.centrifugeId(),
@@ -620,5 +627,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function _send(uint16 centrifugeId, bytes memory message, bool unpaidMode, address refund) internal {
         gateway.send{value: msg.value}(centrifugeId, message, unpaidMode, refund);
+    }
+
+    function _refund(address refund) internal {
+        if (msg.value > 0) {
+            SafeTransferLib.safeTransferETH(refund, msg.value);
+        }
     }
 }

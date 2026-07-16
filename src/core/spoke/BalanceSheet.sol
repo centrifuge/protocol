@@ -6,18 +6,14 @@ import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IEndorsements} from "./interfaces/IEndorsements.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
-import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount, WithdrawMode} from "./interfaces/IBalanceSheet.sol";
+import {IBalanceSheet, ShareQueueAmount, AssetQueueAmount} from "./interfaces/IBalanceSheet.sol";
 
 import {Auth} from "../../misc/Auth.sol";
-import {D18, d18} from "../../misc/types/D18.sol";
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
-import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {IERC6909} from "../../misc/interfaces/IERC6909.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
-import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
 import {IGateway} from "../messaging/interfaces/IGateway.sol";
 import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
@@ -26,25 +22,26 @@ import {IBalanceSheetGatewayHandler} from "../messaging/interfaces/IGatewayHandl
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 
 /// @title  Balance Sheet
 /// @notice Management contract that integrates all balance sheet functions of a pool:
 ///         - Issuing and revoking shares
 ///         - Depositing and withdrawing assets
+///         - Reserving assets (removing them from the hub-accounted holding)
 ///         - Force transferring shares
 ///
-///         Share and asset updates to the Hub are optionally queued, to reduce the cost
-///         per transaction. Dequeuing can be triggered locally by the manager or from the Hub.
+///         Share and asset updates to the Hub are optionally queued, to reduce the cost per transaction.
+///         Asset updates carry amounts only; the hub values each net delta at its own valuation, so no
+///         price is read or sent on the spoke.
 contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBalanceSheetGatewayHandler {
-    using MathLib for *;
-    using CastLib for bytes32;
-
     ISpokeRegistry public spoke;
     ISpokeMessageSender public sender;
     IEndorsements public immutable endorsements;
     IPoolEscrowProvider public poolEscrowProvider;
 
+    mapping(PoolId => IManifest) public manifest;
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(ShareClassId => ShareQueueAmount)) public queuedShares;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => AssetQueueAmount))) public queuedAssets;
@@ -53,9 +50,10 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         endorsements = endorsements_;
     }
 
-    /// @dev Check if the msgSender() is ward or a manager
+    /// @dev Guard for manager methods: the sender must be a manager and, if a manifest is installed, the
+    ///      call must satisfy the pool's policy.
     modifier isManager(PoolId poolId) {
-        require(manager[poolId][msgSender()], IAuth.NotAuthorized());
+        _enforceManager(poolId);
         _;
     }
 
@@ -74,8 +72,16 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         emit File(what, data);
     }
 
+    /// @inheritdoc IBalanceSheet
+    function setManifest(PoolId poolId, IManifest manifest_) external {
+        if (wards[msgSender()] != 1) _enforceManager(poolId);
+
+        manifest[poolId] = manifest_;
+        emit SetManifest(poolId, manifest_);
+    }
+
     //----------------------------------------------------------------------------------------------
-    // Management functions (standard operations)
+    // Asset management
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBalanceSheet
@@ -84,7 +90,8 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         payable
         isManager(poolId)
     {
-        noteDeposit(poolId, scId, asset, tokenId, amount, true);
+        escrow(poolId).deposit(scId, asset, tokenId, amount);
+        _updateAssets(poolId, scId, asset, tokenId, amount, true);
 
         address escrow_ = address(escrow(poolId));
         if (tokenId == 0) {
@@ -96,6 +103,18 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     }
 
     /// @inheritdoc IBalanceSheet
+    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable
+        isManager(poolId)
+    {
+        escrow(poolId).deposit(scId, asset, tokenId, amount);
+        _updateAssets(poolId, scId, asset, tokenId, amount, true);
+
+        emit NoteDeposit(poolId, scId, msgSender(), asset, tokenId, amount);
+    }
+
+    /// @inheritdoc IBalanceSheet
     function withdraw(
         PoolId poolId,
         ShareClassId scId,
@@ -103,8 +122,36 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) public payable isManager(poolId) {
-        withdraw(poolId, scId, asset, tokenId, receiver, amount, WithdrawMode.Full);
+    ) external payable isManager(poolId) {
+        IPoolEscrow escrow_ = escrow(poolId);
+
+        escrow_.withdraw(scId, asset, tokenId, receiver, amount);
+        _updateAssets(poolId, scId, asset, tokenId, amount, false);
+        escrow_.authTransferTo(asset, tokenId, receiver, amount);
+
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function withdrawReserved(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable isManager(poolId) {
+        IPoolEscrow escrow_ = escrow(poolId);
+
+        // Release the reservation and withdraw the freed balance: reserved and total both decrease by
+        // `amount`, with no queue update since the holding decrease was already queued at reserve time.
+        escrow_.unreserve(scId, asset, tokenId, amount, reserver, reason);
+        escrow_.withdraw(scId, asset, tokenId, receiver, amount);
+        escrow_.authTransferTo(asset, tokenId, receiver, amount);
+
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -116,8 +163,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint128 amount,
         address reserver,
         uint32 reason
-    ) public payable isManager(poolId) {
+    ) external payable isManager(poolId) {
         escrow(poolId).reserve(scId, asset, tokenId, amount, reserver, reason);
+        _updateAssets(poolId, scId, asset, tokenId, amount, false);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -129,50 +177,9 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         uint128 amount,
         address reserver,
         uint32 reason
-    ) public payable isManager(poolId) {
+    ) external payable isManager(poolId) {
         escrow(poolId).unreserve(scId, asset, tokenId, amount, reserver, reason);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable isManager(poolId) {
-        emit Issue(poolId, scId, msgSender(), to, _pricePoolPerShare(poolId, scId), shares);
-
-        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        if (shareQueue.isPositive || shareQueue.delta == 0) {
-            shareQueue.delta += shares;
-            shareQueue.isPositive = shareQueue.delta != 0;
-        } else if (shareQueue.delta >= shares) {
-            shareQueue.delta -= shares;
-            shareQueue.isPositive = false;
-        } else {
-            shareQueue.delta = shares - shareQueue.delta;
-            shareQueue.isPositive = true;
-        }
-
-        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
-        registrar.mint(address(token), to, shares);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable isManager(poolId) {
-        emit Revoke(poolId, scId, msgSender(), msgSender(), _pricePoolPerShare(poolId, scId), shares);
-
-        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
-        if (!shareQueue.isPositive) {
-            shareQueue.delta += shares;
-        } else if (shareQueue.delta > shares) {
-            shareQueue.delta -= shares;
-        } else {
-            shareQueue.delta = shares - shareQueue.delta;
-            shareQueue.isPositive = false;
-        }
-
-        // Pull the shares to this contract (the caller approves this balance sheet, not the registrar),
-        // then grant the registrar an allowance over this contract's balance so it can pull-and-burn.
-        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
-        SafeTransferLib.safeTransferFrom(address(token), msgSender(), address(this), shares);
-        SafeTransferLib.safeApprove(address(token), address(registrar), shares);
-        registrar.burn(address(token), address(this), shares);
+        _updateAssets(poolId, scId, asset, tokenId, amount, true);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -186,7 +193,6 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
 
-        D18 pricePoolPerAsset = _pricePoolPerAsset(poolId, scId, assetId);
         uint32 assetCounter = (assetQueue.deposits != 0 || assetQueue.withdrawals != 0) ? 1 : 0;
 
         ISpokeMessageSender.UpdateData memory data = ISpokeMessageSender.UpdateData({
@@ -203,10 +209,52 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         shareQueue.nonce++;
         shareQueue.queuedAssetCounter -= assetCounter;
 
-        emit SubmitQueuedAssets(poolId, scId, assetId, data, pricePoolPerAsset);
-        sender.sendUpdateHoldingAmount{value: msgValue()}(
-            poolId, scId, assetId, data, pricePoolPerAsset, extraGasLimit, refund
-        );
+        emit SubmitQueuedAssets(poolId, scId, assetId, data);
+        sender.sendUpdateHoldingAmount{value: msgValue()}(poolId, scId, assetId, data, extraGasLimit, refund);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Share management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IBalanceSheet
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable isManager(poolId) {
+        emit Issue(poolId, scId, msgSender(), to, shares);
+
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
+        (shareQueue.delta, shareQueue.isPositive) = _netShares(shareQueue.delta, shareQueue.isPositive, shares, true);
+
+        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
+        registrar.mint(address(token), to, shares);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable isManager(poolId) {
+        emit Revoke(poolId, scId, msgSender(), msgSender(), shares);
+
+        ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
+        (shareQueue.delta, shareQueue.isPositive) = _netShares(shareQueue.delta, shareQueue.isPositive, shares, false);
+
+        // Pull the shares to this contract (the caller approves this balance sheet, not the registrar),
+        // then grant the registrar an allowance over this contract's balance so it can pull-and-burn.
+        (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
+        SafeTransferLib.safeTransferFrom(address(token), msgSender(), address(this), shares);
+        SafeTransferLib.safeApprove(address(token), address(registrar), shares);
+        registrar.burn(address(token), address(this), shares);
+    }
+
+    /// @inheritdoc IBalanceSheet
+    function withdrawShares(PoolId poolId, ShareClassId scId, address receiver, uint128 amount)
+        external
+        payable
+        isManager(poolId)
+    {
+        // Share tokens parked in the escrow carry no holding accounting (issuance is queued via issue/revoke),
+        // so this is a plain hook-checked transfer out of the escrow with no Hub queue.
+        IERC20 token = spoke.shareToken(poolId, scId);
+        escrow(poolId).authTransferTo(address(token), 0, receiver, amount);
+
+        emit WithdrawShares(poolId, scId, receiver, amount);
     }
 
     /// @inheritdoc IBalanceSheet
@@ -220,7 +268,7 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         ISpokeMessageSender.UpdateData memory data = ISpokeMessageSender.UpdateData({
             netAmount: shareQueue.delta,
             isIncrease: shareQueue.isPositive,
-            isSnapshot: queuedShares[poolId][scId].queuedAssetCounter == 0,
+            isSnapshot: shareQueue.queuedAssetCounter == 0,
             nonce: shareQueue.nonce
         });
 
@@ -245,129 +293,6 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
         (IERC20 token, IRegistrar registrar) = spoke.shareTokenAndRegistrar(poolId, scId);
         registrar.authTransferFrom(address(token), sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId, D18 value)
-        external
-        payable
-        isManager(poolId)
-    {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)), value.raw());
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), true);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
-        external
-        payable
-        isManager(poolId)
-    {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)), false);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function overridePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 value) external payable isManager(poolId) {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShare", poolId, scId)), value.raw());
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), true);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function resetPricePoolPerShare(PoolId poolId, ShareClassId scId) external payable isManager(poolId) {
-        TransientStorageLib.tstore(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)), false);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Management functions (manual operations)
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IBalanceSheet
-    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        public
-        payable
-        isManager(poolId)
-        returns (D18 pricePoolPerAsset_)
-    {
-        return noteDeposit(poolId, scId, asset, tokenId, amount, true);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function noteDeposit(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        uint128 amount,
-        bool updateEscrow
-    ) public payable isManager(poolId) returns (D18 pricePoolPerAsset_) {
-        AssetId assetId = spoke.assetToId(asset, tokenId);
-
-        if (updateEscrow) {
-            escrow(poolId).deposit(scId, asset, tokenId, amount);
-        }
-
-        pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
-        emit NoteDeposit(poolId, scId, msgSender(), asset, tokenId, amount, pricePoolPerAsset_);
-
-        _updateAssets(poolId, scId, assetId, amount, true);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function withdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address receiver,
-        uint128 amount,
-        WithdrawMode mode
-    ) public payable isManager(poolId) {
-        IPoolEscrow escrow_ = escrow(poolId);
-        D18 pricePoolPerAsset_;
-
-        if (mode == WithdrawMode.Full) {
-            pricePoolPerAsset_ = noteWithdraw(poolId, scId, asset, tokenId, receiver, amount, true);
-            emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
-        } else if (mode == WithdrawMode.EscrowAndTransfer) {
-            escrow_.withdraw(scId, asset, tokenId, receiver, amount);
-            AssetId assetId = spoke.assetToId(asset, tokenId);
-            pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
-            emit Withdraw(poolId, scId, asset, tokenId, receiver, amount, pricePoolPerAsset_);
-        }
-
-        escrow_.authTransferTo(asset, tokenId, receiver, amount);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function noteWithdraw(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
-        public
-        payable
-        isManager(poolId)
-        returns (D18 pricePoolPerAsset_)
-    {
-        return noteWithdraw(poolId, scId, asset, tokenId, address(0), amount, false);
-    }
-
-    /// @inheritdoc IBalanceSheet
-    function noteWithdraw(
-        PoolId poolId,
-        ShareClassId scId,
-        address asset,
-        uint256 tokenId,
-        address receiver,
-        uint128 amount,
-        bool updateEscrow
-    ) public payable isManager(poolId) returns (D18 pricePoolPerAsset_) {
-        AssetId assetId = spoke.assetToId(asset, tokenId);
-
-        if (updateEscrow) {
-            escrow(poolId).withdraw(scId, asset, tokenId, receiver, amount);
-        }
-
-        pricePoolPerAsset_ = _pricePoolPerAsset(poolId, scId, assetId);
-        emit NoteWithdraw(poolId, scId, asset, tokenId, amount, pricePoolPerAsset_);
-
-        _updateAssets(poolId, scId, assetId, amount, false);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -402,33 +327,50 @@ contract BalanceSheet is Auth, BatchedMulticall, Recoverable, IBalanceSheet, IBa
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    function _updateAssets(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount, bool isDeposit) internal {
+    /// @dev Require the sender to be a manager and, if a manifest is installed, enforce the pool's policy.
+    function _enforceManager(PoolId poolId) internal {
+        require(manager[poolId][msgSender()], IAuth.NotAuthorized());
+        IManifest m = manifest[poolId];
+        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+    }
+
+    /// @dev Accumulate the queued gross asset flow.
+    function _updateAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        bool isIncrease
+    ) internal {
         if (amount == 0) return;
+
+        AssetId assetId = spoke.assetToId(asset, tokenId);
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         AssetQueueAmount storage assetQueue = queuedAssets[poolId][scId][assetId];
         if (assetQueue.deposits == 0 && assetQueue.withdrawals == 0) shareQueue.queuedAssetCounter++;
-        if (isDeposit) assetQueue.deposits += amount;
+
+        if (isIncrease) assetQueue.deposits += amount;
         else assetQueue.withdrawals += amount;
     }
 
-    // forgefmt: disable-next-item
-    function _pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
-        if (TransientStorageLib.tloadBool(keccak256(abi.encode("pricePoolPerAssetIsSet", poolId, scId, assetId)))) {
-            return d18(
-                TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerAsset", poolId, scId, assetId)))
-            );
+    /// @dev Apply a signed share delta to the queued net (issuance adds, revocation subtracts) and return the
+    ///      new magnitude and sign, computed once. The net is stored as a magnitude with a sign; a zero
+    ///      magnitude is canonicalized to non-positive.
+    function _netShares(uint128 delta, bool isPositive, uint128 shares, bool isIssuance)
+        internal
+        pure
+        returns (uint128 newDelta, bool newIsPositive)
+    {
+        if (isIssuance == isPositive || delta == 0) {
+            newDelta = delta + shares;
+            newIsPositive = newDelta != 0 && isIssuance;
+        } else if (delta >= shares) {
+            newDelta = delta - shares;
+            newIsPositive = newDelta != 0 && isPositive;
+        } else {
+            newDelta = shares - delta;
+            newIsPositive = isIssuance;
         }
-
-        D18 pricePoolPerAsset = spoke.pricePoolPerAsset(poolId, scId, assetId, true);
-        return pricePoolPerAsset;
-    }
-
-    function _pricePoolPerShare(PoolId poolId, ShareClassId scId) internal view returns (D18) {
-        if (TransientStorageLib.tloadBool(keccak256(abi.encode("pricePoolPerShareIsSet", poolId, scId)))) {
-            return d18(TransientStorageLib.tloadUint128(keccak256(abi.encode("pricePoolPerShare", poolId, scId))));
-        }
-
-        D18 pricePoolPerShare = spoke.pricePoolPerShare(poolId, scId, true);
-        return pricePoolPerShare;
     }
 }

@@ -13,8 +13,8 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
-import {IBalanceSheet, WithdrawMode} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 
 /// @title  OnOffRamp
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets with accounting token support.
@@ -147,7 +147,7 @@ contract OnOffRamp is IOnOffRamp {
     function _withdraw(address asset, uint128 amount, address receiver) internal {
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
         // Withdraw real asset to receiver
-        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
+        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount);
 
         // Mint non-liability accounting token and deposit to BalanceSheet
         uint256 accTokenId = accountingToken.toTokenId(poolId, asset, false);

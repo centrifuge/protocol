@@ -184,7 +184,6 @@ contract TestMessageSourceClassification is Test {
                     scId: bytes16("sc"),
                     assetId: newAssetId(FOREIGN_CHAIN, 0).raw(),
                     amount: 1,
-                    pricePoolPerAsset: 0,
                     timestamp: 0,
                     isIncrease: true,
                     isSnapshot: false,

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
@@ -60,7 +59,7 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHandler.updateHoldingAmount(
-            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, D18.wrap(1), false, true, 0
+            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, false, true, 0
         );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -118,6 +117,82 @@ contract TestFile is TestCommon {
         emit IHubHandler.File("shareClassManager", address(23));
         hubHandler.file("shareClassManager", address(23));
         assertEq(address(hubHandler.shareClassManager()), address(23));
+    }
+}
+
+contract TestUpdateHoldingAmount is TestCommon {
+    uint64 constant NONCE = 7;
+    uint128 constant AMOUNT = 100;
+    uint128 constant VALUE = 500;
+
+    function _mockCommon(bool isInitialized) internal {
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.isInitialized.selector, POOL_A, SC_A, ASSET_A),
+            abi.encode(isInitialized)
+        );
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.setSnapshot.selector, POOL_A, SC_A, CHAIN_A, true, NONCE),
+            abi.encode()
+        );
+        vm.mockCall(address(hub), abi.encodeWithSelector(IHub.updateAccountingAmount.selector), abi.encode());
+    }
+
+    function testIncreaseJournalsReturnedValue() public {
+        _mockCommon(true);
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.increase.selector, POOL_A, SC_A, ASSET_A, AMOUNT),
+            abi.encode(VALUE)
+        );
+
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(IHub.updateAccountingAmount.selector, POOL_A, SC_A, ASSET_A, true, VALUE)
+        );
+        vm.expectCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.setSnapshot.selector, POOL_A, SC_A, CHAIN_A, true, NONCE)
+        );
+
+        vm.prank(AUTH);
+        hubHandler.updateHoldingAmount(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, true, true, NONCE);
+    }
+
+    function testDecreaseJournalsReturnedValue() public {
+        _mockCommon(true);
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.decrease.selector, POOL_A, SC_A, ASSET_A, AMOUNT),
+            abi.encode(VALUE)
+        );
+
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(IHub.updateAccountingAmount.selector, POOL_A, SC_A, ASSET_A, false, VALUE)
+        );
+
+        vm.prank(AUTH);
+        hubHandler.updateHoldingAmount(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, false, true, NONCE);
+    }
+
+    function testUninitializedSkipsAccounting() public {
+        _mockCommon(false);
+        vm.mockCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.increase.selector, POOL_A, SC_A, ASSET_A, AMOUNT),
+            abi.encode(uint128(0))
+        );
+
+        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateAccountingAmount.selector), 0);
+        vm.expectCall(
+            address(holdings),
+            abi.encodeWithSelector(IHoldings.setSnapshot.selector, POOL_A, SC_A, CHAIN_A, true, NONCE)
+        );
+
+        vm.prank(AUTH);
+        hubHandler.updateHoldingAmount(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, true, true, NONCE);
     }
 }
 

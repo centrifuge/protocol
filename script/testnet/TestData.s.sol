@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {BaseTestData} from "./BaseTestData.s.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
-import {d18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {AccountId} from "../../src/core/types/AccountId.sol";
@@ -65,13 +64,10 @@ contract TestData is BaseTestData {
 
         wBtc.approve(address(balanceSheet), 10e18);
 
-        bytes[] memory calls = new bytes[](3);
-        calls[0] = abi.encodeWithSelector(
-            balanceSheet.overridePricePoolPerAsset.selector, asyncPoolId, asyncScId, wBtcId, d18(100_000, 1)
-        );
-        calls[1] =
+        bytes[] memory calls = new bytes[](2);
+        calls[0] =
             abi.encodeWithSelector(balanceSheet.deposit.selector, asyncPoolId, asyncScId, address(wBtc), 0, 10e18);
-        calls[2] = abi.encodeWithSelector(
+        calls[1] = abi.encodeWithSelector(
             balanceSheet.submitQueuedAssets.selector, asyncPoolId, asyncScId, wBtcId, DEFAULT_EXTRA_GAS, msg.sender
         );
         balanceSheet.multicall(calls);

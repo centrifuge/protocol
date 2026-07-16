@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {d18} from "../../../src/misc/types/D18.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
@@ -25,7 +25,6 @@ contract TestCases is CentrifugeIntegrationTest {
     AccountId constant ASSET_EUR_STABLE_ACCOUNT = AccountId.wrap(0x05);
     AccountId constant FEE_ACCOUNT = AccountId.wrap(0x06);
     AccountId constant LIABILITY_ACCOUNT = AccountId.wrap(0x07);
-    AccountId constant WRITE_DOWN_ACCOUNT = AccountId.wrap(0x08);
 
     AssetId immutable USDC_ID = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
     AssetId immutable EUR_STABLE_ID = newAssetId(LOCAL_CENTRIFUGE_ID, 2);
@@ -42,6 +41,16 @@ contract TestCases is CentrifugeIntegrationTest {
         vm.stopPrank();
     }
 
+    function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
+        internal
+        view
+    {
+        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
+        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
+        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
+    }
+
+    /// forge-config: default.isolate = true
     function _holdingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
         internal
         pure
@@ -64,16 +73,6 @@ contract TestCases is CentrifugeIntegrationTest {
         accounts[3] = liability;
     }
 
-    function _assertEqAccountValue(PoolId poolId, AccountId accountId, bool expectedIsPositive, uint128 expectedValue)
-        internal
-        view
-    {
-        (bool isPositive, uint128 value) = accounting.accountValue(poolId, accountId);
-        assertEq(isPositive, expectedIsPositive, "Mismatch: Accounting.accountValue - isPositive");
-        assertEq(value, expectedValue, "Mismatch: Accounting.accountValue - value");
-    }
-
-    /// forge-config: default.isolate = true
     function testPoolCreation(bool withInitialization) public returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
         vm.prank(address(opsGuardian.opsSafe()));
@@ -91,6 +90,7 @@ contract TestCases is CentrifugeIntegrationTest {
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
         if (withInitialization) {
             valuation.setPrice(poolId, scId, USDC_ID, d18(1, 1));
+            valuation.setPrice(poolId, scId, EUR_STABLE_ID, d18(1, 1));
             hub.initializeHolding(
                 poolId,
                 scId,
@@ -117,16 +117,18 @@ contract TestCases is CentrifugeIntegrationTest {
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0
+            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, true, IS_SNAPSHOT, 0
         );
 
+        // Pre-initialization, only the amount is tracked; the value is established at initialization
         assertEq(holdings.amount(poolId, scId, USDC_ID), 1000 * assetDecimals);
-        assertEq(holdings.value(poolId, scId, USDC_ID), 1000 * poolDecimals);
+        assertEq(holdings.value(poolId, scId, USDC_ID), 0);
         _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
+        valuation.setPrice(poolId, scId, USDC_ID, d18(1, 1));
         vm.prank(FM);
         hub.initializeHolding(
             poolId,
@@ -145,7 +147,7 @@ contract TestCases is CentrifugeIntegrationTest {
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 600 * assetDecimals, D18.wrap(1e18), false, IS_SNAPSHOT, 1
+            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 600 * assetDecimals, false, IS_SNAPSHOT, 1
         );
 
         assertEq(holdings.amount(poolId, scId, USDC_ID), 400 * assetDecimals);
@@ -174,53 +176,6 @@ contract TestCases is CentrifugeIntegrationTest {
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 120 * poolDecimals);
     }
 
-    /// @dev Exercises the slot model's flexibility: wiring ValueDecrease to a dedicated write-down account
-    ///      (distinct from the standard loss account) routes impairments there and leaves LOSS untouched, which
-    ///      the fixed-role AccountType model could not express.
-    /// forge-config: default.isolate = true
-    function testCustomWriteDownSlot() public {
-        (PoolId poolId, ShareClassId scId) = testPoolCreation(false);
-        uint128 poolDecimals = (10 ** hubRegistry.decimals(USD_ID.raw())).toUint128();
-        uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_ID.raw())).toUint128();
-
-        vm.startPrank(FM);
-        hub.createAccount(poolId, WRITE_DOWN_ACCOUNT, true);
-
-        // Custom wiring: impairments (ValueDecrease) route to the dedicated write-down account, not LOSS.
-        AccountId[4] memory accounts;
-        accounts[0] = ASSET_USDC_ACCOUNT;
-        accounts[1] = EQUITY_ACCOUNT;
-        accounts[2] = GAIN_ACCOUNT;
-        accounts[3] = WRITE_DOWN_ACCOUNT;
-        valuation.setPrice(poolId, scId, USDC_ID, d18(1, 1));
-        hub.initializeHolding(poolId, scId, USDC_ID, valuation, accounts);
-        vm.stopPrank();
-
-        // Deposit 1000 USDC at par.
-        vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0
-        );
-        _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 1000 * poolDecimals);
-        _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 1000 * poolDecimals);
-
-        // Mark up: the gain lands in the standard GAIN account.
-        valuation.setPrice(poolId, scId, USDC_ID, d18(11, 10));
-        vm.prank(FM);
-        hub.updateHoldingValue(poolId, scId, USDC_ID);
-        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 100 * poolDecimals);
-        _assertEqAccountValue(poolId, WRITE_DOWN_ACCOUNT, true, 0);
-        _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
-
-        // Mark down below cost: the impairment lands in the dedicated write-down account, LOSS stays untouched.
-        valuation.setPrice(poolId, scId, USDC_ID, d18(8, 10));
-        vm.prank(FM);
-        hub.updateHoldingValue(poolId, scId, USDC_ID);
-        _assertEqAccountValue(poolId, WRITE_DOWN_ACCOUNT, true, 300 * poolDecimals);
-        _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
-        _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 100 * poolDecimals);
-    }
-
     /// forge-config: default.isolate = true
     function testUpdateLiability() public {
         (PoolId poolId, ShareClassId scId) = testPoolCreation(false);
@@ -238,14 +193,16 @@ contract TestCases is CentrifugeIntegrationTest {
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 50 * expenseDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0
+            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 50 * expenseDecimals, true, IS_SNAPSHOT, 0
         );
 
+        // Pre-initialization, only the amount is tracked; the value is established at initialization
         assertEq(holdings.amount(poolId, scId, FEE_ID), 50 * expenseDecimals);
-        assertEq(holdings.value(poolId, scId, FEE_ID), 50 * poolDecimals);
+        assertEq(holdings.value(poolId, scId, FEE_ID), 0);
         _assertEqAccountValue(poolId, FEE_ACCOUNT, true, 0 * poolDecimals);
         _assertEqAccountValue(poolId, LIABILITY_ACCOUNT, true, 0 * poolDecimals);
 
+        valuation.setPrice(poolId, scId, FEE_ID, d18(1, 1));
         vm.prank(FM);
         hub.initializeHolding(poolId, scId, FEE_ID, valuation, _liabilityAccounts(FEE_ACCOUNT, LIABILITY_ACCOUNT));
 
@@ -256,7 +213,7 @@ contract TestCases is CentrifugeIntegrationTest {
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 20 * expenseDecimals, D18.wrap(1e18), false, IS_SNAPSHOT, 1
+            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 20 * expenseDecimals, false, IS_SNAPSHOT, 1
         );
 
         assertEq(holdings.amount(poolId, scId, FEE_ID), 30 * expenseDecimals);

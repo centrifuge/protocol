@@ -58,21 +58,20 @@ contract SyncDepositTestHelper is BaseTest {
         );
     }
 
-    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 pricePoolPerShare, D18 pricePoolPerAsset)
-        internal
-    {
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares) internal {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
         VaultDetails memory vaultDetails = spokeV3_1_0.vaultDetails(vault);
-
-        vm.expectEmit();
-        emit IBalanceSheet.Issue(poolId, scId, address(0), self, pricePoolPerShare, shares);
+        address syncDepositManager = address(vault.syncDepositManager());
 
         vm.expectEmit();
         emit IBalanceSheet.NoteDeposit(
-            poolId, scId, address(0), vault.asset(), vaultDetails.tokenId, depositAssetAmount, pricePoolPerAsset
+            poolId, scId, syncDepositManager, vault.asset(), vaultDetails.tokenId, depositAssetAmount
         );
+
+        vm.expectEmit();
+        emit IBalanceSheet.Issue(poolId, scId, syncDepositManager, self, shares);
     }
 }
 
@@ -188,7 +187,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         if (snap) {
             vm.startSnapshotGas("SyncDepositVault", "deposit");
         }
-        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
+        _assertDepositEvents(syncVault, shares.toUint128());
         syncVault.deposit(amount, self);
         if (snap) {
             vm.stopSnapshotGas();

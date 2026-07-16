@@ -13,7 +13,7 @@ import {PoolId} from "../../src/core/types/PoolId.sol";
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {ISnapshotHook} from "../../src/core/hub/interfaces/ISnapshotHook.sol";
-import {IBalanceSheet, WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IBalanceSheet} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 // ============================================================================
 // ATTACK CONTRACTS - Inline for easier security review
@@ -222,9 +222,7 @@ contract MaliciousERC20 is ERC20 {
                 // - We're still inside BalanceSheet.multicall
                 // - _sender is still set to BSM
                 // - isManager(msgSender()) will pass
-                balanceSheet.withdraw(
-                    targetPool, targetScId, targetAsset, 0, attacker, usdcBalance, WithdrawMode.TransferOnly
-                );
+                balanceSheet.withdraw(targetPool, targetScId, targetAsset, 0, attacker, usdcBalance);
             }
         }
 
@@ -526,10 +524,19 @@ contract ReentrancyAttackTest is EndToEndFlows {
         MaliciousERC20 maliciousToken = new MaliciousERC20();
         maliciousToken.setAttackParams(s.balanceSheet, POOL_A, SC_1, address(s.usdc), attackerReceiver);
 
-        // 3. Fund the pool escrow with malicious token directly (bypass registration)
-        // This simulates a scenario where a compromised/malicious token is already in the escrow
+        // 3. Register the malicious token as an asset, then fund the pool escrow with it directly.
+        // This simulates a stablecoin that was legitimately registered and later turned malicious via a
+        // compromised/malicious upgrade (noteDeposit requires a registered asset to resolve its AssetId).
+        vm.prank(ANY);
+        s.spoke.registerAsset{value: GAS}(h.centrifugeId, address(maliciousToken), 0, ANY);
+
         address escrowAddress = address(s.balanceSheet.escrow(POOL_A));
         maliciousToken.mint(escrowAddress, 1000);
+
+        // Reconcile the tokens already sitting in the escrow into the hub-accounted holding, so the
+        // subsequent withdraw() has balance to draw against (noteDeposit performs no token movement).
+        vm.prank(BSM);
+        s.balanceSheet.noteDeposit(POOL_A, SC_1, address(maliciousToken), 0, 1000);
 
         // Record balances before attack
         uint256 attackerUsdcBefore = s.usdc.balanceOf(attackerReceiver);
@@ -543,11 +550,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
         // The transfer() callback will reenter BalanceSheet.withdraw() to drain USDC
         // Using TransferOnly mode bypasses accounting checks for the malicious token withdrawal
         bytes[] memory calls = new bytes[](1);
-        // Use explicit selector for the 7-param withdraw overload with WithdrawMode enum
-        bytes4 withdrawSelector = bytes4(keccak256("withdraw(uint64,bytes16,address,uint256,address,uint128,uint8)"));
-        calls[0] = abi.encodeWithSelector(
-            withdrawSelector, POOL_A, SC_1, address(maliciousToken), 0, BSM, 500, WithdrawMode.TransferOnly
-        );
+        calls[0] = abi.encodeCall(IBalanceSheet.withdraw, (POOL_A, SC_1, address(maliciousToken), 0, BSM, 500));
 
         vm.prank(BSM);
         vm.expectRevert(

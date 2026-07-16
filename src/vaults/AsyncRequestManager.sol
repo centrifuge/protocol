@@ -32,8 +32,8 @@ import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
+import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
-import {IBalanceSheet, WithdrawMode} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails, ISpokeV3_1_0} from "../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {IShareToken} from "../token/interfaces/IShareToken.sol";
@@ -52,8 +52,6 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
     ISpokeV3_1_0 public spoke;
     IBalanceSheet public balanceSheet;
-    // Vault lookups (vaultDetails / vault / isLinked) are served by the SpokeV3_1_0 legacy facade, which
-    // preserves the pre-refactor VaultRegistry ABI this manager was built against.
     ISpokeV3_1_0 public vaultRegistry;
     ISubsidyManager public subsidyManager;
 
@@ -103,6 +101,11 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
+
+        // The vault transfers the pending assets into the pool escrow right after this call. Note them
+        // into the holding and immediately reserve them: the two queued updates cancel out, so the pending
+        // deposit is not hub-accounted until approval and does not consume escrow withdrawal headroom.
+        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_);
         balanceSheet.reserve(
             poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_, address(this), REASON_DEPOSIT
         );
@@ -111,14 +114,19 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     }
 
     /// @inheritdoc IAsyncRedeemManager
+    /// @dev The `transfer` flag is deprecated and ignored: shares are always transferred to the pool escrow.
     function requestRedeem(
         IBaseVault vault_,
         uint256 shares,
         address controller,
         address owner,
         address sender_,
-        bool transfer
-    ) public auth returns (bool) {
+        bool /* transfer */
+    )
+        public
+        auth
+        returns (bool)
+    {
         _checkIsLinked(vault_);
 
         uint128 shares_ = shares.toUint128();
@@ -134,13 +142,10 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         state.pendingRedeemRequest = state.pendingRedeemRequest + shares_;
 
         _sendRequest(vault_, RequestMessageLib.RedeemRequest(controller.toBytes32(), shares_).serialize());
-        if (transfer) {
-            PoolId poolId = vault_.poolId();
-            ShareClassId scId = vault_.scId();
 
-            balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, address(balanceSheet.escrow(poolId)), shares_);
-            balanceSheet.reserve(poolId, scId, vault_.share(), 0, shares_, address(this), REASON_REDEEM);
-        }
+        PoolId poolId = vault_.poolId();
+        ShareClassId scId = vault_.scId();
+        balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, address(balanceSheet.escrow(poolId)), shares_);
 
         return true;
     }
@@ -196,13 +201,13 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         if (kind == uint8(RequestCallbackType.ApprovedDeposits)) {
             RequestCallbackMessageLib.ApprovedDeposits memory m = payload.deserializeApprovedDeposits();
-            approvedDeposits(poolId, scId, assetId, m.assetAmount, D18.wrap(m.pricePoolPerAsset));
+            approvedDeposits(poolId, scId, assetId, m.assetAmount);
         } else if (kind == uint8(RequestCallbackType.IssuedShares)) {
             RequestCallbackMessageLib.IssuedShares memory m = payload.deserializeIssuedShares();
-            issuedShares(poolId, scId, m.shareAmount, D18.wrap(m.pricePoolPerShare));
+            issuedShares(poolId, scId, m.shareAmount);
         } else if (kind == uint8(RequestCallbackType.RevokedShares)) {
             RequestCallbackMessageLib.RevokedShares memory m = payload.deserializeRevokedShares();
-            revokedShares(poolId, scId, assetId, m.assetAmount, m.shareAmount, D18.wrap(m.pricePoolPerShare));
+            revokedShares(poolId, scId, assetId, m.assetAmount, m.shareAmount);
         } else if (kind == uint8(RequestCallbackType.FulfilledDepositRequest)) {
             RequestCallbackMessageLib.FulfilledDepositRequest memory m = payload.deserializeFulfilledDepositRequest();
             fulfillDepositRequest(
@@ -230,55 +235,33 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         }
     }
 
-    function approvedDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        D18 pricePoolPerAsset
-    ) internal {
+    function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) internal {
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
 
+        // Release the request-time reservation: the assets enter the hub-accounted holding, valued
+        // hub-side when the queue is submitted.
         balanceSheet.unreserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_DEPOSIT);
-
-        balanceSheet.overridePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset);
-        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, assetAmount);
-        balanceSheet.resetPricePoolPerAsset(poolId, scId, assetId);
     }
 
-    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount, D18 pricePoolPerShare) internal {
-        address token = address(spoke.shareToken(poolId, scId));
-
-        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
+    function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount) internal {
+        // Shares parked in the pool escrow for claiming carry no holding accounting.
         balanceSheet.issue(poolId, scId, address(balanceSheet.escrow(poolId)), shareAmount);
-        balanceSheet.reserve(poolId, scId, token, 0, shareAmount, address(this), REASON_DEPOSIT);
-        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
-    function revokedShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint128 assetAmount,
-        uint128 shareAmount,
-        D18 pricePoolPerShare
-    ) internal {
+    function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount)
+        internal
+    {
         (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
 
+        // Earmark the redemption payout: reserving removes the assets from the hub-accounted holding
+        // atomically with the share burn, preventing NAV desync. The escrow update is deferred to claim.
         balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_REDEEM);
-        balanceSheet.unreserve(
-            poolId, scId, address(spoke.shareToken(poolId, scId)), 0, shareAmount, address(this), REASON_REDEEM
-        );
-        // Queue asset decrease atomically with share burn to prevent NAV desync + escrow update deferred to claim
-        balanceSheet.noteWithdraw(poolId, scId, asset, tokenId, assetAmount);
 
         address poolEscrow_ = address(balanceSheet.escrow(poolId));
         balanceSheet.transferSharesFrom(poolId, scId, poolEscrow_, poolEscrow_, address(this), shareAmount);
 
         SafeTransferLib.safeApprove(address(spoke.shareToken(poolId, scId)), address(balanceSheet), shareAmount);
-        balanceSheet.overridePricePoolPerShare(poolId, scId, pricePoolPerShare);
         balanceSheet.revoke(poolId, scId, shareAmount);
-        balanceSheet.resetPricePoolPerShare(poolId, scId);
     }
 
     function fulfillDepositRequest(
@@ -404,12 +387,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         state.maxMint = state.maxMint - sharesUp;
 
         if (sharesDown > 0) {
-            ShareClassId scId = vault_.scId();
-            PoolId poolId = vault_.poolId();
-            address token = vault_.share();
-            balanceSheet.unreserve(poolId, scId, token, 0, sharesDown, address(this), REASON_DEPOSIT);
-            // NOTE: Assumes restrictions check of receiver to be done in withdraw
-            balanceSheet.withdraw(poolId, scId, token, 0, receiver, sharesDown, WithdrawMode.TransferOnly);
+            // NOTE: Assumes restrictions check of receiver to be done in the share transfer
+            balanceSheet.withdrawShares(vault_.poolId(), vault_.scId(), receiver, sharesDown);
         }
     }
 
@@ -467,21 +446,17 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         if (assetsDown > 0) {
             VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
-            PoolId poolId = vault_.poolId();
-            ShareClassId scId = vault_.scId();
 
-            balanceSheet.unreserve(
-                poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assetsDown, address(this), REASON_REDEEM
-            );
-            // EscrowAndTransfer: escrow update but no Hub queue since noteWithdraw already queued in revokedShares
-            balanceSheet.withdraw(
-                poolId,
-                scId,
+            // The holding decrease was already queued when the payout was reserved in revokedShares.
+            balanceSheet.withdrawReserved(
+                vault_.poolId(),
+                vault_.scId(),
                 vaultDetails.asset,
                 vaultDetails.tokenId,
                 receiver,
                 assetsDown,
-                WithdrawMode.EscrowAndTransfer
+                address(this),
+                REASON_REDEEM
             );
         }
     }
@@ -509,15 +484,18 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         if (assets > 0) {
             VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
-            PoolId poolId = vault_.poolId();
-            ShareClassId scId = vault_.scId();
-            uint128 assets_ = assets.toUint128();
 
-            balanceSheet.unreserve(
-                poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_, address(this), REASON_DEPOSIT
-            );
-            balanceSheet.withdraw(
-                poolId, scId, vaultDetails.asset, vaultDetails.tokenId, receiver, assets_, WithdrawMode.TransferOnly
+            // The pending deposit was never hub-accounted (deposit and reserve cancelled out at request
+            // time), so the cancellation refund claims the reserved assets without queueing an update.
+            balanceSheet.withdrawReserved(
+                vault_.poolId(),
+                vault_.scId(),
+                vaultDetails.asset,
+                vaultDetails.tokenId,
+                receiver,
+                assets.toUint128(),
+                address(this),
+                REASON_DEPOSIT
             );
         }
     }
@@ -535,14 +513,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         state.claimableCancelRedeemRequest = 0;
 
         if (shares > 0) {
-            PoolId poolId = vault_.poolId();
-            ShareClassId scId = vault_.scId();
-            address shareToken = vault_.share();
-            uint128 shares_ = shares.toUint128();
-
-            balanceSheet.unreserve(poolId, scId, shareToken, 0, shares_, address(this), REASON_REDEEM);
-            // NOTE: Assumes restrictions check of receiver to be done in withdraw
-            balanceSheet.withdraw(poolId, scId, shareToken, 0, receiver, shares_, WithdrawMode.TransferOnly);
+            // NOTE: Assumes restrictions check of receiver to be done in the share transfer
+            balanceSheet.withdrawShares(vault_.poolId(), vault_.scId(), receiver, shares.toUint128());
         }
     }
 

@@ -10,7 +10,6 @@ import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
 import {IBridgingHook, TransferSharesParams, TransferSharesResult} from "./interfaces/IBridgingHook.sol";
 
 import {Auth} from "../../misc/Auth.sol";
-import {D18} from "../../misc/types/D18.sol";
 
 import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
@@ -81,14 +80,15 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
-        D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
         uint64 nonce
     ) external auth {
+        // The delta is valued at the hub-side valuation; the journaled value mirrors the holding
+        // mutation exactly, so the accounts stay in sync with the holding.
         uint128 value = isIncrease
-            ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
-            : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
+            ? holdings.increase(poolId, scId, assetId, amount)
+            : holdings.decrease(poolId, scId, assetId, amount);
 
         if (holdings.isInitialized(poolId, scId, assetId)) {
             hub.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);

@@ -181,7 +181,6 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
                 m.amount,
-                D18.wrap(m.pricePoolPerAsset),
                 m.isIncrease,
                 m.isSnapshot,
                 m.nonce

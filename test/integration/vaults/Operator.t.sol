@@ -13,7 +13,10 @@ import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: across request->approve the gross asset-queue accumulator reaches
+        // 2x the deposit (noteDeposit +amount at request, unreserve +amount at approval) for a net +amount,
+        // so a single deposit near MAX_UINT128 overflows the uint128 accumulator.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
@@ -156,7 +159,11 @@ contract OperatorTest is BaseTest {
 
     function testRedeemAsOperator(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
+        // Bounded to MAX_UINT128 / 4: this test calls deposit() twice with `amount` (once to fund the redeem,
+        // once more after resetting the operator), and each deposit's request->approve lifecycle pushes the
+        // gross asset-queue deposits accumulator up by 2x the amount (noteDeposit +amount, then unreserve
+        // +amount again on approval), so two deposits reach 4x amount in the uint128 accumulator.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 4));
         vm.assume(amount % 2 == 0);
 
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);

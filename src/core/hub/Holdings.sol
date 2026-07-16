@@ -7,13 +7,11 @@ import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
 import {IHoldings, Holding, Snapshot} from "./interfaces/IHoldings.sol";
 
 import {Auth} from "../../misc/Auth.sol";
-import {D18} from "../../misc/types/D18.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {AccountId} from "../types/AccountId.sol";
-import {PricingLib} from "../libraries/PricingLib.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 
 /// @title  Holdings
@@ -27,7 +25,7 @@ contract Holdings is Auth, IHoldings {
     IHubRegistry public immutable hubRegistry;
 
     mapping(PoolId => ISnapshotHook) public snapshotHook;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) public holding;
+    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) internal _holding;
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => Snapshot))) public snapshot;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
 
@@ -50,7 +48,7 @@ contract Holdings is Auth, IHoldings {
         require(!scId.isNull(), WrongShareClassId());
         require(address(valuation_) != address(0), WrongValuation());
 
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) == address(0), AlreadyInitialized());
 
         holding_.valuation = valuation_;
@@ -67,7 +65,7 @@ contract Holdings is Auth, IHoldings {
         external
         auth
     {
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         accountId[poolId][scId][assetId][kind] = accountId_;
@@ -79,7 +77,7 @@ contract Holdings is Auth, IHoldings {
     function updateValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation_) external auth {
         require(address(valuation_) != address(0), WrongValuation());
 
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         holding_.valuation = valuation_;
@@ -135,43 +133,48 @@ contract Holdings is Auth, IHoldings {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHoldings
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
     {
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
 
-        amountValue = PricingLib.convertWithPrice(
-            amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
-        );
+        uint128 oldAmount = _amount(holding_);
+        holding_.increasedAmount += amount_;
+        uint128 realized = _amount(holding_) - oldAmount;
 
-        holding_.assetAmount += amount_;
+        // Value only the realized increase (a preceding over-decrease is netted off first) at the hub-side
+        // valuation. Uninitialized holdings track amount only; their value is established at initialization.
+        amountValue = address(holding_.valuation) != address(0)
+            ? holding_.valuation.getQuote(poolId, scId, assetId, realized)
+            : 0;
+
         holding_.assetAmountValue += amountValue;
 
-        emit Increase(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValue);
+        emit Increase(poolId, scId, assetId, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, D18 pricePoolPerAsset, uint128 amount_)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
         external
         auth
-        returns (uint128 amountValueUnclamped)
+        returns (uint128 amountValue)
     {
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
 
-        amountValueUnclamped = PricingLib.convertWithPrice(
-            amount_, hubRegistry.decimals(assetId), hubRegistry.decimals(poolId), pricePoolPerAsset
-        );
+        uint128 oldAmount = _amount(holding_);
+        holding_.decreasedAmount += amount_;
+        uint128 removedAmount = oldAmount - _amount(holding_);
 
-        // Clamp amount and value to 0 to prevent underflow
-        // The unclamped amount and value are emitted in the event, as well as returned to the caller
-        holding_.assetAmount = amount_ > holding_.assetAmount ? 0 : holding_.assetAmount - amount_;
+        // Remove carrying value pro-rata to the realized decrease (an over-decrease is capped at the current
+        // amount and its excess carried on `decreasedAmount`), so the returned value always mirrors the
+        // storage mutation and can never over-journal the accounts.
+        amountValue = oldAmount == 0 ? 0 : (uint256(holding_.assetAmountValue) * removedAmount / oldAmount).toUint128();
 
-        holding_.assetAmountValue =
-            amountValueUnclamped > holding_.assetAmountValue ? 0 : holding_.assetAmountValue - amountValueUnclamped;
+        holding_.assetAmountValue -= amountValue;
 
-        emit Decrease(poolId, scId, assetId, pricePoolPerAsset, amount_, amountValueUnclamped);
+        emit Decrease(poolId, scId, assetId, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
@@ -180,10 +183,10 @@ contract Holdings is Auth, IHoldings {
         auth
         returns (bool isPositive, uint128 diffValue)
     {
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, holding_.assetAmount);
+        uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, _amount(holding_));
 
         isPositive = currentAmountValue >= holding_.assetAmountValue;
         diffValue = isPositive ? currentAmountValue - holding_.assetAmountValue : holding_.assetAmountValue - currentAmountValue; // forgefmt: disable-line
@@ -199,27 +202,36 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IHoldings
     function isInitialized(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (bool) {
-        return address(holding[poolId][scId][assetId].valuation) != address(0);
+        return address(_holding[poolId][scId][assetId].valuation) != address(0);
     }
 
     /// @inheritdoc IHoldings
     function value(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 value_) {
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
         return holding_.assetAmountValue;
     }
 
     /// @inheritdoc IHoldings
     function amount(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 amount_) {
-        Holding storage holding_ = holding[poolId][scId][assetId];
-        return holding_.assetAmount;
+        return _amount(_holding[poolId][scId][assetId]);
     }
 
     /// @inheritdoc IHoldings
     function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IValuation) {
-        Holding storage holding_ = holding[poolId][scId][assetId];
+        Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
         return holding_.valuation;
+    }
+
+    /// @inheritdoc IHoldings
+    function holding(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint128 assetAmount, uint128 assetAmountValue, IValuation valuation_)
+    {
+        Holding storage holding_ = _holding[poolId][scId][assetId];
+        return (_amount(holding_), holding_.assetAmountValue, holding_.valuation);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -231,5 +243,13 @@ contract Holdings is Auth, IHoldings {
 
         ISnapshotHook hook = snapshotHook[poolId];
         if (address(hook) != address(0)) hook.onSync(poolId, scId, centrifugeId);
+    }
+
+    /// @dev Current amount, derived from the cumulative counters and floored at zero.
+    function _amount(Holding storage holding_) internal view returns (uint128) {
+        return
+            holding_.increasedAmount >= holding_.decreasedAmount
+                ? holding_.increasedAmount - holding_.decreasedAmount
+                : 0;
     }
 }

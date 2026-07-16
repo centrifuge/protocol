@@ -21,6 +21,7 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
+import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../src/core/spoke/SpokeHandler.sol";
@@ -30,7 +31,6 @@ import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
-import {BalanceSheet, WithdrawMode} from "../../src/core/spoke/BalanceSheet.sol";
 import {ISpokeV3_1_0} from "../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 import {IManagerCallFromSpoke} from "../../src/core/utils/interfaces/IManagerCall.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
@@ -493,12 +493,16 @@ contract EndToEndFlows is EndToEndUtils {
         );
         _setHook(s_, address(s_.redemptionRestrictionsHook));
 
+        // initializeHolding now values any (zero) pre-existing amount via the valuation immediately, so it
+        // cannot use the oracle valuation before a price has ever been fed (chicken-and-egg: oracleValuation's
+        // setPrice() itself requires the holding to already be initialized). Start with the always-valid
+        // identity valuation and switch to the oracle once a feeder is wired up below.
         h.hub
             .initializeHolding(
                 POOL_A,
                 SC_1,
                 s_.usdcId,
-                h.oracleValuation,
+                h.identityValuation,
                 _holdingAccounts(ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT)
             );
         h.hub.setRequestManager{value: GAS}(
@@ -535,6 +539,9 @@ contract EndToEndFlows is EndToEndUtils {
         h.hub.updateManager{value: GAS}(
             POOL_A, h.centrifugeId, ManagerKind.Adapter, address(h.batchRequestManager).toBytes32(), true, REFUND
         );
+        // Now that a feeder is wired up, switch the holding to the oracle valuation (still worth 0, since
+        // nothing has been deposited yet) so subsequent price feeds drive its value.
+        h.hub.updateHoldingValuation(POOL_A, SC_1, s_.usdcId, h.oracleValuation);
         vm.stopPrank();
     }
 
@@ -1052,7 +1059,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(BSM);
         s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
         s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5, WithdrawMode.Full);
+        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
         s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
 
         // CHECKS

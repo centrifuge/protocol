@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {d18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
@@ -45,12 +44,12 @@ contract TestCommon is Test {
     function mockGetQuote(IValuation valuation, uint128 baseAmount, uint128 quoteAmount) public {
         vm.mockCall(
             address(valuation),
-            abi.encodeWithSelector(IValuation.getQuote.selector, POOL_A, SC_1, ASSET_A, uint256(baseAmount)),
-            abi.encode(uint256(quoteAmount))
+            abi.encodeWithSelector(IValuation.getQuote.selector, POOL_A, SC_1, ASSET_A, baseAmount),
+            abi.encode(quoteAmount)
         );
     }
 
-    /// @dev A complete, valid 4-slot account set (distinct debit) accepted by Holdings.initialize.
+    /// @dev A complete, valid 4-slot account set accepted by Holdings.initialize.
     function _validAccounts() internal pure returns (AccountId[4] memory accounts) {
         accounts[0] = AccountId.wrap(0xAA00);
         accounts[1] = AccountId.wrap(0xBB00);
@@ -106,11 +105,13 @@ contract TestInitialize is TestCommon {
 contract TestIncrease is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
 
+        mockGetQuote(itemValuation, 8_000_000, 50_00);
         vm.expectEmit();
-        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000, 50_00);
-        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000);
+        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, 8_000_000, 50_00);
+        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, 8_000_000);
         assertEq(value, 50_00);
 
         (uint128 amount, uint128 amountValue, IValuation valuation) = holdings.holding(POOL_A, SC_1, ASSET_A);
@@ -119,29 +120,43 @@ contract TestIncrease is TestCommon {
         assertEq(address(valuation), address(itemValuation)); // Does not change
     }
 
+    function testIncreaseUninitialized() public {
+        // Uninitialized holdings track the amount only; the value is established at initialization
+        vm.expectEmit();
+        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, 20_000_000, 0);
+        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
+        assertEq(value, 0);
+
+        (uint128 amount, uint128 amountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amount, 20_000_000);
+        assertEq(amountValue, 0);
+    }
+
     function testErrNotAuthorized() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 0);
     }
 }
 
 contract TestDecrease is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
 
+        // Carrying value is removed pro-rata: 200_00 * 8_000_000 / 20_000_000 = 80_00
         vm.expectEmit();
-        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000, 50_00);
-        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(50, 8), 8_000_000);
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, 8_000_000, 80_00);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, 8_000_000);
 
-        assertEq(value, 50_00);
+        assertEq(value, 80_00);
 
         (uint128 amount, uint128 amountValue, IValuation valuation) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amount, 12_000_000);
-        assertEq(amountValue, 150_00);
+        assertEq(amountValue, 120_00);
         assertEq(address(valuation), address(itemValuation)); // Does not change
     }
 
@@ -150,63 +165,113 @@ contract TestDecrease is TestCommon {
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        holdings.decrease(POOL_A, SC_1, ASSET_A, d18(1, 1), 0);
+        holdings.decrease(POOL_A, SC_1, ASSET_A, 0);
     }
 
     function testDecreaseAmountMoreThanHolding() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
 
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(10, 1), 10_000_000);
+        mockGetQuote(itemValuation, 10_000_000, 100_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 10_000_000);
 
         (uint128 amount, uint128 amountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amount, 10_000_000);
         assertEq(amountValue, 100_00);
 
-        // Decrease by more than what we have - should clamp amount to 0 instead of underflowing
-        // Should emit the original unclamped amount and value
+        // Decrease by more than what we have - the removed amount is clamped to the held amount,
+        // so exactly the full carrying value is removed instead of underflowing.
+        // The event emits the requested (unclamped) amount and the removed (clamped) value.
         vm.expectEmit();
-        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(4, 1), 20_000_000, 80_00);
-        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(4, 1), 20_000_000);
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, 20_000_000, 100_00);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, 20_000_000);
 
-        assertEq(value, 80_00);
+        assertEq(value, 100_00);
 
         (uint128 finalAmount, uint128 finalAmountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(finalAmount, 0);
-        assertEq(finalAmountValue, 20_00);
+        assertEq(finalAmountValue, 0);
     }
 
-    function testDecreaseValueMoreThanHolding() public {
+    function testDecreaseEmptyHolding() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
 
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(10, 1), 10_000_000);
+        // Decreasing an empty holding removes nothing and returns 0
+        vm.expectEmit();
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, 5_000_000, 0);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, 5_000_000);
+
+        assertEq(value, 0);
+
+        (uint128 amount, uint128 amountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amount, 0);
+        assertEq(amountValue, 0);
+    }
+
+    function testDecreaseAfterMarkdownNeverOverJournals() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
+
+        mockGetQuote(itemValuation, 10_000_000, 100_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 10_000_000);
+
+        // Mark the holding down to half its value
+        mockGetQuote(itemValuation, 10_000_000, 50_00);
+        holdings.update(POOL_A, SC_1, ASSET_A);
 
         (uint128 amount, uint128 amountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
         assertEq(amount, 10_000_000);
-        assertEq(amountValue, 100_00);
+        assertEq(amountValue, 50_00);
 
-        // Decrease with a higher price, creating more value than we have - should clamp value to 0
-        // Should emit the original unclamped amount and value
-        // And return the unclamped value
+        // A full decrease removes exactly the marked-down carrying value,
+        // never more than the holding carries
         vm.expectEmit();
-        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, d18(20, 1), 6_000_000, 120_00);
-        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, d18(20, 1), 6_000_000);
+        emit IHoldings.Decrease(POOL_A, SC_1, ASSET_A, 10_000_000, 50_00);
+        uint128 value = holdings.decrease(POOL_A, SC_1, ASSET_A, 10_000_000);
 
-        assertEq(value, 120_00);
+        assertEq(value, 50_00);
 
         (uint128 finalAmount, uint128 finalAmountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
-        assertEq(finalAmount, 4_000_000);
+        assertEq(finalAmount, 0);
         assertEq(finalAmountValue, 0);
+    }
+
+    function testOverDecreaseNetsAgainstLaterIncrease() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
+
+        mockGetQuote(itemValuation, 100, 100);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 100);
+
+        // Second decrease over-shoots the remaining 60 by 60. A running-balance clamp would forget that
+        // excess; the cumulative counters carry it so a later increase nets against it.
+        holdings.decrease(POOL_A, SC_1, ASSET_A, 40); // 100 -> 60
+        holdings.decrease(POOL_A, SC_1, ASSET_A, 120); // requests 120, only 60 realized, 60 carried
+
+        (uint128 amountAfterDecrease, uint128 valueAfterDecrease,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amountAfterDecrease, 0);
+        assertEq(valueAfterDecrease, 0);
+
+        // Increase by 100: 60 pays down the carried over-decrease, so only 40 is realized and valued.
+        mockGetQuote(itemValuation, 40, 40);
+        vm.expectEmit();
+        emit IHoldings.Increase(POOL_A, SC_1, ASSET_A, 100, 40);
+        uint128 value = holdings.increase(POOL_A, SC_1, ASSET_A, 100);
+
+        assertEq(value, 40);
+
+        (uint128 finalAmount, uint128 finalAmountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(finalAmount, 40); // 100 - 40 - 120 + 100 = 40, not the 100 a clamp would leave
+        assertEq(finalAmountValue, 40);
     }
 }
 
 contract TestUpdate is TestCommon {
     function testUpdateMore() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
 
+        mockGetQuote(itemValuation, 20_000_000, 250_00);
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, true, 50_00);
-        mockGetQuote(itemValuation, 20_000_000, 250_00);
         (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
 
         assertEq(diff, 50_00);
@@ -218,12 +283,12 @@ contract TestUpdate is TestCommon {
 
     function testUpdateLess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
 
+        mockGetQuote(itemValuation, 20_000_000, 150_00);
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, false, 50_00);
-        mockGetQuote(itemValuation, 20_000_000, 150_00);
-
         (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
 
         assertEq(diff, 50_00);
@@ -235,14 +300,31 @@ contract TestUpdate is TestCommon {
 
     function testUpdateEquals() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
 
         vm.expectEmit();
         emit IHoldings.Update(POOL_A, SC_1, ASSET_A, true, 0);
-        mockGetQuote(itemValuation, 20_000_000, 200_00);
         (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
 
         assertEq(diff, 0);
+        assert(isPositive);
+
+        (, uint128 amountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
+        assertEq(amountValue, 200_00);
+    }
+
+    function testUpdateValuesPreInitializationAmount() public {
+        // Increases before initialization carry no value; update() establishes it at the valuation
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
+
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        vm.expectEmit();
+        emit IHoldings.Update(POOL_A, SC_1, ASSET_A, true, 200_00);
+        (bool isPositive, uint128 diff) = holdings.update(POOL_A, SC_1, ASSET_A);
+
+        assertEq(diff, 200_00);
         assert(isPositive);
 
         (, uint128 amountValue,) = holdings.holding(POOL_A, SC_1, ASSET_A);
@@ -318,7 +400,8 @@ contract TestSetAccountId is TestCommon {
 contract TestValue is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20_000_000);
+        mockGetQuote(itemValuation, 20_000_000, 200_00);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20_000_000);
 
         uint128 value = holdings.value(POOL_A, SC_1, ASSET_A);
 
@@ -329,7 +412,8 @@ contract TestValue is TestCommon {
 contract TestAmount is TestCommon {
     function testSuccess() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
-        holdings.increase(POOL_A, SC_1, ASSET_A, d18(200, 20), 20);
+        mockGetQuote(itemValuation, 20, 0);
+        holdings.increase(POOL_A, SC_1, ASSET_A, 20);
 
         uint128 value = holdings.amount(POOL_A, SC_1, ASSET_A);
 

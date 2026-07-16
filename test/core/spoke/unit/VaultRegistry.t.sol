@@ -188,6 +188,30 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         emit ISpokeRegistry.LinkVault(POOL_A, SC_1, erc20, 0, vault);
         spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
     }
+
+    function testErrAlreadyLinkedVaultOnOccupiedKey() public {
+        _utilRegisterERC6909();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+        _utilDeployVault(erc6909, TOKEN_1, ASSET_ID_6909_1);
+
+        // Register a second, distinct vault under the same (poolId, scId, assetId, requestManager) key
+        IVault vault2 = IVault(address(new IsContract()));
+        vm.mockCall(address(vault2), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
+        vm.mockCall(address(vault2), abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
+        vm.mockCall(address(vault2), abi.encodeWithSelector(IVault.vaultKind.selector), abi.encode(VaultKind.Async));
+        vm.prank(AUTH);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault2);
+
+        vm.prank(AUTH);
+        spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+
+        // vault2 is not itself linked, so it passes the `!isLinked` guard and reverts on the occupied-key
+        // guard instead: the slot is already taken by `vault`.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.AlreadyLinkedVault.selector);
+        spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault2);
+    }
 }
 
 contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
@@ -267,6 +291,28 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
         vm.expectEmit();
         emit ISpokeRegistry.UnlinkVault(POOL_A, SC_1, erc20, 0, vault);
         spokeRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+    }
+
+    function testErrUnlinkAfterRequestManagerSwap() public {
+        _utilRegisterERC6909();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+        _utilDeployVault(erc6909, TOKEN_1, ASSET_ID_6909_1);
+
+        vm.prank(AUTH);
+        spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+
+        // Swap the request manager: `requestManager` is part of the storage key, so the vault now lives
+        // under the old manager's slot while the new manager's slot is empty.
+        IRequestManager requestManager2 = IRequestManager(address(new IsContract()));
+        vm.prank(AUTH);
+        spokeRegistry.setRequestManager(POOL_A, requestManager2);
+
+        // The `== vault_` guard catches this: without it, the unlink would delete the new (empty) slot
+        // and leave the vault dangling under the old manager.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.AlreadyUnlinkedVault.selector);
+        spokeRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 }
 

@@ -175,7 +175,10 @@ contract RedeemTest is BaseTest {
     }
 
     function testCancelRedeemOrder(uint256 amount) public {
-        amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
+        // Bounded to MAX_UINT128 / 4: `deposit()` below requests 2 * amount, and each deposit is
+        // queued twice (noteDeposit, then unreserve on approval) in the balance sheet's asset
+        // accounting, so the effective ceiling is MAX_UINT128 / 4 per unit of `amount`.
+        amount = uint128(bound(amount, 2, MAX_UINT128 / 4));
 
         (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
         AsyncVault vault = AsyncVault(vault_);

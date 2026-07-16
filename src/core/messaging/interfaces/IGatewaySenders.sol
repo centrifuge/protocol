@@ -177,6 +177,18 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     function sendRegisterAsset(uint16 centrifugeId, AssetId assetId, uint8 decimals, address refund) external payable;
 
     /// @notice Creates and send the message
+    /// @dev    The message carries no price; the hub values the delta at its own valuation.
+    function sendUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        UpdateData calldata data,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
+
+    /// @notice Creates and send the message
+    /// @dev    ABI-compatibility overload for the deployed v3.1.0 BalanceSheet; the price is ignored.
     function sendUpdateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,

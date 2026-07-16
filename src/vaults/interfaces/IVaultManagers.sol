@@ -156,7 +156,8 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
     ///         The receiver becomes the owner of redeem request fulfillment.
     /// @param  source Deprecated
-    /// @param  transfer Set `false` for legacy vaults which already execute the transfer in the vault implementation
+    /// @param  transfer Deprecated and ignored (kept for ABI compatibility); shares are always transferred
+    ///         to the pool escrow by this manager
     function requestRedeem(
         IBaseVault vault,
         uint256 shares,
@@ -285,8 +286,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCa
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
 
-    /// @notice Legacy spoke facade exposing the pre-refactor vault-registry lookups
-    ///         (vault details and (poolId, scId, asset) -> deployed vault)
+    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
     function vaultRegistry() external view returns (ISpokeV3_1_0);
 
     /// @notice Price source contract used for sync deposit pricing on a given pool and share class
@@ -374,8 +374,7 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function balanceSheet() external view returns (IBalanceSheet);
 
-    /// @notice Legacy spoke facade exposing the pre-refactor vault-registry lookups
-    ///         (vault details and (poolId, scId, asset) -> deployed vault)
+    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
     function vaultRegistry() external view returns (ISpokeV3_1_0);
 
     /// @notice Manages gas subsidies for cross-chain message costs, funded per-pool

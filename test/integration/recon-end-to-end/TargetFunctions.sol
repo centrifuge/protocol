@@ -160,6 +160,12 @@ abstract contract TargetFunctions is
             IValuation valuation =
                 isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
 
+            // The hub values the holding immediately on initialize (Holdings.update -> valuation.getQuote), so
+            // MockValuation needs a price set beforehand; IdentityValuation always returns 1.0 and needs no setup.
+            if (!isIdentityValuation) {
+                transientValuation.setPrice(_poolId, ShareClassId.wrap(_scId), _getAssetId(), D18.wrap(1e18));
+            }
+
             hub_createAccount(uint32(AccountType.Asset), isDebitNormal);
             hub_createAccount(uint32(AccountType.Equity), isDebitNormal);
             hub_createAccount(uint32(AccountType.Loss), isDebitNormal);
