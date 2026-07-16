@@ -58,7 +58,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
         AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
 
-        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        (uint128 prevDeposits, uint128 prevWithdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -242,7 +242,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // update ghosts
         userCancelledDeposits[scId][assetId][controller] += (pendingCancelAfter - pendingCancelBefore);
 
-        // precondition: if user queues a cancellation but it doesn't get immediately executed,
+        // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed,
         // the epochId should not change
         if (Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) =
@@ -312,7 +312,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             userCancelledRedeems[scId][assetId][controller] += delta;
 
             uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
+            // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
                 eq(lastUpdateAfter, nowRedeemEpoch, "lastUpdate != nowRedeemEpoch");
@@ -399,7 +399,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             }
 
             // Check for share queue flip
-            (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(vault.poolId(), vault.scId());
+            (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(vault.poolId(), vault.scId());
             bytes32 key = _poolShareKey(vault.poolId(), vault.scId());
             uint128 deltaBefore = before_shareQueueDelta[key];
             bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -500,7 +500,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             }
 
             // Check for share queue flip
-            (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(vault.poolId(), vault.scId());
+            (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(vault.poolId(), vault.scId());
             bytes32 key = _poolShareKey(vault.poolId(), vault.scId());
             uint128 deltaBefore = before_shareQueueDelta[key];
             bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -551,7 +551,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         uint256 assets = _getVault().redeem(shares, to, _getActor());
 
-        // NOTE: vault.redeem() does NOT call balanceSheet.revoke() - it only transfers assets from escrow
+        // NOTE: vault.redeem() does NOT call spoke.revoke() - it only transfers assets from escrow
         // Share revocation happens separately via AsyncRequestManager.revokedShares() when hub processes requests
         // Therefore, no ghost tracking needed here
 

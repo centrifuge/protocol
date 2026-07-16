@@ -116,7 +116,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // ensure funds are locked in escrow
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(self), 0);
         assertEq(vault.pendingDepositRequest(0, self), amount);
         assertEq(vault.claimableDepositRequest(0, self), 0);
@@ -139,7 +139,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, self), 0);
         assertEq(vault.claimableDepositRequest(0, self), amount);
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), shares);
 
         // check maxDeposit and maxMint are 0 for non-members
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, uint64(block.timestamp));
@@ -158,14 +158,14 @@ contract DepositTest is BaseTest {
         vault.deposit(amount / 2, self, self); // deposit half the amount
         // Allow 2 difference because of rounding
         assertApproxEqAbs(shareToken.balanceOf(self), shares / 2, 2);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares - shares / 2, 2);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxMint(self), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxDeposit(self), amount - amount / 2, 2);
 
         // mint the rest
         vault.mint(vault.maxMint(self), self);
         assertApproxEqAbs(shareToken.balanceOf(self), shares - vault.maxMint(self), 2);
-        assertTrue(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))) <= 1);
+        assertTrue(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))) <= 1);
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
@@ -367,7 +367,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), shares);
 
         // deposit to receiver should fail due to missing membership
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
@@ -386,8 +386,8 @@ contract DepositTest is BaseTest {
 
         assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
         assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount, 1);
     }
 
     function testDepositAsEndorsedOperator(uint256 amount) public {
@@ -424,7 +424,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), sharePayout);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), receiver, type(uint64).max); // add
         // receiver
@@ -449,8 +449,8 @@ contract DepositTest is BaseTest {
 
         assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
         assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount, 1);
     }
 
     function testDepositAndRedeemPrecision() public {
@@ -512,7 +512,7 @@ contract DepositTest is BaseTest {
         assets = 115500000; // 115.5*10**6
 
         // mint interest into escrow
-        asset.mint(address(balanceSheet.escrow(vault.poolId())), assets - investmentAmount);
+        asset.mint(address(spoke.escrow(vault.poolId())), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout, 0
@@ -575,7 +575,7 @@ contract DepositTest is BaseTest {
 
         // Adjust escrow for interest
         // NOTE: In reality, the FM would have allocate the interest;
-        asset.approve(address(balanceSheet.escrow(PoolId.wrap(poolId))), type(uint256).max);
+        asset.approve(address(spoke.escrow(PoolId.wrap(poolId))), type(uint256).max);
         _topUpEscrow(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
@@ -684,7 +684,7 @@ contract DepositTest is BaseTest {
 
         vault.requestDeposit(amount, self, self);
 
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(address(self)), 0);
 
         // NOTE: Removed test for "cannot fulfill redeem if there is no pending request"
@@ -709,7 +709,7 @@ contract DepositTest is BaseTest {
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), CastLib.toBytes32(self), assetId, 0, 0, amount.toUint128()
         );
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(self), 0);
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
         assertEq(vault.pendingCancelDepositRequest(0, self), false);
@@ -794,7 +794,7 @@ contract DepositTest is BaseTest {
 
     function _topUpEscrow(PoolId poolId, ShareClassId scId, ERC20 asset, uint256 assetAmount) internal {
         asset.mint(address(this), assetAmount);
-        asset.approve(address(balanceSheet), assetAmount);
-        balanceSheet.deposit(poolId, scId, address(asset), 0, assetAmount.toUint128());
+        asset.approve(address(spoke), assetAmount);
+        spoke.deposit(poolId, scId, address(asset), 0, assetAmount.toUint128());
     }
 }

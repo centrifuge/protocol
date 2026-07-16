@@ -16,12 +16,13 @@ class Spoke
 class SpokeHandler
 class SpokeRegistry
 
-class BalanceSheet
+class SnapshotQueue
 class ShareToken
 interface ITransferHook
 interface IRequestManager
 
 Spoke -down-> SpokeRegistry
+Spoke -down-> SnapshotQueue
 Spoke -up-> messaging
 
 messaging --> SpokeHandler
@@ -29,8 +30,7 @@ SpokeHandler --> SpokeRegistry
 SpokeHandler --> TokenFactory
 SpokeHandler --> PoolEscrowFactory
 
-messaging --> BalanceSheet
-BalanceSheet --> SpokeRegistry
+Spoke --> PoolEscrowFactory
 
 SpokeRegistry o-- "n" IRequestManager
 SpokeRegistry o-- "n" ShareToken

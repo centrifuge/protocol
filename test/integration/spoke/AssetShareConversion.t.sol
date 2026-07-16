@@ -88,7 +88,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         hub.updateManager{value: 0}(
             poolId,
             LOCAL_CENTRIFUGE_ID,
-            ManagerKind.BalanceSheet,
+            ManagerKind.Spoke,
             bytes32(bytes20(address(asyncRequestManager))),
             true,
             address(this)
@@ -178,7 +178,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         asset.mint(address(this), investmentAmount);
         vault.requestDeposit(investmentAmount, address(this), address(this));
 
-        assertEq(asset.balanceOf(address(balanceSheet.escrow(POOL_A))), investmentAmount);
+        assertEq(asset.balanceOf(address(spoke.escrow(POOL_A))), investmentAmount);
 
         // Trigger fulfilled deposit at price 1:1 (100 assets → 100 shares at 18 decimals)
         uint128 shares = 100000000000000000000; // 100 * 10**18
@@ -270,7 +270,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         asset.mint(address(this), assets);
         asset.approve(address(vault), assets);
         vault.requestDeposit(assets, address(this), address(this));
-        assertEq(asset.balanceOf(address(balanceSheet.escrow(POOL_A))), assets, "assets escrowed");
+        assertEq(asset.balanceOf(address(spoke.escrow(POOL_A))), assets, "assets escrowed");
 
         // Fulfilled 1:1 -> 100.0 shares (18 decimals).
         uint128 shares = 100e18;
@@ -291,7 +291,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         assertEq(asset.balanceOf(address(this)), assets, "investor recovered all assets");
         assertEq(shareToken.totalSupply(), 0, "all shares burned");
-        assertEq(asset.balanceOf(address(balanceSheet.escrow(POOL_A))), 0, "escrow fully drained");
+        assertEq(asset.balanceOf(address(spoke.escrow(POOL_A))), 0, "escrow fully drained");
     }
 
     /// Dust: a fine-share redemption whose asset payout rounds to 0 must not revert or lock the position.
@@ -311,7 +311,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         _fulfillDeposit(assetId, address(this), assets, shares);
         vault.mint(shares, address(this));
 
-        uint256 escrowBefore = asset.balanceOf(address(balanceSheet.escrow(POOL_A)));
+        uint256 escrowBefore = asset.balanceOf(address(spoke.escrow(POOL_A)));
 
         // Redeem half a fine share: the hub fulfills 0 whole asset units for it (dust rounds down).
         uint128 dustShares = 5e17;
@@ -324,9 +324,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         assertEq(vault.maxWithdraw(address(this)), 0, "dust redemption yields 0 claimable assets");
         assertEq(shareToken.totalSupply(), shares - dustShares, "dust shares burned on revoke");
         assertEq(asset.balanceOf(address(this)), 0, "no assets paid for dust");
-        assertEq(
-            asset.balanceOf(address(balanceSheet.escrow(POOL_A))), escrowBefore, "escrowed assets untouched by dust"
-        );
+        assertEq(asset.balanceOf(address(spoke.escrow(POOL_A))), escrowBefore, "escrowed assets untouched by dust");
     }
 
     /// Dust via partial claim: a nonzero redeem is fulfilled, then a PARTIAL claim whose asset payout rounds
@@ -368,7 +366,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         vault.withdraw(vault.maxWithdraw(address(this)), address(this), address(this));
         assertEq(asset.balanceOf(address(this)), assets - 1, "investor recovers all but the 1-unit dust remainder");
-        assertEq(asset.balanceOf(address(balanceSheet.escrow(POOL_A))), 1, "1-unit rounding remainder left in escrow");
+        assertEq(asset.balanceOf(address(spoke.escrow(POOL_A))), 1, "1-unit rounding remainder left in escrow");
     }
 
     /// 18-decimal asset into a pool denominated in a 0-decimal currency: the spoke must accept a 0-decimal

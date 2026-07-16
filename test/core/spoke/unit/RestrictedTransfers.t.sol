@@ -27,7 +27,7 @@ contract FullRestrictionsTest is Test {
             address(root),
             makeAddr("envoy"),
             spoke,
-            makeAddr("balanceSheet"),
+            makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
             makeAddr("poolEscrowProvider"),

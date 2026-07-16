@@ -11,6 +11,7 @@ import {Price} from "../types/Price.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
+import {IManifest} from "../../hub/interfaces/IManifest.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
@@ -62,6 +63,8 @@ interface ISpokeRegistry {
     event AddPool(PoolId indexed poolId);
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, address token, IRegistrar registrar);
     event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
+    event SetManifest(PoolId indexed poolId, IManifest manifest);
+    event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
     event UpdateBridger(PoolId indexed poolId, address indexed who, bool canBridge);
     event UpdateAssetPrice(
         PoolId indexed poolId,
@@ -136,11 +139,22 @@ interface ISpokeRegistry {
     /// @param manager The request manager contract
     function setRequestManager(PoolId poolId, IRequestManager manager) external;
 
+    /// @notice Grants or revokes the pool manager role for an address
+    /// @param poolId The pool identifier
+    /// @param who The address whose role is updated
+    /// @param canManage Whether the address is a manager
+    function updateManager(PoolId poolId, address who, bool canManage) external;
+
     /// @notice Grants or revokes the bridger role for an address, gating cross-chain share transfers
     /// @param poolId The pool identifier
     /// @param who The address whose role is updated
     /// @param canBridge Whether the address is a bridger
     function updateBridger(PoolId poolId, address who, bool canBridge) external;
+
+    /// @notice Install or replace the policy manifest enforced on a pool's balance-sheet manager methods
+    /// @param poolId The pool identifier
+    /// @param manifest The manifest contract (address(0) to clear)
+    function setManifest(PoolId poolId, IManifest manifest) external;
 
     //----------------------------------------------------------------------------------------------
     // Vault management
@@ -293,8 +307,14 @@ interface ISpokeRegistry {
     /// @return manager The request manager for the pool
     function requestManager(PoolId poolId) external view returns (IRequestManager manager);
 
+    /// @notice Returns whether an address holds the pool manager role
+    function manager(PoolId poolId, address who) external view returns (bool);
+
     /// @notice Returns whether an address holds the bridger role for a pool
     function bridger(PoolId poolId, address who) external view returns (bool);
+
+    /// @notice Returns the policy manifest installed for a pool (address(0) if none)
+    function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Returns the details of a vault
     /// @dev Reverts if vault does not exist

@@ -24,7 +24,7 @@ abstract contract QueueManagerBaseTest is BaseTest {
 
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        balanceSheet.updateManager(POOL_A, address(queueManager), true);
+        spokeRegistry.updateManager(POOL_A, address(queueManager), true);
 
         (, address vaultAddress1, uint128 createdAssetId1) =
             deployVault(VaultKind.SyncDepositAsyncRedeem, 18, defaultShareClassId);
@@ -57,22 +57,16 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
 
         for (uint256 i = 0; i < assetIds.length; i++) {
             vm.expectCall(
-                address(balanceSheet),
+                address(spoke),
                 abi.encodeWithSelector(
-                    balanceSheet.submitQueuedAssets.selector,
-                    POOL_A,
-                    defaultTypedShareClassId,
-                    assetIds[i],
-                    extraGasLimit
+                    spoke.submitQueuedAssets.selector, POOL_A, defaultTypedShareClassId, assetIds[i], extraGasLimit
                 )
             );
         }
 
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(
-                balanceSheet.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, extraGasLimit
-            )
+            address(spoke),
+            abi.encodeWithSelector(spoke.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, extraGasLimit)
         );
 
         queueManager.sync{value: 0.1 ether}(POOL_A, defaultTypedShareClassId, assetIds, address(this));

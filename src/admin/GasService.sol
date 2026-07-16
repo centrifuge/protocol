@@ -70,29 +70,29 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        scheduleUpgrade = _gasValue(159008);
-        cancelUpgrade = _gasValue(139501);
-        registerAsset = _gasValue(169308);
-        setPoolAdapters = _gasValue(787409); // using MAX_ADAPTER_COUNT
-        request = _gasValue(284874);
-        notifyPool = _gasValue(1356160); // create escrow case
+        scheduleUpgrade = _gasValue(158986);
+        cancelUpgrade = _gasValue(139479);
+        registerAsset = _gasValue(169286);
+        setPoolAdapters = _gasValue(787387); // using MAX_ADAPTER_COUNT
+        request = _gasValue(284830);
+        notifyPool = _gasValue(1356138); // create escrow case
         notifyShareClass = _gasValue(1870905);
         notifyPricePoolPerShare = _gasValue(175617);
         notifyPricePoolPerAsset = _gasValue(179810);
-        notifyShareMetadata = _gasValue(197131);
-        initiateTransferShares = _gasValue(369986);
-        executeTransferShares = _gasValue(252342);
-        updateRestriction = _gasValue(192666);
-        managerCall = _gasValue(226982);
-        requestCallback = _gasValue(459079); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2878986);
+        notifyShareMetadata = _gasValue(197109);
+        initiateTransferShares = _gasValue(370509);
+        executeTransferShares = _gasValue(252887);
+        updateRestriction = _gasValue(192644);
+        managerCall = _gasValue(226960);
+        requestCallback = _gasValue(466213); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2879118);
         updateVaultLink = _gasValue(214181);
         updateVaultUnlink = _gasValue(180004);
         setRequestManager = _gasValue(174712);
-        updateManager = _gasValue(165969);
-        updateHoldingAmount = _gasValue(393898);
-        updateShares = _gasValue(263954);
-        managerCallFromSpoke = _gasValue(149896);
+        updateManager = _gasValue(174156);
+        updateHoldingAmount = _gasValue(393876);
+        updateShares = _gasValue(263932);
+        managerCallFromSpoke = _gasValue(149874);
     }
 
     /// @inheritdoc IMessageProperties

@@ -27,14 +27,14 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
+import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
-import {IBalanceSheet} from "../core/spoke/interfaces/IBalanceSheet.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
-import {VaultDetails, ISpokeV3_1_0} from "../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
+import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IShareToken} from "../token/interfaces/IShareToken.sol";
 import {ESCROW_HOOK_ID} from "../token/interfaces/ITransferHook.sol";
@@ -50,9 +50,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     using RequestMessageLib for *;
     using RequestCallbackMessageLib for *;
 
-    ISpokeV3_1_0 public spoke;
-    IBalanceSheet public balanceSheet;
-    ISpokeV3_1_0 public vaultRegistry;
+    ISpoke public spoke;
+    ISpokeRegistry public spokeRegistry;
     ISubsidyManager public subsidyManager;
 
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
@@ -68,9 +67,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     //----------------------------------------------------------------------------------------------
 
     function file(bytes32 what, address data) external auth {
-        if (what == "spoke") spoke = ISpokeV3_1_0(data);
-        else if (what == "balanceSheet") balanceSheet = IBalanceSheet(data);
-        else if (what == "vaultRegistry") vaultRegistry = ISpokeV3_1_0(data);
+        if (what == "spoke") spoke = ISpoke(data);
+        else if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
         else if (what == "subsidyManager") subsidyManager = ISubsidyManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -98,17 +96,15 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         _sendRequest(vault_, RequestMessageLib.DepositRequest(controller.toBytes32(), assets_).serialize());
 
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault_);
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
         // The vault transfers the pending assets into the pool escrow right after this call. Note them
         // into the holding and immediately reserve them: the two queued updates cancel out, so the pending
         // deposit is not hub-accounted until approval and does not consume escrow withdrawal headroom.
-        balanceSheet.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_);
-        balanceSheet.reserve(
-            poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_, address(this), REASON_DEPOSIT
-        );
+        spoke.noteDeposit(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_);
+        spoke.reserve(poolId, scId, vaultDetails.asset, vaultDetails.tokenId, assets_, address(this), REASON_DEPOSIT);
 
         return true;
     }
@@ -145,7 +141,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
-        balanceSheet.transferSharesFrom(poolId, scId, sender_, owner, address(balanceSheet.escrow(poolId)), shares_);
+        spoke.transferSharesFrom(poolId, scId, sender_, owner, address(spoke.escrow(poolId)), shares_);
 
         return true;
     }
@@ -182,9 +178,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint256 payment;
 
         PoolId poolId = vault_.poolId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault_).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault_).assetId;
 
-        if (!balanceSheet.gateway().isBatching() && poolId.centrifugeId() != assetId.centrifugeId()) {
+        if (!spoke.gateway().isBatching() && poolId.centrifugeId() != assetId.centrifugeId()) {
             (refund, payment) = subsidyManager.withdrawAll(poolId, address(this));
         }
 
@@ -236,32 +232,32 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     }
 
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) internal {
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
         // Release the request-time reservation: the assets enter the hub-accounted holding, valued
         // hub-side when the queue is submitted.
-        balanceSheet.unreserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_DEPOSIT);
+        spoke.unreserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_DEPOSIT);
     }
 
     function issuedShares(PoolId poolId, ShareClassId scId, uint128 shareAmount) internal {
         // Shares parked in the pool escrow for claiming carry no holding accounting.
-        balanceSheet.issue(poolId, scId, address(balanceSheet.escrow(poolId)), shareAmount);
+        spoke.issue(poolId, scId, address(spoke.escrow(poolId)), shareAmount);
     }
 
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount)
         internal
     {
-        (address asset, uint256 tokenId) = spoke.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
 
         // Earmark the redemption payout: reserving removes the assets from the hub-accounted holding
         // atomically with the share burn, preventing NAV desync. The escrow update is deferred to claim.
-        balanceSheet.reserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_REDEEM);
+        spoke.reserve(poolId, scId, asset, tokenId, assetAmount, address(this), REASON_REDEEM);
 
-        address poolEscrow_ = address(balanceSheet.escrow(poolId));
-        balanceSheet.transferSharesFrom(poolId, scId, poolEscrow_, poolEscrow_, address(this), shareAmount);
+        address poolEscrow_ = address(spoke.escrow(poolId));
+        spoke.transferSharesFrom(poolId, scId, poolEscrow_, poolEscrow_, address(this), shareAmount);
 
-        SafeTransferLib.safeApprove(address(spoke.shareToken(poolId, scId)), address(balanceSheet), shareAmount);
-        balanceSheet.revoke(poolId, scId, shareAmount);
+        SafeTransferLib.safeApprove(address(spokeRegistry.shareToken(poolId, scId)), address(spoke), shareAmount);
+        spoke.revoke(poolId, scId, shareAmount);
     }
 
     function fulfillDepositRequest(
@@ -273,7 +269,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 fulfilledShares,
         uint128 cancelledAssets
     ) internal {
-        IAsyncVault vault_ = IAsyncVault(address(vaultRegistry.vault(poolId, scId, assetId, this)));
+        IAsyncVault vault_ = IAsyncVault(address(spokeRegistry.vault(poolId, scId, assetId, this)));
         AsyncInvestmentState storage state = investments[vault_][user];
 
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -305,7 +301,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 fulfilledShares,
         uint128 cancelledShares
     ) internal {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(vaultRegistry.vault(poolId, scId, assetId, this)));
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(spokeRegistry.vault(poolId, scId, assetId, this)));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -388,7 +384,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         if (sharesDown > 0) {
             // NOTE: Assumes restrictions check of receiver to be done in the share transfer
-            balanceSheet.withdrawShares(vault_.poolId(), vault_.scId(), receiver, sharesDown);
+            spoke.withdrawShares(vault_.poolId(), vault_.scId(), receiver, sharesDown);
         }
     }
 
@@ -445,10 +441,10 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         state.maxWithdraw = state.maxWithdraw - assetsUp;
 
         if (assetsDown > 0) {
-            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault_);
 
             // The holding decrease was already queued when the payout was reserved in revokedShares.
-            balanceSheet.withdrawReserved(
+            spoke.withdrawReserved(
                 vault_.poolId(),
                 vault_.scId(),
                 vaultDetails.asset,
@@ -483,11 +479,11 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         require(_canTransfer(vault_, receiver, address(0), convertToShares(vault_, assets)), TransferNotAllowed());
 
         if (assets > 0) {
-            VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault_);
 
             // The pending deposit was never hub-accounted (deposit and reserve cancelled out at request
             // time), so the cancellation refund claims the reserved assets without queueing an update.
-            balanceSheet.withdrawReserved(
+            spoke.withdrawReserved(
                 vault_.poolId(),
                 vault_.scId(),
                 vaultDetails.asset,
@@ -514,7 +510,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         if (shares > 0) {
             // NOTE: Assumes restrictions check of receiver to be done in the share transfer
-            balanceSheet.withdrawShares(vault_.poolId(), vault_.scId(), receiver, shares.toUint128());
+            spoke.withdrawShares(vault_.poolId(), vault_.scId(), receiver, shares.toUint128());
         }
     }
 
@@ -525,9 +521,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     /// @inheritdoc IDepositManager
     function maxDeposit(IBaseVault vault_, address user) public view returns (uint256 assets) {
         assets = _maxDeposit(vault_, user);
-        if (!_canTransfer(
-                vault_, address(balanceSheet.escrow(vault_.poolId())), user, investments[vault_][user].maxMint
-            )) return 0;
+        if (!_canTransfer(vault_, address(spoke.escrow(vault_.poolId())), user, investments[vault_][user].maxMint)) {
+            return 0;
+        }
     }
 
     function _maxDeposit(IBaseVault vault_, address user) internal view returns (uint128 assets) {
@@ -539,7 +535,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     function maxMint(IBaseVault vault_, address user) public view returns (uint256 shares) {
         shares = uint256(investments[vault_][user].maxMint);
         if (!_canTransfer(
-                vault_, address(balanceSheet.escrow(vault_.poolId())), user, uint256(investments[vault_][user].maxMint)
+                vault_, address(spoke.escrow(vault_.poolId())), user, uint256(investments[vault_][user].maxMint)
             )) return 0;
     }
 
@@ -593,9 +589,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     /// @inheritdoc IBaseRequestManager
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         uint128 assets_ = assets.toUint128();
-        VaultDetails memory vd = vaultRegistry.vaultDetails(vault_);
-        (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
+        VaultDetails memory vd = spokeRegistry.vaultDetails(vault_);
+        D18 pricePoolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vd.assetId, false);
+        D18 pricePoolPerShare = spokeRegistry.pricePoolPerShare(vault_.poolId(), vault_.scId(), false);
 
         return pricePoolPerShare.isZero()
             ? 0
@@ -613,9 +609,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     /// @inheritdoc IBaseRequestManager
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
         uint128 shares_ = shares.toUint128();
-        VaultDetails memory vd = vaultRegistry.vaultDetails(vault_);
-        (D18 pricePoolPerAsset, D18 pricePoolPerShare) =
-            spoke.pricesPoolPer(vault_.poolId(), vault_.scId(), vd.assetId, false);
+        VaultDetails memory vd = spokeRegistry.vaultDetails(vault_);
+        D18 pricePoolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vd.assetId, false);
+        D18 pricePoolPerShare = spokeRegistry.pricePoolPerShare(vault_.poolId(), vault_.scId(), false);
 
         return pricePoolPerAsset.isZero()
             ? 0
@@ -635,9 +631,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
-        (uint64 shareLastUpdated,,) = spoke.markersPricePoolPerShare(poolId, scId);
-        (uint64 assetLastUpdated,,) =
-            spoke.markersPricePoolPerAsset(poolId, scId, vaultRegistry.vaultDetails(vault_).assetId);
+        uint64 shareLastUpdated = spokeRegistry.pricePoolPerShareComputedAt(poolId, scId);
+        uint64 assetLastUpdated =
+            spokeRegistry.pricePoolPerAssetComputedAt(poolId, scId, spokeRegistry.vaultDetails(vault_).assetId);
 
         // Choose the latest update to be the marker
         lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
@@ -645,15 +641,15 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
     /// @inheritdoc IBaseRequestManager
     function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
-        return balanceSheet.escrow(poolId);
+        return spoke.escrow(poolId);
     }
 
     /// @inheritdoc IBaseRequestManager
     function globalEscrow() external view override returns (IEscrow) {
         // NOTE: Inlining vault() instead of caching on purpose to save critical 6 bytes of deploy size
-        require(vaultRegistry.isLinked(IVault(IBaseVault(msg.sender))), NotAVault());
+        require(spokeRegistry.isLinked(IVault(IBaseVault(msg.sender))), NotAVault());
 
-        return IEscrow(address(balanceSheet.escrow(IBaseVault(msg.sender).poolId())));
+        return IEscrow(address(spoke.escrow(IBaseVault(msg.sender).poolId())));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -671,7 +667,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         view
         returns (uint128 shares)
     {
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return priceAssetPerShare.isZero()
@@ -686,7 +682,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         view
         returns (uint128 assets)
     {
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return priceAssetPerShare.isZero()
@@ -701,7 +697,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         view
         returns (D18 price)
     {
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault_);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault_);
         address shareToken = vault_.share();
 
         return shares == 0
@@ -713,6 +709,6 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
     /// @dev Here to reduce contract bytesize
     function _checkIsLinked(IVault vault_) internal view {
-        require(vaultRegistry.isLinked(vault_), VaultNotLinked());
+        require(spokeRegistry.isLinked(vault_), VaultNotLinked());
     }
 }

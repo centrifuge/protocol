@@ -14,7 +14,6 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../../../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 
 import {IOnchainPMFactory} from "../interfaces/IOnchainPMFactory.sol";
@@ -34,15 +33,13 @@ contract SlippageGuard is ISlippageGuard {
 
     ISpoke public immutable spoke;
     address public immutable envoy;
-    IBalanceSheet public immutable balanceSheet;
     IOnchainPMFactory public immutable onchainPMFactory;
 
     mapping(PoolId => mapping(ShareClassId => PeriodState)) public period;
     mapping(PoolId => mapping(ShareClassId => SlippageConfig)) public config;
 
-    constructor(ISpoke spoke_, IBalanceSheet balanceSheet_, address envoy_, IOnchainPMFactory onchainPMFactory_) {
+    constructor(ISpoke spoke_, address envoy_, IOnchainPMFactory onchainPMFactory_) {
         spoke = spoke_;
-        balanceSheet = balanceSheet_;
         envoy = envoy_;
         onchainPMFactory = onchainPMFactory_;
     }
@@ -88,7 +85,7 @@ contract SlippageGuard is ISlippageGuard {
             TransientArrayLib.push(ASSETS_SLOT, bytes32(uint256(uint160(asset))));
             TransientArrayLib.push(TOKEN_IDS_SLOT, bytes32(tokenId));
 
-            uint128 balance = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
+            uint128 balance = spoke.availableBalanceOf(poolId, scId, asset, tokenId);
             TransientStorageLib.tstore(bytes32(PRE_BASE_SLOT + i), uint256(balance));
         }
     }
@@ -139,7 +136,7 @@ contract SlippageGuard is ISlippageGuard {
             uint256 tokenId = uint256(tokenIds[i]);
 
             uint128 pre = uint128(TransientStorageLib.tloadUint256(bytes32(PRE_BASE_SLOT + i)));
-            uint128 post = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
+            uint128 post = spoke.availableBalanceOf(poolId, scId, asset, tokenId);
 
             D18 price = spoke.spokeRegistry()
                 .pricePoolPerAsset(poolId, scId, spoke.spokeRegistry().assetToId(asset, tokenId), true);

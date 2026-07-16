@@ -138,7 +138,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(protocolGuardian));
         vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(balanceSheet));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
         vm.assume(nonWard != address(spokeV3_1_0));
@@ -146,7 +145,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(messageDispatcher.wards(address(root)), 1);
         assertEq(messageDispatcher.wards(address(protocolGuardian)), 1);
         assertEq(messageDispatcher.wards(address(spoke)), 1);
-        assertEq(messageDispatcher.wards(address(balanceSheet)), 1);
         assertEq(messageDispatcher.wards(address(hub)), 1);
         assertEq(messageDispatcher.wards(address(hubHandler)), 1);
         assertEq(messageDispatcher.wards(address(spokeV3_1_0)), 1);
@@ -158,7 +156,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(messageDispatcher.gateway()), address(gateway));
         assertEq(address(messageDispatcher.spokeHandler()), address(spokeHandler));
         assertEq(address(messageDispatcher.multiAdapter()), address(multiAdapter));
-        assertEq(address(messageDispatcher.balanceSheet()), address(balanceSheet));
         assertEq(address(messageDispatcher.hubHandler()), address(hubHandler));
     }
 
@@ -176,7 +173,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(messageProcessor.gateway()), address(gateway));
         assertEq(address(messageProcessor.spokeHandler()), address(spokeHandler));
         assertEq(address(messageProcessor.multiAdapter()), address(multiAdapter));
-        assertEq(address(messageProcessor.balanceSheet()), address(balanceSheet));
         assertEq(address(messageProcessor.hubHandler()), address(hubHandler));
     }
 
@@ -218,26 +214,21 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(spoke.spokeRegistry()), address(spokeRegistry));
         assertEq(address(spoke.sender()), address(messageDispatcher));
-    }
-
-    function testBalanceSheet(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(messageProcessor));
-        vm.assume(nonWard != address(messageDispatcher));
-
-        assertEq(balanceSheet.wards(address(root)), 1);
-        assertEq(balanceSheet.wards(address(messageProcessor)), 1);
-        assertEq(balanceSheet.wards(address(messageDispatcher)), 1);
-        assertEq(balanceSheet.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(balanceSheet.spoke()), address(spokeRegistry));
-        assertEq(address(balanceSheet.sender()), address(messageDispatcher));
-        assertEq(address(balanceSheet.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(spoke.snapshotQueue()), address(snapshotQueue));
+        assertEq(address(spoke.poolEscrowProvider()), address(poolEscrowFactory));
 
         // root endorsements
-        assertEq(root.endorsed(address(balanceSheet)), true);
+        assertEq(root.endorsed(address(spoke)), true);
+    }
+
+    function testQueues(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(spoke));
+
+        assertEq(snapshotQueue.wards(address(root)), 1);
+        assertEq(snapshotQueue.wards(address(spoke)), 1);
+        assertEq(snapshotQueue.wards(nonWard), 0);
     }
 
     function testPoolEscrowFactory(address nonWard) public view {
@@ -251,7 +242,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(poolEscrowFactory.root()), address(root));
-        assertEq(address(poolEscrowFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(poolEscrowFactory.spoke()), address(spoke));
     }
 
     function testShareTokenRegistrar(address nonWard) public view {
@@ -259,12 +250,10 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spokeHandler));
         vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(balanceSheet));
 
         assertEq(shareTokenRegistrar.wards(address(root)), 1);
         assertEq(shareTokenRegistrar.wards(address(spokeHandler)), 1);
         assertEq(shareTokenRegistrar.wards(address(spoke)), 1);
-        assertEq(shareTokenRegistrar.wards(address(balanceSheet)), 1);
         assertEq(shareTokenRegistrar.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -450,12 +439,12 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(asyncRequestManager.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(asyncRequestManager.spoke()), address(spokeV3_1_0));
-        assertEq(address(asyncRequestManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(asyncRequestManager.spoke()), address(spoke));
+        assertEq(address(asyncRequestManager.spokeRegistry()), address(spokeRegistry));
         assertEq(address(asyncRequestManager.subsidyManager()), address(subsidyManager));
 
         // root endorsements
-        assertEq(root.endorsed(address(balanceSheet)), true);
+        assertEq(root.endorsed(address(spoke)), true);
     }
 
     function testAsyncVaultFactory(address nonWard) public view {
@@ -497,8 +486,8 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(syncManager.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(syncManager.spoke()), address(spokeV3_1_0));
-        assertEq(address(syncManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(syncManager.spoke()), address(spoke));
+        assertEq(address(syncManager.spokeRegistry()), address(spokeRegistry));
         assertEq(syncManager.envoy(), address(envoy));
     }
 
@@ -589,14 +578,14 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testOnOffRampFactory() public view {
         // dependencies set correctly
         assertEq(address(onOffRampFactory.envoy()), address(envoy));
-        assertEq(address(onOffRampFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onOffRampFactory.spoke()), address(spoke));
         assertEq(address(onOffRampFactory.accountingToken()), address(accountingToken));
     }
 
     function testQueueManager() public view {
         // dependencies set correctly
         assertEq(address(queueManager.envoy()), address(envoy));
-        assertEq(address(queueManager.balanceSheet()), address(balanceSheet));
+        assertEq(address(queueManager.spoke()), address(spoke));
         assertEq(address(queueManager.gateway()), address(gateway));
     }
 
@@ -647,7 +636,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testOnchainPMFactory() public view {
         // dependencies set correctly
         assertEq(onchainPMFactory.contractUpdater(), address(contractUpdater));
-        assertEq(address(onchainPMFactory.balanceSheet()), address(balanceSheet));
+        assertEq(address(onchainPMFactory.spoke()), address(spoke));
         assertEq(address(onchainPMFactory.gateway()), address(gateway));
     }
 
@@ -681,7 +670,6 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testSlippageGuard() public view {
         // dependencies set correctly
         assertEq(address(slippageGuard.spoke()), address(spoke));
-        assertEq(address(slippageGuard.balanceSheet()), address(balanceSheet));
         assertEq(slippageGuard.envoy(), address(envoy));
         assertEq(address(slippageGuard.onchainPMFactory()), address(onchainPMFactory));
     }

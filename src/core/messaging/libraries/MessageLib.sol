@@ -45,9 +45,9 @@ enum VaultUpdateKind {
 
 /// @dev Used internally in the UpdateManager message to select which contract's manager is updated.
 enum ManagerKind {
-    BalanceSheet,
     Adapter,
     Gateway,
+    Spoke,
     Bridger
 }
 

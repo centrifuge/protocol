@@ -5,8 +5,8 @@ import {IAccountingToken} from "./IAccountingToken.sol";
 import {IDepositManager, IWithdrawManager} from "./IBalanceSheetManager.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  IOnOffRamp
@@ -47,7 +47,7 @@ interface IOnOffRamp is IDepositManager, IWithdrawManager, IManagerCallFromHub {
     function envoy() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
-    function balanceSheet() external view returns (IBalanceSheet);
+    function spoke() external view returns (ISpoke);
 
     /// @notice Whether an asset is whitelisted for deposit (onramp) operations
     /// @param asset The asset address

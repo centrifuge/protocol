@@ -765,12 +765,12 @@ contract StdManifestTest is Test {
 
     // ─── balance-sheet manager classification ─────────────────────────────────────
 
-    function testGrantBalanceSheetManagerNeedsAuthorization() public {
-        assertEq(_delayOf(_managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), true)), DELAY);
+    function testGrantSpokeManagerNeedsAuthorization() public {
+        assertEq(_delayOf(_managerCall(ManagerKind.Spoke, bytes32(bytes20(who)), true)), DELAY);
     }
 
-    function testRevokeBalanceSheetManagerNeedsAuthorization() public {
-        assertEq(_delayOf(_managerCall(ManagerKind.BalanceSheet, bytes32(bytes20(who)), false)), DELAY);
+    function testRevokeSpokeManagerNeedsAuthorization() public {
+        assertEq(_delayOf(_managerCall(ManagerKind.Spoke, bytes32(bytes20(who)), false)), DELAY);
     }
 
     // ─── setAdapters classification ───────────────────────────────────────────────

@@ -83,21 +83,21 @@ abstract contract OnOffRampBaseTest is BaseTest {
 
         // Mock the BalanceSheet deposit for the accounting token (so it doesn't try to register the asset)
         vm.mockCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.deposit.selector, POOL_A, defaultTypedShareClassId, address(mockAccountingToken)
+                spoke.deposit.selector, POOL_A, defaultTypedShareClassId, address(mockAccountingToken)
             ),
             abi.encode()
         );
 
-        factory = new OnOffRampFactory(address(contractUpdater), balanceSheet, mockAccountingToken);
+        factory = new OnOffRampFactory(address(contractUpdater), spoke, mockAccountingToken);
         manager = factory.newManager(POOL_A, defaultTypedShareClassId);
     }
 
     function _depositIntoBalanceSheet(uint128 amount) internal {
         erc20.mint(address(this), amount);
-        erc20.approve(address(balanceSheet), amount);
-        balanceSheet.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, amount);
+        erc20.approve(address(spoke), amount);
+        spoke.deposit(POOL_A, defaultTypedShareClassId, address(erc20), erc20TokenId, amount);
     }
 }
 
@@ -122,14 +122,14 @@ contract OnOffRampIntegrationTest is OnOffRampBaseTest {
         );
 
         // Set manager permissions
-        balanceSheet.updateManager(POOL_A, address(manager), true);
+        spokeRegistry.updateManager(POOL_A, address(manager), true);
 
         // Mint tokens to manager
         erc20.mint(address(manager), amount);
 
         // Verify initial state
         assertEq(erc20.balanceOf(address(manager)), amount);
-        assertEq(balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
+        assertEq(spoke.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
         assertEq(erc20.balanceOf(receiver), 0);
 
         // Execute deposit
@@ -137,16 +137,14 @@ contract OnOffRampIntegrationTest is OnOffRampBaseTest {
 
         // Verify deposit state changes
         assertEq(erc20.balanceOf(address(manager)), 0);
-        assertEq(
-            balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), amount
-        );
+        assertEq(spoke.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), amount);
 
         // Execute withdraw
         vm.prank(relayer);
         manager.withdraw(address(erc20), erc20TokenId, amount, receiver);
 
         // Verify withdraw state changes
-        assertEq(balanceSheet.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
+        assertEq(spoke.availableBalanceOf(manager.poolId(), manager.scId(), address(erc20), erc20TokenId), 0);
         assertEq(erc20.balanceOf(receiver), amount);
     }
 }

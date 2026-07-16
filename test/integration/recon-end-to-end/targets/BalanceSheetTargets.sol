@@ -6,7 +6,6 @@ import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
-import {BalanceSheet} from "../../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 
@@ -30,7 +29,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     //     _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
     //     _checkAndRecordAuthChange(_getActor()); // Track auth changes from deny()
 
-    //     balanceSheet.deny(_getActor());
+    //     spoke.deny(_getActor());
     // }
 
     function balanceSheet_deposit(uint256 tokenId, uint128 amount) public updateGhosts asActor {
@@ -75,14 +74,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             ghost_depositExchangeRate[assetKey] = D18.unwrap(d18(1 ether));
         }
 
-        balanceSheet.deposit(poolId, scId, vault.asset(), tokenId, amount);
+        spoke.deposit(poolId, scId, vault.asset(), tokenId, amount);
 
         sumOfManagerDeposits[vault.asset()] += amount;
 
         ghost_assetQueueDeposits[assetKey] += amount;
 
         // Update escrow tracking: total balance increases by deposit amount
-        uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
+        uint128 newAvailable = spoke.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
         ghost_escrowAvailableBalance[assetKey] = newAvailable;
         ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
     }
@@ -118,7 +117,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             }
         }
 
-        balanceSheet.issue(poolId, scId, _getActor(), shares);
+        spoke.issue(poolId, scId, _getActor(), shares);
 
         issuedBalanceSheetShares[poolId][scId] += shares;
         shareMints[vault.share()] += shares;
@@ -128,7 +127,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_netSharePosition[shareKey] += int256(uint256(shares));
 
         // Check for share queue flip based on actual queue state changes
-        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(poolId, scId);
         bytes32 key = _poolShareKey(poolId, scId);
         uint128 deltaBefore = before_shareQueueDelta[key];
         bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -161,7 +160,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         if (tokenId == 0) MockERC20(asset).mint(address(poolEscrow), amount);
 
-        balanceSheet.noteDeposit(poolId, scId, asset, tokenId, amount);
+        spoke.noteDeposit(poolId, scId, asset, tokenId, amount);
 
         (uint128 totalAfter, uint128 reservedAfter) = PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
         t(totalAfter == totalBefore + amount, "balanceSheet_noteDeposit: PoolEscrow.total should increase by amount");
@@ -191,7 +190,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         WithdrawReservedState memory before_ = _captureWithdrawReservedState(vault, tokenId);
 
         // NOTE: Only REASON_DEPOSIT/asyncRequestManager reservations are reachable here (see balanceSheet_reserve).
-        try balanceSheet.withdrawReserved(
+        try spoke.withdrawReserved(
             poolId, scId, vault.asset(), tokenId, _getActor(), amount, address(asyncRequestManager), REASON_DEPOSIT
         ) {
             _checkWithdrawReservedSuccess(vault, tokenId, amount, before_);
@@ -210,7 +209,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
         IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
         (state.total, state.reserved) = PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
-        (state.deposits, state.withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        (state.deposits, state.withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
     }
 
     function _checkWithdrawReservedSuccess(
@@ -255,12 +254,12 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         address poolEscrowAddr = _getPoolEscrowForVault(vault);
         uint256 escrowBefore = IShareToken(shareToken).balanceOf(poolEscrowAddr);
         uint256 receiverBefore = IShareToken(shareToken).balanceOf(_getActor());
-        (uint128 deltaBefore, bool isPositiveBefore,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaBefore, bool isPositiveBefore,,) = snapshotQueue.queuedShares(poolId, scId);
 
-        try balanceSheet.withdrawShares(poolId, scId, _getActor(), amount) {
+        try spoke.withdrawShares(poolId, scId, _getActor(), amount) {
             uint256 escrowAfter = IShareToken(shareToken).balanceOf(poolEscrowAddr);
             uint256 receiverAfter = IShareToken(shareToken).balanceOf(_getActor());
-            (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+            (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(poolId, scId);
 
             t(
                 escrowBefore - escrowAfter == amount,
@@ -279,11 +278,11 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     }
 
     function balanceSheet_recoverTokens(address token, uint256 amount) public updateGhosts asActor {
-        balanceSheet.recoverTokens(token, _getActor(), amount);
+        spoke.recoverTokens(token, _getActor(), amount);
     }
 
     function balanceSheet_recoverTokens(address token, uint256 tokenId, uint256 amount) public updateGhosts asActor {
-        balanceSheet.recoverTokens(token, tokenId, _getActor(), amount);
+        spoke.recoverTokens(token, tokenId, _getActor(), amount);
     }
 
     // NOTE: removed because introduces false positives
@@ -292,7 +291,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     //     _trackAuthorization(_getActor(), PoolId.wrap(0)); // Global operation, use PoolId 0
     //     _checkAndRecordAuthChange(_getActor()); // Track auth changes from rely()
 
-    //     balanceSheet.rely(_getActor());
+    //     spoke.rely(_getActor());
     // }
 
     function balanceSheet_revoke(uint128 shares) public updateGhosts asActor {
@@ -326,7 +325,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             }
         }
 
-        balanceSheet.revoke(poolId, scId, shares);
+        spoke.revoke(poolId, scId, shares);
 
         revokedBalanceSheetShares[poolId][scId] += shares;
         shareMints[vault.share()] -= shares;
@@ -336,7 +335,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         ghost_netSharePosition[shareKey] -= int256(uint256(shares));
 
         // Check for share queue flip based on actual queue state changes
-        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(poolId, scId);
         bytes32 key = _poolShareKey(poolId, scId);
         uint128 deltaBefore = before_shareQueueDelta[key];
         bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -370,7 +369,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
     //     // Attempt the transfer - will revert if from is endorsed
     //     try
-    //         balanceSheet.transferSharesFrom(
+    //         spoke.transferSharesFrom(
     //             poolId,
     //             scId,
     //             from,
@@ -409,9 +408,9 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // Track escrow balance sufficiency
         ghost_escrowSufficiencyTracked[assetKey] = true;
 
-        try balanceSheet.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount) {
+        try spoke.withdraw(poolId, scId, vault.asset(), tokenId, _getActor(), amount) {
             // Successful withdrawal
-            uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
+            uint128 newAvailable = spoke.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
             ghost_escrowAvailableBalance[assetKey] = newAvailable;
             ghost_escrowReservedBalance[assetKey] = ghost_netReserved[assetKey];
 
@@ -453,16 +452,14 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // (e.g., shortcut_redeem_and_claim_clamped) which go through AsyncRequestManager.
         // Adding REASON_REDEEM here would double the admin-mistake false positive surface
         // (Issue #10) without new protocol insight.
-        try balanceSheet.reserve(
-            poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT
-        ) {
+        try spoke.reserve(poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT) {
             if (ghost_netReserved[key] <= type(uint256).max - amount) {
                 ghost_netReserved[key] += amount;
             }
 
             // Track escrow balance sufficiency
             ghost_escrowSufficiencyTracked[key] = true;
-            uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
+            uint128 newAvailable = spoke.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
             ghost_escrowAvailableBalance[key] = newAvailable;
             ghost_escrowReservedBalance[key] = ghost_netReserved[key];
         } catch (bytes memory err) {
@@ -480,7 +477,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        uint128 available = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), 0);
+        uint128 available = spoke.availableBalanceOf(poolId, scId, vault.asset(), 0);
         amount = uint128(uint256(amount) % (uint256(available) + 1));
         balanceSheet_reserve(0, amount);
     }
@@ -504,7 +501,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         // (e.g., shortcut_redeem_and_claim_clamped) which go through AsyncRequestManager.
         // Adding REASON_REDEEM here would double the admin-mistake false positive surface
         // (Issue #10) without new protocol insight.
-        try balanceSheet.unreserve(
+        try spoke.unreserve(
             poolId, scId, vault.asset(), tokenId, amount, address(asyncRequestManager), REASON_DEPOSIT
         ) {
             if (ghost_netReserved[key] >= amount) {
@@ -513,7 +510,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
 
             // Track escrow balance sufficiency
             ghost_escrowSufficiencyTracked[key] = true;
-            uint128 newAvailable = balanceSheet.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
+            uint128 newAvailable = spoke.availableBalanceOf(poolId, scId, vault.asset(), tokenId);
             ghost_escrowAvailableBalance[key] = newAvailable;
             ghost_escrowReservedBalance[key] = ghost_netReserved[key];
         } catch (bytes memory err) {
@@ -539,10 +536,10 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
         // Get current nonce to track monotonicity
-        (,,, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+        (,,, uint64 currentNonce) = snapshotQueue.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, extraGasLimit, address(this));
+        spoke.submitQueuedAssets(poolId, scId, assetId, extraGasLimit, address(this));
     }
 
     function balanceSheet_submitQueuedShares(uint128 extraGasLimit) public updateGhosts asAdmin {
@@ -558,12 +555,12 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
         // Get current nonce to track monotonicity
-        (,,, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+        (,,, uint64 currentNonce) = snapshotQueue.queuedShares(poolId, scId);
         ghost_previousNonce[shareKey] = currentNonce;
 
         ghost_shareQueueNonce[shareKey]++;
 
-        balanceSheet.submitQueuedShares{value: 0.1 ether}(poolId, scId, extraGasLimit, address(this));
+        spoke.submitQueuedShares{value: 0.1 ether}(poolId, scId, extraGasLimit, address(this));
 
         // Reset ghost_netSharePosition to match the cleared queue state
         // After submitQueuedShares, the BalanceSheet contract resets delta=0 and isPositive=false

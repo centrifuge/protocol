@@ -10,9 +10,10 @@ import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol"
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISnapshotQueue} from "../../core/spoke/interfaces/ISnapshotQueue.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
@@ -21,16 +22,18 @@ contract QueueManager is Auth, IQueueManager, IManagerCallFromHub {
     using CastLib for *;
     using BitmapLib for *;
 
-    IGateway public immutable gateway;
     address public immutable envoy;
-    IBalanceSheet public immutable balanceSheet;
+    ISpoke public immutable spoke;
+    ISnapshotQueue public immutable snapshotQueue;
+    IGateway public immutable gateway;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
-    constructor(address envoy_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
+    constructor(address envoy_, ISpoke spoke_, address deployer) Auth(deployer) {
         envoy = envoy_;
-        balanceSheet = balanceSheet_;
-        gateway = balanceSheet_.gateway();
+        spoke = spoke_;
+        snapshotQueue = spoke_.snapshotQueue();
+        gateway = spoke_.gateway();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -73,17 +76,17 @@ contract QueueManager is Auth, IQueueManager, IManagerCallFromHub {
             TransientStorageLib.tstore(key, true);
 
             // Check if valid
-            (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
+            (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetIds[i]);
             if (deposits > 0 || withdrawals > 0) {
-                balanceSheet.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit, address(0));
+                spoke.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit, address(0));
             }
         }
 
-        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta,, uint32 queuedAssetCounter,) = snapshotQueue.queuedShares(poolId, scId);
         bool submitShares = delta > 0 && queuedAssetCounter == 0;
 
         if (submitShares) {
-            balanceSheet.submitQueuedShares(poolId, scId, sc.extraGasLimit, address(0));
+            spoke.submitQueuedShares(poolId, scId, sc.extraGasLimit, address(0));
             sc.lastSync = uint64(block.timestamp);
         }
     }

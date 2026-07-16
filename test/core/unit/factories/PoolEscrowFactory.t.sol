@@ -15,12 +15,12 @@ contract PoolEscrowFactoryTest is Test {
 
     address deployer = address(this);
     address root = makeAddr("root");
-    address balanceSheet = makeAddr("balanceSheet");
+    address spoke = makeAddr("spoke");
     address randomUser = makeAddr("randomUser");
 
     function setUp() public {
         factory = new PoolEscrowFactory(root, deployer);
-        factory.file("balanceSheet", balanceSheet);
+        factory.file("spoke", spoke);
     }
 
     function testDeployEscrowAtDeterministicAddress(PoolId poolId) public {
@@ -37,21 +37,21 @@ contract PoolEscrowFactoryTest is Test {
     }
 
     function testEscrowHasCorrectPermissions(PoolId poolId, address nonWard) public {
-        vm.assume(nonWard != root && nonWard != balanceSheet);
+        vm.assume(nonWard != root && nonWard != spoke);
         address escrowAddr = address(factory.newEscrow(poolId));
 
         PoolEscrow escrow = PoolEscrow(payable(escrowAddr));
 
         assertEq(escrow.wards(root), 1, "root not authorized");
-        assertEq(escrow.wards(balanceSheet), 1, "balanceSheet not authorized");
+        assertEq(escrow.wards(spoke), 1, "spoke not authorized");
 
         assertEq(escrow.wards(address(factory)), 0, "factory still authorized");
         assertEq(escrow.wards(nonWard), 0, "unexpected authorization");
     }
 
-    function testFileSetsBalanceSheet() public {
-        factory.file("balanceSheet", randomUser);
-        assertEq(factory.balanceSheet(), randomUser);
+    function testFileSetsSpoke() public {
+        factory.file("spoke", randomUser);
+        assertEq(factory.spoke(), randomUser);
     }
 
     function testFileWithUnknownParamReverts() public {

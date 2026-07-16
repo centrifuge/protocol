@@ -25,9 +25,9 @@ import {
     IERC7887Redeem
 } from "../../../src/misc/interfaces/IERC7540.sol";
 
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -66,12 +66,12 @@ contract SyncDepositTestHelper is BaseTest {
         address syncDepositManager = address(vault.syncDepositManager());
 
         vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(
+        emit ISpoke.NoteDeposit(
             poolId, scId, syncDepositManager, vault.asset(), vaultDetails.tokenId, depositAssetAmount
         );
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(poolId, scId, syncDepositManager, self, shares);
+        emit ISpoke.Issue(poolId, scId, syncDepositManager, self, shares);
     }
 }
 

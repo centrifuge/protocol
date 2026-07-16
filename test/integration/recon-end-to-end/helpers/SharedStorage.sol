@@ -228,7 +228,7 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) internal ghost_shareQueueNonce; // Track nonce progression for share queue
     mapping(bytes32 => uint256) internal ghost_previousNonce; // To verify monotonicity
 
-    // Before/after state tracking for share queues
+    // Before/after state tracking for share snapshotQueue
     mapping(bytes32 => uint128) internal before_shareQueueDelta;
     mapping(bytes32 => bool) internal before_shareQueueIsPositive;
     mapping(bytes32 => uint64) internal before_nonce;

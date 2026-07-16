@@ -11,7 +11,7 @@ package misc {
 
 package spoke {
     class Spoke
-    class BalanceSheet
+    class SnapshotQueue
     interface IRequestManager
     interface ITrustedContractUpdate
 }
@@ -25,12 +25,13 @@ IBaseRequestManager -up-|> IRequestManager
 IAsyncRequestManager -up-|> IBaseRequestManager
 ISyncManager -up-|> ITrustedContractUpdate
 
-AsyncRequestManager -up-> BalanceSheet
+AsyncRequestManager -up-> Spoke
 AsyncRequestManager -up-|> IAsyncRequestManager
-BalanceSheet -up-> PoolEscrow
+Spoke -up-> PoolEscrow
+Spoke -up-> SnapshotQueue
 
 SyncManager -up-|> ISyncManager
-SyncManager -up--> BalanceSheet
+SyncManager -up--> Spoke
 
 VaultRouter -up-> RouterEscrow
 VaultRouter -up-> Spoke

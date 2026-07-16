@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import {IOnchainPM} from "./IOnchainPM.sol";
 
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../../../core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
 
 interface IOnchainPMFactory {
     event DeployOnchainPM(PoolId indexed poolId, address indexed onchainPM);
@@ -13,7 +13,7 @@ interface IOnchainPMFactory {
     error InvalidPoolId();
 
     function contractUpdater() external view returns (address);
-    function balanceSheet() external view returns (IBalanceSheet);
+    function spoke() external view returns (ISpoke);
     function gateway() external view returns (IGateway);
 
     /// @notice Deploys a new OnchainPM for the given pool. Reverts if one is already deployed

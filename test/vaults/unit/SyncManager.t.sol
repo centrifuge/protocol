@@ -7,9 +7,9 @@ import {IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultDetails, ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
+import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -27,9 +27,8 @@ abstract contract SyncManagerBaseTest is Test {
     address immutable AUTH = makeAddr("AUTH");
     address immutable USER = makeAddr("USER");
 
-    ISpokeV3_1_0 spoke = ISpokeV3_1_0(address(new IsContract()));
-    IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
-    ISpokeV3_1_0 vaultRegistry = ISpokeV3_1_0(address(new IsContract()));
+    ISpoke spoke = ISpoke(address(new IsContract()));
+    ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     IShareToken shareToken = IShareToken(address(new IsContract()));
     IBaseVault vault = IBaseVault(address(new IsContract()));
 
@@ -46,9 +45,8 @@ abstract contract SyncManagerBaseTest is Test {
         syncManager = new SyncManager(AUTH);
 
         vm.startPrank(AUTH);
+        syncManager.file("spokeRegistry", address(spokeRegistry));
         syncManager.file("spoke", address(spoke));
-        syncManager.file("vaultRegistry", address(vaultRegistry));
-        syncManager.file("balanceSheet", address(balanceSheet));
         vm.stopPrank();
 
         vm.mockCall(address(vault), abi.encodeWithSignature("poolId()"), abi.encode(POOL_ID));
@@ -64,8 +62,8 @@ abstract contract SyncManagerBaseTest is Test {
         VaultDetails memory details = VaultDetails({assetId: ASSET_ID, asset: asset, tokenId: TOKEN_ID, isLinked: true});
 
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(ISpokeV3_1_0.vaultDetails.selector, vault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, vault),
             abi.encode(details)
         );
 
@@ -78,14 +76,14 @@ abstract contract SyncManagerBaseTest is Test {
 
     function _setupPrices(D18 poolPerShare, D18 poolPerAsset) internal {
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpokeV3_1_0.pricePoolPerShare.selector, POOL_ID, SC_ID, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector, POOL_ID, SC_ID, true),
             abi.encode(poolPerShare)
         );
 
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpokeV3_1_0.pricePoolPerAsset.selector, POOL_ID, SC_ID, ASSET_ID, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_ID, SC_ID, ASSET_ID, true),
             abi.encode(poolPerAsset)
         );
     }
@@ -96,15 +94,17 @@ abstract contract SyncManagerBaseTest is Test {
         vm.stopPrank();
 
         vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.availableBalanceOf.selector, POOL_ID, SC_ID, asset, TOKEN_ID),
+            address(spoke),
+            abi.encodeWithSelector(ISpoke.availableBalanceOf.selector, POOL_ID, SC_ID, asset, TOKEN_ID),
             abi.encode(availableBalance)
         );
     }
 
     function _setupLinkedVault(bool isLinked) internal {
         vm.mockCall(
-            address(vaultRegistry), abi.encodeWithSelector(ISpokeV3_1_0.isLinked.selector, vault), abi.encode(isLinked)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isLinked.selector, vault),
+            abi.encode(isLinked)
         );
     }
 
@@ -126,16 +126,13 @@ contract SyncManagerAdminTest is SyncManagerBaseTest {
         syncManager.file("random", address(0));
 
         address newSpoke = makeAddr("newSpoke");
-        address newBalanceSheet = makeAddr("newBalanceSheet");
-        address newVaultRegistry = makeAddr("newVaultRegistry");
+        address newSpokeRegistry = makeAddr("newSpokeRegistry");
 
         vm.startPrank(AUTH);
         syncManager.file("spoke", newSpoke);
         assertEq(address(syncManager.spoke()), newSpoke);
-        syncManager.file("balanceSheet", newBalanceSheet);
-        assertEq(address(syncManager.balanceSheet()), newBalanceSheet);
-        syncManager.file("vaultRegistry", newVaultRegistry);
-        assertEq(address(syncManager.vaultRegistry()), newVaultRegistry);
+        syncManager.file("spokeRegistry", newSpokeRegistry);
+        assertEq(address(syncManager.spokeRegistry()), newSpokeRegistry);
         vm.stopPrank();
     }
 }

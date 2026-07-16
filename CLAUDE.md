@@ -44,10 +44,10 @@ src/
 │   │   ├── ShareClassManager.sol # Share class logic
 │   │   └── interfaces/
 │   ├── spoke/              # Spoke-side contracts
-│   │   ├── Spoke.sol       # User-facing spoke ops (transfers, asset registration, manager calls)
-│   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices
+│   │   ├── Spoke.sol       # User-facing spoke ops + balance-sheet mgmt (deposit/withdraw/issue/revoke); BatchedMulticall
+│   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices + manifest + manager roles
 │   │   ├── SpokeHandler.sol # Inbound cross-chain message handling
-│   │   ├── BalanceSheet.sol # Balance tracking
+│   │   ├── SnapshotQueue.sol      # Queued share/asset deltas pending submission to the Hub (Spoke → SnapshotQueue, mirrors Hub → Holdings)
 │   │   ├── PoolEscrow.sol  # Pool-specific escrow
 │   │   ├── factories/      # Escrow & vault factories
 │   │   ├── legacy/         # SpokeV3_1_0 compatibility facade
@@ -150,10 +150,10 @@ Async vaults implement a three-phase deposit flow:
 - State: PoolEscrow ✅ receives assets | maxMint ❌
 
 **Phase 2: PROCESS** (Two sub-phases)
-- **Phase 2a: APPROVE** (`batchRequestManager.approveDeposits → balanceSheet.noteDeposit`)
+- **Phase 2a: APPROVE** (`batchRequestManager.approveDeposits → spoke.noteDeposit`)
   - Admin approves pending deposits
-  - `balanceSheet.noteDeposit()` calls `escrow(poolId).deposit()` to account for assets
-  - `balanceSheet.issue()` mints shares to PoolEscrow address
+  - `spoke.noteDeposit()` calls `escrow(poolId).deposit()` to account for assets
+  - `spoke.issue()` mints shares to PoolEscrow address
   - State: PoolEscrow ✅ assets accounted, shares minted to PoolEscrow
 
 - **Phase 2b: NOTIFY** (`batchRequestManager.notifyDeposit`)
@@ -163,7 +163,7 @@ Async vaults implement a three-phase deposit flow:
 
 **Phase 3: CLAIM** (`vault.deposit/mint`)
 - User claims allocated shares
-- Shares transfer from PoolEscrow to user via `balanceSheet.withdraw()`
+- Shares transfer from PoolEscrow to user via `spoke.withdrawShares()`
 - `AsyncRequestManager.maxMint` decreases (allocation consumed)
 - State: PoolEscrow ✅ shares decrease | User balance ✅
 
@@ -219,7 +219,7 @@ Contract style, structure, and declaration-ordering conventions live in `.claude
 ```solidity
 modifier auth() { require(wards[msg.sender] == 1, NotAuthorized()); _; }
 ```
-- All **admin/privileged** state-changing functions require `auth` — user-facing functions (e.g., `deposit`, `requestDeposit`, `redeem`) intentionally omit it. Some contracts use role-specific modifiers instead (e.g., `isManager(poolId)` on BalanceSheet, `onlyManager` on NAVManager)
+- All **admin/privileged** state-changing functions require `auth` — user-facing functions (e.g., `deposit`, `requestDeposit`, `redeem`) intentionally omit it. Some contracts use role-specific guards instead (e.g., `_requireManager`/`_protected` on Spoke, `onlyManager` on NAVManager)
 - Every `rely()` needs matching `deny()`, since orphaned permissions accumulate and create attack vectors
 - Permission hierarchy flows from Root → All contracts
 

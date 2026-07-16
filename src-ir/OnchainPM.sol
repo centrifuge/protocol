@@ -6,10 +6,10 @@ import {MerkleProofLib} from "../src/misc/libraries/MerkleProofLib.sol";
 import {TransientArrayLib} from "../src/misc/libraries/TransientArrayLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
+import {ISpoke} from "../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {IGateway} from "../src/core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../src/core/utils/BatchedMulticall.sol";
-import {IBalanceSheet} from "../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 import {IOnchainPM} from "../src/managers/spoke/interfaces/IOnchainPM.sol";
 import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
@@ -188,17 +188,17 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 contract OnchainPMFactory is IOnchainPMFactory {
     IGateway public immutable gateway;
     address public immutable contractUpdater;
-    IBalanceSheet public immutable balanceSheet;
+    ISpoke public immutable spoke;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IGateway gateway_) {
+    constructor(address contractUpdater_, ISpoke spoke_, IGateway gateway_) {
         contractUpdater = contractUpdater_;
-        balanceSheet = balanceSheet_;
+        spoke = spoke_;
         gateway = gateway_;
     }
 
     /// @inheritdoc IOnchainPMFactory
     function newOnchainPM(PoolId poolId) external returns (IOnchainPM) {
-        require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
+        require(spoke.spokeRegistry().isPoolActive(poolId), InvalidPoolId());
 
         OnchainPM onchainPM = new OnchainPM{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater, gateway);
 

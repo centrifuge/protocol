@@ -14,8 +14,8 @@ import {IERC165} from "../../misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../../misc/libraries/BitmapLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 import {IPoolEscrowProvider} from "../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
@@ -48,7 +48,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
     ISpokeRegistry public immutable spokeRegistry;
     address public immutable poolEscrow;
     address public immutable crosschainSource;
-    IBalanceSheet public immutable balanceSheet;
+    ISpoke public immutable spoke;
     IPoolEscrowProvider public immutable poolEscrowProvider;
 
     mapping(address token => mapping(address => bool)) public manager;
@@ -57,18 +57,18 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         address root_,
         address envoy_,
         address spokeRegistry_,
-        address balanceSheet_,
+        address spoke_,
         address crosschainSource_,
         address deployer,
         address poolEscrowProvider_,
         address poolEscrow_
     ) Auth(deployer) {
-        require(balanceSheet_ != crosschainSource_, InvalidInputs());
+        require(spoke_ != crosschainSource_, InvalidInputs());
 
         root = IRoot(root_);
         envoy = envoy_;
         spokeRegistry = ISpokeRegistry(spokeRegistry_);
-        balanceSheet = IBalanceSheet(balanceSheet_);
+        spoke = ISpoke(spoke_);
         crosschainSource = crosschainSource_;
         poolEscrowProvider = IPoolEscrowProvider(poolEscrowProvider_);
         poolEscrow = poolEscrow_;
@@ -153,11 +153,11 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
     }
 
     function isRedeemFulfillment(address from, address to) public view returns (bool) {
-        return from == address(balanceSheet) && to == address(0);
+        return from == address(spoke) && to == address(0);
     }
 
     function isRedeemClaimOrRevocation(address from, address to) public view returns (bool) {
-        return (from != address(balanceSheet) && from != crosschainSource) && to == address(0);
+        return (from != address(spoke) && from != crosschainSource) && to == address(0);
     }
 
     function isCrosschainTransfer(address from, address to) public view returns (bool) {

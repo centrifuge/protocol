@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import {IGateway} from "./IGateway.sol";
 import {IMultiAdapter} from "./IMultiAdapter.sol";
 import {IScheduleAuth} from "./IScheduleAuth.sol";
+import {ISpokeGatewayHandler, IHubGatewayHandler} from "./IGatewayHandlers.sol";
 import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./IGatewaySenders.sol";
-import {ISpokeGatewayHandler, IHubGatewayHandler, IBalanceSheetGatewayHandler} from "./IGatewayHandlers.sol";
 
 import {IEnvoy} from "../../utils/interfaces/IEnvoy.sol";
 
@@ -40,9 +40,6 @@ interface IMessageDispatcher is IScheduleAuthMessageSender, ISpokeMessageSender,
 
     /// @notice Hub-side handler for investment request processing and share issuance
     function hubHandler() external view returns (IHubGatewayHandler);
-
-    /// @notice Spoke-side handler for share and asset balance mutations
-    function balanceSheet() external view returns (IBalanceSheetGatewayHandler);
 
     /// @notice Hub-side dispatcher for the payable `IManagerCallFromHub` path
     function envoy() external view returns (IEnvoy);

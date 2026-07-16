@@ -14,13 +14,12 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
+import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
@@ -272,7 +271,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         // Spoke contracts
         config.contracts.shareTokenRegistrar = address(report.core.shareTokenRegistrar);
-        config.contracts.balanceSheet = address(report.core.balanceSheet);
+        config.contracts.snapshotQueue = address(report.core.snapshotQueue);
         config.contracts.spoke = address(report.core.spoke);
         config.contracts.spokeHandler = address(report.core.spokeHandler);
         config.contracts.spokeRegistry = address(report.core.spokeRegistry);
@@ -326,7 +325,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(config.contracts.hub, "Hub");
         vm.label(config.contracts.identityValuation, "IdentityValuation");
         vm.label(config.contracts.shareTokenRegistrar, "ShareTokenRegistrar");
-        vm.label(config.contracts.balanceSheet, "BalanceSheet");
+        vm.label(config.contracts.snapshotQueue, "SnapshotQueue");
         vm.label(config.contracts.spoke, "Spoke");
         vm.label(config.contracts.contractUpdater, "ContractUpdater");
         vm.label(config.contracts.poolEscrowFactory, "PoolEscrowFactory");
@@ -400,7 +399,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         _validateRootWard(config.contracts.poolEscrowFactory);
         _validateRootWard(config.contracts.shareTokenRegistrar);
         _validateRootWard(config.contracts.spoke);
-        _validateRootWard(config.contracts.balanceSheet);
+        _validateRootWard(config.contracts.snapshotQueue);
         _validateRootWard(config.contracts.contractUpdater);
         if (config.contracts.vaultRegistry != address(0)) _validateRootWard(config.contracts.vaultRegistry);
 
@@ -535,7 +534,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         _validateWard(config.contracts.multiAdapter, config.contracts.hub);
 
         _validateWard(config.contracts.spoke, config.contracts.messageDispatcher);
-        _validateWard(config.contracts.balanceSheet, config.contracts.messageDispatcher);
         _validateWard(config.contracts.contractUpdater, config.contracts.messageDispatcher);
         if (config.contracts.vaultRegistry != address(0)) {
             _validateWard(config.contracts.vaultRegistry, config.contracts.messageDispatcher);
@@ -544,7 +542,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             _validateWard(config.contracts.hubHandler, config.contracts.messageDispatcher);
         }
         _validateWard(config.contracts.messageDispatcher, config.contracts.spoke);
-        _validateWard(config.contracts.messageDispatcher, config.contracts.balanceSheet);
         _validateWard(config.contracts.messageDispatcher, config.contracts.hub);
         if (config.contracts.hubHandler != address(0)) {
             _validateWard(config.contracts.messageDispatcher, config.contracts.hubHandler);
@@ -555,7 +552,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             _validateWard(config.contracts.gateway, config.contracts.messageProcessor);
         }
         _validateWard(config.contracts.spoke, config.contracts.messageProcessor);
-        _validateWard(config.contracts.balanceSheet, config.contracts.messageProcessor);
         _validateWard(config.contracts.contractUpdater, config.contracts.messageProcessor);
         if (config.contracts.vaultRegistry != address(0)) {
             _validateWard(config.contracts.vaultRegistry, config.contracts.messageProcessor);
@@ -568,14 +564,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         _validateWard(config.contracts.messageDispatcher, config.contracts.spoke);
         _validateWard(config.contracts.shareTokenRegistrar, config.contracts.spoke);
-        _validateWard(config.contracts.shareTokenRegistrar, config.contracts.balanceSheet);
         _validateWard(config.contracts.shareTokenRegistrar, config.contracts.spokeRegistry);
         _validateWard(config.contracts.poolEscrowFactory, config.contracts.spoke);
         if (config.contracts.vaultRegistry != address(0)) {
             _validateWard(config.contracts.spoke, config.contracts.vaultRegistry);
         }
-
-        _validateWard(config.contracts.messageDispatcher, config.contracts.balanceSheet);
 
         // ==================== HUB SIDE (CoreDeployer) ====================
 
@@ -706,11 +699,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             config.contracts.spokeHandler,
             "MessageDispatcher spokeHandler mismatch"
         );
-        assertEq(
-            address(MessageDispatcher(config.contracts.messageDispatcher).balanceSheet()),
-            config.contracts.balanceSheet,
-            "MessageDispatcher balanceSheet mismatch"
-        );
         if (config.contracts.hubHandler != address(0)) {
             assertEq(
                 address(MessageDispatcher(config.contracts.messageDispatcher).hubHandler()),
@@ -728,11 +716,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             address(MessageProcessor(config.contracts.messageProcessor).spokeHandler()),
             config.contracts.spokeHandler,
             "MessageProcessor spokeHandler mismatch"
-        );
-        assertEq(
-            address(MessageProcessor(config.contracts.messageProcessor).balanceSheet()),
-            config.contracts.balanceSheet,
-            "MessageProcessor balanceSheet mismatch"
         );
         if (config.contracts.hubHandler != address(0)) {
             assertEq(
@@ -756,24 +739,20 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         }
 
         assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).spoke()),
-            config.contracts.spoke,
-            "BalanceSheet spoke mismatch"
+            address(Spoke(config.contracts.spoke).spokeRegistry()),
+            config.contracts.spokeRegistry,
+            "Spoke spokeRegistry mismatch"
         );
         assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).gateway()),
-            config.contracts.gateway,
-            "BalanceSheet gateway mismatch"
+            address(Spoke(config.contracts.spoke).snapshotQueue()),
+            config.contracts.snapshotQueue,
+            "Spoke snapshotQueue mismatch"
         );
+        assertEq(address(Spoke(config.contracts.spoke).gateway()), config.contracts.gateway, "Spoke gateway mismatch");
         assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).poolEscrowProvider()),
+            address(Spoke(config.contracts.spoke).poolEscrowProvider()),
             config.contracts.poolEscrowFactory,
-            "BalanceSheet poolEscrowProvider mismatch"
-        );
-        assertEq(
-            address(BalanceSheet(config.contracts.balanceSheet).sender()),
-            config.contracts.messageDispatcher,
-            "BalanceSheet sender mismatch"
+            "Spoke poolEscrowProvider mismatch"
         );
 
         // ==================== HUB SIDE (CoreDeployer) ====================
@@ -804,17 +783,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             "AsyncRequestManager spoke mismatch"
         );
         assertEq(
-            address(AsyncRequestManager(payable(config.contracts.asyncRequestManager)).balanceSheet()),
-            config.contracts.balanceSheet,
-            "AsyncRequestManager balanceSheet mismatch"
+            address(AsyncRequestManager(payable(config.contracts.asyncRequestManager)).spokeRegistry()),
+            config.contracts.spokeRegistry,
+            "AsyncRequestManager spokeRegistry mismatch"
         );
-        if (config.contracts.vaultRegistry != address(0)) {
-            assertEq(
-                address(AsyncRequestManager(payable(config.contracts.asyncRequestManager)).vaultRegistry()),
-                config.contracts.vaultRegistry,
-                "AsyncRequestManager vaultRegistry mismatch"
-            );
-        }
 
         assertEq(
             address(SyncManager(config.contracts.syncManager).spoke()),
@@ -822,17 +794,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             "SyncManager spoke mismatch"
         );
         assertEq(
-            address(SyncManager(config.contracts.syncManager).balanceSheet()),
-            config.contracts.balanceSheet,
-            "SyncManager balanceSheet mismatch"
+            address(SyncManager(config.contracts.syncManager).spokeRegistry()),
+            config.contracts.spokeRegistry,
+            "SyncManager spokeRegistry mismatch"
         );
-        if (config.contracts.vaultRegistry != address(0)) {
-            assertEq(
-                address(SyncManager(config.contracts.syncManager).vaultRegistry()),
-                config.contracts.vaultRegistry,
-                "SyncManager vaultRegistry mismatch"
-            );
-        }
 
         if (config.contracts.batchRequestManager != address(0)) {
             assertEq(
@@ -864,9 +829,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
     /// @notice Validates Root endorsements
     function _validateEndorsements() internal view {
-        assertTrue(
-            Root(config.contracts.root).endorsed(config.contracts.balanceSheet), "BalanceSheet not endorsed by Root"
-        );
+        assertTrue(Root(config.contracts.root).endorsed(config.contracts.spoke), "Spoke not endorsed by Root");
         assertTrue(
             Root(config.contracts.root).endorsed(config.contracts.asyncRequestManager),
             "AsyncRequestManager not endorsed by Root"
@@ -1127,7 +1090,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address vaultAddress,
         string memory tokenName
     ) public view virtual {
-        _validateShareTokenWards(shareToken, config.contracts.balanceSheet, config.contracts.spoke, tokenName);
+        _validateShareTokenWards(shareToken, config.contracts.spoke, tokenName);
 
         _validateSpokeDeploymentChanges(poolId, shareClassId, shareToken, vaultAddress, tokenName);
 
@@ -1141,27 +1104,21 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (config.contracts.asyncRequestManager != address(0)) {
             _validateBalanceSheetManager(
-                poolId, config.contracts.asyncRequestManager, config.contracts.balanceSheet, tokenName
+                poolId, config.contracts.asyncRequestManager, config.contracts.spokeRegistry, tokenName
             );
         }
     }
 
     /// @notice Validates V3 share token ward permissions
-    function _validateShareTokenWards(
-        IShareToken shareToken,
-        address balanceSheetAddress,
-        address spokeAddress,
-        string memory tokenName
-    ) internal view virtual {
+    function _validateShareTokenWards(IShareToken shareToken, address spokeAddress, string memory tokenName)
+        internal
+        view
+        virtual
+    {
         assertEq(
             IAuth(address(shareToken)).wards(config.contracts.root),
             1,
             string(abi.encodePacked(tokenName, " share token should have ROOT as ward"))
-        );
-        assertEq(
-            IAuth(address(shareToken)).wards(balanceSheetAddress),
-            1,
-            string(abi.encodePacked(tokenName, " share token should have BALANCE_SHEET as ward"))
         );
         assertEq(
             IAuth(address(shareToken)).wards(spokeAddress),
@@ -1339,13 +1296,11 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateBalanceSheetManager(
         PoolId poolId,
         address requestManager,
-        address balanceSheetAddress,
+        address spokeRegistryAddress,
         string memory tokenName
     ) internal view virtual {
-        IBalanceSheet balanceSheetContract = IBalanceSheet(balanceSheetAddress);
-
         assertTrue(
-            balanceSheetContract.manager(poolId, requestManager),
+            ISpokeRegistry(spokeRegistryAddress).manager(poolId, requestManager),
             string(
                 abi.encodePacked("RequestManager should be set as manager for ", tokenName, " pool in balance sheet")
             )

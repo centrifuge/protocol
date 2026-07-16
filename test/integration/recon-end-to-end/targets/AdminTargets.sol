@@ -280,7 +280,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ghost_netSharePosition[shareKey] += int256(uint256(issuedShareAmount));
 
         // Check for share queue flip
-        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(poolId, scId);
         bytes32 key = _poolShareKey(poolId, scId);
         uint128 deltaBefore = before_shareQueueDelta[key];
         bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -382,7 +382,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         ghost_netSharePosition[shareKey] -= int256(uint256(revokedShareAmount));
 
         // Check for share queue flip
-        (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(poolId, scId);
         bytes32 key = _poolShareKey(poolId, scId);
         uint128 deltaBefore = before_shareQueueDelta[key];
         bool isPositiveBefore = before_shareQueueIsPositive[key];

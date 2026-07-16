@@ -18,17 +18,18 @@ skinparam sequence {
 }
 
 actor "Balance Sheet Manager" as BSM
-participant BalanceSheet
+participant Spoke
+participant SnapshotQueue
 participant PoolEscrow
 participant "Hub" as Hub
 
-note over BalanceSheet, Hub
-    BalanceSheet → Hub communication
-    routes through Spoke & Messaging
+note over Spoke, Hub
+    Spoke → Hub communication
+    routes through Messaging
 end note
 
 == Initial State ==
-note over BalanceSheet
+note over SnapshotQueue
     **Queued Assets:** 500 USDC deposits, 200 USDC withdrawals
     **Net Queued:** +300 USDC
 end note
@@ -43,51 +44,60 @@ note over Hub
 end note
 
 == Deposit Operation ==
-BSM -> BalanceSheet: deposit(1000 USDC)
-activate BalanceSheet
-BalanceSheet -> PoolEscrow: transfer 1000 USDC from BSM
+BSM -> Spoke: deposit(1000 USDC)
+activate Spoke
+Spoke -> PoolEscrow: transfer 1000 USDC from BSM
 activate PoolEscrow
 PoolEscrow --> PoolEscrow: availableBalance: 2000 → 3000 USDC
 deactivate PoolEscrow
-BalanceSheet --> BalanceSheet: queuedDeposits: 500 → 1500 USDC
-deactivate BalanceSheet
+Spoke -> SnapshotQueue: queueAssets(+1000 USDC)
+activate SnapshotQueue
+SnapshotQueue --> SnapshotQueue: queuedDeposits: 500 → 1500 USDC
+deactivate SnapshotQueue
+deactivate Spoke
 
-note over BalanceSheet
+note over SnapshotQueue
     **Queued Assets:** 1500 USDC deposits, 200 USDC withdrawals
     **Net Queued:** +1300 USDC
 end note
 
 == Withdraw Operation ==
-BSM -> BalanceSheet: withdraw(800 USDC, to BSM)
-activate BalanceSheet
-BalanceSheet -> PoolEscrow: transfer 800 USDC to BSM
+BSM -> Spoke: withdraw(800 USDC, to BSM)
+activate Spoke
+Spoke -> PoolEscrow: transfer 800 USDC to BSM
 activate PoolEscrow
 PoolEscrow --> PoolEscrow: availableBalance: 3000 → 2200 USDC
 deactivate PoolEscrow
-BalanceSheet --> BalanceSheet: queuedWithdrawals: 200 → 1000 USDC
-deactivate BalanceSheet
+Spoke -> SnapshotQueue: queueAssets(-800 USDC)
+activate SnapshotQueue
+SnapshotQueue --> SnapshotQueue: queuedWithdrawals: 200 → 1000 USDC
+deactivate SnapshotQueue
+deactivate Spoke
 
-note over BalanceSheet
+note over SnapshotQueue
     **Queued Assets:** 1500 USDC deposits, 1000 USDC withdrawals
     **Net Queued:** +500 USDC
 end note
 
 == Submit Queued Assets ==
-BSM -> BalanceSheet: submitQueuedAssets()
-activate BalanceSheet
-BalanceSheet --> BalanceSheet: calculate net: +500 USDC
+BSM -> Spoke: submitQueuedAssets()
+activate Spoke
+Spoke -> SnapshotQueue: flushAssets()
+activate SnapshotQueue
+SnapshotQueue --> SnapshotQueue: calculate net: +500 USDC, clear queues to zero
+SnapshotQueue --> Spoke: UpdateData(+500 USDC)
+deactivate SnapshotQueue
 group Send snapshot to Hub
-BalanceSheet -> Hub: sendUpdateHoldingAmount(+500 USDC)
+Spoke -> Hub: sendUpdateHoldingAmount(+500 USDC)
 activate Hub
 Hub -> Hub: holdings: 5000 → 5500 USDC
 Hub -> Hub: update accounting with +500 USDC
 deactivate Hub
 end
-BalanceSheet --> BalanceSheet: clear queues to zero
-deactivate BalanceSheet
+deactivate Spoke
 
 == Final State ==
-note over BalanceSheet
+note over SnapshotQueue
     **Queued Assets:** 0 USDC deposits, 0 USDC withdrawals
     **Net Queued:** 0 USDC
 end note
@@ -101,4 +111,4 @@ note over Hub
     **Issued Shares:** 10000 tokens
 end note
 
-@enduml 
+@enduml

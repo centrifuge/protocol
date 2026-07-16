@@ -25,7 +25,7 @@ import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
 ///         never interact with the token directly.
 /// @dev    The registrar stays ward on every token it deploys. `burn` pulls the tokens to the calling
 ///         core contract before burning, so transfer hooks observe the same flow shapes as when the
-///         core contracts held token permissions themselves (e.g. BalanceSheet as redemption source,
+///         core contracts held token permissions themselves (e.g. the Spoke as redemption source,
 ///         Spoke as crosschain transfer source).
 contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManagerCallFromHub {
     address public immutable root;

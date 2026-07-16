@@ -12,9 +12,9 @@ import {Accounting} from "../core/hub/Accounting.sol";
 import {Gateway} from "../core/messaging/Gateway.sol";
 import {HubHandler} from "../core/hub/HubHandler.sol";
 import {HubRegistry} from "../core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../core/spoke/BalanceSheet.sol";
 import {SpokeHandler} from "../core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../core/types/AssetId.sol";
+import {SnapshotQueue} from "../core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
 import {SpokeV3_1_0} from "../core/spoke/legacy/SpokeV3_1_0.sol";
@@ -69,7 +69,7 @@ struct CoreReport {
     MessageDispatcher messageDispatcher;
     PoolEscrowFactory poolEscrowFactory;
     Spoke spoke;
-    BalanceSheet balanceSheet;
+    SnapshotQueue snapshotQueue;
     ShareTokenRegistrar shareTokenRegistrar;
     ContractUpdater contractUpdater;
     SpokeHandler spokeHandler;
@@ -154,7 +154,7 @@ contract CoreActionBatcher is Constants {
         report.poolEscrowFactory.rely(root);
         report.shareTokenRegistrar.rely(root);
         report.spoke.rely(root);
-        report.balanceSheet.rely(root);
+        report.snapshotQueue.rely(root);
         report.contractUpdater.rely(root);
         report.spokeRegistry.rely(root);
         report.spokeHandler.rely(root);
@@ -178,7 +178,6 @@ contract CoreActionBatcher is Constants {
         // Rely messageDispatcher
         report.gateway.rely(address(report.messageDispatcher));
         report.multiAdapter.rely(address(report.messageDispatcher));
-        report.balanceSheet.rely(address(report.messageDispatcher));
         report.envoy.rely(address(report.messageDispatcher));
         report.hubHandler.rely(address(report.messageDispatcher));
         report.root.rely(address(report.messageDispatcher));
@@ -186,13 +185,13 @@ contract CoreActionBatcher is Constants {
         // Rely messageProcessor
         report.gateway.rely(address(report.messageProcessor));
         report.multiAdapter.rely(address(report.messageProcessor));
-        report.balanceSheet.rely(address(report.messageProcessor));
         report.hubHandler.rely(address(report.messageProcessor));
         report.envoy.rely(address(report.messageProcessor));
         report.root.rely(address(report.messageProcessor));
 
         // Rely spoke
         report.messageDispatcher.rely(address(report.spoke));
+        report.snapshotQueue.rely(address(report.spoke));
 
         // Rely spokeV3_1_0: needed because SpokeV3_1_0.request() calls messageDispatcher.sendRequest() which has auth
         report.messageDispatcher.rely(address(report.spokeV3_1_0));
@@ -208,14 +207,10 @@ contract CoreActionBatcher is Constants {
         // Rely shareTokenRegistrar: core contracts operate share tokens exclusively through the registrar
         report.shareTokenRegistrar.rely(address(report.spokeHandler));
         report.shareTokenRegistrar.rely(address(report.spoke));
-        report.shareTokenRegistrar.rely(address(report.balanceSheet));
 
         // Rely spokeRegistry
         report.spokeRegistry.rely(address(report.spokeHandler));
         report.spokeRegistry.rely(address(report.spoke));
-
-        // Rely balanceSheet
-        report.messageDispatcher.rely(address(report.balanceSheet));
 
         // Rely hub
         report.multiAdapter.rely(address(report.hub));
@@ -252,36 +247,28 @@ contract CoreActionBatcher is Constants {
 
         report.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
         report.messageDispatcher.file("multiAdapter", address(report.multiAdapter));
-        report.messageDispatcher.file("balanceSheet", address(report.balanceSheet));
         report.messageDispatcher.file("envoy", address(report.envoy));
         report.messageDispatcher.file("hubHandler", address(report.hubHandler));
 
         report.messageProcessor.file("multiAdapter", address(report.multiAdapter));
         report.messageProcessor.file("gateway", address(report.gateway));
         report.messageProcessor.file("spokeHandler", address(report.spokeHandler));
-        report.messageProcessor.file("balanceSheet", address(report.balanceSheet));
         report.messageProcessor.file("envoy", address(report.envoy));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
 
         // The forwarder must be a ward of the (unchanged) ContractUpdater to call `trustedCall`.
         report.contractUpdater.rely(address(report.contractUpdaterForwarder));
 
-        report.poolEscrowFactory.file("balanceSheet", address(report.balanceSheet));
+        report.poolEscrowFactory.file("spoke", address(report.spoke));
 
         // Hook/vault/ward updates arrive via Hub.managerCall -> Envoy -> registrar.fromHub, resolving the token
         report.shareTokenRegistrar.file("envoy", address(report.envoy));
         report.shareTokenRegistrar.file("spokeRegistry", address(report.spokeRegistry));
 
-        report.spoke.file("spokeRegistry", address(report.spokeRegistry));
         report.spoke.file("sender", address(report.messageDispatcher));
 
         report.spokeV3_1_0.file("spoke", address(report.spoke));
         report.spokeV3_1_0.file("spokeRegistry", address(report.spokeRegistry));
-
-        report.balanceSheet.file("spoke", address(report.spokeRegistry));
-        report.balanceSheet.file("gateway", address(report.gateway));
-        report.balanceSheet.file("poolEscrowProvider", address(report.poolEscrowFactory));
-        report.balanceSheet.file("sender", address(report.messageDispatcher));
 
         report.hub.file("sender", address(report.messageDispatcher));
 
@@ -291,7 +278,6 @@ contract CoreActionBatcher is Constants {
         report.protocolGuardian.file("safe", address(protocolSafe));
 
         // Endorse methods
-        report.root.endorse(address(report.balanceSheet));
         report.root.endorse(address(report.spoke));
 
         // Initial configuration
@@ -310,7 +296,7 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.deny(address(this));
 
         report.spoke.deny(address(this));
-        report.balanceSheet.deny(address(this));
+        report.snapshotQueue.deny(address(this));
         report.shareTokenRegistrar.deny(address(this));
         report.contractUpdater.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
@@ -385,13 +371,11 @@ contract NonCoreActionBatcher {
         // File methods
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
 
-        report.asyncRequestManager.file("spoke", address(report.core.spokeV3_1_0));
-        report.asyncRequestManager.file("balanceSheet", address(report.core.balanceSheet));
-        report.asyncRequestManager.file("vaultRegistry", address(report.core.spokeV3_1_0));
+        report.asyncRequestManager.file("spoke", address(report.core.spoke));
+        report.asyncRequestManager.file("spokeRegistry", address(report.core.spokeRegistry));
 
-        report.syncManager.file("spoke", address(report.core.spokeV3_1_0));
-        report.syncManager.file("balanceSheet", address(report.core.balanceSheet));
-        report.syncManager.file("vaultRegistry", address(report.core.spokeV3_1_0));
+        report.syncManager.file("spoke", address(report.core.spoke));
+        report.syncManager.file("spokeRegistry", address(report.core.spokeRegistry));
         report.syncManager.file("envoy", address(report.core.envoy));
 
         report.subsidyManager.file("envoy", address(report.core.envoy));

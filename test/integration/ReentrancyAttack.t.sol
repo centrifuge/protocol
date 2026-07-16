@@ -5,15 +5,14 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
-import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IERC7751} from "../../src/misc/interfaces/IERC7751.sol";
 import {SafeTransferLib} from "../../src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {ISnapshotHook} from "../../src/core/hub/interfaces/ISnapshotHook.sol";
-import {IBalanceSheet} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 // ============================================================================
 // ATTACK CONTRACTS - Inline for easier security review
@@ -159,7 +158,7 @@ contract RefundAttacker {
 /// - Stablecoin gets compromised via malicious upgrade
 /// - BSM withdraws compromised token, triggering drain of USDC
 contract MaliciousERC20 is ERC20 {
-    IBalanceSheet public balanceSheet;
+    ISpoke public balanceSheet;
     PoolId public targetPool;
     ShareClassId public targetScId;
     address public targetAsset; // USDC to drain
@@ -175,7 +174,7 @@ contract MaliciousERC20 is ERC20 {
     /// @notice Configure the attack parameters
     /// @dev Must be called before the attack can execute
     function setAttackParams(
-        IBalanceSheet balanceSheet_,
+        ISpoke balanceSheet_,
         PoolId poolId_,
         ShareClassId scId_,
         address targetAsset_,
@@ -281,9 +280,9 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
         vm.stopPrank();
 
         // Verify snapshot is active (mock hook was called)
@@ -346,9 +345,9 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
         vm.stopPrank();
 
         vm.deal(BOB, 1 ether);
@@ -389,9 +388,9 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
         vm.stopPrank();
 
         address RECEIVER = makeAddr("RECEIVER");
@@ -515,14 +514,14 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
         vm.stopPrank();
 
         // 2. Deploy malicious token and configure attack parameters
         address attackerReceiver = makeAddr("ATTACKER_RECEIVER");
         MaliciousERC20 maliciousToken = new MaliciousERC20();
-        maliciousToken.setAttackParams(s.balanceSheet, POOL_A, SC_1, address(s.usdc), attackerReceiver);
+        maliciousToken.setAttackParams(s.spoke, POOL_A, SC_1, address(s.usdc), attackerReceiver);
 
         // 3. Register the malicious token as an asset, then fund the pool escrow with it directly.
         // This simulates a stablecoin that was legitimately registered and later turned malicious via a
@@ -530,13 +529,13 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.prank(ANY);
         s.spoke.registerAsset{value: GAS}(h.centrifugeId, address(maliciousToken), 0, ANY);
 
-        address escrowAddress = address(s.balanceSheet.escrow(POOL_A));
+        address escrowAddress = address(s.spoke.escrow(POOL_A));
         maliciousToken.mint(escrowAddress, 1000);
 
         // Reconcile the tokens already sitting in the escrow into the hub-accounted holding, so the
         // subsequent withdraw() has balance to draw against (noteDeposit performs no token movement).
         vm.prank(BSM);
-        s.balanceSheet.noteDeposit(POOL_A, SC_1, address(maliciousToken), 0, 1000);
+        s.spoke.noteDeposit(POOL_A, SC_1, address(maliciousToken), 0, 1000);
 
         // Record balances before attack
         uint256 attackerUsdcBefore = s.usdc.balanceOf(attackerReceiver);
@@ -550,7 +549,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
         // The transfer() callback will reenter BalanceSheet.withdraw() to drain USDC
         // Using TransferOnly mode bypasses accounting checks for the malicious token withdrawal
         bytes[] memory calls = new bytes[](1);
-        calls[0] = abi.encodeCall(IBalanceSheet.withdraw, (POOL_A, SC_1, address(maliciousToken), 0, BSM, 500));
+        calls[0] = abi.encodeCall(ISpoke.withdraw, (POOL_A, SC_1, address(maliciousToken), 0, BSM, 500));
 
         vm.prank(BSM);
         vm.expectRevert(
@@ -558,11 +557,11 @@ contract ReentrancyAttackTest is EndToEndFlows {
                 IERC7751.WrappedError.selector,
                 address(maliciousToken),
                 maliciousToken.transfer.selector,
-                abi.encodeWithSelector(IAuth.NotAuthorized.selector),
+                abi.encodeWithSelector(ISpoke.NotManager.selector),
                 abi.encodeWithSelector(SafeTransferLib.SafeTransferFailed.selector)
             )
         );
-        s.balanceSheet.multicall(calls);
+        s.spoke.multicall(calls);
 
         // 5. ASSERT: Attack was prevented - USDC remains in escrow
         uint256 attackerUsdcAfter = s.usdc.balanceOf(attackerReceiver);

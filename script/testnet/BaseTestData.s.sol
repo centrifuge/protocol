@@ -11,8 +11,8 @@ import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {SnapshotQueue} from "../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
@@ -132,7 +132,7 @@ abstract contract BaseTestData is LaunchDeployer {
         identityValuation = IdentityValuation(config.contracts.identityValuation);
         asyncVaultFactory = AsyncVaultFactory(config.contracts.asyncVaultFactory);
         syncDepositVaultFactory = SyncDepositVaultFactory(config.contracts.syncDepositVaultFactory);
-        balanceSheet = BalanceSheet(config.contracts.balanceSheet);
+        snapshotQueue = SnapshotQueue(config.contracts.snapshotQueue);
         hubRegistry = HubRegistry(config.contracts.hubRegistry);
         asyncRequestManager = AsyncRequestManager(payable(config.contracts.asyncRequestManager));
         batchRequestManager = BatchRequestManager(config.contracts.batchRequestManager);
@@ -202,19 +202,14 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.updateManager(
             poolId,
             params.targetCentrifugeId,
-            ManagerKind.BalanceSheet,
+            ManagerKind.Spoke,
             address(asyncRequestManager).toBytes32(),
             true,
             msg.sender
         );
         // Add admin as balance sheet manager
         hub.updateManager(
-            poolId,
-            params.targetCentrifugeId,
-            ManagerKind.BalanceSheet,
-            address(params.admin).toBytes32(),
-            true,
-            msg.sender
+            poolId, params.targetCentrifugeId, ManagerKind.Spoke, address(params.admin).toBytes32(), true, msg.sender
         );
 
         // Create accounts
@@ -302,18 +297,13 @@ abstract contract BaseTestData is LaunchDeployer {
         hub.updateManager(
             poolId,
             params.targetCentrifugeId,
-            ManagerKind.BalanceSheet,
+            ManagerKind.Spoke,
             address(asyncRequestManager).toBytes32(),
             true,
             msg.sender
         );
         hub.updateManager(
-            poolId,
-            params.targetCentrifugeId,
-            ManagerKind.BalanceSheet,
-            address(syncManager).toBytes32(),
-            true,
-            msg.sender
+            poolId, params.targetCentrifugeId, ManagerKind.Spoke, address(syncManager).toBytes32(), true, msg.sender
         );
 
         // Create accounts
@@ -430,18 +420,18 @@ abstract contract BaseTestData is LaunchDeployer {
                 scId, assetId, nowDepositEpoch, 1_000_000e6, d18(1, 1), msg.sender
             )
         );
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
+        spoke.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Withdraw principal
-        balanceSheet.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
+        spoke.withdraw(poolId, scId, address(token), 0, msg.sender, 1_000_000e6);
+        spoke.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Issue and claim
         uint32 nowIssueEpoch = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
         _brmManagerCall(
             poolId, BatchRequestManagerCallLib.issueShares(scId, assetId, nowIssueEpoch, d18(1, 1), 0, msg.sender)
         );
-        balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
+        spoke.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         uint32 maxClaims = batchRequestManager.maxDepositClaims(poolId, scId, msg.sender.toBytes32(), assetId);
         batchRequestManager.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims, msg.sender);
         vault.mint(1_000_000e18, msg.sender);
@@ -476,16 +466,16 @@ abstract contract BaseTestData is LaunchDeployer {
         _brmManagerCall(
             poolId, BatchRequestManagerCallLib.revokeShares(scId, assetId, nowRevokeEpoch, d18(11, 10), 0, msg.sender)
         );
-        balanceSheet.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
+        spoke.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         batchRequestManager.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1, msg.sender);
 
         // Deposit for withdraw
-        token.approve(address(balanceSheet), 1_100_000e18);
-        balanceSheet.deposit(poolId, scId, address(token), 0, 1_100_000e6);
+        token.approve(address(spoke), 1_100_000e18);
+        spoke.deposit(poolId, scId, address(token), 0, 1_100_000e6);
 
         // Claim redeem request
         vault.withdraw(1_100_000e6, msg.sender, msg.sender);
-        balanceSheet.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
+        spoke.submitQueuedAssets(poolId, scId, assetId, DEFAULT_EXTRA_GAS, msg.sender);
 
         // Test cancellation flow
         token.approve(address(vault), 500_000e6);

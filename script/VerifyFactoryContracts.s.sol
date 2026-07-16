@@ -267,7 +267,7 @@ contract VerifyFactoryContracts is Script {
 
     function _getOnOffRampArgs(address manager) internal view returns (bytes memory) {
         OnOffRamp m = OnOffRamp(manager);
-        return abi.encode(m.poolId(), m.scId(), m.envoy(), address(m.balanceSheet()));
+        return abi.encode(m.poolId(), m.scId(), m.envoy(), address(m.spoke()));
     }
 
     function _containsSubstring(bytes memory data, bytes memory needle) internal pure returns (bool) {

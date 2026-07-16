@@ -42,7 +42,6 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         _deploy(
             config.contracts.contractUpdater,
-            config.contracts.balanceSheet,
             config.contracts.gateway,
             config.contracts.spoke,
             config.contracts.hub,
@@ -54,16 +53,10 @@ contract DeployOnchainPMV2 is BaseDeployer {
         vm.stopBroadcast();
     }
 
-    function _deploy(
-        address contractUpdater_,
-        address balanceSheet_,
-        address gateway_,
-        address spoke_,
-        address hub_,
-        address hubRegistry_
-    ) internal {
+    function _deploy(address contractUpdater_, address gateway_, address spoke_, address hub_, address hubRegistry_)
+        internal
+    {
         require(contractUpdater_ != address(0), "contractUpdater not set in env");
-        require(balanceSheet_ != address(0), "balanceSheet not set in env");
         require(gateway_ != address(0), "gateway not set in env");
         require(spoke_ != address(0), "spoke not set in env");
         require(hub_ != address(0), "hub not set in env");
@@ -85,8 +78,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
         onchainPMFactory = create3(
             createSalt("onchainPMFactory", ONCHAIN_PM_V2_VERSION),
             abi.encodePacked(
-                vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
-                abi.encode(contractUpdater_, balanceSheet_, gateway_)
+                vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"), abi.encode(contractUpdater_, spoke_, gateway_)
             )
         );
 
@@ -101,7 +93,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
             create3(
                 createSalt("onOffRampFactory", ONCHAIN_PM_V2_VERSION),
                 abi.encodePacked(
-                    type(OnOffRampFactory).creationCode, abi.encode(contractUpdater_, balanceSheet_, accountingToken)
+                    type(OnOffRampFactory).creationCode, abi.encode(contractUpdater_, spoke_, accountingToken)
                 )
             )
         );
@@ -123,8 +115,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
             create3(
                 createSalt("slippageGuard", ONCHAIN_PM_V2_VERSION),
                 abi.encodePacked(
-                    type(SlippageGuard).creationCode,
-                    abi.encode(spoke_, balanceSheet_, contractUpdater_, onchainPMFactory)
+                    type(SlippageGuard).creationCode, abi.encode(spoke_, contractUpdater_, onchainPMFactory)
                 )
             )
         );

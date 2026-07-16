@@ -311,15 +311,17 @@ class WardCoverageChecker:
                 continue
             contract_name = contract_match.group(1)
 
-            # Find constructor - match constructor body
+            # Find constructor - capture base-constructor calls (between the param list and
+            # the body) separately from the body itself.
             constructor_match = re.search(
-                r'constructor\s*\([^)]*\)(?:[^{]*)\{(.*?)(?:^\s*\})',
+                r'constructor\s*\([^)]*\)([^{]*)\{(.*?)(?:^\s*\})',
                 content,
                 re.DOTALL | re.MULTILINE
             )
 
             if constructor_match:
-                constructor_body = constructor_match.group(1)
+                base_calls = constructor_match.group(1)
+                constructor_body = constructor_match.group(2)
 
                 # Find assignments: varName = ...; or _varName = ...;
                 # Pattern matches: hub = hub_; or _requestManager = requestManager_;
@@ -331,6 +333,16 @@ class WardCoverageChecker:
                 for match in assignment_pattern.finditer(constructor_body):
                     var_name = match.group(1)
                     constructor_inits[contract_name].add(var_name)
+
+                # A dependency handed to a base constructor is initialized there, e.g.
+                # `BatchedMulticall(gateway_)` sets the inherited `gateway`. The arg follows the
+                # same `<var>_` convention as body assignments, so strip the underscore to recover
+                # the variable name.
+                for call in re.finditer(r'\b\w+\s*\(([^)]*)\)', base_calls):
+                    for arg in call.group(1).split(','):
+                        var_name = arg.strip().strip('_')
+                        if var_name.isidentifier():
+                            constructor_inits[contract_name].add(var_name)
 
         return constructor_inits
 

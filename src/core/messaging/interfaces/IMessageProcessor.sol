@@ -5,7 +5,7 @@ import {IGateway} from "./IGateway.sol";
 import {IMultiAdapter} from "./IMultiAdapter.sol";
 import {IScheduleAuth} from "./IScheduleAuth.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
-import {ISpokeGatewayHandler, IHubGatewayHandler, IBalanceSheetGatewayHandler} from "./IGatewayHandlers.sol";
+import {ISpokeGatewayHandler, IHubGatewayHandler} from "./IGatewayHandlers.sol";
 
 interface IMessageProcessor is IMessageHandler {
     //----------------------------------------------------------------------------------------------
@@ -42,9 +42,6 @@ interface IMessageProcessor is IMessageHandler {
 
     /// @notice Processes timelocked rely/deny operations received from remote chains
     function scheduleAuth() external view returns (IScheduleAuth);
-
-    /// @notice Spoke-side handler for share and asset balance mutations
-    function balanceSheet() external view returns (IBalanceSheetGatewayHandler);
 
     //----------------------------------------------------------------------------------------------
     // Administration

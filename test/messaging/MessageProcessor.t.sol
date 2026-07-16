@@ -11,11 +11,7 @@ import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.s
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
 import {MessageLib, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {IMessageProcessor} from "../../src/core/messaging/interfaces/IMessageProcessor.sol";
-import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler
-} from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
+import {ISpokeGatewayHandler} from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
 
 import "forge-std/Test.sol";
 
@@ -295,14 +291,6 @@ contract TestFile is TestCommon {
         assertEq(address(processor.spokeHandler()), address(23));
     }
 
-    function testFileBalanceSheet() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageProcessor.File("balanceSheet", address(23));
-        processor.file("balanceSheet", address(23));
-        assertEq(address(processor.balanceSheet()), address(23));
-    }
-
     function testFileEnvoy() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
@@ -345,7 +333,6 @@ contract TestHandleUpdateManager is TestCommon {
 
     uint16 constant HUB_ID = 1;
     address multiAdapter = makeAddr("multiAdapter");
-    address balanceSheet = makeAddr("balanceSheet");
     address gateway = makeAddr("gateway");
     address spokeHandler = makeAddr("spokeHandler");
     PoolId poolId = newPoolId(HUB_ID, 1);
@@ -354,7 +341,6 @@ contract TestHandleUpdateManager is TestCommon {
     function _wireTargets() internal {
         vm.startPrank(AUTH);
         processor.file("multiAdapter", multiAdapter);
-        processor.file("balanceSheet", balanceSheet);
         processor.file("gateway", gateway);
         processor.file("spokeHandler", spokeHandler);
         vm.stopPrank();
@@ -364,16 +350,6 @@ contract TestHandleUpdateManager is TestCommon {
         return MessageLib.UpdateManager({
                 poolId: poolId.raw(), kind: uint8(kind), who: bytes32(bytes20(who)), canManage: true
             }).serialize();
-    }
-
-    function testDispatchesToBalanceSheet() public {
-        _wireTargets();
-        vm.mockCall(balanceSheet, abi.encodeWithSelector(IBalanceSheetGatewayHandler.updateManager.selector), "");
-        vm.expectCall(
-            balanceSheet, abi.encodeWithSelector(IBalanceSheetGatewayHandler.updateManager.selector, poolId, who, true)
-        );
-        vm.prank(AUTH);
-        processor.handle(HUB_ID, _message(ManagerKind.BalanceSheet));
     }
 
     function testDispatchesToMultiAdapter() public {

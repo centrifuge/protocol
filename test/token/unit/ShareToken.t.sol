@@ -40,7 +40,7 @@ contract ShareTokenTest is Test {
             address(new MockRoot()),
             makeAddr("envoy"),
             spoke,
-            makeAddr("balanceSheet"),
+            makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
             makeAddr("poolEscrowProvider"),

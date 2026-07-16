@@ -6,7 +6,6 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ITrustedContractUpdate} from "../../../../src/core/utils/interfaces/IContractUpdate.sol";
 
@@ -1235,27 +1234,27 @@ contract OnchainPMFactoryTest is Test {
 
     address contractUpdater = makeAddr("contractUpdater");
     IGateway gateway = IGateway(makeAddr("gateway"));
-    IBalanceSheet balanceSheet;
     ISpoke spoke;
+    ISpokeRegistry spokeRegistry;
     IOnchainPMFactory factory;
 
     function setUp() public virtual {
-        balanceSheet = IBalanceSheet(makeAddr("balanceSheet"));
         spoke = ISpoke(makeAddr("spoke"));
+        spokeRegistry = ISpokeRegistry(makeAddr("spokeRegistry"));
 
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.spokeRegistry.selector), abi.encode(spokeRegistry));
 
         factory = IOnchainPMFactory(
             deployCode(
                 "out-ir/OnchainPM.sol/OnchainPMFactory.json",
-                abi.encode(contractUpdater, address(balanceSheet), address(gateway))
+                abi.encode(contractUpdater, address(spoke), address(gateway))
             )
         );
     }
 
     function testConstructor() public view {
         assertEq(factory.contractUpdater(), contractUpdater);
-        assertEq(address(factory.balanceSheet()), address(balanceSheet));
+        assertEq(address(factory.spoke()), address(spoke));
         assertEq(address(factory.gateway()), address(gateway));
     }
 }
@@ -1263,7 +1262,9 @@ contract OnchainPMFactoryTest is Test {
 contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     function testNewOnchainPMSuccess() public {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
         );
 
         IOnchainPM exec = factory.newOnchainPM(POOL_A);
@@ -1274,7 +1275,9 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
 
     function testNewOnchainPMInvalidPoolId() public {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_B), abi.encode(false)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_B),
+            abi.encode(false)
         );
 
         vm.expectRevert(IOnchainPMFactory.InvalidPoolId.selector);
@@ -1283,7 +1286,9 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
 
     function testNewOnchainPMAlreadyDeployedReverts() public {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
         );
 
         factory.newOnchainPM(POOL_A);
@@ -1295,7 +1300,9 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
 
     function testNewOnchainPMEventEmission() public {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
         );
 
         vm.recordLogs();
@@ -1310,7 +1317,9 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
 
     function testGetAddressMatchesDeploy() public {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A), abi.encode(true)
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
         );
 
         address predicted = factory.getAddress(POOL_A);

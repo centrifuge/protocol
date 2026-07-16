@@ -90,7 +90,7 @@
 | 88 | property_assetQueueNonNegative | Asset queue deposits/withdrawals can never underflow | ✅ |
 | 89 | property_nonceMonotonicity | Nonce strictly increases with each queue submission | ✅ |
 | 90 | property_reserveUnreserveBalanceIntegrity | Reserve operations maintain PoolEscrow balance consistency (available + reserved = total) | ✅ |
-| 91 | property_availableGtQueued | BalanceSheet must always have sufficient balance for queued assets | ❌ |
+| 91 | property_availableGtQueued | The balance sheet must always have sufficient balance for queued assets | ❌ |
 | 92 | property_authorizationBypass | authorization checks can't be bypassed | ❌ |
 | 93 | property_authorizationLevel | successful authorized calls must be made by authorized accounts | ✅ |
 | 94 | property_authorizationChange | authorization changes are correctly tracked | ✅ |

@@ -135,9 +135,9 @@ abstract contract TargetFunctions is
             spoke_addPool();
 
             // Register managers for this pool
-            balanceSheet.updateManager(_poolId, address(asyncRequestManager), true);
-            balanceSheet.updateManager(_poolId, address(syncManager), true);
-            balanceSheet.updateManager(_poolId, address(this), true);
+            spokeRegistry.updateManager(_poolId, address(asyncRequestManager), true);
+            spokeRegistry.updateManager(_poolId, address(syncManager), true);
+            spokeRegistry.updateManager(_poolId, address(this), true);
 
             POOL_ID_COUNTER++;
         }
@@ -152,7 +152,7 @@ abstract contract TargetFunctions is
 
             spoke_addShareClass(uint128(_scId), 18);
             ShareToken(_getShareToken()).rely(address(spoke));
-            ShareToken(_getShareToken()).rely(address(balanceSheet));
+            ShareToken(_getShareToken()).rely(address(spoke));
         }
 
         // 4. Create accounts and holding/liability
@@ -195,9 +195,9 @@ abstract contract TargetFunctions is
             hub_setRequestManager(_getPool().raw(), _scId, _getAssetId().raw(), address(asyncRequestManager));
 
             // Update balance sheet manager for async request manager
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(asyncRequestManager), true);
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(syncManager), true);
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(this), true); // register admin actor as a balance sheet manager
+            hub_updateSpokeManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(asyncRequestManager), true);
+            hub_updateSpokeManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(syncManager), true);
+            hub_updateSpokeManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(this), true); // register admin actor as a balance sheet manager
         }
 
         // 5. Deploy new vault and register it (DeployAndLink atomically)

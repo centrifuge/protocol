@@ -21,7 +21,6 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
-import {BalanceSheet} from "../../src/core/spoke/BalanceSheet.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../src/core/spoke/SpokeHandler.sol";
@@ -131,7 +130,6 @@ contract EndToEndDeployment is Test {
         ProtocolGuardian protocolGuardian;
         OpsGuardian opsGuardian;
         // Spoke
-        BalanceSheet balanceSheet;
         Spoke spoke;
         SpokeRegistry spokeRegistry;
         SpokeHandler spokeHandler;
@@ -298,7 +296,6 @@ contract EndToEndDeployment is Test {
         s_.gateway = deploy.gateway();
         s_.multiAdapter = deploy.multiAdapter();
         s_.contractUpdaterForwarder = address(deploy.contractUpdaterForwarder()).toBytes32();
-        s_.balanceSheet = deploy.balanceSheet();
         s_.spoke = deploy.spoke();
         s_.spokeRegistry = deploy.spokeRegistry();
         s_.spokeHandler = deploy.spokeHandler();
@@ -513,14 +510,12 @@ contract EndToEndFlows is EndToEndUtils {
             REFUND
         );
         h.hub.updateManager{value: GAS}(
-            POOL_A, s_.centrifugeId, ManagerKind.BalanceSheet, address(s_.asyncRequestManager).toBytes32(), true, REFUND
+            POOL_A, s_.centrifugeId, ManagerKind.Spoke, address(s_.asyncRequestManager).toBytes32(), true, REFUND
         );
         h.hub.updateManager{value: GAS}(
-            POOL_A, s_.centrifugeId, ManagerKind.BalanceSheet, address(s_.syncManager).toBytes32(), true, REFUND
+            POOL_A, s_.centrifugeId, ManagerKind.Spoke, address(s_.syncManager).toBytes32(), true, REFUND
         );
-        h.hub.updateManager{value: GAS}(
-            POOL_A, s_.centrifugeId, ManagerKind.BalanceSheet, BSM.toBytes32(), true, REFUND
-        );
+        h.hub.updateManager{value: GAS}(POOL_A, s_.centrifugeId, ManagerKind.Spoke, BSM.toBytes32(), true, REFUND);
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
@@ -909,7 +904,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         if (nonZeroPrices) {
             assertEq(
-                s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0),
+                s.spoke.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0),
                 0,
                 "escrow balance should be zero after full redemption"
             );
@@ -960,8 +955,8 @@ contract EndToEndFlows is EndToEndUtils {
         }
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
-        s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         // CHECKS
         (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
@@ -978,8 +973,8 @@ contract EndToEndFlows is EndToEndUtils {
         _testAsyncRedeem(sameChain, afterAsyncDeposit, true);
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
-        s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, 0, "expected amount");
@@ -1057,14 +1052,14 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         s.usdc.mint(BSM, USDC_AMOUNT_1);
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.withdraw(POOL_A, SC_1, address(s.usdc), 0, BSM, USDC_AMOUNT_1 * 4 / 5);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
 
         // CHECKS
         assertEq(s.usdc.balanceOf(BSM), USDC_AMOUNT_1 * 4 / 5);
-        assertEq(s.balanceSheet.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
+        assertEq(s.spoke.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0), USDC_AMOUNT_1 / 5);
 
         (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
         assertEq(amount, USDC_AMOUNT_1 / 5);
@@ -1189,10 +1184,10 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(uint8(poolAdapterHToS.lastReceivedPayload().messageType()), uint8(MessageType.NotifyPool));
         assertEq(s.spokeRegistry.pool(POOL_A), block.timestamp); // Message received and processed
 
-        h.hub.updateManager{value: GAS}(POOL_A, s.centrifugeId, ManagerKind.BalanceSheet, BSM.toBytes32(), true, REFUND);
+        h.hub.updateManager{value: GAS}(POOL_A, s.centrifugeId, ManagerKind.Spoke, BSM.toBytes32(), true, REFUND);
 
         vm.startPrank(BSM);
-        s.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
+        s.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
 
         // Spoke -> Hub message went through the pool adapter
         assertEq(uint8(poolAdapterSToH.lastReceivedPayload().messageType()), uint8(MessageType.UpdateShares));

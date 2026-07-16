@@ -3,11 +3,13 @@ title Spoke Managers
 hide empty members
 
 package core {
-    interface IBalanceSheet
+    interface ISpoke
+    interface ISnapshotQueue
 }
 
-OnOfframpManager --> IBalanceSheet
-QueueManager --> IBalanceSheet
+OnOfframpManager --> ISpoke
+QueueManager --> ISpoke
+QueueManager --> ISnapshotQueue
 
 note top of OnOfframpManager
   Manages on/off-ramping

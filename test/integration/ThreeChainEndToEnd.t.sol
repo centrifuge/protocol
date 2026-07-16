@@ -93,8 +93,8 @@ contract ThreeChainEndToEndDeployment is EndToEndFlows {
         // B: Mint shares
         vm.startPrank(BSM);
         IShareToken shareTokenB = IShareToken(address(origin.spokeRegistry.shareToken(POOL_A, SC_1)));
-        origin.balanceSheet.issue(POOL_A, SC_1, INVESTOR_A, AMOUNT);
-        origin.balanceSheet.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
+        origin.spoke.issue(POOL_A, SC_1, INVESTOR_A, AMOUNT);
+        origin.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
         vm.stopPrank();
         assertEq(shareTokenB.balanceOf(INVESTOR_A), AMOUNT, "Investor should have minted shares on chain B");
 

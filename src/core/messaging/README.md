@@ -12,7 +12,7 @@ The `MessageDispatcher` serializes and dispatches outgoing cross-chain messages,
 
 The `MessageProcessor` deserializes and processes incoming cross-chain messages, routing them to appropriate handlers based on message type. It validates source chains for privileged operations, ensuring that critical messages like pool creation or share class updates only come from trusted sources. The contract supports both paid and unpaid modes, with unpaid mode used for internal protocol messages that don't require gas payment validation.
 
-The processor extracts message type and payload from incoming messages using `MessageLib`, then routes to handlers like `HubHandler`, `Spoke`, `BalanceSheet`, `VaultRegistry`, or `ContractUpdater` based on the message type. It enforces that certain privileged operations can only originate from the mainnet Centrifuge chain (ID 1), providing a security layer for critical protocol state changes. The contract also handles special message types like schedule authentication, token recovery, and request callbacks.
+The processor extracts message type and payload from incoming messages using `MessageLib`, then routes to handlers like `HubHandler`, `SpokeHandler`, `VaultRegistry`, or `ContractUpdater` based on the message type. It enforces that certain privileged operations can only originate from the mainnet Centrifuge chain (ID 1), providing a security layer for critical protocol state changes. The contract also handles special message types like schedule authentication, token recovery, and request callbacks.
 
 ### `GasService`
 

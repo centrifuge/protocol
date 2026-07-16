@@ -8,7 +8,6 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
@@ -28,7 +27,6 @@ contract SlippageGuardTest is Test {
 
     address spoke = makeAddr("spoke");
     address spokeRegistry = makeAddr("spokeRegistry");
-    address balanceSheet = makeAddr("balanceSheet");
     address envoy = makeAddr("envoy");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
@@ -39,8 +37,7 @@ contract SlippageGuardTest is Test {
 
     function setUp() public virtual {
         _setupMocks();
-        guard =
-            new SlippageGuard(ISpoke(spoke), IBalanceSheet(balanceSheet), envoy, IOnchainPMFactory(onchainPMFactory));
+        guard = new SlippageGuard(ISpoke(spoke), envoy, IOnchainPMFactory(onchainPMFactory));
         vm.mockCall(
             onchainPMFactory,
             abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
@@ -85,8 +82,8 @@ contract SlippageGuardTest is Test {
 
     function _mockBalance(address asset, uint256 tokenId, uint128 available) internal {
         vm.mockCall(
-            balanceSheet,
-            abi.encodeWithSelector(IBalanceSheet.availableBalanceOf.selector, POOL_A, SC_1, asset, tokenId),
+            spoke,
+            abi.encodeWithSelector(ISpoke.availableBalanceOf.selector, POOL_A, SC_1, asset, tokenId),
             abi.encode(available)
         );
     }
@@ -643,7 +640,6 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
 contract SlippageGuardConstructorTest is SlippageGuardTest {
     function testConstructor() public view {
         assertEq(address(guard.spoke()), spoke);
-        assertEq(address(guard.balanceSheet()), balanceSheet);
         assertEq(guard.envoy(), envoy);
     }
 }

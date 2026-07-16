@@ -91,6 +91,9 @@ interface ISpokeGatewayHandler {
     /// @param  manager The new request manager address
     function setRequestManager(PoolId poolId, IRequestManager manager) external;
 
+    /// @notice Grants or revokes the spoke pool manager role
+    function updateManager(PoolId poolId, address who, bool canManage) external;
+
     /// @notice Grants or revokes the bridger role gating cross-chain share transfers
     function updateBridger(PoolId poolId, address who, bool canBridge) external;
 
@@ -156,9 +159,4 @@ interface IContractUpdateGatewayHandler {
     /// @param  target The target address to be called
     /// @param  update The payload to be processed by the target address
     function trustedCall(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
-}
-
-/// @notice Interface for methods implemented by a balance sheet
-interface IBalanceSheetGatewayHandler {
-    function updateManager(PoolId poolId, address who, bool canManage) external;
 }

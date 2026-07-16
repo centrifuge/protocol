@@ -245,7 +245,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         uint256 tokenId = 0; // For ERC20
         uint128 depositAmount = 1e18;
 
-        asset_approve(address(balanceSheet), depositAmount);
+        asset_approve(address(spoke), depositAmount);
         // Call balanceSheet_deposit with test values
         balanceSheet_deposit(tokenId, depositAmount);
     }
@@ -276,7 +276,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         uint128 depositAmount = 1e18;
 
         // Approve the balance sheet to spend our assets
-        asset_approve(address(balanceSheet), depositAmount);
+        asset_approve(address(spoke), depositAmount);
         console2.log("Approved balance sheet to spend assets");
 
         // Deposit assets to the balance sheet
@@ -363,7 +363,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
         IShareToken(address(spokeRegistry.shareToken(vault.poolId(), vault.scId())))
-            .approve(address(balanceSheet), type(uint256).max);
+            .approve(address(spoke), type(uint256).max);
         vm.stopPrank();
 
         balanceSheet_revoke(100e18);
@@ -379,7 +379,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         hub_notifySharePrice_clamped();
 
         // Deposit first
-        asset_approve(address(balanceSheet), 200e18);
+        asset_approve(address(spoke), 200e18);
         balanceSheet_deposit(0, 200e18);
 
         // Withdraw
@@ -415,7 +415,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         hub_notifySharePrice_clamped();
 
         // Queue some assets
-        asset_approve(address(balanceSheet), 100e18);
+        asset_approve(address(spoke), 100e18);
         balanceSheet_deposit(0, 100e18);
 
         // Submit queued assets
@@ -441,7 +441,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         IBaseVault vault = IBaseVault(_getVault());
         vm.startPrank(_getActor());
         IShareToken(address(spokeRegistry.shareToken(vault.poolId(), vault.scId())))
-            .approve(address(balanceSheet), type(uint256).max);
+            .approve(address(spoke), type(uint256).max);
         vm.stopPrank();
 
         // Execute sequence
@@ -461,7 +461,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         spoke_updateMember(type(uint64).max);
 
         // Approve for all operations
-        asset_approve(address(balanceSheet), 1000e18);
+        asset_approve(address(spoke), 1000e18);
 
         // Execute sequence
         balanceSheet_deposit(0, 200e18);

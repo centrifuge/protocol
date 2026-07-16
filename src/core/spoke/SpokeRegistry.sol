@@ -21,6 +21,7 @@ import {IERC20} from "../../misc/interfaces/IERC20.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {newAssetId, AssetId} from "../types/AssetId.sol";
+import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  SpokeRegistry
@@ -33,6 +34,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     mapping(PoolId => mapping(ShareClassId => ShareClassDetails)) public shareClass;
 
     // Roles
+    mapping(PoolId => IManifest) public manifest;
+    mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(address => bool)) public bridger;
 
     // Assets & prices
@@ -97,9 +100,21 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeRegistry
+    function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        manager[poolId][who] = canManage;
+        emit UpdateManager(poolId, who, canManage);
+    }
+
+    /// @inheritdoc ISpokeRegistry
     function updateBridger(PoolId poolId, address who, bool canBridge) external auth {
         bridger[poolId][who] = canBridge;
         emit UpdateBridger(poolId, who, canBridge);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function setManifest(PoolId poolId, IManifest manifest_) external auth {
+        manifest[poolId] = manifest_;
+        emit SetManifest(poolId, manifest_);
     }
 
     //----------------------------------------------------------------------------------------------

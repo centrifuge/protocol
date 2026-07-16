@@ -11,8 +11,8 @@ import {IERC6909ExclOperator} from "../../../../src/misc/interfaces/IERC6909.sol
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
+import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";
@@ -28,7 +28,7 @@ contract IsContract {}
 contract OnOffRampTest is Test {
     using CastLib for *;
 
-    IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
+    ISpoke spoke = ISpoke(address(new IsContract()));
     ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     IERC20 erc20 = IERC20(address(new IsContract()));
     IAccountingToken accountingToken = IAccountingToken(address(new IsContract()));
@@ -57,10 +57,8 @@ contract OnOffRampTest is Test {
     }
 
     function _setupMocks() internal {
-        // Mock balanceSheet.spoke() to return our spoke mock
-        vm.mockCall(
-            address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spokeRegistry)
-        );
+        // Mock spoke.spoke() to return our spoke mock
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.spokeRegistry.selector), abi.encode(spokeRegistry));
 
         // Mock spokeRegistry.idToAsset() to return asset address and tokenId
         vm.mockCall(
@@ -88,9 +86,9 @@ contract OnOffRampTest is Test {
     }
 
     function _deployManager() internal {
-        factory = new OnOffRampFactory(envoy, balanceSheet, accountingToken);
+        factory = new OnOffRampFactory(envoy, spoke, accountingToken);
 
-        // Mock balanceSheet.spokeRegistry().shareToken() to prevent revert during deployment
+        // Mock spoke.spokeRegistry().shareToken() to prevent revert during deployment
         vm.mockCall(
             address(spokeRegistry),
             abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
@@ -104,20 +102,19 @@ contract OnOffRampTest is Test {
     }
 
     function _mockBalanceSheetDeposit(uint128 amount, bool shouldRevert, bytes memory revertData) internal {
-        bytes memory callData = abi.encodeWithSelector(
-            IBalanceSheet.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount
-        );
+        bytes memory callData =
+            abi.encodeWithSelector(ISpoke.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount);
 
         if (shouldRevert) {
-            vm.mockCallRevert(address(balanceSheet), callData, revertData);
+            vm.mockCallRevert(address(spoke), callData, revertData);
         } else {
-            vm.mockCall(address(balanceSheet), callData, abi.encode());
+            vm.mockCall(address(spoke), callData, abi.encode());
         }
 
         // Mock the accounting token deposit to BalanceSheet (liability token)
         vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(accountingToken)),
+            address(spoke),
+            abi.encodeWithSelector(ISpoke.deposit.selector, POOL_A, SC_1, address(accountingToken)),
             abi.encode()
         );
     }
@@ -129,31 +126,24 @@ contract OnOffRampTest is Test {
             abi.encodeWithSelector(WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver_, amount);
 
         if (shouldRevert) {
-            vm.mockCallRevert(address(balanceSheet), callData, revertData);
+            vm.mockCallRevert(address(spoke), callData, revertData);
         } else {
-            vm.mockCall(address(balanceSheet), callData, abi.encode());
+            vm.mockCall(address(spoke), callData, abi.encode());
         }
 
         // Mock the accounting token deposit to BalanceSheet (non-liability token)
         vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(accountingToken)),
+            address(spoke),
+            abi.encodeWithSelector(ISpoke.deposit.selector, POOL_A, SC_1, address(accountingToken)),
             abi.encode()
         );
     }
 
     function _mockManagerPermissions(bool isManager) internal {
         vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.manager.selector, POOL_A, address(manager)),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.manager.selector, POOL_A, address(manager)),
             abi.encode(isManager)
-        );
-
-        // Also mock updateManager to not revert when called using function signature since not in interface
-        vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSignature("updateManager(uint64,address,bool)", POOL_A.raw(), address(manager), isManager),
-            abi.encode()
         );
     }
 
@@ -240,7 +230,7 @@ contract OnOffRampDepositFailureTests is OnOffRampTest {
         manager.deposit(address(erc20), ERC20_TOKEN_ID, amount, address(manager));
     }
 
-    function testNotBalanceSheetManager(uint128 amount) public {
+    function testNotManager(uint128 amount) public {
         _enableOnramp();
         _mockManagerPermissions(false);
         _mockBalanceSheetDeposit(amount, true, abi.encodeWithSelector(IAuth.NotAuthorized.selector));
@@ -279,8 +269,8 @@ contract OnOffRampDepositSuccessTests is OnOffRampTest {
 
         // Expect balance sheet deposit to be called with correct parameters
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount)
+            address(spoke),
+            abi.encodeWithSelector(ISpoke.deposit.selector, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, amount)
         );
 
         manager.deposit(address(erc20), ERC20_TOKEN_ID, amount, address(manager));
@@ -334,7 +324,7 @@ contract OnOffRampWithdrawFailureTests is OnOffRampTest {
         manager.withdraw(address(erc20), ERC20_TOKEN_ID, amount, receiver);
     }
 
-    function testNotBalanceSheetManager(uint128 amount) public {
+    function testNotManager(uint128 amount) public {
         _enableRelayer(relayer);
         _enableOfframp(receiver);
         _mockManagerPermissions(false);
@@ -371,7 +361,7 @@ contract OnOffRampWithdrawSuccessTests is OnOffRampTest {
 
         // Expect balance sheet withdraw to be called with correct parameters
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount)
         );
 
@@ -443,7 +433,7 @@ contract OnOffRampTrustedWithdrawFailureTests is OnOffRampTest {
         );
     }
 
-    function testWithdrawTrustedCallNotBalanceSheetManager(uint128 amount) public {
+    function testWithdrawTrustedCallNotManager(uint128 amount) public {
         amount = uint128(bound(amount, 1, type(uint128).max));
 
         _enableOfframp(receiver);
@@ -484,7 +474,7 @@ contract OnOffRampTrustedWithdrawSuccessTests is OnOffRampTest {
 
         // Expect balance sheet withdraw to be called with correct parameters
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount)
         );
 
@@ -507,7 +497,7 @@ contract OnOffRampTrustedWithdrawSuccessTests is OnOffRampTest {
         // First withdrawal to receiver
         _mockBalanceSheetWithdraw(amount1, receiver, false, "");
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount1)
         );
 
@@ -519,7 +509,7 @@ contract OnOffRampTrustedWithdrawSuccessTests is OnOffRampTest {
         // Second withdrawal to receiver2
         _mockBalanceSheetWithdraw(amount2, receiver2, false, "");
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver2, amount2)
         );
 
@@ -553,7 +543,7 @@ contract OnOffRampTrustedWithdrawSuccessTests is OnOffRampTest {
 
         // Should allow zero amount withdrawal
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(WITHDRAW_SELECTOR, POOL_A, SC_1, address(erc20), ERC20_TOKEN_ID, receiver, amount)
         );
 

@@ -278,9 +278,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
+    function hub_updateSpokeManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
         hub.updateManager{value: GAS}(
-            PoolId.wrap(poolId), chainId, ManagerKind.BalanceSheet, CastLib.toBytes32(manager), enable, address(this)
+            PoolId.wrap(poolId), chainId, ManagerKind.Spoke, CastLib.toBytes32(manager), enable, address(this)
         );
     }
 

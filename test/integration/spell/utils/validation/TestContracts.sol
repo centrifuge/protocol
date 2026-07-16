@@ -9,8 +9,8 @@ import {Accounting} from "../../../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../../../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../../../../../src/core/spoke/BalanceSheet.sol";
 import {SpokeHandler} from "../../../../../src/core/spoke/SpokeHandler.sol";
+import {SnapshotQueue} from "../../../../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../../../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
 import {SpokeV3_1_0} from "../../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
@@ -82,7 +82,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         MessageDispatcher(c.messageDispatcher),
         PoolEscrowFactory(c.poolEscrowFactory),
         Spoke(c.spoke),
-        BalanceSheet(c.balanceSheet),
+        SnapshotQueue(c.snapshotQueue),
         ShareTokenRegistrar(c.shareTokenRegistrar),
         ContractUpdater(c.contractUpdater),
         SpokeHandler(c.spokeHandler),

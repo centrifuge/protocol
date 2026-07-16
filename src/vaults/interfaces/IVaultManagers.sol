@@ -7,10 +7,10 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
-import {ISpokeV3_1_0} from "../../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";
 
@@ -253,7 +253,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCa
     function envoy() external view returns (address);
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'spoke', 'balanceSheet', 'vaultRegistry' or 'envoy'.
+    /// @param what The bytes32 representation of 'spoke', 'spokeRegistry' or 'envoy'.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -280,14 +280,11 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCa
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
 
-    /// @notice Spoke-side entry point for this chain's pool and share class operations
-    function spoke() external view returns (ISpokeV3_1_0);
-
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
-    function balanceSheet() external view returns (IBalanceSheet);
+    function spoke() external view returns (ISpoke);
 
-    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
-    function vaultRegistry() external view returns (ISpokeV3_1_0);
+    /// @notice Stores pool, share class, asset, vault, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 
     /// @notice Price source contract used for sync deposit pricing on a given pool and share class
     function valuation(PoolId poolId, ShareClassId scId) external view returns (ISyncDepositValuation);
@@ -372,10 +369,10 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
         );
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
-    function balanceSheet() external view returns (IBalanceSheet);
+    function spoke() external view returns (ISpoke);
 
-    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
-    function vaultRegistry() external view returns (ISpokeV3_1_0);
+    /// @notice Stores pool, share class, asset, vault, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 
     /// @notice Manages gas subsidies for cross-chain message costs, funded per-pool
     function subsidyManager() external view returns (ISubsidyManager);

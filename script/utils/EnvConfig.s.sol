@@ -87,6 +87,7 @@ struct ContractsConfig {
     address spokeHandler;
     address spokeRegistry;
     address spokeV3_1_0;
+    address snapshotQueue;
     address balanceSheet;
     address contractUpdater;
     address contractUpdaterForwarder;
@@ -297,6 +298,7 @@ library Env {
         config.spokeHandler = _tryParseContractAddress(json, "spokeHandler");
         config.spokeRegistry = _tryParseContractAddress(json, "spokeRegistry");
         config.spokeV3_1_0 = _tryParseContractAddress(json, "spokeV3_1_0");
+        config.snapshotQueue = _tryParseContractAddress(json, "snapshotQueue");
         config.balanceSheet = _parseContractAddress(json, "balanceSheet");
         config.contractUpdater = _parseContractAddress(json, "contractUpdater");
         // Optional: new in v3.3, absent from earlier deployment manifests.

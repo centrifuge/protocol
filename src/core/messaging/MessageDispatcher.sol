@@ -6,8 +6,8 @@ import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind, ManagerKind} from "./libraries/MessageLib.sol";
+import {ISpokeGatewayHandler, IHubGatewayHandler} from "./interfaces/IGatewayHandlers.sol";
 import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
-import {ISpokeGatewayHandler, IBalanceSheetGatewayHandler, IHubGatewayHandler} from "./interfaces/IGatewayHandlers.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -40,7 +40,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ISpokeGatewayHandler public spokeHandler;
     IScheduleAuth public immutable scheduleAuth;
     IHubGatewayHandler public hubHandler;
-    IBalanceSheetGatewayHandler public balanceSheet;
 
     constructor(uint16 localCentrifugeId_, IScheduleAuth scheduleAuth_, IGateway gateway_, address deployer)
         Auth(deployer)
@@ -61,7 +60,6 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "spokeHandler") spokeHandler = ISpokeGatewayHandler(data);
         else if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
-        else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -305,11 +303,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             address whoAddr = who.toAddress();
-            if (kind == ManagerKind.BalanceSheet) balanceSheet.updateManager(poolId, whoAddr, canManage);
-            else if (kind == ManagerKind.Adapter) multiAdapter.updateManager(poolId, whoAddr, canManage);
-            else if (kind == ManagerKind.Gateway) gateway.updateManager(poolId, whoAddr, canManage);
-            else if (kind == ManagerKind.Bridger) spokeHandler.updateBridger(poolId, whoAddr, canManage);
-            else revert InvalidManagerKind();
+            if (kind == ManagerKind.Spoke) {
+                spokeHandler.updateManager(poolId, whoAddr, canManage);
+            } else if (kind == ManagerKind.Adapter) {
+                multiAdapter.updateManager(poolId, whoAddr, canManage);
+            } else if (kind == ManagerKind.Gateway) {
+                gateway.updateManager(poolId, whoAddr, canManage);
+            } else if (kind == ManagerKind.Bridger) {
+                spokeHandler.updateBridger(poolId, whoAddr, canManage);
+            } else {
+                revert InvalidManagerKind(); // Unreachable due the enum check
+            }
             _refund(refund);
         } else {
             _send(

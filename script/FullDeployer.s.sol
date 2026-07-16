@@ -11,8 +11,8 @@ import {Accounting} from "../src/core/hub/Accounting.sol";
 import {Gateway} from "../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {SpokeHandler} from "../src/core/spoke/SpokeHandler.sol";
+import {SnapshotQueue} from "../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
 import {SpokeV3_1_0} from "../src/core/spoke/legacy/SpokeV3_1_0.sol";
@@ -144,7 +144,7 @@ contract FullDeployer is BaseDeployer, Constants {
     MessageDispatcher public messageDispatcher;
 
     Spoke public spoke;
-    BalanceSheet public balanceSheet;
+    SnapshotQueue public snapshotQueue;
     ShareTokenRegistrar public shareTokenRegistrar;
     ContractUpdater public contractUpdater;
     SpokeRegistry public spokeRegistry;
@@ -333,16 +333,6 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        spoke =
-            Spoke(create3(createSalt("spoke", V3_X), abi.encodePacked(type(Spoke).creationCode, abi.encode(batcher))));
-
-        balanceSheet = BalanceSheet(
-            create3(
-                createSalt("balanceSheet", V3_1),
-                abi.encodePacked(type(BalanceSheet).creationCode, abi.encode(root, batcher))
-            )
-        );
-
         poolEscrowFactory = PoolEscrowFactory(
             create3(
                 createSalt("poolEscrowFactory", V3_1),
@@ -354,6 +344,23 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("spokeRegistry", V3_X),
                 abi.encodePacked(type(SpokeRegistry).creationCode, abi.encode(batcher))
+            )
+        );
+
+        snapshotQueue = SnapshotQueue(
+            create3(
+                createSalt("snapshotQueue", V3_X),
+                abi.encodePacked(type(SnapshotQueue).creationCode, abi.encode(batcher))
+            )
+        );
+
+        spoke = Spoke(
+            create3(
+                createSalt("spoke", V3_X),
+                abi.encodePacked(
+                    type(Spoke).creationCode,
+                    abi.encode(gateway, snapshotQueue, spokeRegistry, poolEscrowFactory, batcher)
+                )
             )
         );
 
@@ -497,7 +504,7 @@ contract FullDeployer is BaseDeployer, Constants {
                         address(root),
                         address(envoy),
                         address(spokeRegistry),
-                        address(balanceSheet),
+                        address(spoke),
                         address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
@@ -516,7 +523,7 @@ contract FullDeployer is BaseDeployer, Constants {
                         address(root),
                         address(envoy),
                         address(spokeRegistry),
-                        address(balanceSheet),
+                        address(spoke),
                         address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
@@ -535,7 +542,7 @@ contract FullDeployer is BaseDeployer, Constants {
                         address(root),
                         address(envoy),
                         address(spokeRegistry),
-                        address(balanceSheet),
+                        address(spoke),
                         address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
@@ -554,7 +561,7 @@ contract FullDeployer is BaseDeployer, Constants {
                         address(root),
                         address(envoy),
                         address(spokeRegistry),
-                        address(balanceSheet),
+                        address(spoke),
                         address(spokeHandler),
                         batcher,
                         address(poolEscrowFactory),
@@ -567,7 +574,7 @@ contract FullDeployer is BaseDeployer, Constants {
         queueManager = QueueManager(
             create3(
                 createSalt("queueManager", V3_1),
-                abi.encodePacked(type(QueueManager).creationCode, abi.encode(envoy, balanceSheet, address(batcher)))
+                abi.encodePacked(type(QueueManager).creationCode, abi.encode(envoy, spoke, address(batcher)))
             )
         );
 
@@ -596,7 +603,7 @@ contract FullDeployer is BaseDeployer, Constants {
                 createSalt("onchainPMFactory", V3_2),
                 abi.encodePacked(
                     vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
-                    abi.encode(contractUpdater, balanceSheet, gateway)
+                    abi.encode(contractUpdater, spoke, gateway)
                 )
             )
         );
@@ -611,7 +618,7 @@ contract FullDeployer is BaseDeployer, Constants {
         onOffRampFactory = OnOffRampFactory(
             create3(
                 createSalt("onOffRampFactory", V3_2),
-                abi.encodePacked(type(OnOffRampFactory).creationCode, abi.encode(envoy, balanceSheet, accountingToken))
+                abi.encodePacked(type(OnOffRampFactory).creationCode, abi.encode(envoy, spoke, accountingToken))
             )
         );
 
@@ -626,9 +633,7 @@ contract FullDeployer is BaseDeployer, Constants {
         slippageGuard = SlippageGuard(
             create3(
                 createSalt("slippageGuard", V3_2),
-                abi.encodePacked(
-                    type(SlippageGuard).creationCode, abi.encode(spoke, balanceSheet, envoy, onchainPMFactory)
-                )
+                abi.encodePacked(type(SlippageGuard).creationCode, abi.encode(spoke, envoy, onchainPMFactory))
             )
         );
 
@@ -757,7 +762,7 @@ contract FullDeployer is BaseDeployer, Constants {
             messageDispatcher,
             poolEscrowFactory,
             spoke,
-            balanceSheet,
+            snapshotQueue,
             shareTokenRegistrar,
             contractUpdater,
             spokeHandler,

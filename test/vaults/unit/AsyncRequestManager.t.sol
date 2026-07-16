@@ -9,14 +9,14 @@ import {IERC7575} from "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20, IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {ISpokeV3_1_0, VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
+import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -56,9 +56,8 @@ contract AsyncRequestManagerTest is Test {
     address immutable RECEIVER = makeAddr("RECEIVER");
     address immutable CONTROLLER = makeAddr("CONTROLLER");
 
-    ISpokeV3_1_0 spoke = ISpokeV3_1_0(address(new IsContract()));
-    IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
-    ISpokeV3_1_0 vaultRegistry = ISpokeV3_1_0(address(new IsContract()));
+    ISpoke spoke = ISpoke(address(new IsContract()));
+    ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     ISubsidyManager subsidyManager = ISubsidyManager(address(new IsContract()));
     IShareToken shareToken = IShareToken(address(new IsContract()));
     IPoolEscrow poolEscrow = IPoolEscrow(address(new IsContract()));
@@ -85,8 +84,7 @@ contract AsyncRequestManagerTest is Test {
 
         vm.startPrank(AUTH);
         manager.file("spoke", address(spoke));
-        manager.file("balanceSheet", address(balanceSheet));
-        manager.file("vaultRegistry", address(vaultRegistry));
+        manager.file("spokeRegistry", address(spokeRegistry));
         vm.stopPrank();
 
         _setupMocks();
@@ -94,34 +92,43 @@ contract AsyncRequestManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken)
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(shareToken)
         );
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.idToAsset.selector, ASSET_ID), abi.encode(asset, TOKEN_ID)
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encode(asset, TOKEN_ID)
         );
         vm.mockCall(
-            address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1e18), d18(1e18))
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector),
+            abi.encode(d18(1e18))
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector),
+            abi.encode(d18(1e18))
         );
 
-        vm.mockCall(
-            address(balanceSheet), abi.encodeWithSelector(balanceSheet.escrow.selector, POOL_A), abi.encode(poolEscrow)
-        );
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.gateway.selector), abi.encode(gateway));
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.escrow.selector, POOL_A), abi.encode(poolEscrow));
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.gateway.selector), abi.encode(gateway));
 
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(true)
         );
         VaultDetails memory vd = VaultDetails(ASSET_ID, asset, TOKEN_ID, true);
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.vaultDetails.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.vaultDetails.selector, asyncVault),
             abi.encode(vd)
         );
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.vault.selector, POOL_A, SC_1, ASSET_ID, manager),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.vault.selector, POOL_A, SC_1, ASSET_ID, manager),
             abi.encode(asyncVault)
         );
 
@@ -149,16 +156,14 @@ contract AsyncRequestManagerTest is Test {
 
         vm.mockCall(address(poolEscrow), abi.encodeWithSelector(poolEscrow.authTransferTo.selector), abi.encode());
 
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.noteDeposit.selector), abi.encode());
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.reserve.selector), abi.encode());
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.unreserve.selector), abi.encode());
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.issue.selector), abi.encode());
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.revoke.selector), abi.encode());
-        vm.mockCall(
-            address(balanceSheet), abi.encodeWithSelector(balanceSheet.transferSharesFrom.selector), abi.encode()
-        );
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.withdrawShares.selector), abi.encode());
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.withdrawReserved.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.noteDeposit.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.reserve.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.unreserve.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.issue.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.revoke.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.transferSharesFrom.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.withdrawShares.selector), abi.encode());
+        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.withdrawReserved.selector), abi.encode());
     }
 
     function testConstructor() public view {
@@ -176,22 +181,19 @@ contract AsyncRequestManagerTestFile is AsyncRequestManagerTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        manager.file("spoke", address(1));
+        manager.file("spokeRegistry", address(1));
     }
 
     function testFile() public {
         vm.startPrank(AUTH);
 
         vm.expectEmit();
-        emit IBaseRequestManager.File("spoke", address(11));
-        manager.file("spoke", address(11));
-        assertEq(address(manager.spoke()), address(11));
+        emit IBaseRequestManager.File("spokeRegistry", address(11));
+        manager.file("spokeRegistry", address(11));
+        assertEq(address(manager.spokeRegistry()), address(11));
 
-        manager.file("vaultRegistry", address(22));
-        assertEq(address(manager.vaultRegistry()), address(22));
-
-        manager.file("balanceSheet", address(33));
-        assertEq(address(manager.balanceSheet()), address(33));
+        manager.file("spoke", address(33));
+        assertEq(address(manager.spoke()), address(33));
 
         manager.file("subsidyManager", address(44));
         assertEq(address(manager.subsidyManager()), address(44));
@@ -209,8 +211,8 @@ contract AsyncRequestManagerTestRequestDeposit is AsyncRequestManagerTest {
 
     function testErrVaultNotLinked() public {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(false)
         );
 
@@ -257,13 +259,12 @@ contract AsyncRequestManagerTestRequestDeposit is AsyncRequestManagerTest {
         vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.request.selector), abi.encode());
 
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(balanceSheet.noteDeposit.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS)
+            address(spoke), abi.encodeWithSelector(spoke.noteDeposit.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS)
         );
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.reserve.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS, address(manager), REASON_DEPOSIT
+                spoke.reserve.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS, address(manager), REASON_DEPOSIT
             )
         );
 
@@ -283,8 +284,8 @@ contract AsyncRequestManagerTestRequestRedeem is AsyncRequestManagerTest {
 
     function testErrVaultNotLinked() public {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(false)
         );
 
@@ -316,7 +317,16 @@ contract AsyncRequestManagerTestRequestRedeem is AsyncRequestManagerTest {
         vm.prank(AUTH);
         manager.requestRedeem(asyncVault, SHARES, CONTROLLER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector),
+            abi.encode(d18(1))
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector),
+            abi.encode(d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(asyncVault, CONTROLLER, address(0));
@@ -331,9 +341,9 @@ contract AsyncRequestManagerTestRequestRedeem is AsyncRequestManagerTest {
         vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.request.selector), abi.encode());
 
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.transferSharesFrom.selector, POOL_A, SC_1, address(0), USER, address(poolEscrow), SHARES
+                spoke.transferSharesFrom.selector, POOL_A, SC_1, address(0), USER, address(poolEscrow), SHARES
             )
         );
 
@@ -349,9 +359,9 @@ contract AsyncRequestManagerTestRequestRedeem is AsyncRequestManagerTest {
         vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.request.selector), abi.encode());
 
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.transferSharesFrom.selector, POOL_A, SC_1, address(0), USER, address(poolEscrow), SHARES
+                spoke.transferSharesFrom.selector, POOL_A, SC_1, address(0), USER, address(poolEscrow), SHARES
             )
         );
 
@@ -371,8 +381,8 @@ contract AsyncRequestManagerTestCancelDepositRequest is AsyncRequestManagerTest 
 
     function testErrVaultNotLinked() public {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(false)
         );
 
@@ -425,8 +435,8 @@ contract AsyncRequestManagerTestCancelRedeemRequest is AsyncRequestManagerTest {
 
     function testErrVaultNotLinked() public {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(false)
         );
 
@@ -464,7 +474,16 @@ contract AsyncRequestManagerTestCancelRedeemRequest is AsyncRequestManagerTest {
         vm.prank(AUTH);
         manager.requestRedeem(asyncVault, SHARES, CONTROLLER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector),
+            abi.encode(d18(1))
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector),
+            abi.encode(d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(asyncVault, CONTROLLER, address(0));
@@ -481,7 +500,16 @@ contract AsyncRequestManagerTestCancelRedeemRequest is AsyncRequestManagerTest {
         vm.prank(AUTH);
         manager.requestRedeem(asyncVault, SHARES, CONTROLLER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector),
+            abi.encode(d18(1))
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector),
+            abi.encode(d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(asyncVault, CONTROLLER, address(0));
@@ -502,9 +530,9 @@ contract AsyncRequestManagerTestApprovedDeposits is AsyncRequestManagerTest {
 
     function testApprovedDeposits() public {
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.unreserve.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS, address(manager), REASON_DEPOSIT
+                spoke.unreserve.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS, address(manager), REASON_DEPOSIT
             )
         );
 
@@ -527,8 +555,7 @@ contract AsyncRequestManagerTestIssuedShares is AsyncRequestManagerTest {
 
     function testIssuedShares() public {
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(balanceSheet.issue.selector, POOL_A, SC_1, address(poolEscrow), SHARES)
+            address(spoke), abi.encodeWithSelector(spoke.issue.selector, POOL_A, SC_1, address(poolEscrow), SHARES)
         );
 
         bytes memory payload =
@@ -550,15 +577,15 @@ contract AsyncRequestManagerTestRevokedShares is AsyncRequestManagerTest {
 
     function testRevokedShares() public {
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.reserve.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS, address(manager), REASON_REDEEM
+                spoke.reserve.selector, POOL_A, SC_1, asset, TOKEN_ID, ASSETS, address(manager), REASON_REDEEM
             )
         );
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.transferSharesFrom.selector,
+                spoke.transferSharesFrom.selector,
                 POOL_A,
                 SC_1,
                 address(poolEscrow),
@@ -567,7 +594,7 @@ contract AsyncRequestManagerTestRevokedShares is AsyncRequestManagerTest {
                 SHARES
             )
         );
-        vm.expectCall(address(balanceSheet), abi.encodeWithSelector(balanceSheet.revoke.selector, POOL_A, SC_1, SHARES));
+        vm.expectCall(address(spoke), abi.encodeWithSelector(spoke.revoke.selector, POOL_A, SC_1, SHARES));
 
         bytes memory payload = RequestCallbackMessageLib.serialize(
             RequestCallbackMessageLib.RevokedShares(ASSETS, SHARES, uint128(PRICE.raw()))
@@ -638,9 +665,9 @@ contract AsyncRequestManagerTestFulfillDepositRequest is AsyncRequestManagerTest
         assertFalse(manager.pendingCancelDepositRequest(IBaseVault(address(asyncVault)), USER));
 
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.withdrawReserved.selector,
+                spoke.withdrawReserved.selector,
                 POOL_A,
                 SC_1,
                 asset,
@@ -709,9 +736,9 @@ contract AsyncRequestManagerTestFulfillDepositRequest is AsyncRequestManagerTest
         manager.callback(POOL_A, SC_1, ASSET_ID, payload);
 
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.withdrawReserved.selector,
+                spoke.withdrawReserved.selector,
                 POOL_A,
                 SC_1,
                 asset,
@@ -782,7 +809,16 @@ contract AsyncRequestManagerTestFulfillRedeemRequest is AsyncRequestManagerTest 
         vm.prank(AUTH);
         manager.requestRedeem(IBaseVault(address(asyncVault)), SHARES, USER, USER, address(0), false);
 
-        vm.mockCall(address(spoke), abi.encodeWithSelector(spoke.pricesPoolPer.selector), abi.encode(d18(1), d18(1)));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector),
+            abi.encode(d18(1))
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector),
+            abi.encode(d18(1))
+        );
 
         vm.prank(AUTH);
         manager.cancelRedeemRequest(IBaseVault(address(asyncVault)), USER, address(0));
@@ -830,8 +866,7 @@ contract AsyncRequestManagerTestDeposit is AsyncRequestManagerTest {
         _setupFulfilledDepositRequest(ASSETS, SHARES);
 
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(balanceSheet.withdrawShares.selector, POOL_A, SC_1, RECEIVER, SHARES)
+            address(spoke), abi.encodeWithSelector(spoke.withdrawShares.selector, POOL_A, SC_1, RECEIVER, SHARES)
         );
 
         vm.prank(AUTH);
@@ -851,8 +886,8 @@ contract AsyncRequestManagerTestDeposit is AsyncRequestManagerTest {
 
     function testErrVaultNotLinked() public {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, asyncVault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(false)
         );
 
@@ -881,8 +916,7 @@ contract AsyncRequestManagerTestMint is AsyncRequestManagerTest {
         _setupFulfilledDepositRequest(ASSETS, SHARES);
 
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(balanceSheet.withdrawShares.selector, POOL_A, SC_1, RECEIVER, SHARES)
+            address(spoke), abi.encodeWithSelector(spoke.withdrawShares.selector, POOL_A, SC_1, RECEIVER, SHARES)
         );
 
         vm.prank(AUTH);
@@ -920,9 +954,9 @@ contract AsyncRequestManagerTestRedeem is AsyncRequestManagerTest {
         _setupFulfilledRedeemRequest(SHARES, ASSETS);
 
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.withdrawReserved.selector,
+                spoke.withdrawReserved.selector,
                 POOL_A,
                 SC_1,
                 asset,
@@ -969,9 +1003,9 @@ contract AsyncRequestManagerTestWithdraw is AsyncRequestManagerTest {
         _setupFulfilledRedeemRequest(SHARES, ASSETS);
 
         vm.expectCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(
-                balanceSheet.withdrawReserved.selector,
+                spoke.withdrawReserved.selector,
                 POOL_A,
                 SC_1,
                 asset,
@@ -1013,8 +1047,8 @@ contract AsyncRequestManagerTestClaimCancelRedeemRequest is AsyncRequestManagerT
         manager.callback(POOL_A, SC_1, ASSET_ID, payload);
 
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(balanceSheet.withdrawShares.selector, POOL_A, SC_1, RECEIVER, cancelledShares)
+            address(spoke),
+            abi.encodeWithSelector(spoke.withdrawShares.selector, POOL_A, SC_1, RECEIVER, cancelledShares)
         );
 
         vm.prank(AUTH);
@@ -1028,7 +1062,7 @@ contract AsyncRequestManagerTestPriceCalculations is AsyncRequestManagerTest {
         AsyncRequestManagerHarness harness = new AsyncRequestManagerHarness(subsidyManager, AUTH);
 
         vm.prank(AUTH);
-        harness.file("vaultRegistry", address(vaultRegistry));
+        harness.file("spokeRegistry", address(spokeRegistry));
 
         // Zero shares
         assert(harness.calculatePriceAssetPerShare(asyncVault, 0, 1).isZero());
@@ -1046,8 +1080,8 @@ contract AsyncRequestManagerTestPoolEscrow is AsyncRequestManagerTest {
         IBaseVault mockVault = IBaseVault(makeAddr("mockVault"));
 
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, IVault(mockVault)),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, IVault(mockVault)),
             abi.encode(true)
         );
         vm.mockCall(address(mockVault), abi.encodeWithSelector(mockVault.poolId.selector), abi.encode(POOL_A));
@@ -1058,8 +1092,8 @@ contract AsyncRequestManagerTestPoolEscrow is AsyncRequestManagerTest {
 
     function testGlobalEscrowRevertsForNonVault() public {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(vaultRegistry.isLinked.selector, IVault(ANY)),
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, IVault(ANY)),
             abi.encode(false)
         );
 

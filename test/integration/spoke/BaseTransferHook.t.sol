@@ -47,7 +47,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         MockPoolEscrow mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);
         poolEscrow = address(mockPoolEscrow);
         vm.mockCall(
-            address(balanceSheet),
+            address(spoke),
             abi.encodeWithSelector(bytes4(keccak256("escrow(uint64)")), TEST_POOL_ID),
             abi.encode(poolEscrow)
         );
@@ -56,9 +56,9 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         correctHook = new FullRestrictions(
             address(root),
             address(envoy),
+            address(spokeRegistry),
             address(spoke),
-            address(balanceSheet),
-            address(spoke),
+            address(spokeHandler),
             address(protocolGuardian.safe()),
             address(poolEscrowFactory),
             poolEscrow
@@ -67,11 +67,9 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     }
 
     function testBalanceSheetBurns() public view {
-        assertTrue(
-            correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "balanceSheet burn is fulfillment"
-        );
+        assertTrue(correctHook.isRedeemFulfillment(address(spoke), address(0)), "balanceSheet burn is fulfillment");
         assertFalse(
-            correctHook.isRedeemClaimOrRevocation(address(balanceSheet), address(0)), "balanceSheet burn not revocation"
+            correctHook.isRedeemClaimOrRevocation(address(spoke), address(0)), "balanceSheet burn not revocation"
         );
     }
 
@@ -89,14 +87,14 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     function testConfigurationValidation() public view {
         FullRestrictions deployed = fullRestrictionsHook;
 
-        assertEq(address(deployed.balanceSheet()), address(balanceSheet), "hook must use balanceSheet");
+        assertEq(address(deployed.spoke()), address(spoke), "hook must use balanceSheet");
         assertTrue(
-            address(deployed.balanceSheet()) != address(asyncRequestManager),
+            address(deployed.spoke()) != address(asyncRequestManager),
             "hook must not use asyncRequestManager as balanceSheet"
         );
 
         assertTrue(
-            deployed.isRedeemFulfillment(address(balanceSheet), address(0)),
+            deployed.isRedeemFulfillment(address(spoke), address(0)),
             "balanceSheet burns must be classified as fulfillments"
         );
         assertTrue(
@@ -105,8 +103,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         );
 
         assertTrue(
-            correctHook.isRedeemFulfillment(address(balanceSheet), address(0))
-                == deployed.isRedeemFulfillment(address(balanceSheet), address(0)),
+            correctHook.isRedeemFulfillment(address(spoke), address(0))
+                == deployed.isRedeemFulfillment(address(spoke), address(0)),
             "correctHook and deployed hook must have identical classification"
         );
     }
@@ -121,9 +119,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
 
     function testRedeemFlow() public view {
         assertTrue(correctHook.isRedeemRequest(USER, ESCROW_HOOK_ID), "user to escrow is request");
-        assertTrue(
-            correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "balanceSheet burn is fulfillment"
-        );
+        assertTrue(correctHook.isRedeemFulfillment(address(spoke), address(0)), "balanceSheet burn is fulfillment");
         assertTrue(correctHook.isRedeemClaimOrRevocation(USER, address(0)), "user burn is redeem claim");
     }
 
@@ -141,7 +137,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             "AsyncRequestManager to user is NOT a deposit claim (not from poolEscrow)"
         );
         assertTrue(
-            correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "balanceSheet burn classified correctly"
+            correctHook.isRedeemFulfillment(address(spoke), address(0)), "balanceSheet burn classified correctly"
         );
     }
 
@@ -154,18 +150,24 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         assertTrue(correctHook.isDepositRequestOrIssuance(address(0), USER), "mint to user is direct issuance");
 
         assertTrue(correctHook.isRedeemRequest(USER, ESCROW_HOOK_ID), "redeem: user to escrow");
-        assertTrue(correctHook.isRedeemFulfillment(address(balanceSheet), address(0)), "redeem: balanceSheet burn");
+        assertTrue(correctHook.isRedeemFulfillment(address(spoke), address(0)), "redeem: balanceSheet burn");
 
         assertFalse(
-            correctHook.isDepositClaim(address(balanceSheet), address(asyncRequestManager)),
+            correctHook.isDepositClaim(address(spoke), address(asyncRequestManager)),
             "internal: balanceSheet to asyncRequestManager not a claim"
         );
     }
 
     function testCrosschainTransfers() public view {
-        assertTrue(correctHook.isCrosschainTransfer(address(spoke), address(0)), "spoke burn is crosschain");
-        assertFalse(correctHook.isRedeemFulfillment(address(spoke), address(0)), "spoke burn not fulfillment");
-        assertFalse(correctHook.isRedeemClaimOrRevocation(address(spoke), address(0)), "spoke burn not revocation");
+        assertTrue(
+            correctHook.isCrosschainTransfer(address(spokeHandler), address(0)), "spokeHandler burn is crosschain"
+        );
+        assertFalse(
+            correctHook.isRedeemFulfillment(address(spokeHandler), address(0)), "spokeHandler burn not fulfillment"
+        );
+        assertFalse(
+            correctHook.isRedeemClaimOrRevocation(address(spokeHandler), address(0)), "spokeHandler burn not revocation"
+        );
     }
 
     function testOtherContractBurns() public view {
@@ -184,14 +186,11 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             );
         }
 
-        // Negative cases: burns from special contracts (balanceSheet and crosschainSource)
+        // Negative cases: burns from special contracts (spoke redemption source and crosschainSource)
+        assertFalse(correctHook.isRedeemClaimOrRevocation(address(spoke), address(0)), "spoke burn is not revocation");
         assertFalse(
-            correctHook.isRedeemClaimOrRevocation(address(balanceSheet), address(0)),
-            "balanceSheet burn is not revocation"
-        );
-        assertFalse(
-            correctHook.isRedeemClaimOrRevocation(address(spoke), address(0)),
-            "spoke (crosschainSource) burn is not revocation"
+            correctHook.isRedeemClaimOrRevocation(address(spokeHandler), address(0)),
+            "spokeHandler (crosschainSource) burn is not revocation"
         );
     }
 
@@ -209,8 +208,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
 
     function testInternalProtocolTransfers() public view {
         assertFalse(
-            correctHook.isDepositClaim(address(balanceSheet), address(vaultRouter)),
-            "balanceSheet to vaultRouter is internal"
+            correctHook.isDepositClaim(address(spoke), address(vaultRouter)), "balanceSheet to vaultRouter is internal"
         );
         assertFalse(
             correctHook.isDepositClaim(address(asyncRequestManager), address(vaultRouter)),
@@ -221,25 +219,22 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             "vaultRouter to asyncRequestManager is internal"
         );
         assertTrue(
-            correctHook.isDepositClaim(poolEscrow, address(balanceSheet)),
-            "poolEscrow to balanceSheet is a deposit claim"
+            correctHook.isDepositClaim(poolEscrow, address(spoke)), "poolEscrow to balanceSheet is a deposit claim"
         );
 
-        assertFalse(
-            correctHook.isDepositClaim(address(balanceSheet), USER), "balanceSheet to user is NOT a deposit claim"
-        );
+        assertFalse(correctHook.isDepositClaim(address(spoke), USER), "balanceSheet to user is NOT a deposit claim");
         assertFalse(
             correctHook.isDepositClaim(address(vaultRouter), USER), "vaultRouter to user is NOT a deposit claim"
         );
 
-        assertFalse(correctHook.isDepositClaim(USER, address(balanceSheet)), "user to balanceSheet is not claim");
+        assertFalse(correctHook.isDepositClaim(USER, address(spoke)), "user to balanceSheet is not claim");
         assertFalse(
             correctHook.isDepositClaim(USER, address(asyncRequestManager)), "user to asyncRequestManager is not claim"
         );
         assertFalse(correctHook.isDepositClaim(USER, poolEscrow), "user to poolEscrow is not claim");
 
         assertFalse(
-            correctHook.isDepositFulfillment(address(0), address(balanceSheet)),
+            correctHook.isDepositFulfillment(address(0), address(spoke)),
             "mint to balanceSheet (endorsed but not poolEscrow) is NOT fulfillment"
         );
         assertFalse(
@@ -247,7 +242,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             "mint to vaultRouter (endorsed but not poolEscrow) is NOT fulfillment"
         );
         assertTrue(
-            correctHook.isDepositRequestOrIssuance(address(0), address(balanceSheet)),
+            correctHook.isDepositRequestOrIssuance(address(0), address(spoke)),
             "mint to balanceSheet is direct issuance"
         );
         assertTrue(
@@ -258,11 +253,11 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
 
     function testEndorsementVerification(address notEndorsed) public view {
         vm.assume(
-            notEndorsed != address(balanceSheet) && notEndorsed != address(asyncRequestManager)
+            notEndorsed != address(spoke) && notEndorsed != address(asyncRequestManager)
                 && notEndorsed != address(vaultRouter) && notEndorsed != poolEscrow
         );
 
-        assertTrue(root.endorsed(address(balanceSheet)), "balanceSheet must be endorsed");
+        assertTrue(root.endorsed(address(spoke)), "balanceSheet must be endorsed");
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager must be endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter must be endorsed");
 

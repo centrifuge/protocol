@@ -7,7 +7,6 @@ import {IMulticall} from "../../../../src/misc/interfaces/IMulticall.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
@@ -234,7 +233,6 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
 
     address spoke = makeAddr("spoke");
     address spokeRegistry = makeAddr("spokeRegistry");
-    address balanceSheet = makeAddr("balanceSheet");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
@@ -250,9 +248,7 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
             deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
         );
         target = new WeirollTarget();
-        guard = new SlippageGuard(
-            ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater, IOnchainPMFactory(onchainPMFactory)
-        );
+        guard = new SlippageGuard(ISpoke(spoke), contractUpdater, IOnchainPMFactory(onchainPMFactory));
         vm.mockCall(
             onchainPMFactory,
             abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
@@ -303,8 +299,8 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
 
     function _mockBalance(address asset, uint128 available) internal {
         vm.mockCall(
-            balanceSheet,
-            abi.encodeWithSelector(IBalanceSheet.availableBalanceOf.selector, POOL_A, SC_1, asset, uint256(0)),
+            spoke,
+            abi.encodeWithSelector(ISpoke.availableBalanceOf.selector, POOL_A, SC_1, asset, uint256(0)),
             abi.encode(available)
         );
     }

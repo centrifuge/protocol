@@ -691,7 +691,7 @@ contract InvestmentFlowExecutor is Test {
         // Only register if pool exists in local Hub (Ethereum mainnet has pools, spoke chains don't)
         if (ctx.report.core.hubRegistry.exists(ctx.poolId)) {
             vm.startPrank(address(ctx.report.core.root));
-            ctx.report.core.balanceSheet.updateManager(ctx.poolId, address(ctx.report.asyncRequestManager), true);
+            ctx.report.core.spokeRegistry.updateManager(ctx.poolId, address(ctx.report.asyncRequestManager), true);
             vm.stopPrank();
         }
 

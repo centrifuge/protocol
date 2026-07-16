@@ -29,9 +29,9 @@ import {Accounting} from "../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
+import {SnapshotQueue} from "../../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {SpokeV3_1_0} from "../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
@@ -102,7 +102,7 @@ abstract contract Setup is
     SpokeHandler spokeHandler;
     FullRestrictions fullRestrictions;
     IRoot root;
-    BalanceSheet balanceSheet;
+    SnapshotQueue snapshotQueue;
     SubsidyManager subsidyManager;
 
     // Mocks
@@ -196,7 +196,7 @@ abstract contract Setup is
         root = new Root(48 hours, address(this));
         gateway = new MockGateway();
 
-        balanceSheet = new BalanceSheet(root, address(this));
+        snapshotQueue = new SnapshotQueue(address(this));
         refundEscrowFactory = new RefundEscrowFactory(address(this));
         subsidyManager = new SubsidyManager(refundEscrowFactory, address(this));
         asyncRequestManager = new AsyncRequestManager(subsidyManager, address(this));
@@ -207,14 +207,14 @@ abstract contract Setup is
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
         spokeRegistry = new SpokeRegistry(address(this));
         spokeHandler = new SpokeHandler(spokeRegistry, poolEscrowFactory, address(this));
-        spoke = new Spoke(address(this));
+        spoke = new Spoke(IGateway(address(gateway)), snapshotQueue, spokeRegistry, poolEscrowFactory, address(this));
         spokeV3_1_0 = new SpokeV3_1_0(address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
             address(this), // envoy_
             address(spokeRegistry),
-            address(balanceSheet),
-            address(spoke), // crosschainSource_ (same chain = spoke)
+            address(spoke),
+            address(spokeHandler), // crosschainSource_
             address(this),
             address(poolEscrowFactory),
             address(0) // poolEscrow_
@@ -228,23 +228,16 @@ abstract contract Setup is
         );
 
         // set dependencies
-        asyncRequestManager.file("spoke", address(spokeV3_1_0));
-        asyncRequestManager.file("balanceSheet", address(balanceSheet));
-        asyncRequestManager.file("vaultRegistry", address(spokeV3_1_0));
-        syncManager.file("spoke", address(spokeV3_1_0));
+        asyncRequestManager.file("spoke", address(spoke));
+        asyncRequestManager.file("spokeRegistry", address(spokeRegistry));
+        syncManager.file("spoke", address(spoke));
+        syncManager.file("spokeRegistry", address(spokeRegistry));
         spokeV3_1_0.file("spoke", address(spoke));
         spokeV3_1_0.file("spokeRegistry", address(spokeRegistry));
         messageDispatcher.rely(address(spokeV3_1_0));
-        syncManager.file("balanceSheet", address(balanceSheet));
-        syncManager.file("vaultRegistry", address(spokeV3_1_0));
-        spoke.file("spokeRegistry", address(spokeRegistry));
         spoke.file("sender", address(messageDispatcher));
-        balanceSheet.file("spoke", address(spokeRegistry));
-        balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-
-        balanceSheet.file("gateway", address(gateway));
-        poolEscrowFactory.file("balanceSheet", address(balanceSheet));
+        snapshotQueue.rely(address(spoke));
+        poolEscrowFactory.file("spoke", address(spoke));
 
         // Set up all spoke permissions
         setupSpokePermissions();
@@ -325,11 +318,11 @@ abstract contract Setup is
 
         // MessageDispatcher needs auth permissions to call protected functions
         spoke.rely(address(messageDispatcher));
-        balanceSheet.rely(address(messageDispatcher));
+        spoke.rely(address(messageDispatcher));
 
         // Spoke, balanceSheet, and hub need permission to call MessageDispatcher
         messageDispatcher.rely(address(spoke));
-        messageDispatcher.rely(address(balanceSheet));
+        messageDispatcher.rely(address(spoke));
         messageDispatcher.rely(address(hub));
 
         // Add missing MessageDispatcher permissions (matching HubDeployer)
@@ -341,7 +334,6 @@ abstract contract Setup is
 
         messageDispatcher.file("hubHandler", address(hubHandler));
         messageDispatcher.file("spokeHandler", address(spokeHandler));
-        messageDispatcher.file("balanceSheet", address(balanceSheet));
 
         // SpokeHandler permissions: messageDispatcher is the same-chain caller
         spokeHandler.rely(address(messageDispatcher));
@@ -386,7 +378,7 @@ abstract contract Setup is
         spokeRegistry.rely(address(root));
 
         // Root endorsements (from CommonDeployer and SpokeDeployer)
-        root.endorse(address(balanceSheet));
+        root.endorse(address(spoke));
         root.endorse(address(asyncRequestManager));
 
         // Rely SpokeHandler (from SpokeDeployer)
@@ -403,7 +395,7 @@ abstract contract Setup is
         syncVaultFactory.rely(address(spoke));
         syncVaultFactory.rely(address(spokeHandler));
         shareTokenRegistrar.rely(address(spoke));
-        shareTokenRegistrar.rely(address(balanceSheet));
+        shareTokenRegistrar.rely(address(spoke));
         shareTokenRegistrar.rely(address(spokeRegistry));
         syncManager.rely(address(spoke));
         gateway.rely(address(spoke));
@@ -423,11 +415,11 @@ abstract contract Setup is
         syncManager.rely(address(syncVaultFactory));
 
         // Rely BalanceSheet
-        gateway.rely(address(balanceSheet));
-        balanceSheet.rely(address(asyncRequestManager));
-        balanceSheet.rely(address(syncManager));
-        balanceSheet.rely(address(messageDispatcher));
-        balanceSheet.rely(address(gateway));
+        gateway.rely(address(spoke));
+        spoke.rely(address(asyncRequestManager));
+        spoke.rely(address(syncManager));
+        spoke.rely(address(messageDispatcher));
+        spoke.rely(address(gateway));
 
         // Rely SubsidyManager and RefundEscrowFactory
         subsidyManager.rely(address(root));
@@ -440,7 +432,7 @@ abstract contract Setup is
         spoke.rely(address(root));
         asyncRequestManager.rely(address(root));
         syncManager.rely(address(root));
-        balanceSheet.rely(address(root));
+        spoke.rely(address(root));
         asyncVaultFactory.rely(address(root));
         syncVaultFactory.rely(address(root));
         shareTokenRegistrar.rely(address(root));
@@ -456,7 +448,7 @@ abstract contract Setup is
 
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
         spoke.rely(address(messageDispatcher));
-        balanceSheet.rely(address(messageDispatcher));
+        spoke.rely(address(messageDispatcher));
     }
 
     // ===============================
@@ -467,7 +459,7 @@ abstract contract Setup is
     function _captureShareQueueState(PoolId poolId, ShareClassId scId) internal {
         bytes32 key = _poolShareKey(poolId, scId);
 
-        (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta, bool isPositive,, uint64 nonce) = snapshotQueue.queuedShares(poolId, scId);
 
         before_shareQueueDelta[key] = delta;
         before_shareQueueIsPositive[key] = isPositive;
@@ -522,8 +514,8 @@ abstract contract Setup is
         bytes32 key = keccak256(abi.encode(poolId));
 
         // Check actual authorization
-        bool isWard = balanceSheet.wards(caller) == 1;
-        bool isManager = balanceSheet.manager(poolId, caller);
+        bool isWard = spoke.wards(caller) == 1;
+        bool isManager = spokeRegistry.manager(poolId, caller);
 
         // Update ghost tracking
         if (isWard) {
@@ -548,13 +540,13 @@ abstract contract Setup is
 
         // Check all pools for manager permissions - simplified for testing
         // In a full implementation, this would check all tracked pools
-        if (balanceSheet.wards(user) == 1) {
+        if (spoke.wards(user) == 1) {
             newLevel = AuthLevel.WARD;
         } else {
             // Check if user is manager for any tracked pool
             PoolId[] memory pools = _getPools();
             for (uint256 i = 0; i < pools.length; i++) {
-                if (balanceSheet.manager(pools[i], user)) {
+                if (spokeRegistry.manager(pools[i], user)) {
                     newLevel = AuthLevel.MANAGER;
                     break;
                 }
@@ -597,7 +589,7 @@ abstract contract Setup is
         }
 
         // Track system contracts as implicitly endorsed
-        if (from == address(balanceSheet) || from == address(spoke) || from == address(hub)) {
+        if (from == address(spoke) || from == address(spoke) || from == address(hub)) {
             ghost_isEndorsedContract[from] = true;
             ghost_endorsedTransferAttempts[key]++;
         }

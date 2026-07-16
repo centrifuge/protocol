@@ -295,7 +295,6 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         spokeHandler.rely(address(this));
         spokeRegistry.rely(address(this));
         spokeV3_1_0.rely(address(this));
-        balanceSheet.rely(address(this));
         contractUpdater.rely(address(this));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));
@@ -341,7 +340,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
 
         // Subsidy and balance sheet manager for POOL_A
         subsidyManager.deposit{value: 0.5 ether}(POOL_A);
-        balanceSheet.updateManager(POOL_A, address(this), true);
+        spokeRegistry.updateManager(POOL_A, address(this), true);
 
         // Prevent confusion with block.chainid
         vm.chainId(BLOCK_CHAIN_ID);
@@ -378,8 +377,8 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         if (address(spokeRegistry.requestManager(POOL_A)) == address(0)) {
             spokeRegistry.setRequestManager(POOL_A, asyncRequestManager);
         }
-        balanceSheet.updateManager(POOL_A, address(asyncRequestManager), true);
-        balanceSheet.updateManager(POOL_A, address(syncManager), true);
+        spokeRegistry.updateManager(POOL_A, address(asyncRequestManager), true);
+        spokeRegistry.updateManager(POOL_A, address(syncManager), true);
 
         syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 

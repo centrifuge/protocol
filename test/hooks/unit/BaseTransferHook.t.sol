@@ -63,15 +63,15 @@ contract TestableBaseTransferHook is BaseTransferHook {
     constructor(
         address root_,
         address envoy_,
+        address spokeRegistry_,
         address spoke_,
-        address balanceSheet_,
         address crosschainSource_,
         address deployer,
         address poolEscrowProvider_,
         address poolEscrow_
     )
         BaseTransferHook(
-            root_, envoy_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
+            root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
         )
     {}
 
@@ -110,7 +110,7 @@ contract BaseTransferHookTestBase is Test {
     address deployer = makeAddr("deployer");
     address envoy = makeAddr("envoy");
     address crosschainSource = makeAddr("crosschainSource");
-    address balanceSheet = makeAddr("balanceSheet");
+    address spoke = makeAddr("spoke");
     address poolEscrow;
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
@@ -143,7 +143,7 @@ contract BaseTransferHookTestBase is Test {
             address(mockRoot),
             envoy,
             address(mockSpoke),
-            balanceSheet,
+            spoke,
             crosschainSource,
             deployer,
             address(mockPoolEscrowProvider),
@@ -163,7 +163,7 @@ contract BaseTransferHookTestBase is Test {
 
     function _setEndorsedUsers() internal {
         mockRoot.setEndorsed(endorsedUser, true);
-        mockRoot.setEndorsed(balanceSheet, true);
+        mockRoot.setEndorsed(spoke, true);
         mockRoot.setEndorsed(poolEscrow, true);
         mockRoot.setEndorsed(crosschainSource, true);
     }
@@ -206,7 +206,7 @@ contract BaseTransferHookTestBase is Test {
 contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
     function testConstructor() public view {
         assertEq(address(hook.root()), address(mockRoot));
-        assertEq(address(hook.balanceSheet()), balanceSheet);
+        assertEq(address(hook.spoke()), spoke);
         assertEq(hook.crosschainSource(), crosschainSource);
         assertEq(hook.FREEZE_BIT(), 0);
     }
@@ -218,8 +218,8 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
             address(mockRoot),
             envoy,
             address(mockSpoke),
-            balanceSheet,
-            balanceSheet, // Same as balanceSheet - should fail
+            spoke,
+            spoke, // Same as spoke - should fail
             deployer,
             address(mockPoolEscrowProvider),
             address(0)
@@ -260,14 +260,14 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
     }
 
     function testIsRedeemFulfillment() public view {
-        assertTrue(hook.isRedeemFulfillment(balanceSheet, address(0)));
+        assertTrue(hook.isRedeemFulfillment(spoke, address(0)));
         assertFalse(hook.isRedeemFulfillment(user1, address(0)));
-        assertFalse(hook.isRedeemFulfillment(balanceSheet, user1));
+        assertFalse(hook.isRedeemFulfillment(spoke, user1));
     }
 
     function testIsRedeemClaimOrRevocation() public view {
         assertTrue(hook.isRedeemClaimOrRevocation(user1, address(0)));
-        assertFalse(hook.isRedeemClaimOrRevocation(balanceSheet, address(0)));
+        assertFalse(hook.isRedeemClaimOrRevocation(spoke, address(0)));
         assertFalse(hook.isRedeemClaimOrRevocation(crosschainSource, address(0)));
         assertFalse(hook.isRedeemClaimOrRevocation(user1, user2));
     }
@@ -747,7 +747,7 @@ contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase 
             address(mockRoot),
             envoy,
             address(mockSpoke),
-            balanceSheet,
+            spoke,
             crosschainSource,
             deployer,
             address(mockPoolEscrowProvider),

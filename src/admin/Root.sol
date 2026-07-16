@@ -6,7 +6,6 @@ import {IRoot} from "./interfaces/IRoot.sol";
 import {Auth} from "../misc/Auth.sol";
 import {IAuth} from "../misc/interfaces/IAuth.sol";
 
-import {IEndorsements} from "../core/spoke/interfaces/IEndorsements.sol";
 import {IScheduleAuth} from "../core/messaging/interfaces/IScheduleAuth.sol";
 
 /// @title  Root
@@ -55,7 +54,7 @@ contract Root is Auth, IRoot {
         emit Veto(user);
     }
 
-    /// @inheritdoc IEndorsements
+    /// @inheritdoc IRoot
     function endorsed(address user) external view returns (bool) {
         return endorsements[user] == 1;
     }

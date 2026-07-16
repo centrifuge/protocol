@@ -207,7 +207,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             // Check if this is a fresh user (request not yet processed by Hub)
             bool isUnprocessedRequest = (pending == 0 && lastUpdate == 0);
 
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
+            // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             // Only check the property if the Hub has processed at least one request
             if (!isUnprocessedRequest && Helpers.canMutate(lastUpdate, pending, depositEpochId)) {
@@ -233,7 +233,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(
                 _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
             );
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
+            // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (Helpers.canMutate(lastUpdate, pending, redeemEpochId)) {
                 // nowRedeemEpoch = redeemEpochId + 1
@@ -1160,7 +1160,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             return;
         }
 
-        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(poolId, scId);
 
         // Calculate expected net position from ghost tracking
         int256 expectedNet = ghost_netSharePosition[key];
@@ -1188,7 +1188,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             return;
         }
 
-        (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(poolId, scId);
 
         // Calculate actual net position from queue state
         int256 actualNet = isPositive ? int256(uint256(delta)) : -int256(uint256(delta));
@@ -1220,7 +1220,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 uint128 deltaBefore = before_shareQueueDelta[key];
                 bool isPositiveBefore = before_shareQueueIsPositive[key];
 
-                (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(poolId, scId);
+                (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(poolId, scId);
 
                 // Check if a flip occurred
                 bool flipOccurred = (isPositiveBefore != isPositiveAfter) && (deltaBefore != 0 || deltaAfter != 0);
@@ -1267,7 +1267,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 int256 expectedFromTotals = int256(ghost_totalIssued[key]) - int256(ghost_totalRevoked[key]);
 
                 // Get actual queue state from balance sheet
-                (uint128 delta, bool isPositive,,) = balanceSheet.queuedShares(poolId, scId);
+                (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(poolId, scId);
 
                 // Convert to signed integer based on isPositive flag
                 int256 actualNet = isPositive ? int256(uint256(delta)) : -int256(uint256(delta));
@@ -1289,7 +1289,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 ShareClassId scId = shareClasses[j];
                 bytes32 key = _poolShareKey(poolId, scId);
 
-                (,,, uint64 nonce) = balanceSheet.queuedShares(poolId, scId);
+                (,,, uint64 nonce) = snapshotQueue.queuedShares(poolId, scId);
 
                 // Verify nonce never decreases
                 gte(nonce, before_nonce[key], "SHARE-QUEUE-07: Nonce must never decrease");
@@ -1297,7 +1297,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev Property: Verifies that the asset counter accurately reflects non-empty asset queues
+    /// @dev Property: Verifies that the asset counter accurately reflects non-empty asset snapshotQueue
     function property_shareQueueAssetCounter() public {
         PoolId[] memory pools = _getPools();
         for (uint256 i = 0; i < pools.length; i++) {
@@ -1306,14 +1306,14 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             for (uint256 j = 0; j < shareClasses.length; j++) {
                 ShareClassId scId = shareClasses[j];
 
-                (,, uint32 actualCounter,) = balanceSheet.queuedShares(poolId, scId);
+                (,, uint32 actualCounter,) = snapshotQueue.queuedShares(poolId, scId);
 
-                // Count actual non-empty asset queues
+                // Count actual non-empty asset snapshotQueue
                 uint256 expectedCounter = 0;
                 AssetId[] memory assets = _getAssetIds();
                 for (uint256 k = 0; k < assets.length; k++) {
                     AssetId assetId = assets[k];
-                    (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+                    (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
                     if (deposits > 0 || withdrawals > 0) {
                         expectedCounter++;
@@ -1323,7 +1323,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 eq(
                     uint256(actualCounter),
                     expectedCounter,
-                    "SHARE-QUEUE-08: Asset counter must match actual non-empty queues"
+                    "SHARE-QUEUE-08: Asset counter must match actual non-empty snapshotQueue"
                 );
 
                 // Counter should never exceed total possible assets
@@ -1339,7 +1339,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     /// @dev Property 1.1: Asset Queue Counter Consistency
     /// Definition: queuedAssets[p][sc][a].deposits + queuedAssets[p][sc][a].withdrawals > 0 ⟺ queuedAssetCounter
     /// includes asset a
-    /// Ensures counter accurately tracks non-empty queues
+    /// Ensures counter accurately tracks non-empty snapshotQueue
     function property_assetQueueCounterConsistency() public {
         PoolId[] memory pools = _getPools();
         for (uint256 i = 0; i < pools.length; i++) {
@@ -1350,21 +1350,21 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 ShareClassId scId = shareClassIds[j];
 
                 // Get the queuedAssetCounter from BalanceSheet
-                (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+                (,, uint32 queuedAssetCounter,) = snapshotQueue.queuedShares(poolId, scId);
                 uint256 nonEmptyAssetCount = 0;
 
-                // Count non-empty asset queues
+                // Count non-empty asset snapshotQueue
                 AssetId[] memory assets = _getAssetIds();
                 for (uint256 k = 0; k < assets.length; k++) {
                     AssetId assetId = assets[k];
-                    (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+                    (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
                     if (deposits > 0 || withdrawals > 0) {
                         nonEmptyAssetCount++;
                     }
                 }
 
-                // Property: Counter should equal number of non-empty asset queues
+                // Property: Counter should equal number of non-empty asset snapshotQueue
                 eq(
                     uint256(queuedAssetCounter),
                     nonEmptyAssetCount,
@@ -1388,7 +1388,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             for (uint256 j = 0; j < shareClassIds.length; j++) {
                 ShareClassId scId = shareClassIds[j];
 
-                (,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+                (,, uint32 queuedAssetCounter,) = snapshotQueue.queuedShares(poolId, scId);
 
                 // Counter should not exceed total number of tracked assets
                 lte(
@@ -1401,7 +1401,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     }
 
     /// @dev Property 1.3: Asset Queue Non-Negative
-    /// Definition: Asset queues can never underflow (deposits/withdrawals ≥ 0)
+    /// Definition: Asset snapshotQueue can never underflow (deposits/withdrawals ≥ 0)
     /// Mathematical consistency of accumulation
     function property_assetQueueNonNegative() public {
         PoolId[] memory pools = _getPools();
@@ -1415,7 +1415,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 AssetId[] memory assets = _getAssetIds();
                 for (uint256 k = 0; k < assets.length; k++) {
                     AssetId assetId = assets[k];
-                    (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+                    (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
                     // Both values must be non-negative (uint128 enforces this, but verify explicitly)
                     gte(uint256(deposits), 0, "property_assetQueueNonNegative: negative deposits");
@@ -1449,7 +1449,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 ShareClassId scId = shareClassIds[j];
                 bytes32 shareKey = keccak256(abi.encode(poolId, scId));
 
-                (,,, uint64 currentNonce) = balanceSheet.queuedShares(poolId, scId);
+                (,,, uint64 currentNonce) = snapshotQueue.queuedShares(poolId, scId);
                 uint256 previousNonce = ghost_previousNonce[shareKey];
 
                 // If we have a previous nonce recorded, current should be greater
@@ -1493,8 +1493,8 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                     address asset = vault.asset();
 
                     // Get available balance
-                    uint128 available = balanceSheet.availableBalanceOf(poolId, scId, asset, 0);
-                    PoolEscrow poolEscrow = PoolEscrow(address(balanceSheet.escrow(poolId)));
+                    uint128 available = spoke.availableBalanceOf(poolId, scId, asset, 0);
+                    PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
                     (, uint128 reserved) = poolEscrow.holding(scId, asset, assetId.raw());
                     uint128 total = available + reserved;
 
@@ -1550,11 +1550,11 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         // Use holding.total (not availableBalanceOf) since reserve/unreserve
         // affect available but don't update the queue
-        PoolEscrow poolEscrow = PoolEscrow(address(balanceSheet.escrow(poolId)));
+        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
         (uint128 total,) = poolEscrow.holding(scId, asset, 0);
 
         // Get queued amounts (already-executed, pending hub notification)
-        (uint128 queuedDeposits, uint128 queuedWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        (uint128 queuedDeposits, uint128 queuedWithdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
         // total = total_before_queue + queuedDeposits - queuedWithdrawals
         // => total_before_queue = total + queuedWithdrawals - queuedDeposits >= 0
@@ -1576,7 +1576,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         PoolId poolId = vault.poolId();
         address asset = vault.asset();
 
-        PoolEscrow poolEscrow = PoolEscrow(address(balanceSheet.escrow(poolId)));
+        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
         uint256 actualBalance = MockERC20(asset).balanceOf(address(poolEscrow));
 
         ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
@@ -1630,13 +1630,13 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     //                 // Verify authorization is still valid
     //                 if (recordedLevel == AuthLevel.WARD) {
     //                     eq(
-    //                         balanceSheet.wards(lastCaller),
+    //                         spoke.wards(lastCaller),
     //                         1,
     //                         "Ward authorization was revoked but operations continued"
     //                     );
     //                 } else if (recordedLevel == AuthLevel.MANAGER) {
     //                     t(
-    //                         balanceSheet.manager(poolId, lastCaller),
+    //                         spokeRegistry.manager(poolId, lastCaller),
     //                         "Manager authorization was revoked but operations continued"
     //                     );
     //                 }
@@ -1650,9 +1650,9 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     //             AuthLevel actualAuth = AuthLevel.NONE;
 
     //             // Determine actual authorization level
-    //             if (balanceSheet.wards(actors[k]) == 1) {
+    //             if (spoke.wards(actors[k]) == 1) {
     //                 actualAuth = AuthLevel.WARD;
-    //             } else if (balanceSheet.manager(poolId, actors[k])) {
+    //             } else if (spokeRegistry.manager(poolId, actors[k])) {
     //                 actualAuth = AuthLevel.MANAGER;
     //             }
 
@@ -1710,10 +1710,10 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             t(recordedLevel != AuthLevel.NONE, "Non-authorized address performed privileged operation");
             // Verify authorization is still valid
             if (recordedLevel == AuthLevel.WARD) {
-                eq(balanceSheet.wards(lastCaller), 1, "Ward authorization was revoked but operations continued");
+                eq(spoke.wards(lastCaller), 1, "Ward authorization was revoked but operations continued");
             } else if (recordedLevel == AuthLevel.MANAGER) {
                 t(
-                    balanceSheet.manager(poolId, lastCaller),
+                    spokeRegistry.manager(poolId, lastCaller),
                     "Manager authorization was revoked but operations continued"
                 );
             }
@@ -1727,9 +1727,9 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         AuthLevel actualAuth = AuthLevel.NONE;
 
         // Determine actual authorization level
-        if (balanceSheet.wards(_getActor()) == 1) {
+        if (spoke.wards(_getActor()) == 1) {
             actualAuth = AuthLevel.WARD;
-        } else if (balanceSheet.manager(poolId, _getActor())) {
+        } else if (spokeRegistry.manager(poolId, _getActor())) {
             actualAuth = AuthLevel.MANAGER;
         }
 
@@ -1771,7 +1771,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                     t(!ghost_isEndorsedContract[lastFrom], "Transfer from endorsed contract was allowed");
 
                     // Additional validation for special addresses
-                    t(lastFrom != address(balanceSheet), "Transfer from BalanceSheet contract was allowed");
+                    t(lastFrom != address(spoke), "Transfer from BalanceSheet contract was allowed");
                     t(lastFrom != address(spoke), "Transfer from Spoke contract was allowed");
                     t(lastFrom != address(hub), "Transfer from Hub contract was allowed");
                 }

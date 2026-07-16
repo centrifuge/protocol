@@ -74,7 +74,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendSetRequestManager(REMOTE_CHAIN, POOL_A, bytes32(0), REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendUpdateManager(REMOTE_CHAIN, POOL_A, ManagerKind.BalanceSheet, bytes32(0), true, REFUND);
+        dispatcher.sendUpdateManager(REMOTE_CHAIN, POOL_A, ManagerKind.Spoke, bytes32(0), true, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendScheduleUpgrade(REMOTE_CHAIN, bytes32(0), REFUND);
@@ -221,14 +221,6 @@ contract TestFile is TestCommon {
         emit IMessageDispatcher.File("spokeHandler", address(23));
         dispatcher.file("spokeHandler", address(23));
         assertEq(address(dispatcher.spokeHandler()), address(23));
-    }
-
-    function testFileBalanceSheet() public {
-        vm.prank(address(AUTH));
-        vm.expectEmit();
-        emit IMessageDispatcher.File("balanceSheet", address(23));
-        dispatcher.file("balanceSheet", address(23));
-        assertEq(address(dispatcher.balanceSheet()), address(23));
     }
 
     function testFileEnvoy() public {

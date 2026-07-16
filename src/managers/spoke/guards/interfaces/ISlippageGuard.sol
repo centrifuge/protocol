@@ -4,7 +4,6 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../../../core/types/PoolId.sol";
 import {ISpoke} from "../../../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../core/spoke/interfaces/IBalanceSheet.sol";
 import {IManagerCallFromHub} from "../../../../core/utils/interfaces/IManagerCall.sol";
 
 import {IOnchainPMFactory} from "../../interfaces/IOnchainPMFactory.sol";
@@ -56,7 +55,6 @@ interface ISlippageGuard is IManagerCallFromHub {
     function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external;
 
     function spoke() external view returns (ISpoke);
-    function balanceSheet() external view returns (IBalanceSheet);
     function envoy() external view returns (address);
     function onchainPMFactory() external view returns (IOnchainPMFactory);
     function config(PoolId poolId, ShareClassId scId)

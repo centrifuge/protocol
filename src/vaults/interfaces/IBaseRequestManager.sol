@@ -6,9 +6,9 @@ import {IBaseVault} from "./IBaseVault.sol";
 import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "../../core/spoke/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../../core/interfaces/IRequestManager.sol";
-import {ISpokeV3_1_0} from "../../core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 interface IBaseRequestManager is IRequestManager {
     event File(bytes32 indexed what, address data);
@@ -30,7 +30,7 @@ interface IBaseRequestManager is IRequestManager {
     function priceLastUpdated(IBaseVault vault) external view returns (uint64 lastUpdated);
 
     /// @notice Returns the Spoke contract address.
-    function spoke() external view returns (ISpokeV3_1_0 spoke);
+    function spoke() external view returns (ISpoke spoke);
 
     /// @notice DEPRECATED: Returns the pool escrow for the calling vault's pool.
     /// NOTE: DEPRECATED IMPLEMENTATION: This function is maintained solely for ABI backward compatibility

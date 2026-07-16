@@ -3,52 +3,86 @@ pragma solidity 0.8.28;
 
 import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
+import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
+import {ISnapshotQueue} from "./interfaces/ISnapshotQueue.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
+import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {MathLib} from "../../misc/libraries/MathLib.sol";
-import {BytesLib} from "../../misc/libraries/BytesLib.sol";
-import {IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 import {IERC20, IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
-import {ReentrancyProtection} from "../../misc/ReentrancyProtection.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
+import {IERC6909, IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
 
-import {MessageLib} from "../messaging/libraries/MessageLib.sol";
+import {IGateway} from "../messaging/interfaces/IGateway.sol";
 import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IManifest} from "../hub/interfaces/IManifest.sol";
+import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  Spoke
-/// @notice This contract handles user-facing operations: cross-chain share transfers,
-///         asset registration, manager calls, and request forwarding.
-contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
+/// @notice Management contract that integrates all spoke-side operations of a pool:
+///         - Registering assets
+///         - Depositing and withdrawing assets
+///         - Reserving assets (removing them from the hub-accounted holding)
+///         - Issuing and revoking shares
+///         - Cross-chain share transfers, request forwarding, and manager calls
+///
+///         Share and asset updates to the Hub are queued, to reduce the cost per transaction.
+contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     using CastLib for *;
-    using MessageLib for *;
-    using BytesLib for bytes;
-    using MathLib for uint256;
 
     uint8 internal constant MAX_DECIMALS = 18;
 
     ISpokeMessageSender public sender;
+    ISnapshotQueue public snapshotQueue;
     ISpokeRegistry public spokeRegistry;
+    IPoolEscrowProvider public poolEscrowProvider;
 
-    constructor(address deployer) Auth(deployer) {}
+    constructor(
+        IGateway gateway_,
+        ISnapshotQueue queues_,
+        ISpokeRegistry spokeRegistry_,
+        IPoolEscrowProvider poolEscrowProvider_,
+        address deployer
+    ) Auth(deployer) BatchedMulticall(gateway_) {
+        snapshotQueue = queues_;
+        spokeRegistry = spokeRegistry_;
+        poolEscrowProvider = poolEscrowProvider_;
+    }
+
+    modifier protectedPool(PoolId poolId) {
+        _protected(poolId);
+        _;
+    }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // System methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
     function file(bytes32 what, address data) external auth {
-        if (what == "sender") sender = ISpokeMessageSender(data);
+        if (what == "gateway") gateway = IGateway(data);
+        else if (what == "snapshotQueue") snapshotQueue = ISnapshotQueue(data);
+        else if (what == "sender") sender = ISpokeMessageSender(data);
         else if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
+        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
+    }
+
+    /// @inheritdoc ISpoke
+    function setManifest(PoolId poolId, IManifest manifest_) external {
+        // Wards may install/replace directly (emergency override); managers go through the current
+        // manifest's policy (via _protected), so a compromised manager can't hot-swap it in one tx.
+        if (wards[msgSender()] != 1) _protected(poolId);
+
+        spokeRegistry.setManifest(poolId, manifest_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -86,7 +120,191 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
         }
 
         emit RegisterAsset(centrifugeId, assetId, asset, tokenId, name, symbol, decimals, isInitialization);
-        sender.sendRegisterAsset{value: msg.value}(centrifugeId, assetId, decimals, refund);
+        sender.sendRegisterAsset{value: msgValue()}(centrifugeId, assetId, decimals, refund);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Balance sheet: asset methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc ISpoke
+    function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable
+        protectedPool(poolId)
+    {
+        IPoolEscrow escrow_ = escrow(poolId);
+        escrow_.deposit(scId, asset, tokenId, amount);
+        _queueAssets(poolId, scId, asset, tokenId, amount, true);
+
+        if (tokenId == 0) {
+            SafeTransferLib.safeTransferFrom(asset, msgSender(), address(escrow_), amount);
+        } else {
+            IERC6909(asset).transferFrom(msgSender(), address(escrow_), tokenId, amount);
+        }
+        emit Deposit(poolId, scId, msgSender(), asset, tokenId, amount);
+    }
+
+    /// @inheritdoc ISpoke
+    function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
+        external
+        payable
+        protectedPool(poolId)
+    {
+        escrow(poolId).deposit(scId, asset, tokenId, amount);
+        _queueAssets(poolId, scId, asset, tokenId, amount, true);
+
+        emit NoteDeposit(poolId, scId, msgSender(), asset, tokenId, amount);
+    }
+
+    /// @inheritdoc ISpoke
+    function withdraw(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount
+    ) external payable protectedPool(poolId) {
+        IPoolEscrow escrow_ = escrow(poolId);
+
+        escrow_.withdraw(scId, asset, tokenId, receiver, amount);
+        _queueAssets(poolId, scId, asset, tokenId, amount, false);
+        escrow_.authTransferTo(asset, tokenId, receiver, amount);
+
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount);
+    }
+
+    /// @inheritdoc ISpoke
+    function withdrawReserved(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address receiver,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable protectedPool(poolId) {
+        IPoolEscrow escrow_ = escrow(poolId);
+
+        // Release the reservation and withdraw the freed balance: reserved and total both decrease by
+        // `amount`, with no queue update since the holding decrease was already queued at reserve time.
+        escrow_.unreserve(scId, asset, tokenId, amount, reserver, reason);
+        escrow_.withdraw(scId, asset, tokenId, receiver, amount);
+        escrow_.authTransferTo(asset, tokenId, receiver, amount);
+
+        emit Withdraw(poolId, scId, asset, tokenId, receiver, amount);
+    }
+
+    /// @inheritdoc ISpoke
+    function reserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable protectedPool(poolId) {
+        escrow(poolId).reserve(scId, asset, tokenId, amount, reserver, reason);
+        _queueAssets(poolId, scId, asset, tokenId, amount, false);
+    }
+
+    /// @inheritdoc ISpoke
+    function unreserve(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        address reserver,
+        uint32 reason
+    ) external payable protectedPool(poolId) {
+        escrow(poolId).unreserve(scId, asset, tokenId, amount, reserver, reason);
+        _queueAssets(poolId, scId, asset, tokenId, amount, true);
+    }
+
+    /// @inheritdoc ISpoke
+    function submitQueuedAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable protectedPool(poolId) {
+        ISpokeMessageSender.UpdateData memory data = snapshotQueue.flushAssets(poolId, scId, assetId);
+        sender.sendUpdateHoldingAmount{value: msgValue()}(poolId, scId, assetId, data, extraGasLimit, refund);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Balance sheet: share methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc ISpoke
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares)
+        external
+        payable
+        protectedPool(poolId)
+    {
+        snapshotQueue.queueShares(poolId, scId, shares, true);
+
+        (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        registrar.mint(address(token), to, shares);
+
+        emit Issue(poolId, scId, msgSender(), to, shares);
+    }
+
+    /// @inheritdoc ISpoke
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable protectedPool(poolId) {
+        snapshotQueue.queueShares(poolId, scId, shares, false);
+
+        // Pull the shares to this contract (the caller approves this spoke, not the registrar),
+        // then grant the registrar an allowance over this contract's balance so it can pull-and-burn.
+        (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        SafeTransferLib.safeTransferFrom(address(token), msgSender(), address(this), shares);
+        SafeTransferLib.safeApprove(address(token), address(registrar), shares);
+        registrar.burn(address(token), address(this), shares);
+
+        emit Revoke(poolId, scId, msgSender(), msgSender(), shares);
+    }
+
+    /// @inheritdoc ISpoke
+    function withdrawShares(PoolId poolId, ShareClassId scId, address receiver, uint128 amount)
+        external
+        payable
+        protectedPool(poolId)
+    {
+        // Share tokens parked in the escrow carry no holding accounting (issuance is queued via issue/revoke),
+        // so this is a plain hook-checked transfer out of the escrow with no Hub queue.
+        IERC20 token = spokeRegistry.shareToken(poolId, scId);
+        escrow(poolId).authTransferTo(address(token), 0, receiver, amount);
+
+        emit WithdrawShares(poolId, scId, receiver, amount);
+    }
+
+    /// @inheritdoc ISpoke
+    function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
+        external
+        payable
+        protectedPool(poolId)
+    {
+        ISpokeMessageSender.UpdateData memory data = snapshotQueue.flushShares(poolId, scId);
+        sender.sendUpdateShares{value: msgValue()}(poolId, scId, data, extraGasLimit, refund);
+    }
+
+    /// @inheritdoc ISpoke
+    function transferSharesFrom(
+        PoolId poolId,
+        ShareClassId scId,
+        address sender_,
+        address from,
+        address to,
+        uint256 amount
+    ) external payable protectedPool(poolId) {
+        (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        registrar.authTransferFrom(address(token), sender_, from, to, amount);
+        emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -106,7 +324,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
         uint128 remoteExtraGasLimit,
         address refund
     ) public payable protected {
-        require(msg.sender == owner || wards[msg.sender] == 1, NotAuthorized());
+        require(msgSender() == owner || wards[msgSender()] == 1, NotAuthorized());
         require(spokeRegistry.bridger(poolId, owner), NotBridger());
 
         (IERC20 share, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
@@ -121,7 +339,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
 
         emit InitiateTransferShares(centrifugeId, poolId, scId, sender_, owner, receiver, amount);
 
-        sender.sendInitiateTransferShares{value: msg.value}(
+        sender.sendInitiateTransferShares{value: msgValue()}(
             centrifugeId,
             poolId,
             scId,
@@ -135,7 +353,7 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Requests
+    // Requests & manager calls
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
@@ -152,28 +370,70 @@ contract Spoke is Auth, Recoverable, ReentrancyProtection, ISpoke {
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 
-        sender.sendRequest{value: msg.value}(poolId, scId, assetId, payload, extraGasLimit, unpaid, refund);
+        sender.sendRequest{value: msgValue()}(poolId, scId, assetId, payload, extraGasLimit, unpaid, refund);
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Manager calls
-    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
     function managerCall(PoolId poolId, bytes32 target, bytes calldata payload, uint128 extraGasLimit, address refund)
         external
         payable
     {
-        emit ManagerCall(poolId.centrifugeId(), poolId, target, payload, msg.sender);
+        emit ManagerCall(poolId.centrifugeId(), poolId, target, payload, msgSender());
 
-        sender.sendManagerSpokeCall{value: msg.value}(
-            poolId, target, payload, msg.sender.toBytes32(), extraGasLimit, refund
+        sender.sendManagerSpokeCall{value: msgValue()}(
+            poolId, target, payload, msgSender().toBytes32(), extraGasLimit, refund
         );
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc ISpoke
+    function manifest(PoolId poolId) external view returns (IManifest) {
+        return spokeRegistry.manifest(poolId);
+    }
+
+    /// @inheritdoc ISpoke
+    function escrow(PoolId poolId) public view returns (IPoolEscrow) {
+        return poolEscrowProvider.escrow(poolId);
+    }
+
+    /// @inheritdoc ISpoke
+    function availableBalanceOf(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        public
+        view
+        returns (uint128)
+    {
+        return escrow(poolId).availableBalanceOf(scId, asset, tokenId);
     }
 
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
+
+    /// @dev Guard for manager methods: the sender must be a manager and, if a manifest is installed,
+    ///      the call must satisfy the pool's policy.
+    function _protected(PoolId poolId) internal {
+        require(spokeRegistry.manager(poolId, msgSender()), NotManager());
+
+        IManifest m = spokeRegistry.manifest(poolId);
+        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+    }
+
+    /// @dev Accumulate the queued gross asset flow.
+    function _queueAssets(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        uint128 amount,
+        bool isIncrease
+    ) internal {
+        if (amount == 0) return;
+
+        snapshotQueue.queueAssets(poolId, scId, spokeRegistry.assetToId(asset, tokenId), amount, isIncrease);
+    }
 
     function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
         bytes memory callData;

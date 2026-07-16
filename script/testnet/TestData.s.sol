@@ -62,15 +62,14 @@ contract TestData is BaseTestData {
         spoke.registerAsset(centrifugeId, address(wBtc), 0, msg.sender);
         AssetId wBtcId = newAssetId(centrifugeId, 2);
 
-        wBtc.approve(address(balanceSheet), 10e18);
+        wBtc.approve(address(spoke), 10e18);
 
         bytes[] memory calls = new bytes[](2);
-        calls[0] =
-            abi.encodeWithSelector(balanceSheet.deposit.selector, asyncPoolId, asyncScId, address(wBtc), 0, 10e18);
+        calls[0] = abi.encodeWithSelector(spoke.deposit.selector, asyncPoolId, asyncScId, address(wBtc), 0, 10e18);
         calls[1] = abi.encodeWithSelector(
-            balanceSheet.submitQueuedAssets.selector, asyncPoolId, asyncScId, wBtcId, DEFAULT_EXTRA_GAS, msg.sender
+            spoke.submitQueuedAssets.selector, asyncPoolId, asyncScId, wBtcId, DEFAULT_EXTRA_GAS, msg.sender
         );
-        balanceSheet.multicall(calls);
+        spoke.multicall(calls);
 
         hub.createAccount(asyncPoolId, AccountId.wrap(0x05), true);
         hub.initializeHolding(

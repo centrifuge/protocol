@@ -8,7 +8,7 @@ The vaults module implements ERC-4626 and ERC-7540 tokenized vault standards for
 
 `AsyncVault` implements the ERC-7540 asynchronous tokenized vault standard, extending ERC-4626 with request-based deposit and redeem workflows. Users submit deposit and redeem requests that are queued for execution in the next epoch. After epoch execution, users can claim their shares or assets using standard ERC-4626 methods. The vault integrates with `AsyncRequestManager` for request handling and supports ERC-7887 cancellation flows.
 
-The vault enforces controller/owner validation for all operations and integrates with pool-specific escrows via `BalanceSheet` for asset and share custody during pending requests. It tracks pending and claimable amounts per controller, enabling users to monitor their request status. The vault supports operator endorsements, allowing approved addresses to act on behalf of users for deposits and redemptions.
+The vault enforces controller/owner validation for all operations and integrates with pool-specific escrows via `Spoke` for asset and share custody during pending requests. It tracks pending and claimable amounts per controller, enabling users to monitor their request status. The vault supports operator endorsements, allowing approved addresses to act on behalf of users for deposits and redemptions.
 
 ### `SyncDepositVault`
 
@@ -24,7 +24,7 @@ The contract implements `IHubRequestManager` and receives request callbacks from
 
 ### `AsyncRequestManager`
 
-`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `BalanceSheet` for share issuance/burning and pool-specific `PoolEscrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
+`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `Spoke` for share issuance/burning and pool-specific `PoolEscrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
 
 The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It manages refund escrows per pool for subsidizing gas for cross-chain transactions. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
 
@@ -34,7 +34,7 @@ The following diagram shows how funds flow in and out of the pool escrow:
 
 ### `SyncManager`
 
-`SyncManager` enables synchronous ERC-4626 deposits by coordinating immediate share issuance based on current valuations. It integrates with pool-specific `ISyncDepositValuation` contracts to determine share prices and validates reserve limits to prevent over-issuance. The manager coordinates with `BalanceSheet` for share minting and asset deposits.
+`SyncManager` enables synchronous ERC-4626 deposits by coordinating immediate share issuance based on current valuations. It integrates with pool-specific `ISyncDepositValuation` contracts to determine share prices and validates reserve limits to prevent over-issuance. The manager coordinates with `Spoke` for share minting and asset deposits.
 
 The contract supports trusted contract updates for configuring valuation contracts and max reserve limits per pool, share class, and asset. It implements deposit and mint operations, calculating share amounts from assets and vice versa based on the configured valuation. Reserve limits protect pools from excessive deposits when liquidity is constrained.
 

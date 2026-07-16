@@ -25,14 +25,14 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 ///           Deposit fulfillment:              address(0)       -> poolEscrow
 ///           Deposit claim:                    poolEscrow       -> address(user)
 ///           Redeem request:                   address(user)    -> ESCROW_HOOK_ID
-///           Redeem fulfillment:               balanceSheet     -> address(0)
+///           Redeem fulfillment:               spoke            -> address(0)
 ///           Redeem claim/revocation:          address(user)    -> address(0)
 ///           Cross-chain transfer:             address(user)    -> address(uint160(chainId))
 ///           Cross-chain execution:            crosschainSource -> address(user)
 ///
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
-///         poolEscrow: Pool-specific escrow contract identified via balanceSheet.escrow(poolId)
-///         balanceSheet: Contract that fulfills redemptions and provides pool escrow lookups
+///         poolEscrow: Pool-specific escrow contract identified via spoke.escrow(poolId)
+///         spoke: Contract that fulfills redemptions and provides pool escrow lookups
 ///         crosschainSource: Contract handling cross-chain message execution (spoke)
 interface ITransferHook is IERC165 {
     //----------------------------------------------------------------------------------------------

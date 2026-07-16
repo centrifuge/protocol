@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrowProvider} from "../../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import {IRoot} from "../../../admin/interfaces/IRoot.sol";
@@ -43,11 +43,11 @@ interface IBaseTransferHook is ITransferHook {
     /// @notice Pre-configured escrow address for single-pool hook deployments (address(0) if multi-pool)
     function poolEscrow() external view returns (address);
 
-    /// @notice Address that originates cross-chain share transfers (BalanceSheet on this chain)
+    /// @notice Address that originates cross-chain share transfers (SpokeHandler on this chain)
     function crosschainSource() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
-    function balanceSheet() external view returns (IBalanceSheet);
+    function spoke() external view returns (ISpoke);
 
     /// @notice Factory that maps pool IDs to escrow addresses for multi-pool hook deployments
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);

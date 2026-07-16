@@ -8,7 +8,6 @@ import {GraphQLQuery} from "./utils/GraphQLQuery.s.sol";
 
 import {Spoke} from "../src/core/spoke/Spoke.sol";
 import {PoolId} from "../src/core/types/PoolId.sol";
-import {BalanceSheet} from "../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IPoolEscrowProvider} from "../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
@@ -39,12 +38,14 @@ contract PoolHooks is BaseDeployer {
 
     uint16 public centrifugeId;
 
+    address public envoy;
+    address public spokeHandler;
+    address public spokeRegistry;
     address public contractUpdater;
     address public fullRestrictionsHook;
     address public freelyTransferableHook;
     Root public root;
     Spoke public spoke;
-    BalanceSheet public balanceSheet;
     IPoolEscrowProvider public poolEscrowFactory;
 
     function run() external {
@@ -54,7 +55,9 @@ contract PoolHooks is BaseDeployer {
 
         root = Root(config.contracts.root);
         spoke = Spoke(config.contracts.spoke);
-        balanceSheet = BalanceSheet(config.contracts.balanceSheet);
+        envoy = config.contracts.envoy;
+        spokeHandler = config.contracts.spokeHandler;
+        spokeRegistry = config.contracts.spokeRegistry;
         poolEscrowFactory = IPoolEscrowProvider(config.contracts.poolEscrowFactory);
         freelyTransferableHook = config.contracts.freelyTransferableHook;
         fullRestrictionsHook = config.contracts.fullRestrictionsHook;
@@ -66,7 +69,6 @@ contract PoolHooks is BaseDeployer {
         console.log("CentrifugeId:", centrifugeId);
         console.log("Root:", address(root));
         console.log("Spoke:", address(spoke));
-        console.log("BalanceSheet:", address(balanceSheet));
         console.log("FreelyTransferableHook:", freelyTransferableHook);
         console.log("FullRestrictionsHook:", fullRestrictionsHook);
         console.log("Deployer:", deployer);
@@ -161,9 +163,10 @@ contract PoolHooks is BaseDeployer {
                     type(FreelyTransferable).creationCode,
                     abi.encode(
                         address(root),
+                        envoy,
+                        spokeRegistry,
                         address(spoke),
-                        address(balanceSheet),
-                        address(spoke),
+                        spokeHandler,
                         deployer,
                         address(poolEscrowFactory),
                         poolEscrow
@@ -205,9 +208,10 @@ contract PoolHooks is BaseDeployer {
                     type(FullRestrictions).creationCode,
                     abi.encode(
                         address(root),
+                        envoy,
+                        spokeRegistry,
                         address(spoke),
-                        address(balanceSheet),
-                        address(spoke),
+                        spokeHandler,
                         deployer,
                         address(poolEscrowFactory),
                         poolEscrow
