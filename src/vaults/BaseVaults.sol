@@ -377,7 +377,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
         // happen before depositing in the manager
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(baseManager.poolEscrow(poolId)), assets);
-        emit Deposit(receiver, msg.sender, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC7575
@@ -395,7 +395,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         assets = syncDepositManager.mint(this, shares, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(baseManager.poolEscrow(poolId)), assets);
-        emit Deposit(receiver, msg.sender, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC165

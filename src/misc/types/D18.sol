@@ -61,8 +61,7 @@ function mulUint256(D18 d, uint256 value, MathLib.Rounding rounding) pure return
     return MathLib.mulDiv(D18.unwrap(d), value, 1e18, rounding);
 }
 
-/// @dev  Divides an integer by a decimal, i.e.
-/// @dev  Same as mulDiv for integers, i.e:
+/// @dev  Divides an integer by a decimal, i.e.:
 /// - d (decimal):      2_000_000_000_000_000_000
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000
@@ -70,8 +69,7 @@ function reciprocalMulUint128(D18 d, uint128 value, MathLib.Rounding rounding) p
     return MathLib.mulDiv(value, 1e18, d.raw(), rounding).toUint128();
 }
 
-/// @dev  Divides an integer by a decimal, i.e.
-/// @dev  Same as mulDiv for integers, i.e:
+/// @dev  Divides an integer by a decimal, i.e.:
 /// - d (decimal):      2_000_000_000_000_000_000
 /// - value (integer):  100_000_000_000_000_000_000
 /// - result (integer): 50_000_000_000_000_000_000

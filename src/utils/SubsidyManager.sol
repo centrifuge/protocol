@@ -57,10 +57,11 @@ contract SubsidyManager is Auth, ISubsidyManager {
     /// @inheritdoc ISubsidyManager
     function withdrawAll(PoolId poolId, address to) external auth returns (address, uint256) {
         IRefundEscrow refund = refundEscrowFactory.get(poolId);
+
+        // No escrow deployed yet: return 0 (message goes out unpaid) instead of bricking the tx.
+        if (address(refund).code.length == 0) return (address(refund), 0);
+
         uint256 amount = address(refund).balance;
-
-        require(address(refund).code.length > 0, RefundEscrowNotDeployed());
-
         refund.withdrawFunds(to, amount);
 
         return (address(refund), amount);

@@ -66,27 +66,69 @@ contract MessageProcessor is Auth, IMessageProcessor {
     function handle(uint16 centrifugeId, bytes calldata message) external auth {
         MessageType kind = message.messageType();
 
-        if (kind == MessageType.ScheduleUpgrade) {
-            MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
-            scheduleAuth.scheduleRely(m.target.toAddress());
-        } else if (kind == MessageType.CancelUpgrade) {
-            MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
-            scheduleAuth.cancelRely(m.target.toAddress());
-        } else if (kind == MessageType.RegisterAsset) {
+        if (_handleHub(centrifugeId, kind, message)) return;
+        if (_handleSpoke(centrifugeId, kind, message)) return;
+        if (_handleRoot(kind, message)) return;
+
+        revert InvalidMessage(uint8(kind));
+    }
+
+    /// @dev Messages processed on the hub side.
+    function _handleHub(uint16 centrifugeId, MessageType kind, bytes calldata message) internal returns (bool) {
+        if (kind == MessageType.RegisterAsset) {
             MessageLib.RegisterAsset memory m = message.deserializeRegisterAsset();
             hubHandler.registerAsset(AssetId.wrap(m.assetId), m.decimals);
-        } else if (kind == MessageType.SetPoolAdapters) {
-            MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
-            PoolId poolId = PoolId.wrap(m.poolId);
-            IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
-            for (uint256 i; i < adapters.length; i++) {
-                adapters[i] = IAdapter(m.adapterList[i].toAddress());
-            }
-            multiAdapter.setAdapters(centrifugeId, poolId, adapters, m.threshold);
         } else if (kind == MessageType.Request) {
             MessageLib.Request memory m = MessageLib.deserializeRequest(message);
             hubHandler.request(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), AssetId.wrap(m.assetId), m.payload);
-        } else if (kind == MessageType.NotifyPool) {
+        } else if (kind == MessageType.InitiateTransferShares) {
+            MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
+            hubHandler.initiateTransferShares(
+                centrifugeId,
+                m.centrifugeId,
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.sender,
+                m.receiver,
+                m.amount,
+                m.remoteExtraGasLimit,
+                address(0) // Refund is not used because we're in unpaid mode with no payment
+            );
+        } else if (kind == MessageType.UpdateHoldingAmount) {
+            MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
+            hubHandler.updateHoldingAmount(
+                centrifugeId,
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                AssetId.wrap(m.assetId),
+                m.amount,
+                m.isIncrease,
+                m.isSnapshot,
+                m.nonce
+            );
+        } else if (kind == MessageType.UpdateShares) {
+            MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
+            hubHandler.updateShares(
+                centrifugeId,
+                PoolId.wrap(m.poolId),
+                ShareClassId.wrap(m.scId),
+                m.shares,
+                m.isIssuance,
+                m.isSnapshot,
+                m.nonce
+            );
+        } else if (kind == MessageType.ManagerCallFromSpoke) {
+            MessageLib.ManagerCallFromSpoke memory m = MessageLib.deserializeManagerCallFromSpoke(message);
+            envoy.callFromSpoke(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload, centrifugeId, m.sender);
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    /// @dev Messages processed on the spoke side.
+    function _handleSpoke(uint16 centrifugeId, MessageType kind, bytes calldata message) internal returns (bool) {
+        if (kind == MessageType.NotifyPool) {
             MessageLib.NotifyPool memory m = MessageLib.deserializeNotifyPool(message);
             spokeHandler.addPool(PoolId.wrap(m.poolId));
         } else if (kind == MessageType.NotifyShareClass) {
@@ -119,31 +161,12 @@ contract MessageProcessor is Auth, IMessageProcessor {
             spokeHandler.updateShareMetadata(
                 PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.name, m.symbol.toString()
             );
-        } else if (kind == MessageType.InitiateTransferShares) {
-            MessageLib.InitiateTransferShares memory m = MessageLib.deserializeInitiateTransferShares(message);
-            hubHandler.initiateTransferShares(
-                centrifugeId,
-                m.centrifugeId,
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.sender,
-                m.receiver,
-                m.amount,
-                m.remoteExtraGasLimit,
-                address(0) // Refund is not used because we're in unpaid mode with no payment
-            );
         } else if (kind == MessageType.ExecuteTransferShares) {
             MessageLib.ExecuteTransferShares memory m = MessageLib.deserializeExecuteTransferShares(message);
             spokeHandler.executeTransferShares(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.receiver, m.amount);
         } else if (kind == MessageType.UpdateRestriction) {
             MessageLib.UpdateRestriction memory m = MessageLib.deserializeUpdateRestriction(message);
             spokeHandler.updateRestriction(PoolId.wrap(m.poolId), ShareClassId.wrap(m.scId), m.payload);
-        } else if (kind == MessageType.ManagerCall) {
-            MessageLib.ManagerCall memory m = MessageLib.deserializeManagerCall(message);
-            envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);
-        } else if (kind == MessageType.ManagerCallFromSpoke) {
-            MessageLib.ManagerCallFromSpoke memory m = MessageLib.deserializeManagerCallFromSpoke(message);
-            envoy.callFromSpoke(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload, centrifugeId, m.sender);
         } else if (kind == MessageType.RequestCallback) {
             MessageLib.RequestCallback memory m = MessageLib.deserializeRequestCallback(message);
             spokeHandler.requestCallback(
@@ -161,6 +184,17 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
             spokeHandler.setRequestManager(PoolId.wrap(m.poolId), IRequestManager(m.manager.toAddress()));
+        } else if (kind == MessageType.SetPoolAdapters) {
+            MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
+            PoolId poolId = PoolId.wrap(m.poolId);
+            IAdapter[] memory adapters = new IAdapter[](m.adapterList.length);
+            for (uint256 i; i < adapters.length; i++) {
+                adapters[i] = IAdapter(m.adapterList[i].toAddress());
+            }
+            multiAdapter.setAdapters(centrifugeId, poolId, adapters, m.threshold);
+        } else if (kind == MessageType.ManagerCall) {
+            MessageLib.ManagerCall memory m = MessageLib.deserializeManagerCall(message);
+            envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);
         } else if (kind == MessageType.UpdateManager) {
             MessageLib.UpdateManager memory m = MessageLib.deserializeUpdateManager(message);
             PoolId poolId = PoolId.wrap(m.poolId);
@@ -175,33 +209,25 @@ contract MessageProcessor is Auth, IMessageProcessor {
             } else if (managerKind == ManagerKind.Bridger) {
                 spokeHandler.updateBridger(poolId, who, m.canManage);
             } else {
-                revert InvalidMessage(uint8(kind)); // Unreachable due the enum check
+                revert InvalidManagerKind(); // Unreachable due the enum check
             }
-        } else if (kind == MessageType.UpdateHoldingAmount) {
-            MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
-            hubHandler.updateHoldingAmount(
-                centrifugeId,
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                AssetId.wrap(m.assetId),
-                m.amount,
-                m.isIncrease,
-                m.isSnapshot,
-                m.nonce
-            );
-        } else if (kind == MessageType.UpdateShares) {
-            MessageLib.UpdateShares memory m = message.deserializeUpdateShares();
-            hubHandler.updateShares(
-                centrifugeId,
-                PoolId.wrap(m.poolId),
-                ShareClassId.wrap(m.scId),
-                m.shares,
-                m.isIssuance,
-                m.isSnapshot,
-                m.nonce
-            );
         } else {
-            revert InvalidMessage(uint8(kind));
+            return false;
         }
+        return true;
+    }
+
+    /// @dev Root-level upgrade scheduling.
+    function _handleRoot(MessageType kind, bytes calldata message) internal returns (bool) {
+        if (kind == MessageType.ScheduleUpgrade) {
+            MessageLib.ScheduleUpgrade memory m = message.deserializeScheduleUpgrade();
+            scheduleAuth.scheduleRely(m.target.toAddress());
+        } else if (kind == MessageType.CancelUpgrade) {
+            MessageLib.CancelUpgrade memory m = message.deserializeCancelUpgrade();
+            scheduleAuth.cancelRely(m.target.toAddress());
+        } else {
+            return false;
+        }
+        return true;
     }
 }

@@ -41,7 +41,7 @@ contract Supervisor is ISupervisor, IManagerCallFromHub {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IManagerCallFromHub

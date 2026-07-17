@@ -53,7 +53,6 @@ contract QueueManagerTest is Test {
 
     address envoy = makeAddr("envoy");
     address unauthorized = makeAddr("unauthorized");
-    address auth = makeAddr("auth");
 
     QueueManager queueManager;
 
@@ -77,7 +76,7 @@ contract QueueManagerTest is Test {
     }
 
     function _deployManager() internal {
-        queueManager = new QueueManager(envoy, ISpoke(address(spoke)), auth);
+        queueManager = new QueueManager(envoy, ISpoke(address(spoke)));
     }
 
     function _mockQueuedShares(

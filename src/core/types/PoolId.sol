@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MathLib} from "../../misc/libraries/MathLib.sol";
-
-using MathLib for uint256;
-
 type PoolId is uint64;
 
 function centrifugeId(PoolId poolId) pure returns (uint16) {

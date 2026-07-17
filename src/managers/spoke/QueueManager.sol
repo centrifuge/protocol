@@ -3,9 +3,6 @@ pragma solidity 0.8.28;
 
 import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
-import {Auth} from "../../misc/Auth.sol";
-import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {BitmapLib} from "../../misc/libraries/BitmapLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
@@ -18,10 +15,7 @@ import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol"
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is Auth, IQueueManager, IManagerCallFromHub {
-    using CastLib for *;
-    using BitmapLib for *;
-
+contract QueueManager is IQueueManager, IManagerCallFromHub {
     address public immutable envoy;
     ISpoke public immutable spoke;
     ISnapshotQueue public immutable snapshotQueue;
@@ -29,7 +23,7 @@ contract QueueManager is Auth, IQueueManager, IManagerCallFromHub {
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
-    constructor(address envoy_, ISpoke spoke_, address deployer) Auth(deployer) {
+    constructor(address envoy_, ISpoke spoke_) {
         envoy = envoy_;
         spoke = spoke_;
         snapshotQueue = spoke_.snapshotQueue();
@@ -37,7 +31,7 @@ contract QueueManager is Auth, IQueueManager, IManagerCallFromHub {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Owner actions
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IManagerCallFromHub

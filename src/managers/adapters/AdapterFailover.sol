@@ -34,7 +34,7 @@ contract AdapterFailover is IManagerCallFromHub, IAdapterFailover {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Hub-controlled operations (via ManagerCall/Envoy)
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IManagerCallFromHub

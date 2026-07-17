@@ -124,16 +124,21 @@ contract SubsidyManagerTestWithdrawSubsidy is SubsidyManagerTest {
         subsidyManager.withdrawAll(POOL_A, RECEIVER);
     }
 
-    function testErrRefundEscrowNotDeployed() public {
+    function testWithdrawAllNoEscrowReturnsZero() public {
+        // get() returns the deterministic escrow address even before deployment (no code yet).
+        address undeployed = makeAddr("undeployedEscrow");
         vm.mockCall(
             address(refundEscrowFactory),
             abi.encodeWithSelector(refundEscrowFactory.get.selector, POOL_A),
-            abi.encode(address(0))
+            abi.encode(undeployed)
         );
 
+        // Returns zero funds instead of reverting, so the caller's message goes out unpaid.
         vm.prank(AUTH);
-        vm.expectRevert(ISubsidyManager.RefundEscrowNotDeployed.selector);
-        subsidyManager.withdrawAll(POOL_A, RECEIVER);
+        (address refund, uint256 value) = subsidyManager.withdrawAll(POOL_A, RECEIVER);
+
+        assertEq(refund, undeployed);
+        assertEq(value, 0);
     }
 
     function testWithdrawSubsidy() public {

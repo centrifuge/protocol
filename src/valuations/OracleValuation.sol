@@ -44,7 +44,7 @@ contract OracleValuation is IOracleValuation {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
     /// @dev The Envoy is the only authorized caller of `fromHub`/`fromSpoke`, and neither forwards value.

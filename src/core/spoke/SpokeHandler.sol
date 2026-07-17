@@ -120,7 +120,7 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
 
             if (kind == VaultUpdateKind.Link) spokeRegistry.linkVault(poolId, scId, assetId, vault_);
             else if (kind == VaultUpdateKind.Unlink) spokeRegistry.unlinkVault(poolId, scId, assetId, vault_);
-            else revert MalformedVaultUpdateMessage(); // Unreachable due the enum check
+            else revert MalformedVaultUpdateMessage(); // Unreachable due to the enum check
         }
     }
 

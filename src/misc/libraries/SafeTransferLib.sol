@@ -66,7 +66,7 @@ library SafeTransferLib {
     }
 
     /// @notice Transfers ETH to the recipient address
-    /// @dev Fails with `STE`
+    /// @dev Reverts with `SafeTransferEthFailed` on failure
     /// @dev Make sure that method that is using this function is protected from reentrancy
     /// @param to The destination of the transfer
     /// @param value The value to be transferred

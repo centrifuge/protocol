@@ -39,7 +39,7 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Network wiring
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring

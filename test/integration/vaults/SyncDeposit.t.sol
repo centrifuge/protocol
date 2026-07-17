@@ -72,6 +72,9 @@ contract SyncDepositTestHelper is BaseTest {
 
         vm.expectEmit();
         emit ISpoke.Issue(poolId, scId, syncDepositManager, self, shares);
+
+        vm.expectEmit();
+        emit IERC7575.Deposit(self, self, depositAssetAmount, shares);
     }
 }
 
@@ -211,6 +214,23 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
+    }
+
+    /// Covers the ERC-4626 `Deposit` event emitted by the `mint` path (sender/owner ordering).
+    function testSyncMintEmitsDepositEvent() public {
+        uint128 amount = 100;
+        erc20.mint(self, amount);
+
+        (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
+        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
+        erc20.approve(address(syncVault), amount);
+
+        uint256 shares = syncVault.previewDeposit(amount);
+        uint256 assets = syncVault.previewMint(shares);
+
+        vm.expectEmit();
+        emit IERC7575.Deposit(self, self, assets, shares);
+        syncVault.mint(shares, self);
     }
 
     /// Sync deposit of a 0-decimal asset into an 18-decimal share class (coarse asset, fine shares).

@@ -574,7 +574,7 @@ contract FullDeployer is BaseDeployer, Constants {
         queueManager = QueueManager(
             create3(
                 createSalt("queueManager", V3_1),
-                abi.encodePacked(type(QueueManager).creationCode, abi.encode(envoy, spoke, address(batcher)))
+                abi.encodePacked(type(QueueManager).creationCode, abi.encode(envoy, spoke))
             )
         );
 

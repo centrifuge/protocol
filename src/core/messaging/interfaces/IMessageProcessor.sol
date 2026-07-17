@@ -24,6 +24,9 @@ interface IMessageProcessor is IMessageHandler {
     /// @notice Dispatched when an invalid message is trying to handle
     error InvalidMessage(uint8 code);
 
+    /// @notice Dispatched when the manager kind in an `UpdateManager` message is not supported
+    error InvalidManagerKind();
+
     //----------------------------------------------------------------------------------------------
     // View methods
     //----------------------------------------------------------------------------------------------
