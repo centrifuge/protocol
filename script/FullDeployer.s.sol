@@ -678,7 +678,7 @@ contract FullDeployer is BaseDeployer, Constants {
                 createSalt("bridgeCircuitBreaker", V3_3),
                 abi.encodePacked(
                     type(BridgeCircuitBreaker).creationCode,
-                    abi.encode(address(envoy), address(hubHandler), address(circuitBreakerGuard))
+                    abi.encode(address(envoy), address(circuitBreakerGuard), batcher)
                 )
             )
         );
@@ -803,7 +803,8 @@ contract FullDeployer is BaseDeployer, Constants {
             identityValuation,
             oracleValuation,
             navManager,
-            simplePriceManager
+            simplePriceManager,
+            bridgeCircuitBreaker
         );
     }
 

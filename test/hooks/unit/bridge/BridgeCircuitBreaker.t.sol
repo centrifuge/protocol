@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
+
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {TransferSharesParams, TransferSharesResult} from "../../../../src/core/hub/interfaces/IBridgingHook.sol";
@@ -49,7 +51,8 @@ contract BridgeCircuitBreakerTestBase is Test {
 
     function setUp() public virtual {
         guard = new MockCircuitBreakerGuard();
-        hook = new BridgeCircuitBreaker(ENVOY, HUB_HANDLER, address(guard));
+        hook = new BridgeCircuitBreaker(ENVOY, address(guard), address(this));
+        hook.rely(HUB_HANDLER);
 
         baseParams = TransferSharesParams({
             originCentrifugeId: ORIGIN,
@@ -85,7 +88,7 @@ contract BridgeCircuitBreakerTestBase is Test {
 
 contract BridgeCircuitBreakerTestConstructor is BridgeCircuitBreakerTestBase {
     function testConstructor() public view {
-        assertEq(hook.hubHandler(), HUB_HANDLER);
+        assertEq(hook.wards(HUB_HANDLER), 1);
         assertEq(hook.envoy(), ENVOY);
         assertEq(address(hook.circuitBreakerGuard()), address(guard));
     }
@@ -105,18 +108,17 @@ contract BridgeCircuitBreakerTestPause is BridgeCircuitBreakerTestBase {
         assertEq(uint256(result.extraGasLimit), uint256(baseParams.extraGasLimit));
     }
 
-    function testErrNotHubHandler(address notHubHandler) public {
-        vm.assume(notHubHandler != HUB_HANDLER);
-        vm.prank(notHubHandler);
-        vm.expectRevert(IBridgeCircuitBreaker.NotAuthorized.selector);
+    function testErrNotWard(address notWard) public {
+        vm.assume(notWard != HUB_HANDLER && notWard != address(this));
+        vm.prank(notWard);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
         hook.onInitiateTransferShares(baseParams);
     }
 
     function testErrPaused() public {
         _setPaused(SC_1, true);
-        vm.prank(HUB_HANDLER);
         vm.expectRevert(IBridgeCircuitBreaker.Paused.selector);
-        hook.onInitiateTransferShares(baseParams);
+        _transfer();
     }
 
     function testUnpause() public {

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IAuth} from "../../../misc/interfaces/IAuth.sol";
+
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {IBridgingHook} from "../../../core/hub/interfaces/IBridgingHook.sol";
 
 import {ICircuitBreakerGuard} from "../../../managers/spoke/guards/interfaces/ICircuitBreakerGuard.sol";
 
-interface IBridgeCircuitBreaker is IBridgingHook {
+interface IBridgeCircuitBreaker is IAuth, IBridgingHook {
     enum ConfigKind {
         SetPaused,
         SetRateLimit,
@@ -43,14 +45,12 @@ interface IBridgeCircuitBreaker is IBridgingHook {
         uint128 amount
     );
 
-    error NotAuthorized();
     error NotEnvoy();
     error UnexpectedValue();
     error Paused();
     error UnknownConfigKind();
     error TransferNotAuthorized();
 
-    function hubHandler() external view returns (address);
     function circuitBreakerGuard() external view returns (ICircuitBreakerGuard);
 
     /// @notice Whether transfers for a given (pool, share class) are currently paused.

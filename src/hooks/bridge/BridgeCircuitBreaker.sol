@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {IBridgeCircuitBreaker} from "./interfaces/IBridgeCircuitBreaker.sol";
 
+import {Auth} from "../../misc/Auth.sol";
+
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
@@ -14,18 +16,16 @@ import {ICircuitBreakerGuard} from "../../managers/spoke/guards/interfaces/ICirc
 /// @notice Combines pausing and a rolling rate limit into one hook. Both checks run on every transfer.
 ///         Transfers whose single amount exceeds rateMax can never pass the rate limit organically; a hub
 ///         manager must explicitly authorize them via AuthorizeTransfer before retrying.
-contract BridgeCircuitBreaker is IManagerCallFromHub, IBridgeCircuitBreaker {
+contract BridgeCircuitBreaker is Auth, IManagerCallFromHub, IBridgeCircuitBreaker {
     address public immutable envoy;
-    address public immutable hubHandler;
     ICircuitBreakerGuard public immutable circuitBreakerGuard;
 
     mapping(bytes32 => uint256) public authorizations;
     mapping(PoolId => mapping(ShareClassId => bool)) public paused;
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 => Limits))) public limits;
 
-    constructor(address envoy_, address hubHandler_, address circuitBreakerGuard_) {
+    constructor(address envoy_, address circuitBreakerGuard_, address deployer) Auth(deployer) {
         envoy = envoy_;
-        hubHandler = hubHandler_;
         circuitBreakerGuard = ICircuitBreakerGuard(circuitBreakerGuard_);
     }
 
@@ -75,8 +75,11 @@ contract BridgeCircuitBreaker is IManagerCallFromHub, IBridgeCircuitBreaker {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBridgingHook
-    function onInitiateTransferShares(TransferSharesParams calldata p) external returns (TransferSharesResult memory) {
-        require(msg.sender == hubHandler, NotAuthorized());
+    function onInitiateTransferShares(TransferSharesParams calldata p)
+        external
+        auth
+        returns (TransferSharesResult memory)
+    {
         require(!paused[p.poolId][p.scId], Paused());
 
         _consumeRateLimit(p);

@@ -37,6 +37,7 @@ import {FreezeOnly} from "../token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../hooks/accounting/NAVManager.sol";
 import {FullRestrictions} from "../token/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "../token/hooks/FreelyTransferable.sol";
+import {BridgeCircuitBreaker} from "../hooks/bridge/BridgeCircuitBreaker.sol";
 import {SimplePriceManager} from "../hooks/accounting/SimplePriceManager.sol";
 import {RedemptionRestrictions} from "../token/hooks/RedemptionRestrictions.sol";
 
@@ -109,6 +110,7 @@ struct NonCoreReport {
     OracleValuation oracleValuation;
     NAVManager navManager;
     SimplePriceManager simplePriceManager;
+    BridgeCircuitBreaker bridgeCircuitBreaker;
 }
 
 struct AdaptersReport {
@@ -336,6 +338,10 @@ contract NonCoreActionBatcher {
 
         report.batchRequestManager.rely(root);
 
+        // Rely bridgeCircuitBreaker
+        report.bridgeCircuitBreaker.rely(root);
+        report.bridgeCircuitBreaker.rely(address(report.core.hubHandler));
+
         // Rely spokeHandler
         report.asyncRequestManager.rely(address(report.core.spokeHandler));
         report.freezeOnlyHook.rely(address(report.core.shareTokenRegistrar));
@@ -401,6 +407,8 @@ contract NonCoreActionBatcher {
         report.redemptionRestrictionsHook.deny(address(this));
 
         report.batchRequestManager.deny(address(this));
+
+        report.bridgeCircuitBreaker.deny(address(this));
 
         report.core.root.deny(address(this));
     }

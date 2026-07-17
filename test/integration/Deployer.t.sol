@@ -663,7 +663,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testBridgeCircuitBreaker() public view {
         // dependencies set correctly
         assertEq(bridgeCircuitBreaker.envoy(), address(envoy));
-        assertEq(bridgeCircuitBreaker.hubHandler(), address(hubHandler));
+        assertEq(bridgeCircuitBreaker.wards(address(hubHandler)), 1);
         assertEq(address(bridgeCircuitBreaker.circuitBreakerGuard()), address(circuitBreakerGuard));
     }
 

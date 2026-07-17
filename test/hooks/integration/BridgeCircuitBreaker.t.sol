@@ -53,7 +53,8 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         vm.prank(address(spokeHandler));
         spokeRegistry.updateBridger(POOL_A, investor, true);
 
-        hook = new BridgeCircuitBreaker(address(this), address(hubHandler), address(circuitBreakerGuard));
+        hook = new BridgeCircuitBreaker(address(this), address(circuitBreakerGuard), address(this));
+        hook.rely(address(hubHandler));
 
         vm.prank(FM);
         hub.setBridgingHook(POOL_A, address(hook));

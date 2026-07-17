@@ -119,6 +119,8 @@ struct ContractsConfig {
     // Hub managers
     address navManager;
     address simplePriceManager;
+    // Bridge hooks
+    address bridgeCircuitBreaker;
     // Decoders
     address vaultDecoder;
     address circleDecoder;
@@ -336,6 +338,8 @@ library Env {
         // Hub managers
         config.navManager = _parseContractAddress(json, "navManager");
         config.simplePriceManager = _parseContractAddress(json, "simplePriceManager");
+        // Not deployed yet
+        config.bridgeCircuitBreaker = _tryParseContractAddress(json, "bridgeCircuitBreaker");
 
         // Decoders
         config.vaultDecoder = _parseContractAddress(json, "vaultDecoder");

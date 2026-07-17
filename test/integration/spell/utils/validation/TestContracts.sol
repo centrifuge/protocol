@@ -30,6 +30,7 @@ import {FreezeOnly} from "../../../../../src/token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../../../../../src/hooks/accounting/NAVManager.sol";
 import {FullRestrictions} from "../../../../../src/token/hooks/FullRestrictions.sol";
 import {FreelyTransferable} from "../../../../../src/token/hooks/FreelyTransferable.sol";
+import {BridgeCircuitBreaker} from "../../../../../src/hooks/bridge/BridgeCircuitBreaker.sol";
 import {SimplePriceManager} from "../../../../../src/hooks/accounting/SimplePriceManager.sol";
 import {RedemptionRestrictions} from "../../../../../src/token/hooks/RedemptionRestrictions.sol";
 
@@ -121,7 +122,8 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         IdentityValuation(c.identityValuation),
         OracleValuation(c.oracleValuation),
         NAVManager(c.navManager),
-        SimplePriceManager(c.simplePriceManager)
+        SimplePriceManager(c.simplePriceManager),
+        BridgeCircuitBreaker(c.bridgeCircuitBreaker)
     );
 
     AdaptersContract memory adapters = AdaptersContract(
