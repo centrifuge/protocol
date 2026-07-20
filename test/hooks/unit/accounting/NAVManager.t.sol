@@ -66,6 +66,7 @@ contract NAVManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateJournal.selector), abi.encode());
 
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
+        vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector), abi.encode(uint32(0)));
 
         vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.accountValue.selector), abi.encode(true, uint128(0)));
 
@@ -547,6 +548,54 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
         _setNAVHook(POOL_A, INAVHook(address(0)));
 
         vm.expectRevert(INAVManager.InvalidNAVHook.selector);
+        vm.prank(holdings);
+        navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
+    }
+
+    function _mockDeficitCount(uint16 centrifugeId, uint32 count) internal {
+        vm.mockCall(
+            holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector, POOL_A, centrifugeId), abi.encode(count)
+        );
+    }
+
+    /// @dev In deficit, onSync skips silently and leaves the NAV hook untouched.
+    function testOnSyncSkippedWhileDeficit() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
+        _mockDeficitCount(CENTRIFUGE_ID_1, 2);
+
+        vm.expectCall(address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 2);
+
+        vm.prank(holdings);
+        navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
+    }
+
+    /// @dev Gate precedes the navHook check, so it can't revert on an unset hook.
+    function testOnSyncSkippedEvenWithoutNAVHook() public {
+        _setNAVHook(POOL_A, INAVHook(address(0)));
+        _mockDeficitCount(CENTRIFUGE_ID_1, 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 1);
+
+        vm.prank(holdings);
+        navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
+    }
+
+    /// @dev Price resumes updating once the deficit count returns to zero.
+    function testOnSyncResumesWhenDeficitClears() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
+        _mockDeficitCount(CENTRIFUGE_ID_1, 0);
+
+        vm.expectCall(
+            address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector, POOL_A, SC_1, CENTRIFUGE_ID_1, 1000)
+        );
+
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.Sync(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
         vm.prank(holdings);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
     }

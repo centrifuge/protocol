@@ -383,3 +383,47 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CP, 500e18);
     }
 }
+
+/// @dev End-to-end deficit gate: an over-decrease (e.g. revoke-without-assets) pushes the pool-network into
+///      deficit; `onSync` holds the last published price instead of reverting, and resumes once a refill clears it.
+contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
+    /// forge-config: default.isolate = true
+    function testDeficitFreezesAndResumesPrice() public {
+        _testInitializeAndUpdate();
+
+        // Baseline: CHAIN_CV at 3300e18, no deficit.
+        (uint128 navBefore, uint128 issuanceBefore,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        assertEq(navBefore, 3300e18);
+        assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 0);
+
+        // Over-decrease asset1 by 1500: holding saturates at zero, network enters deficit; onSync must
+        // skip, not revert.
+        vm.expectEmit(true, true, true, true);
+        emit INAVManager.SkipSync(POOL_A, scId, CHAIN_CV, 1);
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), false, true, 3
+        );
+
+        // Gate engaged: live NAV reflects the shortfall, but the published price is held.
+        assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 1);
+        assertEq(navManager.netAssetValue(POOL_A, CHAIN_CV), 2300e18); // live: equity down 1000e18
+        (uint128 navDuring, uint128 issuanceDuring,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        assertEq(navDuring, navBefore); // frozen at last good
+        assertEq(issuanceDuring, issuanceBefore);
+
+        // Refill asset1 by 1500: holding positive again, deficit clears, trailing snapshot resumes pricing.
+        vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId));
+
+        vm.prank(address(messageDispatcher));
+        hubHandler.updateHoldingAmount(
+            CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4
+        );
+
+        assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 0);
+        (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        assertEq(navAfter, 3300e18); // 1000 - 1500 + 1500 = 1000 asset1 restored -> NAV back to 3300e18
+        assertEq(issuanceAfter, issuanceBefore);
+    }
+}

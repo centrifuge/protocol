@@ -812,6 +812,41 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
     }
 
+    /// @dev Property: `deficitCount(poolId, centrifugeId)` equals the number of holdings on that pool-network
+    ///      with `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts` (no ghost
+    ///      variable needed). Regression guard for the deficit-gate crossing logic in `Holdings.increase/decrease`.
+    ///      NOTE: the NAV-hook gate itself isn't observable here (the snapshot-hook layer isn't wired into this
+    ///      harness); covered by the NAVManager unit/integration tests instead.
+    function property_deficitCountMatchesHoldings() public {
+        PoolId[] memory pools = _getPools();
+        AssetId[] memory assetIds = _getAssetIds();
+
+        for (uint256 p; p < pools.length; p++) {
+            for (uint256 a; a < assetIds.length; a++) {
+                uint16 centrifugeId = assetIds[a].centrifugeId();
+                eq(
+                    uint256(holdings.deficitCount(pools[p], centrifugeId)),
+                    _countDeficitHoldings(pools[p], centrifugeId),
+                    "deficitCount != holdings in deficit"
+                );
+            }
+        }
+    }
+
+    /// @dev Counts holdings in deficit for a pool-network across its share classes and assets.
+    function _countDeficitHoldings(PoolId poolId, uint16 centrifugeId) internal view returns (uint256 count) {
+        ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+        AssetId[] memory assetIds = _getAssetIds();
+
+        for (uint256 s; s < shareClasses.length; s++) {
+            for (uint256 a; a < assetIds.length; a++) {
+                if (assetIds[a].centrifugeId() != centrifugeId) continue;
+                (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, shareClasses[s], assetIds[a]);
+                if (decreased > increased) count++;
+            }
+        }
+    }
+
     /// @dev Property: A user cannot mutate their pending redeem amount pendingRedeem[...] if the
     /// pendingRedeem[..].lastUpdate is <= the latest redeem approval epochId[..].redeem
     function property_user_cannot_mutate_pending_redeem() public {

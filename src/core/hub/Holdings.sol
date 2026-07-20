@@ -25,6 +25,7 @@ contract Holdings is Auth, IHoldings {
     IHubRegistry public immutable hubRegistry;
 
     mapping(PoolId => ISnapshotHook) public snapshotHook;
+    mapping(PoolId => mapping(uint16 centrifugeId => uint32)) public deficitCount;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Holding))) internal _holding;
     mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => Snapshot))) public snapshot;
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(uint8 kind => AccountId)))) public accountId;
@@ -140,6 +141,7 @@ contract Holdings is Auth, IHoldings {
     {
         Holding storage holding_ = _holding[poolId][scId][assetId];
 
+        bool wasDeficit = holding_.decreasedAmount > holding_.increasedAmount;
         uint128 oldAmount = _amount(holding_);
         holding_.increasedAmount += amount_;
         uint128 realized = _amount(holding_) - oldAmount;
@@ -151,6 +153,7 @@ contract Holdings is Auth, IHoldings {
             : 0;
 
         holding_.assetAmountValue += amountValue;
+        _updateDeficit(poolId, assetId.centrifugeId(), wasDeficit, holding_.decreasedAmount > holding_.increasedAmount);
 
         emit Increase(poolId, scId, assetId, amount_, amountValue);
     }
@@ -163,6 +166,7 @@ contract Holdings is Auth, IHoldings {
     {
         Holding storage holding_ = _holding[poolId][scId][assetId];
 
+        bool wasDeficit = holding_.decreasedAmount > holding_.increasedAmount;
         uint128 oldAmount = _amount(holding_);
         holding_.decreasedAmount += amount_;
         uint128 removedAmount = oldAmount - _amount(holding_);
@@ -173,6 +177,7 @@ contract Holdings is Auth, IHoldings {
         amountValue = oldAmount == 0 ? 0 : (uint256(holding_.assetAmountValue) * removedAmount / oldAmount).toUint128();
 
         holding_.assetAmountValue -= amountValue;
+        _updateDeficit(poolId, assetId.centrifugeId(), wasDeficit, holding_.decreasedAmount > holding_.increasedAmount);
 
         emit Decrease(poolId, scId, assetId, amount_, amountValue);
     }
@@ -217,6 +222,16 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @inheritdoc IHoldings
+    function holdingAmounts(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint128 increasedAmount, uint128 decreasedAmount)
+    {
+        Holding storage holding_ = _holding[poolId][scId][assetId];
+        return (holding_.increasedAmount, holding_.decreasedAmount);
+    }
+
+    /// @inheritdoc IHoldings
     function valuation(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (IValuation) {
         Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
@@ -243,6 +258,14 @@ contract Holdings is Auth, IHoldings {
 
         ISnapshotHook hook = snapshotHook[poolId];
         if (address(hook) != address(0)) hook.onSync(poolId, scId, centrifugeId);
+    }
+
+    /// @dev Increments/decrements the pool-network deficit counter on a deficit-state crossing; no-op otherwise.
+    function _updateDeficit(PoolId poolId, uint16 centrifugeId, bool wasDeficit, bool isDeficit) internal {
+        if (wasDeficit == isDeficit) return;
+
+        uint32 count = isDeficit ? ++deficitCount[poolId][centrifugeId] : --deficitCount[poolId][centrifugeId];
+        emit UpdateDeficitCount(poolId, centrifugeId, count);
     }
 
     /// @dev Current amount, derived from the cumulative counters and floored at zero.

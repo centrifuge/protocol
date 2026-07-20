@@ -284,6 +284,33 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
+    /// @dev Only driver of `Holdings.increase`/`decrease` in this harness: the spoke->hub gateway is mocked
+    ///      as a no-op, so the queued-asset path never reaches the hub. Letting the fuzzer decrease past the
+    ///      current amount drives the deficit state that `property_deficitCountMatchesHoldings` guards.
+    ///      `isSnapshot=true` keeps the hub snapshot nonce self-consistent, since nothing else drives it here.
+    function hub_updateHoldingAmount(uint128 amount, bool isIncrease) public updateGhosts asAdmin {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        uint16 centrifugeId = assetId.centrifugeId();
+
+        (, uint64 nonce) = holdings.snapshot(poolId, scId, centrifugeId);
+
+        hubHandler.updateHoldingAmount(centrifugeId, poolId, scId, assetId, amount, isIncrease, true, nonce);
+    }
+
+    /// @dev Clamped to twice the current increased total (plus a seed), so a decrease can cross into
+    ///      deficit without overflowing the cumulative counters.
+    function hub_updateHoldingAmount_clamped(uint128 amount, bool isIncrease) public {
+        IBaseVault vault = IBaseVault(_getVault());
+        (uint128 increased,) =
+            holdings.holdingAmounts(vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId);
+
+        amount = uint128(uint256(amount) % (uint256(increased) * 2 + 1e18 + 1));
+        hub_updateHoldingAmount(amount, isIncrease);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // HELPER FUNCTIONS
     // ═══════════════════════════════════════════════════════════════

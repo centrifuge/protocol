@@ -151,6 +151,15 @@ contract NAVManager is INAVManager {
     /// @inheritdoc ISnapshotHook
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
         require(msg.sender == address(holdings), NotAuthorized());
+
+        // While the pool-network is in deficit, hold the last published price by skipping silently (never
+        // reverting) and resume once the deficit clears. Gate precedes the `navHook` check.
+        uint32 deficitCount = holdings.deficitCount(poolId, centrifugeId);
+        if (deficitCount != 0) {
+            emit SkipSync(poolId, scId, centrifugeId, deficitCount);
+            return;
+        }
+
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
         uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);

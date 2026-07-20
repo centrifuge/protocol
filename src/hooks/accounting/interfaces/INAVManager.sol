@@ -73,6 +73,7 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     event InitializeHolding(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event InitializeLiability(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event Sync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
+    event SkipSync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint32 deficitCount);
     event Transfer(
         PoolId indexed poolId,
         ShareClassId scId,

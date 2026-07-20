@@ -4,11 +4,11 @@ pragma solidity ^0.8.28;
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {Holdings} from "../../../../src/core/hub/Holdings.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {AccountKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
@@ -442,5 +442,133 @@ contract TestExists is TestCommon {
 
         assert(holdings.isInitialized(POOL_A, SC_1, ASSET_A));
         assert(!holdings.isInitialized(POOL_A, SC_1, POOL_CURRENCY));
+    }
+}
+
+/// @dev Deficit = decreasedAmount > increasedAmount (exact equality is not a deficit). Holdings are left
+///      uninitialized since amount tracking is valuation-independent.
+contract TestDeficitCount is TestCommon {
+    uint16 constant CENT_A = 5;
+    uint16 constant CENT_B = 6;
+    ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("2"));
+
+    AssetId a1 = newAssetId(CENT_A, 1);
+    AssetId a2 = newAssetId(CENT_A, 2);
+    AssetId b1 = newAssetId(CENT_B, 1);
+
+    function testEnterDeficitIncrementsAndEmits() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+
+        vm.expectEmit();
+        emit IHoldings.UpdateDeficitCount(POOL_A, CENT_A, 1);
+        holdings.decrease(POOL_A, SC_1, a1, 150);
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+        assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
+
+        (uint128 increased, uint128 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
+        assertEq(increased, 100);
+        assertEq(decreased, 150);
+    }
+
+    function testDecreaseFromEmptyEntersDeficit() public {
+        vm.expectEmit();
+        emit IHoldings.UpdateDeficitCount(POOL_A, CENT_A, 1);
+        holdings.decrease(POOL_A, SC_1, a1, 50);
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+    }
+
+    function testDeepenDeficitDoesNotDoubleIncrement() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.decrease(POOL_A, SC_1, a1, 150); // deficit -50
+        holdings.decrease(POOL_A, SC_1, a1, 50); // deeper -100, still one holding
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+    }
+
+    function testPartialRefillDoesNotDecrement() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.decrease(POOL_A, SC_1, a1, 150); // deficit -50
+        holdings.increase(POOL_A, SC_1, a1, 30); // still deficit -20
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+    }
+
+    function testExitAtExactEqualityDecrements() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.decrease(POOL_A, SC_1, a1, 150); // deficit -50
+
+        vm.expectEmit();
+        emit IHoldings.UpdateDeficitCount(POOL_A, CENT_A, 0);
+        holdings.increase(POOL_A, SC_1, a1, 50); // increased == decreased == 150
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
+        assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
+    }
+
+    /// Decreasing exactly to zero saturates the amount but is not a deficit.
+    function testExactZeroHoldingNeverCounted() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.decrease(POOL_A, SC_1, a1, 100);
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
+        assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
+    }
+
+    function testTwoHoldingsSameNetwork() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.increase(POOL_A, SC_1, a2, 100);
+
+        holdings.decrease(POOL_A, SC_1, a1, 150);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+
+        holdings.decrease(POOL_A, SC_1, a2, 150);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 2);
+
+        holdings.increase(POOL_A, SC_1, a1, 50); // a1 out
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+
+        holdings.increase(POOL_A, SC_1, a2, 50); // a2 out
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
+    }
+
+    /// @dev Per-pool-network count spans share classes: the same asset in two share classes is two distinct
+    ///      holdings, each counted.
+    function testTwoShareClassesSameAssetCountIndependently() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.increase(POOL_A, SC_2, a1, 100);
+
+        holdings.decrease(POOL_A, SC_1, a1, 150);
+        holdings.decrease(POOL_A, SC_2, a1, 150);
+
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 2);
+    }
+
+    function testTwoNetworksIndependent() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.increase(POOL_A, SC_1, b1, 100);
+
+        holdings.decrease(POOL_A, SC_1, a1, 150);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_B), 0);
+
+        holdings.decrease(POOL_A, SC_1, b1, 150);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_B), 1);
+    }
+
+    /// @dev A carried over-decrease that later nets fully clears the deficit exactly once.
+    function testOverDecreaseNetsAndClearsDeficit() public {
+        holdings.increase(POOL_A, SC_1, a1, 100);
+        holdings.decrease(POOL_A, SC_1, a1, 120); // -20, count 1
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+
+        holdings.increase(POOL_A, SC_1, a1, 20); // back to zero, not deficit
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
+
+        (uint128 increased, uint128 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
+        assertEq(increased, 120);
+        assertEq(decreased, 120);
     }
 }

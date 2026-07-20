@@ -468,4 +468,26 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         balanceSheet_withdraw(0, 50e18);
         balanceSheet_deposit(0, 100e18);
     }
+
+    /// @dev The hub-holding driver drives increase -> over-decrease -> refill; deficitCount crosses
+    ///      0 -> 1 -> 0 and property_deficitCountMatchesHoldings holds at each step.
+    function test_deficitCountMatchesHoldings_driver() public {
+        shortcut_deployNewTokenPoolAndShare(0, 0, false, false, false, false);
+
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        uint16 centrifugeId = spokeV3_1_0.vaultDetails(vault).assetId.centrifugeId();
+
+        hub_updateHoldingAmount(100, true);
+        property_deficitCountMatchesHoldings();
+        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "no deficit after increase");
+
+        hub_updateHoldingAmount(150, false); // over-decrease
+        property_deficitCountMatchesHoldings();
+        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 1, "deficit after over-decrease");
+
+        hub_updateHoldingAmount(50, true); // refill to equality
+        property_deficitCountMatchesHoldings();
+        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "deficit cleared after refill");
+    }
 }

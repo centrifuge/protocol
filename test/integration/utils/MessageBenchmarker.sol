@@ -67,6 +67,8 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.UpdateHoldingAmount) return "updateHoldingAmount";
         if (kind == MessageType.UpdateShares) return "updateShares";
         if (kind == MessageType.ManagerCallFromSpoke) return "managerCallFromSpoke";
+        if (kind == MessageType.Authorize) return "authorize";
+        if (kind == MessageType.Unauthorize) return "unauthorize";
         revert("Cannot benchmark message"); // Unreachable
     }
 

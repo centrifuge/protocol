@@ -49,6 +49,9 @@ interface IHoldings {
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, uint128 decreasedValue
     );
 
+    /// @notice Emitted when the pool-network deficit count changes
+    event UpdateDeficitCount(PoolId indexed poolId, uint16 indexed centrifugeId, uint32 count);
+
     /// @notice Emitted when the holding is updated
     event Update(
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, bool isPositive, uint128 diffValue
@@ -119,7 +122,7 @@ interface IHoldings {
     ///         the price is refreshed.
     ///         An increment first nets off any excess carried by a prior over-decrease (see `decrease`):
     ///         only the amount above that excess is realized and valued, so an over-decrease can never be
-    ///         re-inflated into overstated value.
+    ///         re-inflated into overstated value. Lifting a holding out of deficit decrements `deficitCount`.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
@@ -134,7 +137,7 @@ interface IHoldings {
     ///         and nets off future increases, so it never reverts (which would stall the ordered message
     ///         stream) yet never permanently loses the excess. Carrying value is removed pro-rata to the
     ///         realized decrease, so the returned value exactly mirrors the storage mutation and can never
-    ///         over-journal.
+    ///         over-journal. Pushing a holding into deficit increments `deficitCount`.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
@@ -235,6 +238,27 @@ interface IHoldings {
     /// @param assetId The asset identifier
     /// @return amount The current amount of the holding
     function amount(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 amount);
+
+    /// @notice Returns the raw cumulative counters of this holding, before the derived amount saturates at zero
+    /// @dev    A holding is in deficit when `decreasedAmount > increasedAmount`; `amount()` then saturates at
+    ///         zero, so these raw counters are the only way to see the shortfall.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param assetId The asset identifier
+    /// @return increasedAmount The cumulative amount ever increased
+    /// @return decreasedAmount The cumulative amount ever decreased
+    function holdingAmounts(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint128 increasedAmount, uint128 decreasedAmount);
+
+    /// @notice Returns the number of holdings currently in deficit on a pool-network
+    /// @dev    Non-zero means at least one holding's amount is saturated at zero, misstating NAV. Snapshot hooks
+    ///         hold the last published price while this is non-zero.
+    /// @param poolId The pool identifier
+    /// @param centrifugeId The network identifier
+    /// @return count The number of holdings in deficit
+    function deficitCount(PoolId poolId, uint16 centrifugeId) external view returns (uint32 count);
 
     /// @notice Returns the valuation method used for this holding
     /// @param poolId The pool identifier
