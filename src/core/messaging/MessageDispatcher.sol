@@ -20,6 +20,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
@@ -286,6 +287,53 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.SetRequestManager({poolId: poolId.raw(), manager: manager}).serialize(),
+                false,
+                refund
+            );
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendAuthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+        external
+        payable
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.authorize(poolId, data);
+            _refund(refund);
+        } else {
+            _send(centrifugeId, MessageLib.Authorize({poolId: poolId.raw(), data: data}).serialize(), false, refund);
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendUnauthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+        external
+        payable
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.unauthorize(poolId, data);
+            _refund(refund);
+        } else {
+            _send(centrifugeId, MessageLib.Unauthorize({poolId: poolId.raw(), data: data}).serialize(), false, refund);
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendSetManifest(uint16 centrifugeId, PoolId poolId, bytes32 manifest, address refund)
+        external
+        payable
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.setManifest(poolId, IManifest(manifest.toAddress()));
+            _refund(refund);
+        } else {
+            _send(
+                centrifugeId,
+                MessageLib.SetManifest({poolId: poolId.raw(), manifest: manifest}).serialize(),
                 false,
                 refund
             );

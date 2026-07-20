@@ -13,7 +13,6 @@ import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {SnapshotQueue} from "../../../../src/core/spoke/SnapshotQueue.sol";
-import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
@@ -598,41 +597,6 @@ contract SpokeTestRequest is SpokeTest {
 
         vm.prank(address(requestManager));
         spoke.request{value: COST}(POOL_A, SC_1, ASSET_ID_20, PAYLOAD, EXTRA, true, REFUND);
-    }
-}
-
-contract SpokeTestSetManifest is SpokeTest {
-    address immutable MANIFEST = makeAddr("Manifest");
-
-    function _mockSetManifest() internal {
-        vm.mockCall(
-            address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.setManifest.selector, POOL_A, MANIFEST),
-            abi.encode()
-        );
-    }
-
-    function testSetManifestByWard() public {
-        _mockSetManifest();
-
-        vm.expectCall(
-            address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.setManifest.selector, POOL_A, MANIFEST)
-        );
-        vm.prank(AUTH);
-        spoke.setManifest(POOL_A, IManifest(MANIFEST));
-    }
-
-    function testSetManifestByManager() public {
-        _mockSetManifest();
-
-        vm.prank(MANAGER);
-        spoke.setManifest(POOL_A, IManifest(MANIFEST));
-    }
-
-    function testSetManifestErrNotManager() public {
-        vm.prank(ANY);
-        vm.expectRevert(ISpoke.NotManager.selector);
-        spoke.setManifest(POOL_A, IManifest(MANIFEST));
     }
 }
 

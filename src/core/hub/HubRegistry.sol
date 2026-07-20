@@ -135,7 +135,7 @@ contract HubRegistry is Auth, IHubRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry
-    function authorize(PoolId poolId_, address caller, bytes calldata data) external auth {
+    function initiateAuthorization(PoolId poolId_, address caller, bytes calldata data) external auth {
         IManifest m = manifest[poolId_];
         require(address(m) != address(0), NoManifest());
 

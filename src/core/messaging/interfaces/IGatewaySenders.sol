@@ -109,6 +109,15 @@ interface IHubMessageSender is ILocalCentrifugeId {
     function sendSetRequestManager(uint16 centrifugeId, PoolId poolId, bytes32 manager, address refund) external payable;
 
     /// @notice Creates and send the message
+    function sendSetManifest(uint16 centrifugeId, PoolId poolId, bytes32 manifest, address refund) external payable;
+
+    /// @notice Creates and send the message
+    function sendAuthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund) external payable;
+
+    /// @notice Creates and send the message
+    function sendUnauthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund) external payable;
+
+    /// @notice Creates and send the message
     function sendUpdateManager(
         uint16 centrifugeId,
         PoolId poolId,

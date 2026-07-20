@@ -106,7 +106,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     function testAuthorizeThenExecute() public {
         // Operator (a hub manager) pre-authorizes the exact call on the registry.
         vm.prank(operator);
-        hub.authorize(POOL_A, _grantManagerCall());
+        hub.initiateAuthorization(POOL_A, _grantManagerCall());
 
         // Not matured yet -> still reverts.
         vm.prank(FM);
@@ -126,7 +126,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         IManagerCallFromHub(address(supervisor)).fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinel));
 
         vm.prank(operator);
-        hub.authorize(POOL_A, _grantManagerCall());
+        hub.initiateAuthorization(POOL_A, _grantManagerCall());
 
         vm.prank(sentinel);
         supervisor.cancelAuthorization(_grantManagerCall());
@@ -165,7 +165,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // A manager replacing the manifest is out of policy and waits the longer escalation delay.
         vm.prank(operator);
-        hub.authorize(POOL_A, call);
+        hub.initiateAuthorization(POOL_A, call);
 
         skip(POLICY_DELAY); // past the standard delay but not escalation
         vm.prank(FM);
@@ -185,7 +185,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     function testManifestSwapOrphansPendingAuthorization() public {
         // Authorize a call under the original manifest, but don't let it mature yet.
         vm.prank(operator);
-        hub.authorize(POOL_A, _grantManagerCall());
+        hub.initiateAuthorization(POOL_A, _grantManagerCall());
 
         StdManifest next = StdManifest(
             address(
@@ -249,7 +249,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Operator pre-authorizes the exact calldata; not matured yet -> still reverts.
         vm.prank(operator);
-        hub.authorize(POOL_A, call);
+        hub.initiateAuthorization(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, targetId, action, 0, 0, address(0));
@@ -349,7 +349,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Operator authorizes the exact calldata on the real ledger; not matured yet -> still reverts.
         vm.prank(operator);
-        hub.authorize(POOL_A, badCall);
+        hub.initiateAuthorization(POOL_A, badCall);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
@@ -376,7 +376,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
 
         vm.prank(operator);
-        hub.authorize(POOL_A, call);
+        hub.initiateAuthorization(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
@@ -402,7 +402,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
 
         vm.prank(operator);
-        hub.authorize(POOL_A, call);
+        hub.initiateAuthorization(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
@@ -441,7 +441,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // Operator pre-authorizes the exact calldata; not matured yet -> still reverts.
         vm.prank(operator);
-        hub.authorize(POOL_A, call);
+        hub.initiateAuthorization(POOL_A, call);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));

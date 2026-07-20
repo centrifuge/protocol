@@ -56,8 +56,12 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         poolEscrowProvider = poolEscrowProvider_;
     }
 
-    modifier protectedPool(PoolId poolId) {
-        _protected(poolId);
+    /// @dev Manager-only, and must satisfy the pool's manifest policy if one is installed.
+    modifier enforced(PoolId poolId) {
+        require(spokeRegistry.manager(poolId, msgSender()), NotManager());
+
+        IManifest m = spokeRegistry.manifest(poolId);
+        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
         _;
     }
 
@@ -74,15 +78,6 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
-    }
-
-    /// @inheritdoc ISpoke
-    function setManifest(PoolId poolId, IManifest manifest_) external {
-        // Wards may install/replace directly (emergency override); managers go through the current
-        // manifest's policy (via _protected), so a compromised manager can't hot-swap it in one tx.
-        if (wards[msgSender()] != 1) _protected(poolId);
-
-        spokeRegistry.setManifest(poolId, manifest_);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -131,7 +126,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
         payable
-        protectedPool(poolId)
+        enforced(poolId)
     {
         IPoolEscrow escrow_ = escrow(poolId);
         escrow_.deposit(scId, asset, tokenId, amount);
@@ -149,7 +144,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     function noteDeposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount)
         external
         payable
-        protectedPool(poolId)
+        enforced(poolId)
     {
         escrow(poolId).deposit(scId, asset, tokenId, amount);
         _queueAssets(poolId, scId, asset, tokenId, amount, true);
@@ -165,7 +160,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint256 tokenId,
         address receiver,
         uint128 amount
-    ) external payable protectedPool(poolId) {
+    ) external payable enforced(poolId) {
         IPoolEscrow escrow_ = escrow(poolId);
 
         escrow_.withdraw(scId, asset, tokenId, receiver, amount);
@@ -185,7 +180,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint128 amount,
         address reserver,
         uint32 reason
-    ) external payable protectedPool(poolId) {
+    ) external payable enforced(poolId) {
         IPoolEscrow escrow_ = escrow(poolId);
 
         // Release the reservation and withdraw the freed balance: reserved and total both decrease by
@@ -206,7 +201,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint128 amount,
         address reserver,
         uint32 reason
-    ) external payable protectedPool(poolId) {
+    ) external payable enforced(poolId) {
         escrow(poolId).reserve(scId, asset, tokenId, amount, reserver, reason);
         _queueAssets(poolId, scId, asset, tokenId, amount, false);
     }
@@ -220,7 +215,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint128 amount,
         address reserver,
         uint32 reason
-    ) external payable protectedPool(poolId) {
+    ) external payable enforced(poolId) {
         escrow(poolId).unreserve(scId, asset, tokenId, amount, reserver, reason);
         _queueAssets(poolId, scId, asset, tokenId, amount, true);
     }
@@ -232,7 +227,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         AssetId assetId,
         uint128 extraGasLimit,
         address refund
-    ) external payable protectedPool(poolId) {
+    ) external payable enforced(poolId) {
         ISpokeMessageSender.UpdateData memory data = snapshotQueue.flushAssets(poolId, scId, assetId);
         sender.sendUpdateHoldingAmount{value: msgValue()}(poolId, scId, assetId, data, extraGasLimit, refund);
     }
@@ -242,11 +237,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
-    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares)
-        external
-        payable
-        protectedPool(poolId)
-    {
+    function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable enforced(poolId) {
         snapshotQueue.queueShares(poolId, scId, shares, true);
 
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
@@ -256,7 +247,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     }
 
     /// @inheritdoc ISpoke
-    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable protectedPool(poolId) {
+    function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable enforced(poolId) {
         snapshotQueue.queueShares(poolId, scId, shares, false);
 
         // Pull the shares to this contract (the caller approves this spoke, not the registrar),
@@ -273,7 +264,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     function withdrawShares(PoolId poolId, ShareClassId scId, address receiver, uint128 amount)
         external
         payable
-        protectedPool(poolId)
+        enforced(poolId)
     {
         // Share tokens parked in the escrow carry no holding accounting (issuance is queued via issue/revoke),
         // so this is a plain hook-checked transfer out of the escrow with no Hub queue.
@@ -287,7 +278,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     function submitQueuedShares(PoolId poolId, ShareClassId scId, uint128 extraGasLimit, address refund)
         external
         payable
-        protectedPool(poolId)
+        enforced(poolId)
     {
         ISpokeMessageSender.UpdateData memory data = snapshotQueue.flushShares(poolId, scId);
         sender.sendUpdateShares{value: msgValue()}(poolId, scId, data, extraGasLimit, refund);
@@ -301,7 +292,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         address from,
         address to,
         uint256 amount
-    ) external payable protectedPool(poolId) {
+    ) external payable enforced(poolId) {
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
         registrar.authTransferFrom(address(token), sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
@@ -411,15 +402,6 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
-
-    /// @dev Guard for manager methods: the sender must be a manager and, if a manifest is installed,
-    ///      the call must satisfy the pool's policy.
-    function _protected(PoolId poolId) internal {
-        require(spokeRegistry.manager(poolId, msgSender()), NotManager());
-
-        IManifest m = spokeRegistry.manifest(poolId);
-        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
-    }
 
     /// @dev Accumulate the queued gross asset flow.
     function _queueAssets(

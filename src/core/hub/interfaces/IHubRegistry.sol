@@ -62,11 +62,11 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice Dispatched when {updateCurrency} targets a currency whose decimals differ from the pool's current
     ///         currency; pool decimals must stay fixed to match already-deployed share tokens.
     error CurrencyDecimalsMismatch();
-    /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing to classify).
+    /// @notice Dispatched when {initiateAuthorization} targets a pool with no manifest installed (nothing to classify).
     error NoManifest();
-    /// @notice Dispatched when {authorize} targets a call that is currently in policy (nothing to authorize).
+    /// @notice Dispatched when {initiateAuthorization} targets a call that is currently in policy (nothing to authorize).
     error InPolicy();
-    /// @notice Dispatched when {authorize} targets a call that already has an authorization (cancel first).
+    /// @notice Dispatched when {initiateAuthorization} targets a call that already has an authorization (cancel first).
     error AlreadyAuthorized();
     /// @notice Dispatched when {consumeAuthorization} finds no matured, unexpired authorization, or when
     ///         {cancelAuthorization} finds no authorization to cancel.
@@ -132,13 +132,13 @@ interface IHubRegistry is IERC6909Decimals {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Pre-authorize a future, out-of-policy Hub call. Callable only by the Hub (the manager check
-    ///         lives in {IHub.authorize}). The pool's manifest classifies the call, using `caller` as the
+    ///         lives in {IHub.initiateAuthorization}). The pool's manifest classifies the call, using `caller` as the
     ///         authorizing manager; an in-policy call can't be authorized. Matures after the classified
     ///         delay, after which a guarded Hub call whose calldata byte-matches `data` consumes it.
     /// @param poolId The pool the call targets
     /// @param caller The manager authorizing the call (for classification and the audit event)
     /// @param data The exact future Hub calldata being authorized
-    function authorize(PoolId poolId, address caller, bytes calldata data) external;
+    function initiateAuthorization(PoolId poolId, address caller, bytes calldata data) external;
 
     /// @notice Cancel a pending authorization. Callable only by the Hub (the manager check lives in
     ///         {IHub.cancelAuthorization}; sentinels act through their Supervisor, itself a registered

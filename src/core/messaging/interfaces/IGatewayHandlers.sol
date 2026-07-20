@@ -7,6 +7,7 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
+import {IManifest} from "../../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 
@@ -90,6 +91,21 @@ interface ISpokeGatewayHandler {
     /// @param  poolId The centrifuge pool id
     /// @param  manager The new request manager address
     function setRequestManager(PoolId poolId, IRequestManager manager) external;
+
+    /// @notice Install or replace the policy manifest enforced on this pool's balance-sheet manager methods
+    /// @param  poolId The pool id
+    /// @param  manifest The manifest to install (address(0) to remove policy enforcement)
+    function setManifest(PoolId poolId, IManifest manifest) external;
+
+    /// @notice Record a Hub-authorized, out-of-policy call in the local ledger (from a Hub {Authorize} message)
+    /// @param  poolId The pool the authorized call targets
+    /// @param  data The exact spoke calldata being authorized
+    function authorize(PoolId poolId, bytes calldata data) external;
+
+    /// @notice Revoke one outstanding authorization for `data` (from a Hub {Unauthorize} message)
+    /// @param  poolId The pool the authorized call targets
+    /// @param  data The exact spoke calldata whose authorization is revoked
+    function unauthorize(PoolId poolId, bytes calldata data) external;
 
     /// @notice Grants or revokes the spoke pool manager role
     function updateManager(PoolId poolId, address who, bool canManage) external;

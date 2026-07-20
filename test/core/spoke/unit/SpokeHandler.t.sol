@@ -9,6 +9,7 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
+import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
@@ -194,6 +195,66 @@ contract SpokeHandlerTestSetRequestManager is SpokeHandlerTest {
 
         vm.prank(AUTH);
         handler.updateBridger(POOL_A, ANY, true);
+    }
+}
+
+contract SpokeHandlerTestSetManifest is SpokeHandlerTest {
+    IManifest immutable MANIFEST = IManifest(makeAddr("Manifest"));
+
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        handler.setManifest(POOL_A, MANIFEST);
+    }
+
+    function testSetManifest() public {
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.setManifest.selector, POOL_A, MANIFEST),
+            abi.encode()
+        );
+
+        vm.expectCall(
+            address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.setManifest.selector, POOL_A, MANIFEST)
+        );
+        vm.prank(AUTH);
+        handler.setManifest(POOL_A, MANIFEST);
+    }
+
+    function testAuthorizeErrNotAuthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        handler.authorize(POOL_A, hex"1234");
+    }
+
+    function testAuthorize() public {
+        bytes memory data = hex"1234";
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.authorize.selector, POOL_A, data),
+            abi.encode()
+        );
+
+        vm.expectCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.authorize.selector, POOL_A, data));
+        vm.prank(AUTH);
+        handler.authorize(POOL_A, data);
+    }
+
+    function testUnauthorizeErrNotAuthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        handler.unauthorize(POOL_A, hex"1234");
+    }
+
+    function testUnauthorize() public {
+        bytes memory data = hex"1234";
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.unauthorize.selector, POOL_A, data),
+            abi.encode()
+        );
+
+        vm.expectCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.unauthorize.selector, POOL_A, data));
+        vm.prank(AUTH);
+        handler.unauthorize(POOL_A, data);
     }
 }
 

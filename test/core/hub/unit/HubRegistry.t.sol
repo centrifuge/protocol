@@ -152,14 +152,14 @@ contract HubRegistryTest is Test {
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
 
-        // authorize is ward-only; the manager check lives in Hub.authorize.
+        // authorize is ward-only; the manager check lives in Hub.initiateAuthorization.
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.authorize(poolId, fundAdmin, data);
+        registry.initiateAuthorization(poolId, fundAdmin, data);
 
         // No manifest set for the pool, so authorize cannot classify the call.
         vm.expectRevert(IHubRegistry.NoManifest.selector);
-        registry.authorize(poolId, fundAdmin, data);
+        registry.initiateAuthorization(poolId, fundAdmin, data);
     }
 
     function testConsumeAuthorizationOnlyCallableByManifest(address caller, bytes calldata data, uint48 expiry) public {

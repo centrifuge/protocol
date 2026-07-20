@@ -7,6 +7,7 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
+import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
@@ -369,5 +370,104 @@ contract SpokeRegistryTestPricePoolPerAsset is SpokeRegistryTest {
 
         D18 price = registry.pricePoolPerAsset(POOL_A, SC_1, ASSET_ID, true);
         assertEq(price.raw(), PRICE.raw());
+    }
+}
+
+contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
+    IManifest manifest = IManifest(makeAddr("manifest"));
+    bytes data = hex"1234";
+
+    function _installManifest() internal {
+        vm.prank(AUTH);
+        registry.setManifest(POOL_A, manifest);
+    }
+
+    function testSetManifestErrNotAuthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.setManifest(POOL_A, manifest);
+    }
+
+    function testSetManifest() public {
+        vm.expectEmit();
+        emit ISpokeRegistry.SetManifest(POOL_A, manifest);
+        vm.prank(AUTH);
+        registry.setManifest(POOL_A, manifest);
+
+        assertEq(address(registry.manifest(POOL_A)), address(manifest));
+    }
+
+    function testAuthorizeErrNotAuthorized() public {
+        // Only the message layer (a ward) may record a Hub-authorized call; there is no local scheduling.
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.authorize(POOL_A, data);
+    }
+
+    function testAuthorizeErrNoManifest() public {
+        // Recording an authorization for a pool with no manifest would be unconsumable, so it reverts.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.NoManifest.selector);
+        registry.authorize(POOL_A, data);
+    }
+
+    function testAuthorizeAndConsume() public {
+        _installManifest();
+        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), address(manifest), data));
+
+        // Several authorizations of the same call can be outstanding at once (a counter, not a flag).
+        vm.prank(AUTH);
+        registry.authorize(POOL_A, data);
+        assertEq(registry.authorizations(id), 1);
+
+        vm.prank(AUTH);
+        registry.authorize(POOL_A, data);
+        assertEq(registry.authorizations(id), 2);
+
+        // The pool's manifest consumes one at a time.
+        vm.prank(address(manifest));
+        registry.consumeAuthorization(POOL_A, address(this), data);
+        assertEq(registry.authorizations(id), 1);
+
+        vm.prank(address(manifest));
+        registry.consumeAuthorization(POOL_A, address(this), data);
+        assertEq(registry.authorizations(id), 0);
+
+        // Nothing left to consume.
+        vm.prank(address(manifest));
+        vm.expectRevert(ISpokeRegistry.Unauthorized.selector);
+        registry.consumeAuthorization(POOL_A, address(this), data);
+    }
+
+    function testConsumeAuthorizationOnlyCallableByManifest() public {
+        _installManifest();
+
+        // Caller is address(this), not the pool's manifest.
+        vm.expectRevert(ISpokeRegistry.NotManifest.selector);
+        registry.consumeAuthorization(POOL_A, address(this), data);
+    }
+
+    function testUnauthorizeErrNotAuthorized() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.unauthorize(POOL_A, data);
+    }
+
+    function testUnauthorize() public {
+        _installManifest();
+        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), address(manifest), data));
+
+        vm.startPrank(AUTH);
+        registry.authorize(POOL_A, data);
+        registry.authorize(POOL_A, data);
+        assertEq(registry.authorizations(id), 2);
+
+        // Each revoke decrements one outstanding authorization.
+        registry.unauthorize(POOL_A, data);
+        assertEq(registry.authorizations(id), 1);
+        registry.unauthorize(POOL_A, data);
+        assertEq(registry.authorizations(id), 0);
+
+        // Nothing left to revoke.
+        vm.expectRevert(ISpokeRegistry.Unauthorized.selector);
+        registry.unauthorize(POOL_A, data);
+        vm.stopPrank();
     }
 }

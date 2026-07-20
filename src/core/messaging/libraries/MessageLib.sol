@@ -33,7 +33,10 @@ enum MessageType {
     SetRequestManager,
     ManagerCallFromSpoke,
     UpdateManager,
-    ManagerCall
+    ManagerCall,
+    SetManifest,
+    Authorize,
+    Unauthorize
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -87,7 +90,10 @@ library MessageLib {
         (41  << uint8(MessageType.SetRequestManager) * 8) +
         (89  << uint8(MessageType.ManagerCallFromSpoke) * 8) +
         (43  << uint8(MessageType.UpdateManager) * 8) +
-        (57  << uint8(MessageType.ManagerCall) * 8);
+        (57  << uint8(MessageType.ManagerCall) * 8) +
+        (41  << uint8(MessageType.SetManifest) * 8) +
+        (9   << uint8(MessageType.Authorize) * 8) +
+        (9   << uint8(MessageType.Unauthorize) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -113,6 +119,10 @@ library MessageLib {
         } else if (kind == uint8(MessageType.Request)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.RequestCallback)) {
+            length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.Authorize)) {
+            length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.Unauthorize)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.SetPoolAdapters)) {
             length += message.toUint16(10) * 32; // message with variable length
@@ -841,5 +851,63 @@ library MessageLib {
 
     function serialize(UpdateManager memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(MessageType.UpdateManager, t.poolId, t.kind, t.who, t.canManage);
+    }
+
+    //---------------------------------------
+    //   SetManifest
+    //---------------------------------------
+
+    struct SetManifest {
+        uint64 poolId;
+        bytes32 manifest;
+    }
+
+    function deserializeSetManifest(bytes memory data) internal pure returns (SetManifest memory) {
+        require(messageType(data) == MessageType.SetManifest, UnknownMessageType());
+        return SetManifest({poolId: data.toUint64(1), manifest: data.toBytes32(9)});
+    }
+
+    function serialize(SetManifest memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetManifest, t.poolId, t.manifest);
+    }
+
+    //---------------------------------------
+    //   Authorize
+    //---------------------------------------
+
+    struct Authorize {
+        uint64 poolId;
+        bytes data; // The exact spoke calldata being authorized
+    }
+
+    function deserializeAuthorize(bytes memory data) internal pure returns (Authorize memory) {
+        require(messageType(data) == MessageType.Authorize, UnknownMessageType());
+
+        uint16 payloadLength = data.toUint16(9);
+        return Authorize({poolId: data.toUint64(1), data: data.slice(11, payloadLength)});
+    }
+
+    function serialize(Authorize memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.Authorize, t.poolId, t.data.length.toUint16(), t.data);
+    }
+
+    //---------------------------------------
+    //   Unauthorize
+    //---------------------------------------
+
+    struct Unauthorize {
+        uint64 poolId;
+        bytes data; // The exact spoke calldata whose authorization is being revoked
+    }
+
+    function deserializeUnauthorize(bytes memory data) internal pure returns (Unauthorize memory) {
+        require(messageType(data) == MessageType.Unauthorize, UnknownMessageType());
+
+        uint16 payloadLength = data.toUint16(9);
+        return Unauthorize({poolId: data.toUint64(1), data: data.slice(11, payloadLength)});
+    }
+
+    function serialize(Unauthorize memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.Unauthorize, t.poolId, t.data.length.toUint16(), t.data);
     }
 }

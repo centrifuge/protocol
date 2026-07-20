@@ -19,6 +19,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
@@ -195,6 +196,15 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.ManagerCall) {
             MessageLib.ManagerCall memory m = MessageLib.deserializeManagerCall(message);
             envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);
+        } else if (kind == MessageType.SetManifest) {
+            MessageLib.SetManifest memory m = MessageLib.deserializeSetManifest(message);
+            spokeHandler.setManifest(PoolId.wrap(m.poolId), IManifest(m.manifest.toAddress()));
+        } else if (kind == MessageType.Authorize) {
+            MessageLib.Authorize memory m = MessageLib.deserializeAuthorize(message);
+            spokeHandler.authorize(PoolId.wrap(m.poolId), m.data);
+        } else if (kind == MessageType.Unauthorize) {
+            MessageLib.Unauthorize memory m = MessageLib.deserializeUnauthorize(message);
+            spokeHandler.unauthorize(PoolId.wrap(m.poolId), m.data);
         } else if (kind == MessageType.UpdateManager) {
             MessageLib.UpdateManager memory m = MessageLib.deserializeUpdateManager(message);
             PoolId poolId = PoolId.wrap(m.poolId);

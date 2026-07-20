@@ -111,10 +111,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function authorize(PoolId poolId, bytes calldata data) external {
+    function initiateAuthorization(PoolId poolId, bytes calldata data) external {
         _requireManager(poolId);
 
-        hubRegistry.authorize(poolId, msgSender(), data);
+        hubRegistry.initiateAuthorization(poolId, msgSender(), data);
     }
 
     /// @inheritdoc IHub
@@ -229,6 +229,38 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
         sender.sendSetRequestManager{value: msgValue()}(centrifugeId, poolId, spokeManager, refund);
+    }
+
+    /// @inheritdoc IHub
+    function setSpokeManifest(PoolId poolId, uint16 centrifugeId, bytes32 manifest_, address refund) external payable {
+        _protected(poolId);
+
+        emit SetSpokeManifest(centrifugeId, poolId, manifest_);
+        sender.sendSetManifest{value: msgValue()}(centrifugeId, poolId, manifest_, refund);
+    }
+
+    /// @inheritdoc IHub
+    function authorizeSpokeCall(PoolId poolId, uint16 centrifugeId, bytes calldata data, address refund)
+        external
+        payable
+    {
+        _protected(poolId);
+
+        emit AuthorizeSpokeCall(centrifugeId, poolId, data);
+        sender.sendAuthorize{value: msgValue()}(centrifugeId, poolId, data, refund);
+    }
+
+    /// @inheritdoc IHub
+    function unauthorizeSpokeCall(PoolId poolId, uint16 centrifugeId, bytes calldata data, address refund)
+        external
+        payable
+    {
+        // Manager-only and immediate (no timelock): revoking an authorization only reduces capability, so it
+        // is a safety action a manager can take at any time to retire a stale, not-yet-consumed authorization.
+        _requireManager(poolId);
+
+        emit UnauthorizeSpokeCall(centrifugeId, poolId, data);
+        sender.sendUnauthorize{value: msgValue()}(centrifugeId, poolId, data, refund);
     }
 
     //----------------------------------------------------------------------------------------------

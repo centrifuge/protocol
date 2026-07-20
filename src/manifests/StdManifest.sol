@@ -26,7 +26,7 @@ import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 ///         authorization ledger lives in {HubRegistry}, shared by every manifest.
 ///
 ///         The Hub calls {enforce} on every guarded manager method. In-policy calls (delay 0) run
-///         synchronously; out-of-policy calls must be pre-authorized via {IHubRegistry.authorize}, mature
+///         synchronously; out-of-policy calls must be pre-authorized via {IHubRegistry.initiateAuthorization}, mature
 ///         past `delay`, and are consumed by {enforce} within `expiry` (else they fail closed). Sentinels
 ///         get a veto window via {Supervisor.cancelAuthorization}. One instance can serve many pools.
 ///         `escalation` (a longer delay) applies only to replacing the manifest; a construction-time
@@ -41,7 +41,7 @@ import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 ///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
 ///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
 ///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
-///         - `setManifest` uses `escalation` instead of `delay`.
+///         - `setManifest` and `setSpokeManifest` use `escalation` instead of `delay`.
 ///         - Cross-chain notifications and pool/share metadata updates are always in policy.
 ///         - Everything else (deny-by-default) falls through to `delay`.
 contract StdManifest is IStdManifest {
@@ -116,7 +116,7 @@ contract StdManifest is IStdManifest {
 
         // In onchainAccounting mode, share-price updates may only be executed by the SimplePriceManager.
         // The check lives here (not in _classify) so pool managers can still pre-authorize out-of-policy
-        // price moves via hubRegistry.authorize, which calls classify with the manager as caller.
+        // price moves via hubRegistry.initiateAuthorization, which calls classify with the manager as caller.
         if (onchainAccounting && selector == IHub.updateSharePrice.selector) {
             require(caller == simplePriceManager, OnchainAccountingOnly());
         }
@@ -134,7 +134,7 @@ contract StdManifest is IStdManifest {
     }
 
     /// @inheritdoc IManifest
-    /// @dev Called by {HubRegistry.authorize} (to price the delay) and by {enforce}. Reverts to block
+    /// @dev Called by {HubRegistry.initiateAuthorization} (to price the delay) and by {enforce}. Reverts to block
     ///      a forbidden call outright.
     function classify(PoolId poolId, address caller, bytes calldata data) external view returns (uint48) {
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
@@ -184,7 +184,8 @@ contract StdManifest is IStdManifest {
             selector == IHub.updateVault.selector ||
             selector == IHub.updateCurrency.selector ||
             selector == IHub.addShareClass.selector ||
-            selector == IHub.setAdapters.selector
+            selector == IHub.setAdapters.selector ||
+            selector == IHub.authorizeSpokeCall.selector
         ) return delay;
 
         // Out of policy: a manager grant or revoke (instant mass-revocation by one manager could strip
@@ -194,8 +195,9 @@ contract StdManifest is IStdManifest {
         if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
-        // Replacing the manifest disables all future policy, so it uses the longer `escalation`.
-        if (selector == IHub.setManifest.selector) return escalation;
+        // Replacing a manifest (local hub policy, or a spoke's pushed policy) disables all future policy on
+        // that side, so it uses the longer `escalation`.
+        if (selector == IHub.setManifest.selector || selector == IHub.setSpokeManifest.selector) return escalation;
 
         // In policy: cross-chain notifications (keeper-driven pushes of committed state) and metadata.
         // Everything else (accounting, holdings, config) falls through to the timelocked default.

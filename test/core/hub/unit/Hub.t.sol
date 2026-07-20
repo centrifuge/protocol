@@ -190,7 +190,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateManager(POOL_A, 0, ManagerKind.Adapter, bytes32(0), false, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.authorize(POOL_A, bytes(""));
+        hub.initiateAuthorization(POOL_A, bytes(""));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.cancelAuthorization(POOL_A, bytes(""));
@@ -203,12 +203,17 @@ contract TestAuthorize is TestCommon {
     function testAuthorizeForwardsToHubRegistry() public {
         bytes memory data = abi.encode("some-authorization");
         vm.mockCall(
-            address(hubRegistry), abi.encodeWithSelector(hubRegistry.authorize.selector, POOL_A, ADMIN, data), ""
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.initiateAuthorization.selector, POOL_A, ADMIN, data),
+            ""
         );
-        vm.expectCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.authorize.selector, POOL_A, ADMIN, data));
+        vm.expectCall(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.initiateAuthorization.selector, POOL_A, ADMIN, data)
+        );
 
         vm.prank(ADMIN);
-        hub.authorize(POOL_A, data);
+        hub.initiateAuthorization(POOL_A, data);
     }
 
     function testCancelAuthorizationForwardsToHubRegistry() public {

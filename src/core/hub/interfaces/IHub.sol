@@ -58,6 +58,9 @@ interface IHub is IBatchedMulticall {
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
     event SetSpokeRequestManager(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager);
+    event SetSpokeManifest(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manifest);
+    event AuthorizeSpokeCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes data);
+    event UnauthorizeSpokeCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes data);
     event UpdateManager(
         uint16 indexed centrifugeId, PoolId indexed poolId, ManagerKind kind, bytes32 indexed who, bool canManage
     );
@@ -152,19 +155,14 @@ interface IHub is IBatchedMulticall {
     ///         which typically requires an authorization for its own replacement.
     function setManifest(PoolId poolId, IManifest manifest_) external;
 
-    //----------------------------------------------------------------------------------------------
-    // Manager: Authorization ledger
-    //----------------------------------------------------------------------------------------------
-
-    /// @notice Pre-authorize a future, out-of-policy Hub call. Manager only; see {IHubRegistry.authorize}.
+    /// @notice Pre-authorize a future, out-of-policy call against the Hub's timelock ledger. Manager only.
     /// @param poolId The pool the call targets
-    /// @param data The exact future Hub calldata being authorized
-    function authorize(PoolId poolId, bytes calldata data) external;
+    /// @param data The exact future calldata being authorized
+    function initiateAuthorization(PoolId poolId, bytes calldata data) external;
 
-    /// @notice Cancel a pending authorization. Manager only; see {IHubRegistry.cancelAuthorization}.
-    ///         Sentinels act through their pool's Supervisor, itself a registered manager.
+    /// @notice Cancel a pending authorization. Manager only. Sentinels act through their pool's Supervisor.
     /// @param poolId The pool the authorization targets
-    /// @param data The exact Hub calldata that was authorized
+    /// @param data The exact calldata that was authorized
     function cancelAuthorization(PoolId poolId, bytes calldata data) external;
 
     //----------------------------------------------------------------------------------------------
@@ -270,6 +268,35 @@ interface IHub is IBatchedMulticall {
         bytes32 spokeManager,
         address refund
     ) external payable;
+
+    /// @notice Install or replace the policy manifest enforced on a spoke pool's balance-sheet manager methods
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain of the spoke whose manifest is set
+    /// @param manifest_ The spoke-chain manifest address (address(0) to remove policy enforcement)
+    /// @param refund Address to receive excess gas refund
+    function setSpokeManifest(PoolId poolId, uint16 centrifugeId, bytes32 manifest_, address refund) external payable;
+
+    /// @notice Authorize an out-of-policy call on a spoke pool. Manager-gated and classified as a std delay by
+    ///         the Hub manifest, so it only proceeds once it has matured through the Hub timelock and survived
+    ///         the sentinel veto window; it then pushes the authorization to the spoke, where a manager can
+    ///         consume it with a matching call. Only the Hub chain needs a secure cold wallet.
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain of the spoke the authorized call targets
+    /// @param data The exact spoke calldata being authorized
+    /// @param refund Address to receive excess gas refund
+    function authorizeSpokeCall(PoolId poolId, uint16 centrifugeId, bytes calldata data, address refund)
+        external
+        payable;
+
+    /// @notice Revoke a previously-authorized, not-yet-consumed spoke call. Manager-gated and immediate (no
+    ///         timelock): it only reduces capability, letting a manager retire a stale authorization.
+    /// @param poolId The pool identifier
+    /// @param centrifugeId Chain of the spoke the authorized call targets
+    /// @param data The exact spoke calldata whose authorization is revoked
+    /// @param refund Address to receive excess gas refund
+    function unauthorizeSpokeCall(PoolId poolId, uint16 centrifugeId, bytes calldata data, address refund)
+        external
+        payable;
 
     //----------------------------------------------------------------------------------------------
     // Manager: Share classes & vaults

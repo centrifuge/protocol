@@ -92,13 +92,6 @@ interface ISpoke is IBatchedMulticall {
     /// @param data The new address
     function file(bytes32 what, address data) external;
 
-    /// @notice Install or replace the policy manifest enforced on this pool's balance-sheet manager methods.
-    /// @dev    Wards may call directly (break-glass). For managers the current manifest is enforced, so a
-    ///         compromised manager cannot hot-swap the policy in a single transaction.
-    /// @param poolId The pool identifier
-    /// @param manifest The manifest to install (address(0) to remove policy enforcement)
-    function setManifest(PoolId poolId, IManifest manifest) external;
-
     //----------------------------------------------------------------------------------------------
     // Outgoing methods
     //----------------------------------------------------------------------------------------------

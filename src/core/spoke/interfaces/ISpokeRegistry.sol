@@ -61,9 +61,17 @@ interface ISpokeRegistry {
 
     event File(bytes32 indexed what, address data);
     event AddPool(PoolId indexed poolId);
+    event SetManifest(PoolId indexed poolId, IManifest manifest);
+    /// @notice Emitted when a Hub-authorized, out-of-policy call is recorded (the Hub already ran the timelock,
+    ///         so the spoke keeps no local one). `data` is the exact authorized calldata, so the action is
+    ///         decodable straight from logs.
+    event Authorized(PoolId indexed poolId, bytes32 indexed authId, bytes data);
+    /// @notice Emitted when the Hub revokes a not-yet-consumed authorization (decrements its counter).
+    event AuthorizationRevoked(PoolId indexed poolId, bytes32 indexed authId, bytes data);
+    /// @notice Emitted when a recorded authorization is consumed by an executing out-of-policy call.
+    event AuthorizationConsumed(PoolId indexed poolId, address indexed caller, bytes32 indexed authId);
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, address token, IRegistrar registrar);
     event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
-    event SetManifest(PoolId indexed poolId, IManifest manifest);
     event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
     event UpdateBridger(PoolId indexed poolId, address indexed who, bool canBridge);
     event UpdateAssetPrice(
@@ -110,6 +118,12 @@ interface ISpokeRegistry {
     error InvalidVault();
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
+    /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing could consume it).
+    error NoManifest();
+    /// @notice Dispatched when {consumeAuthorization} finds no recorded authorization for the call.
+    error Unauthorized();
+    /// @notice Dispatched when {consumeAuthorization} is called by anyone other than the pool's manifest.
+    error NotManifest();
 
     //----------------------------------------------------------------------------------------------
     // Setter methods
@@ -151,10 +165,35 @@ interface ISpokeRegistry {
     /// @param canBridge Whether the address is a bridger
     function updateBridger(PoolId poolId, address who, bool canBridge) external;
 
-    /// @notice Install or replace the policy manifest enforced on a pool's balance-sheet manager methods
-    /// @param poolId The pool identifier
-    /// @param manifest The manifest contract (address(0) to clear)
+    /// @notice Record a Hub-authorized, out-of-policy call as immediately matured in the local ledger.
+    ///         Auth-gated: only the message layer calls it, in response to a Hub {Authorize} message sent
+    ///         after the Hub's timelock and veto window elapsed. A subsequent guarded call whose calldata
+    ///         byte-matches `data` consumes it via the pool's manifest.
+    /// @param poolId The pool the authorized call targets
+    /// @param data The exact calldata being authorized
+    function authorize(PoolId poolId, bytes calldata data) external;
+
+    /// @notice Revoke one outstanding, not-yet-consumed authorization for `data` (from a Hub {Unauthorize}
+    ///         message). Auth-gated: only the message layer calls it. Reverts if none is recorded.
+    /// @param poolId The pool the authorized call targets
+    /// @param data The exact calldata whose authorization is revoked
+    function unauthorize(PoolId poolId, bytes calldata data) external;
+
+    /// @notice Install or replace the policy manifest for a pool (address(0) to clear). Auth-gated.
     function setManifest(PoolId poolId, IManifest manifest) external;
+
+    /// @notice Consume a recorded authorization for an executing out-of-policy call. Callable only by the
+    ///         pool's installed manifest (from its {IManifest.enforce}). Reverts unless the call is authorized.
+    /// @param poolId The pool the call targets
+    /// @param caller The manager whose call is executing (for the audit event)
+    /// @param data The exact calldata being executed
+    function consumeAuthorization(PoolId poolId, address caller, bytes calldata data) external;
+
+    /// @notice Returns the policy manifest installed for a pool (address(0) if none).
+    function manifest(PoolId poolId) external view returns (IManifest);
+
+    /// @notice The number of Hub-authorized instances of a call currently recorded and awaiting consumption.
+    function authorizations(bytes32 authId) external view returns (uint256 count);
 
     //----------------------------------------------------------------------------------------------
     // Vault management
@@ -312,9 +351,6 @@ interface ISpokeRegistry {
 
     /// @notice Returns whether an address holds the bridger role for a pool
     function bridger(PoolId poolId, address who) external view returns (bool);
-
-    /// @notice Returns the policy manifest installed for a pool (address(0) if none)
-    function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Returns the details of a vault
     /// @dev Reverts if vault does not exist

@@ -118,6 +118,21 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeSetManifest() public {
+        MessageLib.deserializeSetManifest(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeAuthorize() public {
+        MessageLib.deserializeAuthorize(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testDeserializeUnauthorize() public {
+        MessageLib.deserializeUnauthorize(_prepareFor());
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
     function testMessageLength() public {
         bytes memory buffer = new bytes(1);
         buffer[0] = bytes1(uint8(type(MessageType).max) + 1);
@@ -464,6 +479,42 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
+    function testSetManifest(uint64 poolId, bytes32 manifest) public pure {
+        MessageLib.SetManifest memory a = MessageLib.SetManifest({poolId: poolId, manifest: manifest});
+        MessageLib.SetManifest memory b = MessageLib.deserializeSetManifest(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.manifest, b.manifest);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
+    }
+
+    function testAuthorize(uint64 poolId, bytes memory data) public pure {
+        MessageLib.Authorize memory a = MessageLib.Authorize({poolId: poolId, data: data});
+        MessageLib.Authorize memory b = MessageLib.deserializeAuthorize(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.data, b.data);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
+    }
+
+    function testUnauthorize(uint64 poolId, bytes memory data) public pure {
+        MessageLib.Unauthorize memory a = MessageLib.Unauthorize({poolId: poolId, data: data});
+        MessageLib.Unauthorize memory b = MessageLib.deserializeUnauthorize(a.serialize());
+
+        assertEq(a.poolId, b.poolId);
+        assertEq(a.data, b.data);
+
+        assertEq(a.serialize().messageLength(), a.serialize().length);
+        assertEq(a.serialize().messagePoolId().raw(), a.poolId);
+        assertEq(a.serialize().messageExtraGasLimit(), 0);
+    }
+
     function testUpdateManager(uint64 poolId, uint8 kind, bytes32 who, bool canManage) public pure {
         MessageLib.UpdateManager memory a =
             MessageLib.UpdateManager({poolId: poolId, kind: kind, who: who, canManage: canManage});
@@ -613,6 +664,9 @@ contract TestMessageLibSourceCentrifugeId is Test {
         expected[uint256(MessageType.SetRequestManager)] = 1;
         expected[uint256(MessageType.UpdateManager)] = 1;
         expected[uint256(MessageType.ManagerCall)] = 1;
+        expected[uint256(MessageType.SetManifest)] = 1;
+        expected[uint256(MessageType.Authorize)] = 1;
+        expected[uint256(MessageType.Unauthorize)] = 1;
 
         // Mainnet-only messages (centrifugeId=MAINNET_CENTRIFUGE_ID=1).
         expected[uint256(MessageType.ScheduleUpgrade)] = 1;

@@ -20,6 +20,7 @@ import {ISpokeGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  SpokeHandler
@@ -132,6 +133,21 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     /// @inheritdoc ISpokeGatewayHandler
     function updateBridger(PoolId poolId, address who, bool canBridge) external auth {
         spokeRegistry.updateBridger(poolId, who, canBridge);
+    }
+
+    /// @inheritdoc ISpokeGatewayHandler
+    function setManifest(PoolId poolId, IManifest manifest) external auth {
+        spokeRegistry.setManifest(poolId, manifest);
+    }
+
+    /// @inheritdoc ISpokeGatewayHandler
+    function authorize(PoolId poolId, bytes calldata data) external auth {
+        spokeRegistry.authorize(poolId, data);
+    }
+
+    /// @inheritdoc ISpokeGatewayHandler
+    function unauthorize(PoolId poolId, bytes calldata data) external auth {
+        spokeRegistry.unauthorize(poolId, data);
     }
 
     //----------------------------------------------------------------------------------------------

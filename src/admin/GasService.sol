@@ -57,6 +57,9 @@ contract GasService is IGasService {
     uint128 public immutable updateVaultLink;
     uint128 public immutable updateVaultUnlink;
     uint128 public immutable setRequestManager;
+    uint128 public immutable setManifest;
+    uint128 public immutable authorize;
+    uint128 public immutable unauthorize;
     uint128 public immutable updateManager;
     uint128 public immutable updateHoldingAmount;
     uint128 public immutable updateShares;
@@ -70,29 +73,32 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        scheduleUpgrade = _gasValue(158986);
-        cancelUpgrade = _gasValue(139479);
-        registerAsset = _gasValue(169286);
-        setPoolAdapters = _gasValue(787387); // using MAX_ADAPTER_COUNT
-        request = _gasValue(284830);
-        notifyPool = _gasValue(1356138); // create escrow case
-        notifyShareClass = _gasValue(1870905);
-        notifyPricePoolPerShare = _gasValue(175617);
-        notifyPricePoolPerAsset = _gasValue(179810);
-        notifyShareMetadata = _gasValue(197109);
-        initiateTransferShares = _gasValue(370509);
-        executeTransferShares = _gasValue(252887);
-        updateRestriction = _gasValue(192644);
-        managerCall = _gasValue(226960);
-        requestCallback = _gasValue(466213); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2879118);
-        updateVaultLink = _gasValue(214181);
-        updateVaultUnlink = _gasValue(180004);
-        setRequestManager = _gasValue(174712);
-        updateManager = _gasValue(174156);
-        updateHoldingAmount = _gasValue(393876);
-        updateShares = _gasValue(263932);
-        managerCallFromSpoke = _gasValue(149874);
+        scheduleUpgrade = _gasValue(160728);
+        cancelUpgrade = _gasValue(141221);
+        registerAsset = _gasValue(169736);
+        setPoolAdapters = _gasValue(788657); // using MAX_ADAPTER_COUNT
+        request = _gasValue(285221);
+        notifyPool = _gasValue(1356820);
+        notifyShareClass = _gasValue(1871631);
+        notifyPricePoolPerShare = _gasValue(176299);
+        notifyPricePoolPerAsset = _gasValue(180492);
+        notifyShareMetadata = _gasValue(197817);
+        initiateTransferShares = _gasValue(370735);
+        executeTransferShares = _gasValue(253546);
+        updateRestriction = _gasValue(193249);
+        managerCall = _gasValue(227757);
+        requestCallback = _gasValue(466844); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2879763);
+        updateVaultLink = _gasValue(214738);
+        updateVaultUnlink = _gasValue(180561);
+        setRequestManager = _gasValue(175305);
+        setManifest = _gasValue(174125);
+        authorize = _gasValue(173769);
+        unauthorize = _gasValue(173769);
+        updateManager = _gasValue(175029);
+        updateHoldingAmount = _gasValue(393738);
+        updateShares = _gasValue(263861);
+        managerCallFromSpoke = _gasValue(150047);
     }
 
     /// @inheritdoc IMessageProperties
@@ -145,6 +151,9 @@ contract GasService is IGasService {
             return 100_000; // Some high value just to compute the call and fail inside the Gateway try/catch
         }
         if (kind == MessageType.SetRequestManager) return setRequestManager;
+        if (kind == MessageType.SetManifest) return setManifest;
+        if (kind == MessageType.Authorize) return authorize;
+        if (kind == MessageType.Unauthorize) return unauthorize;
         if (kind == MessageType.UpdateManager) return updateManager;
         if (kind == MessageType.UpdateHoldingAmount) return updateHoldingAmount;
         if (kind == MessageType.UpdateShares) return updateShares;

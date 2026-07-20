@@ -138,7 +138,7 @@ contract StdManifestTest is Test {
 
     /// @dev Authorize `data` as a manager and return the classified delay (validAfter - now).
     function _delayOf(bytes memory d) internal returns (uint48) {
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
         return hubRegistry.authorizedAfter(_authId(d)) - uint48(block.timestamp);
     }
 
@@ -156,45 +156,45 @@ contract StdManifestTest is Test {
         bytes memory d = _setManifestCall(address(this));
         vm.expectEmit();
         emit IHubRegistry.AuthorizationScheduled(POOL_A, manager, _authId(d), uint48(block.timestamp) + ESCALATION, d);
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
         assertEq(hubRegistry.authorizedAfter(_authId(d)), block.timestamp + ESCALATION);
     }
 
     function testAuthorizeNotAuthorized() public {
-        // authorize is ward-only; the manager check lives in Hub.authorize.
+        // authorize is ward-only; the manager check lives in Hub.initiateAuthorization.
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(outsider);
-        hubRegistry.authorize(POOL_A, manager, _setManifestCall(address(this)));
+        hubRegistry.initiateAuthorization(POOL_A, manager, _setManifestCall(address(this)));
     }
 
     function testReauthorizePendingReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         // Re-authorizing a pending auth reverts rather than silently resetting its maturity clock.
         vm.expectRevert(IHubRegistry.AlreadyAuthorized.selector);
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
     }
 
     function testReauthorizeExpiredReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         // Past maturity + expiry the auth is dead but enforce never cleared it, so re-authorizing
         // still reverts — it must be cancelled first.
         skip(ESCALATION + EXPIRY + 1);
         vm.expectRevert(IHubRegistry.AlreadyAuthorized.selector);
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
     }
 
     function testCancelThenReauthorize() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         hubRegistry.cancelAuthorization(POOL_A, manager, d);
 
         // Once cancelled, the same call can be authorized again.
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
         assertEq(hubRegistry.authorizedAfter(_authId(d)), block.timestamp + ESCALATION);
     }
 
@@ -203,12 +203,12 @@ contract StdManifestTest is Test {
         // once the same calldata drifts out of policy.
         bytes memory d = abi.encodeWithSelector(IHub.notifyPool.selector, POOL_A, uint16(1), address(0));
         vm.expectRevert(IHubRegistry.InPolicy.selector);
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
     }
 
     function testCancelAuthorization() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         vm.expectEmit();
         emit IHubRegistry.AuthorizationCanceled(POOL_A, manager, _authId(d));
@@ -250,7 +250,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyNotMaturedReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         skip(ESCALATION - 1);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
@@ -260,7 +260,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyMaturedConsumes() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         skip(ESCALATION);
         vm.prank(address(hub));
@@ -275,7 +275,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyExpiredReverts() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         // Matured but the execution window has closed: fails closed, the auth is no longer valid.
         skip(ESCALATION + EXPIRY + 1);
@@ -286,7 +286,7 @@ contract StdManifestTest is Test {
 
     function testEnforceOutOfPolicyAtExpiryBoundaryConsumes() public {
         bytes memory d = _setManifestCall(address(this));
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         // The last instant of the window is still valid (inclusive upper bound).
         skip(ESCALATION + EXPIRY);
@@ -296,7 +296,7 @@ contract StdManifestTest is Test {
     }
 
     function testAuthorizationMatchesExactCalldata() public {
-        hubRegistry.authorize(POOL_A, manager, _setManifestCall(address(0xA)));
+        hubRegistry.initiateAuthorization(POOL_A, manager, _setManifestCall(address(0xA)));
         skip(ESCALATION);
 
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
@@ -413,7 +413,7 @@ contract StdManifestTest is Test {
 
         skip(50);
         // Authorizing an out-of-policy price jump must NOT advance the baseline.
-        hubRegistry.authorize(POOL_A, manager, _priceCall(2e18));
+        hubRegistry.initiateAuthorization(POOL_A, manager, _priceCall(2e18));
         assertEq(manifest.lastPriceUpdate(POOL_A, SC_A), t0);
     }
 
@@ -914,7 +914,7 @@ contract StdManifestTest is Test {
 
         // out-of-policy price update, but a pool manager can pre-authorize.
         bytes memory d = _priceCall(1e18 + 2e15);
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
 
         skip(DELAY);
         vm.prank(address(hub));
@@ -930,7 +930,7 @@ contract StdManifestTest is Test {
         skip(1);
 
         bytes memory d = _priceCall(1e18 + 2e15);
-        hubRegistry.authorize(POOL_A, manager, d);
+        hubRegistry.initiateAuthorization(POOL_A, manager, d);
         skip(DELAY);
 
         // Even with a valid pre-authorization, a non-SimplePriceManager caller is blocked at enforce.
@@ -1011,7 +1011,7 @@ contract StdManifestTest is Test {
         _allowlistManifest(_selectors(IHub.updateSharePrice.selector));
         // Confinement also blocks authorize: KEEPER can't even queue an out-of-policy call outside its set.
         vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
-        hubRegistry.authorize(POOL_A, KEEPER, _setManifestCall(address(this)));
+        hubRegistry.initiateAuthorization(POOL_A, KEEPER, _setManifestCall(address(this)));
     }
 
     function testAllowlistComposesWithValueGuard() public {
@@ -1027,7 +1027,7 @@ contract StdManifestTest is Test {
         m.enforce(POOL_A, KEEPER, _priceCall(1e18 + 2e15));
 
         // KEEPER may authorize it (it is within its selector set) and run it after the delay.
-        hubRegistry.authorize(POOL_A, KEEPER, _priceCall(1e18 + 2e15));
+        hubRegistry.initiateAuthorization(POOL_A, KEEPER, _priceCall(1e18 + 2e15));
         skip(DELAY);
         vm.prank(address(hub));
         m.enforce(POOL_A, KEEPER, _priceCall(1e18 + 2e15));

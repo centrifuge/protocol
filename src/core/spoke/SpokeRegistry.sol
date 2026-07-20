@@ -25,7 +25,9 @@ import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  SpokeRegistry
-/// @notice This contract stores pool, share class, asset, and price state for the spoke side.
+/// @notice This contract stores pool, share class, asset, and price state for the spoke side. It also holds
+///         the spoke pool-policy state: the installed manifest and a consume-only authorization ledger. The
+///         spoke keeps no local timelock; authorizations arrive already matured from the Hub (see {authorize}).
 contract SpokeRegistry is Auth, ISpokeRegistry {
     // Pools & share classes
     mapping(PoolId => Pool) public pool;
@@ -34,9 +36,12 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     mapping(PoolId => mapping(ShareClassId => ShareClassDetails)) public shareClass;
 
     // Roles
-    mapping(PoolId => IManifest) public manifest;
     mapping(PoolId => mapping(address => bool)) public manager;
     mapping(PoolId => mapping(address => bool)) public bridger;
+
+    // Policy
+    mapping(PoolId => IManifest) public manifest;
+    mapping(bytes32 authId => uint256 count) public authorizations;
 
     // Assets & prices
     uint64 internal _assetCounter;
@@ -115,6 +120,44 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     function setManifest(PoolId poolId, IManifest manifest_) external auth {
         manifest[poolId] = manifest_;
         emit SetManifest(poolId, manifest_);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function authorize(PoolId poolId, bytes calldata data) external auth {
+        // The Hub already ran the timelock, so the spoke just counts the call as authorized. A counter (not
+        // a flag) lets several authorizations of the same call be outstanding; a matching call later consumes one.
+        IManifest m = manifest[poolId];
+        require(address(m) != address(0), NoManifest());
+
+        bytes32 id = _authId(poolId, address(m), data);
+        authorizations[id]++;
+        emit Authorized(poolId, id, data);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function unauthorize(PoolId poolId, bytes calldata data) external auth {
+        // Lets the Hub revoke an outstanding, not-yet-consumed authorization (decrements the counter).
+        bytes32 id = _authId(poolId, address(manifest[poolId]), data);
+        uint256 count = authorizations[id];
+        require(count != 0, Unauthorized());
+        authorizations[id] = count - 1;
+        emit AuthorizationRevoked(poolId, id, data);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function consumeAuthorization(PoolId poolId, address caller, bytes calldata data) external {
+        IManifest m = manifest[poolId];
+        require(msg.sender == address(m), NotManifest());
+
+        bytes32 id = _authId(poolId, address(m), data);
+        uint256 count = authorizations[id];
+        require(count != 0, Unauthorized());
+        authorizations[id] = count - 1;
+        emit AuthorizationConsumed(poolId, caller, id);
+    }
+
+    function _authId(PoolId poolId, address manifest_, bytes calldata data) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(poolId.raw(), manifest_, data));
     }
 
     //----------------------------------------------------------------------------------------------

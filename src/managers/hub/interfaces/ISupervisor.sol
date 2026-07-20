@@ -34,7 +34,7 @@ interface ISupervisor {
     // Execution
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Cancel a pending authorization (sentinel veto). Callable by any sentinel. A sentinel
+    /// @notice Cancel a pending Hub authorization (sentinel veto). Callable by any sentinel. A sentinel
     ///         cannot cancel the authorization of their own removal when multiple sentinels exist.
     /// @param data The exact Hub calldata that was authorized.
     function cancelAuthorization(bytes calldata data) external;

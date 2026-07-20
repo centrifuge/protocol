@@ -62,6 +62,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
             revert("Cannot benchmark message"); // Unreachable
         }
         if (kind == MessageType.SetRequestManager) return "setRequestManager";
+        if (kind == MessageType.SetManifest) return "setManifest";
         if (kind == MessageType.UpdateManager) return "updateManager";
         if (kind == MessageType.UpdateHoldingAmount) return "updateHoldingAmount";
         if (kind == MessageType.UpdateShares) return "updateShares";

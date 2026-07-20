@@ -110,7 +110,7 @@ contract SupervisorFactory is ISupervisorFactory {
 
     /// @inheritdoc ISupervisorFactory
     function newSupervisor(PoolId poolId, address envoy) external returns (ISupervisor) {
-        Supervisor supervisor = new Supervisor{salt: _salt(hub, poolId, envoy)}(hub, poolId, envoy);
+        Supervisor supervisor = new Supervisor{salt: _salt(poolId, envoy)}(hub, poolId, envoy);
 
         emit DeploySupervisor(poolId, address(supervisor));
         return ISupervisor(address(supervisor));
@@ -119,7 +119,7 @@ contract SupervisorFactory is ISupervisorFactory {
     /// @inheritdoc ISupervisorFactory
     function previewSupervisor(PoolId poolId, address envoy) external view returns (address) {
         bytes32 hash = keccak256(
-            abi.encodePacked(bytes1(0xff), address(this), _salt(hub, poolId, envoy), _initCodeHash(poolId, envoy))
+            abi.encodePacked(bytes1(0xff), address(this), _salt(poolId, envoy), _initCodeHash(poolId, envoy))
         );
         return address(uint160(uint256(hash)));
     }
@@ -128,8 +128,9 @@ contract SupervisorFactory is ISupervisorFactory {
         return keccak256(abi.encodePacked(type(Supervisor).creationCode, abi.encode(hub, poolId, envoy)));
     }
 
-    /// @dev Deterministic CREATE2 salt so a (hub, poolId, envoy) config maps to a fixed, previewable address.
-    function _salt(IHub hub_, PoolId poolId, address envoy) internal pure returns (bytes32) {
-        return keccak256(abi.encode(hub_, poolId, envoy));
+    /// @dev Deterministic CREATE2 salt so a (hub, poolId, envoy) config maps to a fixed, previewable
+    ///      address. `hub` is a factory immutable, so it need not enter the salt.
+    function _salt(PoolId poolId, address envoy) internal pure returns (bytes32) {
+        return keccak256(abi.encode(poolId, envoy));
     }
 }
