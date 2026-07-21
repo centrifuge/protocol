@@ -65,7 +65,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendUpdateRestriction(REMOTE_CHAIN, POOL_A, SC_A, EMPTY_BYTES, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendManagerHubCall(LOCAL_CHAIN, POOL_A, makeAddr("target"), EMPTY_BYTES, 0, 0, REFUND);
+        dispatcher.sendManagerCallFromHub(LOCAL_CHAIN, POOL_A, makeAddr("target"), EMPTY_BYTES, 0, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendUpdateVault(POOL_A, SC_A, ASSET_A, bytes32(0), VaultUpdateKind.DeployAndLink, 0, REFUND);
@@ -101,7 +101,7 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendRequest(POOL_A, SC_A, ASSET_A, EMPTY_BYTES, 0, false, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendManagerSpokeCall(POOL_A, bytes32(0), EMPTY_BYTES, bytes32(0), 0, REFUND);
+        dispatcher.sendManagerCallFromSpoke(POOL_A, bytes32(0), EMPTY_BYTES, bytes32(0), 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendRequestCallback(POOL_A, SC_A, ASSET_A, EMPTY_BYTES, 0, false, REFUND);
@@ -135,7 +135,7 @@ contract TestSendManagerCall is TestCommon {
 
         vm.deal(AUTH, 1 ether);
         vm.prank(AUTH);
-        dispatcher.sendManagerHubCall{value: 0.5 ether}(LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, REFUND);
+        dispatcher.sendManagerCallFromHub{value: 0.5 ether}(LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, REFUND);
 
         assertEq(REFUND.balance, 0, "no refund leg");
     }
@@ -145,7 +145,7 @@ contract TestSendManagerCall is TestCommon {
         vm.expectCall(address(gateway), abi.encodeWithSelector(IGateway.send.selector));
 
         vm.prank(AUTH);
-        dispatcher.sendManagerHubCall(REMOTE_CHAIN, POOL_A, target, hex"1234", 0, 0, REFUND);
+        dispatcher.sendManagerCallFromHub(REMOTE_CHAIN, POOL_A, target, hex"1234", 0, 0, REFUND);
     }
 
     function testLocalBranchRefundsExcessValue() public {
@@ -157,7 +157,7 @@ contract TestSendManagerCall is TestCommon {
 
         vm.deal(AUTH, 1 ether);
         vm.prank(AUTH);
-        dispatcher.sendManagerHubCall{value: 1 ether}(LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, REFUND);
+        dispatcher.sendManagerCallFromHub{value: 1 ether}(LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, REFUND);
 
         assertEq(REFUND.balance, 0.5 ether, "excess value refunded");
     }
@@ -173,7 +173,7 @@ contract TestSendManagerCall is TestCommon {
         vm.deal(AUTH, 1 ether);
         vm.prank(AUTH);
         vm.expectRevert(SafeTransferLib.SafeTransferEthFailed.selector);
-        dispatcher.sendManagerHubCall{value: 1 ether}(
+        dispatcher.sendManagerCallFromHub{value: 1 ether}(
             LOCAL_CHAIN, POOL_A, target, payload, 0, 0.5 ether, rejectingRefund
         );
     }

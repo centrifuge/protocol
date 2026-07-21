@@ -84,11 +84,6 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         uint128 value
     );
 
-    /// @notice Emitted when ETH is transferred to the escrow
-    /// @param who The address that sent the ETH
-    /// @param amount The amount transferred
-    event ReceiveNativeTokens(address who, uint256 amount);
-
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------

@@ -67,14 +67,24 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         shareClassManager = shareClassManager_;
     }
 
+    /// @dev Manager-only, and enforces the pool's manifest policy if one is installed.
+    modifier enforced(PoolId poolId) {
+        _enforce(poolId);
+        _;
+    }
+
+    /// @dev Sender must be a registered manager for the pool (no manifest policy applied).
+    modifier onlyManager(PoolId poolId) {
+        _requireManager(poolId);
+        _;
+    }
+
     //----------------------------------------------------------------------------------------------
     // System methods
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function file(bytes32 what, address data) external {
-        _auth();
-
+    function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "feeHook") feeHook = IFeeHook(data);
         else if (what == "holdings") holdings = IHoldings(data);
@@ -85,18 +95,14 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc ICreatePool
-    function createPool(PoolId poolId, address admin, AssetId currency) external payable {
-        _auth();
-
+    function createPool(PoolId poolId, address admin, AssetId currency) external payable auth {
         require(poolId.centrifugeId() == sender.localCentrifugeId(), InvalidPoolId());
         hubRegistry.registerPool(poolId, admin, currency);
     }
 
     /// @inheritdoc IHub
     function setManifest(PoolId poolId, IManifest manifest_) external {
-        // Wards may install/replace directly (emergency override); managers go through the current
-        // manifest's policy (via _protected), so a compromised manager can't hot-swap it in one tx.
-        if (wards[msgSender()] != 1) _protected(poolId);
+        if (wards[msgSender()] != 1) _enforce(poolId);
 
         hubRegistry.setManifest(poolId, manifest_);
     }
@@ -111,16 +117,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function initiateAuthorization(PoolId poolId, bytes calldata data) external {
-        _requireManager(poolId);
-
+    function initiateAuthorization(PoolId poolId, bytes calldata data) external onlyManager(poolId) {
         hubRegistry.initiateAuthorization(poolId, msgSender(), data);
     }
 
     /// @inheritdoc IHub
-    function cancelAuthorization(PoolId poolId, bytes calldata data) external {
-        _requireManager(poolId);
-
+    function cancelAuthorization(PoolId poolId, bytes calldata data) external onlyManager(poolId) {
         hubRegistry.cancelAuthorization(poolId, msgSender(), data);
     }
 
@@ -136,9 +138,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         bytes32[] memory remoteAdapters,
         uint8 threshold,
         address refund
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         // Batching would defer the send until after the new set is applied, routing over a set the
         // destination lacks, so it is disallowed here.
         require(!gateway.isBatching(), CannotSetAdaptersWhileBatching());
@@ -151,31 +151,23 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function setBridgingHook(PoolId poolId, address hook) external {
-        _protected(poolId);
-
+    function setBridgingHook(PoolId poolId, address hook) external enforced(poolId) {
         hubRegistry.setBridgingHook(poolId, IBridgingHook(hook));
         emit SetBridgingHook(poolId, hook);
     }
 
     /// @inheritdoc IHub
-    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable {
-        _protected(poolId);
-
+    function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external payable enforced(poolId) {
         holdings.setSnapshotHook(poolId, hook);
     }
 
     /// @inheritdoc IHub
-    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable {
-        _protected(poolId);
-
+    function setPoolMetadata(PoolId poolId, bytes calldata metadata) external payable enforced(poolId) {
         hubRegistry.setMetadata(poolId, metadata);
     }
 
     /// @inheritdoc IHub
-    function updateCurrency(PoolId poolId, AssetId currency) external {
-        _protected(poolId);
-
+    function updateCurrency(PoolId poolId, AssetId currency) external enforced(poolId) {
         hubRegistry.updateCurrency(poolId, currency);
     }
 
@@ -183,9 +175,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function updateShareClassMetadata(PoolId poolId, ShareClassId scId, string calldata name, string calldata symbol)
         external
         payable
+        enforced(poolId)
     {
-        _protected(poolId);
-
         shareClassManager.updateMetadata(poolId, scId, name, symbol);
     }
 
@@ -194,9 +185,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function updateHubManager(PoolId poolId, address who, bool canManage) external payable {
-        _protected(poolId);
-
+    function updateHubManager(PoolId poolId, address who, bool canManage) external payable enforced(poolId) {
         hubRegistry.updateManager(poolId, who, canManage);
     }
 
@@ -208,9 +197,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         bytes32 who,
         bool canManage,
         address refund
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         emit UpdateManager(centrifugeId, poolId, kind, who, canManage);
         sender.sendUpdateManager{value: msgValue()}(centrifugeId, poolId, kind, who, canManage, refund);
     }
@@ -222,9 +209,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         IHubRequestManager hubManager,
         bytes32 spokeManager,
         address refund
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         hubRegistry.setHubRequestManager(poolId, centrifugeId, hubManager);
 
         emit SetSpokeRequestManager(centrifugeId, poolId, spokeManager);
@@ -233,7 +218,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function setSpokeManifest(PoolId poolId, uint16 centrifugeId, bytes32 manifest_, address refund) external payable {
-        _protected(poolId);
+        _enforce(poolId);
 
         emit SetSpokeManifest(centrifugeId, poolId, manifest_);
         sender.sendSetManifest{value: msgValue()}(centrifugeId, poolId, manifest_, refund);
@@ -244,10 +229,10 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _protected(poolId);
+        _enforce(poolId);
 
         emit AuthorizeSpokeCall(centrifugeId, poolId, data);
-        sender.sendAuthorize{value: msgValue()}(centrifugeId, poolId, data, refund);
+        sender.sendAuthorizeSpokeCall{value: msgValue()}(centrifugeId, poolId, data, refund);
     }
 
     /// @inheritdoc IHub
@@ -260,7 +245,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         _requireManager(poolId);
 
         emit UnauthorizeSpokeCall(centrifugeId, poolId, data);
-        sender.sendUnauthorize{value: msgValue()}(centrifugeId, poolId, data, refund);
+        sender.sendUnauthorizeSpokeCall{value: msgValue()}(centrifugeId, poolId, data, refund);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -270,10 +255,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     /// @inheritdoc IHub
     function addShareClass(PoolId poolId, string calldata name, string calldata symbol, bytes32 salt)
         external
+        enforced(poolId)
         returns (ShareClassId scId)
     {
-        _protected(poolId);
-
         return shareClassManager.addShareClass(poolId, name, symbol, salt);
     }
 
@@ -285,9 +269,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         bytes calldata payload,
         uint128 extraGasLimit,
         address refund
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         _requireSC(poolId, scId);
 
         emit UpdateRestriction(centrifugeId, poolId, scId, payload);
@@ -303,9 +285,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         VaultUpdateKind kind,
         uint128 extraGasLimit,
         address refund
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         _requireSC(poolId, scId);
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
@@ -320,25 +300,24 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
         external
         payable
+        enforced(poolId)
     {
-        _protected(poolId);
-
         shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare, computedAt);
 
         _accrue(poolId, scId);
     }
 
     /// @inheritdoc IHub
-    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external payable {
-        _protected(poolId);
-
+    function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external payable enforced(poolId) {
         accounting.createAccount(poolId, account, isDebitNormal);
     }
 
     /// @inheritdoc IHub
-    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata) external payable {
-        _protected(poolId);
-
+    function setAccountMetadata(PoolId poolId, AccountId account, bytes calldata metadata)
+        external
+        payable
+        enforced(poolId)
+    {
         accounting.setAccountMetadata(poolId, account, metadata);
     }
 
@@ -349,9 +328,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         AssetId assetId,
         IValuation valuation,
         AccountId[4] calldata accounts
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         for (uint256 i; i < accounts.length; i++) {
             require(accounting.exists(poolId, accounts[i]), IAccounting.AccountDoesNotExist());
@@ -366,9 +343,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable {
-        _protected(poolId);
-
+    function updateHoldingValue(PoolId poolId, ShareClassId scId, AssetId assetId) external payable enforced(poolId) {
         (bool isPositive, uint128 diff) = holdings.update(poolId, scId, assetId);
         _updateAccountingValue(poolId, scId, assetId, isPositive, diff);
 
@@ -379,9 +354,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function updateHoldingValuation(PoolId poolId, ShareClassId scId, AssetId assetId, IValuation valuation)
         external
         payable
+        enforced(poolId)
     {
-        _protected(poolId);
-
         holdings.updateValuation(poolId, scId, assetId, valuation);
     }
 
@@ -389,9 +363,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function setHoldingAccountId(PoolId poolId, ShareClassId scId, AssetId assetId, uint8 kind, AccountId accountId)
         external
         payable
+        enforced(poolId)
     {
-        _protected(poolId);
-
         require(accounting.exists(poolId, accountId), IAccounting.AccountDoesNotExist());
 
         holdings.setAccountId(poolId, scId, assetId, kind, accountId);
@@ -401,9 +374,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function updateJournal(PoolId poolId, JournalEntry[] memory debits, JournalEntry[] memory credits)
         external
         payable
+        enforced(poolId)
     {
-        _protected(poolId);
-
         accounting.unlock(poolId);
         accounting.addJournal(debits, credits);
         accounting.lock();
@@ -414,9 +386,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHub
-    function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable {
-        _protected(poolId);
-
+    function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable enforced(poolId) {
         emit NotifyPool(centrifugeId, poolId);
         sender.sendNotifyPool{value: msgValue()}(centrifugeId, poolId, refund);
     }
@@ -426,8 +396,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         external
         payable
     {
-        _protected(poolId);
-
+        _enforce(poolId);
         _requireSC(poolId, scId);
 
         (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
@@ -443,9 +412,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
         external
         payable
+        enforced(poolId)
     {
-        _protected(poolId);
-
         (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
@@ -453,9 +421,11 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable {
-        _protected(poolId);
-
+    function notifySharePrice(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
+        external
+        payable
+        enforced(poolId)
+    {
         (D18 pricePoolPerShare, uint64 computedAt) = shareClassManager.pricePoolPerShare(poolId, scId);
 
         emit NotifySharePrice(centrifugeId, poolId, scId, pricePoolPerShare, computedAt);
@@ -465,9 +435,11 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund) external payable {
-        _protected(poolId);
-
+    function notifyAssetPrice(PoolId poolId, ShareClassId scId, AssetId assetId, address refund)
+        external
+        payable
+        enforced(poolId)
+    {
         D18 pricePoolPerAsset_ = pricePoolPerAsset(poolId, scId, assetId);
         emit NotifyAssetPrice(assetId.centrifugeId(), poolId, scId, assetId, pricePoolPerAsset_);
         sender.sendNotifyPricePoolPerAsset{value: msgValue()}(poolId, scId, assetId, pricePoolPerAsset_, refund);
@@ -488,9 +460,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         uint128 extraGasLimit,
         uint256 localValue,
         address refund
-    ) external payable {
-        _protected(poolId);
-
+    ) external payable enforced(poolId) {
         // Gas is explicit: a local call is funded entirely by `msg.value`, a remote call carries none.
         require(
             centrifugeId == sender.localCentrifugeId() ? localValue == msgValue() : localValue == 0,
@@ -498,7 +468,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         );
 
         emit ManagerCall(centrifugeId, poolId, target, payload);
-        sender.sendManagerHubCall{value: msgValue()}(
+        sender.sendManagerCallFromHub{value: msgValue()}(
             centrifugeId, poolId, target.toAddress(), payload, extraGasLimit, localValue, refund
         );
     }
@@ -598,14 +568,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     //  Internal methods
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Ensure the sender is authorized
-    function _auth() internal auth {}
-
-    /// @dev Guard for manager methods: the sender must be a pool manager and the call must
-    ///      satisfy the pool's policy. When a guard is installed it classifies the current call
-    ///      against the pool's manifest, running synchronously when in policy, or consuming a
-    ///      matured authorization when out of policy (reverting otherwise).
-    function _protected(PoolId poolId) internal {
+    function _enforce(PoolId poolId) internal {
         _requireManager(poolId);
 
         IManifest m = hubRegistry.manifest(poolId);

@@ -30,7 +30,7 @@ interface IHubGatewayHandler {
     /// @notice Update a holding by request from Vaults.
     /// @dev    The holding delta is valued at the hub-side valuation; the wire message's price field is
     ///         deprecated and ignored.
-    function updateHoldingAmount(
+    function updateAssets(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,

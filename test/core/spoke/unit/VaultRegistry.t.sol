@@ -6,7 +6,6 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {SpokeV3_1_0} from "../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
 import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
@@ -48,15 +47,8 @@ contract VaultRegistryTest is Test {
     string constant SYMBOL = "symbol";
 
     SpokeRegistry spokeRegistry = new SpokeRegistry(AUTH);
-    SpokeV3_1_0 spokeV3_1_0;
 
     function setUp() public virtual {
-        spokeV3_1_0 = new SpokeV3_1_0(AUTH);
-        vm.prank(AUTH);
-        spokeV3_1_0.file("spokeRegistry", address(spokeRegistry));
-        vm.prank(AUTH);
-        spokeRegistry.rely(address(spokeV3_1_0));
-
         // Mock vault calls
         vm.mockCall(address(vault), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
         vm.mockCall(address(vault), abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
@@ -173,8 +165,8 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         emit ISpokeRegistry.LinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
         spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        assertEq(spokeV3_1_0.isLinked(vault), true);
-        assertEq(address(spokeV3_1_0.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
+        assertEq(spokeRegistry.isLinked(vault), true);
+        assertEq(address(spokeRegistry.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(vault));
     }
 
     function testLinkVaultERC20() public {
@@ -274,8 +266,8 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
         emit ISpokeRegistry.UnlinkVault(POOL_A, SC_1, erc6909, TOKEN_1, vault);
         spokeRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
 
-        assertEq(spokeV3_1_0.isLinked(vault), false);
-        assertEq(address(spokeV3_1_0.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));
+        assertEq(spokeRegistry.isLinked(vault), false);
+        assertEq(address(spokeRegistry.vault(POOL_A, SC_1, ASSET_ID_6909_1, requestManager)), address(0));
     }
 
     function testUnlinkVaultERC20() public {
@@ -320,6 +312,6 @@ contract VaultRegistryTestVaultDetails is VaultRegistryTest {
     function testErrUnknownVault() public {
         vm.prank(ANY);
         vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
-        spokeV3_1_0.vaultDetails(vault);
+        spokeRegistry.vaultDetails(vault);
     }
 }

@@ -34,7 +34,6 @@ import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {SnapshotQueue} from "../../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
-import {SpokeV3_1_0} from "../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
@@ -97,7 +96,6 @@ abstract contract Setup is
     AsyncRequestManager asyncRequestManager;
     SyncManager syncManager;
     Spoke spoke;
-    SpokeV3_1_0 spokeV3_1_0;
     SpokeRegistry spokeRegistry;
     SpokeHandler spokeHandler;
     FullRestrictions fullRestrictions;
@@ -208,7 +206,6 @@ abstract contract Setup is
         spokeRegistry = new SpokeRegistry(address(this));
         spokeHandler = new SpokeHandler(spokeRegistry, poolEscrowFactory, address(this));
         spoke = new Spoke(IGateway(address(gateway)), snapshotQueue, spokeRegistry, poolEscrowFactory, address(this));
-        spokeV3_1_0 = new SpokeV3_1_0(address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
             address(this), // envoy_
@@ -232,9 +229,6 @@ abstract contract Setup is
         asyncRequestManager.file("spokeRegistry", address(spokeRegistry));
         syncManager.file("spoke", address(spoke));
         syncManager.file("spokeRegistry", address(spokeRegistry));
-        spokeV3_1_0.file("spoke", address(spoke));
-        spokeV3_1_0.file("spokeRegistry", address(spokeRegistry));
-        messageDispatcher.rely(address(spokeV3_1_0));
         spoke.file("sender", address(messageDispatcher));
         snapshotQueue.rely(address(spoke));
         poolEscrowFactory.file("spoke", address(spoke));

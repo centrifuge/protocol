@@ -15,7 +15,6 @@ import {SpokeHandler} from "../src/core/spoke/SpokeHandler.sol";
 import {SnapshotQueue} from "../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
-import {SpokeV3_1_0} from "../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
@@ -149,7 +148,6 @@ contract FullDeployer is BaseDeployer, Constants {
     ContractUpdater public contractUpdater;
     SpokeRegistry public spokeRegistry;
     SpokeHandler public spokeHandler;
-    SpokeV3_1_0 public spokeV3_1_0;
     ContractUpdaterForwarder public contractUpdaterForwarder;
     Envoy public envoy;
     PoolEscrowFactory public poolEscrowFactory;
@@ -368,12 +366,6 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("spokeHandler", V3_X),
                 abi.encodePacked(type(SpokeHandler).creationCode, abi.encode(spokeRegistry, poolEscrowFactory, batcher))
-            )
-        );
-
-        spokeV3_1_0 = SpokeV3_1_0(
-            create3(
-                createSalt("spokeV3_1_0", V3_X), abi.encodePacked(type(SpokeV3_1_0).creationCode, abi.encode(batcher))
             )
         );
 
@@ -767,7 +759,6 @@ contract FullDeployer is BaseDeployer, Constants {
             contractUpdater,
             spokeHandler,
             spokeRegistry,
-            spokeV3_1_0,
             contractUpdaterForwarder,
             envoy,
             hubRegistry,

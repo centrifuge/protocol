@@ -95,9 +95,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.remoteExtraGasLimit,
                 address(0) // Refund is not used because we're in unpaid mode with no payment
             );
-        } else if (kind == MessageType.UpdateHoldingAmount) {
-            MessageLib.UpdateHoldingAmount memory m = message.deserializeUpdateHoldingAmount();
-            hubHandler.updateHoldingAmount(
+        } else if (kind == MessageType.UpdateAssets) {
+            MessageLib.UpdateAssets memory m = message.deserializeUpdateAssets();
+            hubHandler.updateAssets(
                 centrifugeId,
                 PoolId.wrap(m.poolId),
                 ShareClassId.wrap(m.scId),
@@ -193,18 +193,18 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
             multiAdapter.setAdapters(centrifugeId, poolId, adapters, m.threshold);
-        } else if (kind == MessageType.ManagerCall) {
-            MessageLib.ManagerCall memory m = MessageLib.deserializeManagerCall(message);
+        } else if (kind == MessageType.ManagerCallFromHub) {
+            MessageLib.ManagerCallFromHub memory m = MessageLib.deserializeManagerCallFromHub(message);
             envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);
         } else if (kind == MessageType.SetManifest) {
             MessageLib.SetManifest memory m = MessageLib.deserializeSetManifest(message);
             spokeHandler.setManifest(PoolId.wrap(m.poolId), IManifest(m.manifest.toAddress()));
-        } else if (kind == MessageType.Authorize) {
-            MessageLib.Authorize memory m = MessageLib.deserializeAuthorize(message);
-            spokeHandler.authorize(PoolId.wrap(m.poolId), m.data);
-        } else if (kind == MessageType.Unauthorize) {
-            MessageLib.Unauthorize memory m = MessageLib.deserializeUnauthorize(message);
-            spokeHandler.unauthorize(PoolId.wrap(m.poolId), m.data);
+        } else if (kind == MessageType.AuthorizeSpokeCall) {
+            MessageLib.AuthorizeSpokeCall memory m = MessageLib.deserializeAuthorizeSpokeCall(message);
+            spokeHandler.authorize(PoolId.wrap(m.poolId), m.payload);
+        } else if (kind == MessageType.UnauthorizeSpokeCall) {
+            MessageLib.UnauthorizeSpokeCall memory m = MessageLib.deserializeUnauthorizeSpokeCall(message);
+            spokeHandler.unauthorize(PoolId.wrap(m.poolId), m.payload);
         } else if (kind == MessageType.UpdateManager) {
             MessageLib.UpdateManager memory m = MessageLib.deserializeUpdateManager(message);
             PoolId poolId = PoolId.wrap(m.poolId);

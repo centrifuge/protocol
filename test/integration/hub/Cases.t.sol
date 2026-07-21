@@ -116,9 +116,7 @@ contract TestCases is CentrifugeIntegrationTest {
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_ID.raw())).toUint128();
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, true, IS_SNAPSHOT, 0
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, true, IS_SNAPSHOT, 0);
 
         // Pre-initialization, only the amount is tracked; the value is established at initialization
         assertEq(holdings.amount(poolId, scId, USDC_ID), 1000 * assetDecimals);
@@ -146,9 +144,7 @@ contract TestCases is CentrifugeIntegrationTest {
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 600 * assetDecimals, false, IS_SNAPSHOT, 1
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 600 * assetDecimals, false, IS_SNAPSHOT, 1);
 
         assertEq(holdings.amount(poolId, scId, USDC_ID), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_ID), 400 * poolDecimals);
@@ -192,9 +188,7 @@ contract TestCases is CentrifugeIntegrationTest {
         uint128 expenseDecimals = (10 ** hubRegistry.decimals(FEE_ID.raw())).toUint128();
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 50 * expenseDecimals, true, IS_SNAPSHOT, 0
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 50 * expenseDecimals, true, IS_SNAPSHOT, 0);
 
         // Pre-initialization, only the amount is tracked; the value is established at initialization
         assertEq(holdings.amount(poolId, scId, FEE_ID), 50 * expenseDecimals);
@@ -212,9 +206,7 @@ contract TestCases is CentrifugeIntegrationTest {
         _assertEqAccountValue(poolId, LIABILITY_ACCOUNT, true, 50 * poolDecimals);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 20 * expenseDecimals, false, IS_SNAPSHOT, 1
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 20 * expenseDecimals, false, IS_SNAPSHOT, 1);
 
         assertEq(holdings.amount(poolId, scId, FEE_ID), 30 * expenseDecimals);
         assertEq(holdings.value(poolId, scId, FEE_ID), 30 * poolDecimals);

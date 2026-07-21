@@ -468,7 +468,7 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Route a payable, supervised manager call to an `IManagerCallFromHub` target via the `Envoy`.
     ///         Pool-scoped: any `scId` is encoded in `payload`. No origin args reach the target: the call
-    ///         is already authorized here via `_protected` + manifest.
+    ///         is already authorized here via `_enforce` + manifest.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain where the target lives (only the local chain is currently supported)
     /// @param target Contract to call (as bytes32; converted to address for local dispatch)

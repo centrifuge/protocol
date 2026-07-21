@@ -229,7 +229,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         address refund
     ) external payable enforced(poolId) {
         ISpokeMessageSender.UpdateData memory data = snapshotQueue.flushAssets(poolId, scId, assetId);
-        sender.sendUpdateHoldingAmount{value: msgValue()}(poolId, scId, assetId, data, extraGasLimit, refund);
+        sender.sendUpdateAssets{value: msgValue()}(poolId, scId, assetId, data, extraGasLimit, refund);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -371,7 +371,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     {
         emit ManagerCall(poolId.centrifugeId(), poolId, target, payload, msgSender());
 
-        sender.sendManagerSpokeCall{value: msgValue()}(
+        sender.sendManagerCallFromSpoke{value: msgValue()}(
             poolId, target, payload, msgSender().toBytes32(), extraGasLimit, refund
         );
     }

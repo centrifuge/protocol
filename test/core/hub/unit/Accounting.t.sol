@@ -142,6 +142,16 @@ contract AccountingTest is Test {
         accounting.addCredit(EQUITY_ACCOUNT, 1);
     }
 
+    function testLockWithoutActiveSession() public {
+        vm.expectRevert(IAccounting.AccountingLocked.selector);
+        accounting.lock();
+    }
+
+    function testUnlockNullPoolId() public {
+        vm.expectRevert(IAccounting.InvalidPoolId.selector);
+        accounting.unlock(PoolId.wrap(0));
+    }
+
     function testNotWard() public {
         address unauthorized = makeAddr("unauthorized");
         vm.prank(unauthorized);

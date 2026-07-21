@@ -104,6 +104,10 @@ abstract contract OnOffRampBaseTest is BaseTest {
 contract OnOffRampIntegrationTest is OnOffRampBaseTest {
     using CastLib for *;
 
+    function testPreviewManagerMatchesDeployedAddress() public view {
+        assertEq(factory.previewManager(POOL_A, defaultTypedShareClassId), address(manager));
+    }
+
     function testDepositAndWithdrawHappyPath() public {
         uint128 amount = 100;
 

@@ -145,7 +145,7 @@ contract TestMessageSourceClassification is Test {
         );
         cases[11] = Case(
             "ManagerCall",
-            MessageLib.ManagerCall({poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")})
+            MessageLib.ManagerCallFromHub({poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")})
                 .serialize(),
             HOME_CHAIN
         );
@@ -175,7 +175,7 @@ contract TestMessageSourceClassification is Test {
         );
         cases[14] = Case(
             "UpdateHoldingAmount",
-            MessageLib.UpdateHoldingAmount({
+            MessageLib.UpdateAssets({
                     poolId: p,
                     scId: bytes16("sc"),
                     assetId: newAssetId(FOREIGN_CHAIN, 0).raw(),

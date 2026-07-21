@@ -64,7 +64,7 @@ contract TestCommon is Test {
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, ADMIN), abi.encode(true)
         );
 
-        // `_protected` (supervisor work) reads the pool manifest; default it to none so manifest
+        // `_enforce` (supervisor work) reads the pool manifest; default it to none so manifest
         // enforcement is a no-op in these unit tests (they exercise the manager check + business logic).
         vm.mockCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.manifest.selector), abi.encode(address(0)));
 
@@ -533,7 +533,7 @@ contract TestManagerCall is TestCommon {
     uint256 constant VALUE = 7;
 
     /// @dev `managerCall` is the hub direction: pool-scoped, opaque payload, no probe. It forwards to
-    ///      `sendManagerHubCall` and emits the scId-less `ManagerCall`. On the local branch (`CHAIN_A` is the
+    ///      `sendManagerCallFromHub` and emits the scId-less `ManagerCall`. On the local branch (`CHAIN_A` is the
     ///      mocked `localCentrifugeId`) the whole `msg.value` funds the call, so `value` must equal it.
     function testManagerCallHubRoute() public {
         address target = makeAddr("hubTarget");
@@ -542,7 +542,7 @@ contract TestManagerCall is TestCommon {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(
-                IHubMessageSender.sendManagerHubCall.selector,
+                IHubMessageSender.sendManagerCallFromHub.selector,
                 CHAIN_A,
                 POOL_A,
                 target,
@@ -587,7 +587,7 @@ contract TestManagerCall is TestCommon {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(
-                IHubMessageSender.sendManagerHubCall.selector,
+                IHubMessageSender.sendManagerCallFromHub.selector,
                 CHAIN_A,
                 POOL_A,
                 address(0),
@@ -616,7 +616,7 @@ contract TestManagerCall is TestCommon {
         vm.mockCall(
             address(sender),
             abi.encodeWithSelector(
-                IHubMessageSender.sendManagerHubCall.selector,
+                IHubMessageSender.sendManagerCallFromHub.selector,
                 CHAIN_B,
                 POOL_A,
                 address(0),

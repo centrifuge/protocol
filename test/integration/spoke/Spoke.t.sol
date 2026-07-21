@@ -7,8 +7,8 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
-import {VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -171,14 +171,14 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
         assertTrue(spokeRegistry.isPoolActive(POOL_A));
 
-        VaultDetails memory vaultDetails = spokeV3_1_0.vaultDetails(IBaseVault(vaultAddress));
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(IBaseVault(vaultAddress));
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
         assertEq(address(asset), vaultDetails.asset, "vault asset mismatch");
         assertEq(uint256(0), vaultDetails.tokenId, "vault tokenId mismatch");
         assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {
-            assertTrue(spokeV3_1_0.isLinked(IBaseVault(vaultAddress)));
+            assertTrue(spokeRegistry.isLinked(IBaseVault(vaultAddress)));
 
             AsyncVault vault = AsyncVault(vaultAddress);
             assertEq(vault.asset(), address(asset), "asset mismatch");
@@ -190,7 +190,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
             assertEq(vault.wards(address(this)), 0);
             assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
-            assertFalse(spokeV3_1_0.isLinked(IBaseVault(vaultAddress)));
+            assertFalse(spokeRegistry.isLinked(IBaseVault(vaultAddress)));
         }
     }
 

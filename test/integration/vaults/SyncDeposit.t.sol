@@ -28,7 +28,7 @@ import {
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-import {VaultDetails} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
@@ -62,7 +62,7 @@ contract SyncDepositTestHelper is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = spokeV3_1_0.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
         address syncDepositManager = address(vault.syncDepositManager());
 
         vm.expectEmit();
@@ -142,7 +142,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
         // Retrieve async vault
-        IVault asyncVault_ = spokeV3_1_0.vault(
+        IVault asyncVault_ = spokeRegistry.vault(
             syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager()
         );
         assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");

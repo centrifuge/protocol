@@ -131,7 +131,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
         bytes32 id = _authId(poolId, address(m), data);
         authorizations[id]++;
-        emit Authorized(poolId, id, data);
+        emit AuthorizationGranted(poolId, id, data);
     }
 
     /// @inheritdoc ISpokeRegistry
@@ -139,7 +139,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         // Lets the Hub revoke an outstanding, not-yet-consumed authorization (decrements the counter).
         bytes32 id = _authId(poolId, address(manifest[poolId]), data);
         uint256 count = authorizations[id];
-        require(count != 0, Unauthorized());
+        require(count != 0, NoOutstandingAuthorization());
         authorizations[id] = count - 1;
         emit AuthorizationRevoked(poolId, id, data);
     }
@@ -151,7 +151,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
         bytes32 id = _authId(poolId, address(m), data);
         uint256 count = authorizations[id];
-        require(count != 0, Unauthorized());
+        require(count != 0, NoOutstandingAuthorization());
         authorizations[id] = count - 1;
         emit AuthorizationConsumed(poolId, caller, id);
     }

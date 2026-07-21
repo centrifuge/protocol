@@ -176,11 +176,27 @@ contract OnOffRampFactory is IOnOffRampFactory {
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOffRamp) {
         spoke.spokeRegistry().shareToken(poolId, scId); // Check for existence
 
-        OnOffRamp manager = new OnOffRamp{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, envoy, spoke, accountingToken
-        );
+        OnOffRamp manager = new OnOffRamp{salt: _salt(poolId, scId)}(poolId, scId, envoy, spoke, accountingToken);
 
         emit DeployOnOffRamp(poolId, scId, address(manager));
         return IOnOffRamp(manager);
+    }
+
+    /// @inheritdoc IOnOffRampFactory
+    function previewManager(PoolId poolId, ShareClassId scId) external view returns (address) {
+        bytes32 hash =
+            keccak256(abi.encodePacked(bytes1(0xff), address(this), _salt(poolId, scId), _initCodeHash(poolId, scId)));
+        return address(uint160(uint256(hash)));
+    }
+
+    function _initCodeHash(PoolId poolId, ShareClassId scId) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(type(OnOffRamp).creationCode, abi.encode(poolId, scId, envoy, spoke, accountingToken))
+        );
+    }
+
+    /// @dev Deterministic CREATE2 salt so a (poolId, scId) maps to a fixed, previewable address.
+    function _salt(PoolId poolId, ShareClassId scId) internal pure returns (bytes32) {
+        return keccak256(abi.encode(poolId.raw(), scId.raw()));
     }
 }

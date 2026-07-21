@@ -12,7 +12,7 @@ interface IEnvoy {
     );
 
     /// @notice Forwards a hub-direction manager call to `target` with any attached value. No origin args:
-    ///         already authorized at the Hub (`_protected` + manifest); origin chain is always the hub's own.
+    ///         already authorized at the Hub (`_enforce` + manifest); origin chain is always the hub's own.
     function callFromHub(PoolId poolId, address target, bytes calldata payload) external payable;
 
     /// @notice Forwards an untrusted spoke-direction manager call to `target`, passing `(centrifugeId, sender)`

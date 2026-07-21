@@ -150,7 +150,7 @@ contract InvestmentFlowExecutor is Test {
         // Many previously linked vaults have been unlinked pre-migration to block investments,
         // but we still need to validate they work correctly post-migration
         AssetId assetId = report.core.spoke.spokeRegistry().assetToId(gql.assetAddress, 0);
-        if (!report.core.spokeV3_1_0.isLinked(IVault(gql.vault))) {
+        if (!report.core.spokeRegistry.isLinked(IVault(gql.vault))) {
             console.log("LINKING for validation: %s [%s]", gql.vault, tokenName);
             PoolId poolId = PoolId.wrap(gql.poolIdRaw);
             ShareClassId scId = ShareClassId.wrap(gql.tokenIdRaw);
@@ -520,7 +520,7 @@ contract InvestmentFlowExecutor is Test {
     }
 
     /// @dev Route a BRM manager action through the real chain: hub.managerCall -> (local)
-    ///      MessageDispatcher.sendManagerHubCall -> Envoy.callFromHub -> batchRequestManager.fromHub.
+    ///      MessageDispatcher.sendManagerCallFromHub -> Envoy.callFromHub -> batchRequestManager.fromHub.
     ///      Uses the local centrifugeId so the call stays on the hub side (BRM is hub-side). Called under the
     ///      hubManager prank.
     function _brmManagerCall(InvestmentFlowContext memory ctx, bytes memory payload) internal {

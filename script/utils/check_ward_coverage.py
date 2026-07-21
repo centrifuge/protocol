@@ -28,6 +28,13 @@ _NAME_ALIASES = {
     "adminsafe": "protocolsafe",
 }
 
+# file() parameters that are intentionally left unwired at deployment (optional hooks that default to
+# address(0) and are only invoked when set). These are exempt from the "must be initialized" check.
+# Keyed by (contract, param_name), matched case-insensitively.
+_OPTIONAL_FILE_PARAMETERS = {
+    ("Hub", "feeHook"),  # optional fee hook; Hub only calls it when address(feeHook) != address(0)
+}
+
 def normalize_name(name: str) -> str:
     """
     Normalize variable names for comparison by removing underscores and converting to lowercase,
@@ -507,7 +514,13 @@ class WardCoverageChecker:
         # Find constructor initializations
         constructor_inits = self.find_constructor_initializations()
 
+        optional_set = {(c.lower(), p.lower()) for (c, p) in _OPTIONAL_FILE_PARAMETERS}
+
         for fp in result.file_parameters:
+            # Skip intentionally-optional hooks that default to address(0) and are only used when set.
+            if (fp.contract.lower(), fp.param_name.lower()) in optional_set:
+                continue
+
             # Check if this parameter is initialized in deployment script
             if (fp.contract.lower(), fp.param_name.lower()) in initialized_set:
                 continue

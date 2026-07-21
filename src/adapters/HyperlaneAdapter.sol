@@ -24,7 +24,7 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 /// @dev    Gas limits for destination execution are encoded in StandardHookMetadata
 ///         passed to the Mailbox dispatch/quoteDispatch calls. Both calls pass the
 ///         default post-dispatch hook (address(0)), so the encoded gasLimit/msgValue/
-///         refund are only honored if the destination Mailbox's configured default hook
+///         refund are only honored if the origin Mailbox's configured default hook
 ///         is an InterchainGasPaymaster-backed hook that reads StandardHookMetadata.
 ///         This holds on standard Hyperlane deployments; verify it during wiring.
 ///

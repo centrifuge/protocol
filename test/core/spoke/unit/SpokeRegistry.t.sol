@@ -433,7 +433,7 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
 
         // Nothing left to consume.
         vm.prank(address(manifest));
-        vm.expectRevert(ISpokeRegistry.Unauthorized.selector);
+        vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         registry.consumeAuthorization(POOL_A, address(this), data);
     }
 
@@ -466,7 +466,7 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
         assertEq(registry.authorizations(id), 0);
 
         // Nothing left to revoke.
-        vm.expectRevert(ISpokeRegistry.Unauthorized.selector);
+        vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         registry.unauthorize(POOL_A, data);
         vm.stopPrank();
     }

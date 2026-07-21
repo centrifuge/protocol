@@ -26,7 +26,7 @@ interface IHubRegistry is IERC6909Decimals {
     //----------------------------------------------------------------------------------------------
 
     event NewAsset(AssetId indexed assetId, uint8 decimals);
-    event NewPool(PoolId poolId, address indexed manager, AssetId indexed currency);
+    event NewPool(PoolId indexed poolId, address indexed manager, AssetId indexed currency);
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
     event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);

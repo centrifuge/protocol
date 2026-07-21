@@ -32,9 +32,7 @@ contract IsContract {}
 contract SpokeTest is Test {
     using CastLib for *;
 
-    // Disambiguates the price-less sendUpdateHoldingAmount overload from the ABI-compat one with D18 price.
-    bytes4 constant SEND_UPDATE_HOLDING_AMOUNT_SELECTOR =
-        bytes4(keccak256("sendUpdateHoldingAmount(uint64,bytes16,uint128,(uint128,bool,bool,uint64),uint128,address)"));
+    bytes4 constant SEND_UPDATE_ASSETS_SELECTOR = ISpokeMessageSender.sendUpdateAssets.selector;
 
     uint16 constant LOCAL_CENTRIFUGE_ID = 1;
     uint16 constant REMOTE_CENTRIFUGE_ID = 2;
@@ -433,7 +431,7 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         );
     }
 
-    /// @dev A ward (e.g. the SpokeV3_1_0 compatibility layer) may bridge on behalf of another owner; the
+    /// @dev A ward (e.g. a compatibility layer) may bridge on behalf of another owner; the
     ///      shares are pulled and burned from `owner`, not from the ward caller.
     function testCrossChainTransferOnBehalfByWard() public {
         _mockShareToken();
@@ -844,12 +842,12 @@ contract SpokeTestRevoke is SpokeTest {
 }
 
 contract SpokeTestSubmitQueuedAssets is SpokeTest {
-    function _mockSendUpdateHoldingAmount(uint128 amount, bool isDeposit, bool isSnapshot, uint64 nonce) internal {
+    function _mockSendUpdateAssets(uint128 amount, bool isDeposit, bool isSnapshot, uint64 nonce) internal {
         vm.mockCall(
             address(sender),
             COST,
             abi.encodeWithSelector(
-                SEND_UPDATE_HOLDING_AMOUNT_SELECTOR,
+                SEND_UPDATE_ASSETS_SELECTOR,
                 POOL_A,
                 SC_1,
                 ASSET_ID_20,
@@ -870,7 +868,7 @@ contract SpokeTestSubmitQueuedAssets is SpokeTest {
     }
 
     function testSubmitQueuedAssets() public {
-        _mockSendUpdateHoldingAmount(0, !IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateAssets(0, !IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.prank(MANAGER);
         spoke.submitQueuedAssets{value: COST}(POOL_A, SC_1, ASSET_ID_20, EXTRA_GAS, REFUND);
@@ -882,7 +880,7 @@ contract SpokeTestSubmitQueuedAssets is SpokeTest {
     function testSubmitQueuedAssetsAfterDeposit() public {
         _mockEscrowDeposit(erc20, 0, AMOUNT * 3);
         _mockEscrowWithdraw(erc20, 0, AMOUNT);
-        _mockSendUpdateHoldingAmount(AMOUNT * 2, IS_DEPOSIT, IS_SNAPSHOT, 0);
+        _mockSendUpdateAssets(AMOUNT * 2, IS_DEPOSIT, IS_SNAPSHOT, 0);
 
         vm.startPrank(MANAGER);
         spoke.noteDeposit(POOL_A, SC_1, erc20, 0, AMOUNT * 3);

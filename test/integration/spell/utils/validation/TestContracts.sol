@@ -13,7 +13,6 @@ import {SpokeHandler} from "../../../../../src/core/spoke/SpokeHandler.sol";
 import {SnapshotQueue} from "../../../../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../../../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
-import {SpokeV3_1_0} from "../../../../../src/core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../../../../../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../../../../../src/core/hub/ShareClassManager.sol";
 import {MessageProcessor} from "../../../../../src/core/messaging/MessageProcessor.sol";
@@ -88,7 +87,6 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         ContractUpdater(c.contractUpdater),
         SpokeHandler(c.spokeHandler),
         SpokeRegistry(c.spokeRegistry),
-        SpokeV3_1_0(c.spokeV3_1_0),
         ContractUpdaterForwarder(c.contractUpdaterForwarder),
         Envoy(c.envoy),
         HubRegistry(c.hubRegistry),

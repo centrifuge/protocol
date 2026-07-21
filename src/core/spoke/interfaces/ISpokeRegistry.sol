@@ -65,7 +65,7 @@ interface ISpokeRegistry {
     /// @notice Emitted when a Hub-authorized, out-of-policy call is recorded (the Hub already ran the timelock,
     ///         so the spoke keeps no local one). `data` is the exact authorized calldata, so the action is
     ///         decodable straight from logs.
-    event Authorized(PoolId indexed poolId, bytes32 indexed authId, bytes data);
+    event AuthorizationGranted(PoolId indexed poolId, bytes32 indexed authId, bytes data);
     /// @notice Emitted when the Hub revokes a not-yet-consumed authorization (decrements its counter).
     event AuthorizationRevoked(PoolId indexed poolId, bytes32 indexed authId, bytes data);
     /// @notice Emitted when a recorded authorization is consumed by an executing out-of-policy call.
@@ -121,7 +121,7 @@ interface ISpokeRegistry {
     /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing could consume it).
     error NoManifest();
     /// @notice Dispatched when {consumeAuthorization} finds no recorded authorization for the call.
-    error Unauthorized();
+    error NoOutstandingAuthorization();
     /// @notice Dispatched when {consumeAuthorization} is called by anyone other than the pool's manifest.
     error NotManifest();
 

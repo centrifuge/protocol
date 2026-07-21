@@ -43,6 +43,7 @@ contract Accounting is Auth, IAccounting {
     /// @inheritdoc IAccounting
     function unlock(PoolId poolId) external auth {
         require(PoolId.unwrap(_currentPoolId) == 0, AccountingAlreadyUnlocked());
+        require(!poolId.isNull(), InvalidPoolId());
         debited = 0;
         credited = 0;
         _currentPoolId = poolId;
@@ -55,6 +56,7 @@ contract Accounting is Auth, IAccounting {
 
     /// @inheritdoc IAccounting
     function lock() external auth {
+        require(!_currentPoolId.isNull(), AccountingLocked());
         require(debited == credited, Unbalanced());
 
         emit EndJournalId(_currentPoolId, TransientJournal.journalId(_currentPoolId));

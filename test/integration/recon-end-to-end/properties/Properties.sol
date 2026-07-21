@@ -99,7 +99,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     function property_sum_of_pending_redeem_request() public tokenIsSet {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
         address asset = vault.asset();
 
         address[] memory actors = _getActors();
@@ -197,11 +197,11 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             (uint128 pending, uint32 lastUpdate) = batchRequestManager.depositRequest(
                 _getVault().poolId(),
                 _getVault().scId(),
-                spokeV3_1_0.vaultDetails(_getVault()).assetId,
+                spokeRegistry.vaultDetails(_getVault()).assetId,
                 _getActor().toBytes32()
             );
             (uint32 depositEpochId,,,) = batchRequestManager.epochId(
-                _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
+                _getVault().poolId(), _getVault().scId(), spokeRegistry.vaultDetails(_getVault()).assetId
             );
 
             // Check if this is a fresh user (request not yet processed by Hub)
@@ -223,15 +223,15 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             (uint128 pending, uint32 lastUpdate) = batchRequestManager.redeemRequest(
                 _getVault().poolId(),
                 _getVault().scId(),
-                spokeV3_1_0.vaultDetails(_getVault()).assetId,
+                spokeRegistry.vaultDetails(_getVault()).assetId,
                 _getActor().toBytes32()
             );
             (,, uint32 redeemEpochId,) = batchRequestManager.epochId(
-                _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
+                _getVault().poolId(), _getVault().scId(), spokeRegistry.vaultDetails(_getVault()).assetId
             );
 
             uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(
-                _getVault().poolId(), _getVault().scId(), spokeV3_1_0.vaultDetails(_getVault()).assetId
+                _getVault().poolId(), _getVault().scId(), spokeRegistry.vaultDetails(_getVault()).assetId
             );
             // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed, the epochId should
             // not change
@@ -499,7 +499,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -515,7 +515,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -531,7 +531,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -547,7 +547,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             gte(
@@ -562,7 +562,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     function property_cancelled_and_processed_redemptions_soundness() public {
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
         address[] memory actors = _getActors();
 
         for (uint256 i; i < actors.length; i++) {
@@ -579,7 +579,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address[] memory actors = _getActors();
         IBaseVault vault = _getVault();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         uint256 totalDeposits;
         for (uint256 i; i < actors.length; i++) {
@@ -613,7 +613,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             (uint128 pending,) = batchRequestManager.depositRequest(poolId, scId, assetId, actors[i].toBytes32());
@@ -636,7 +636,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeV3_1_0.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
 
         for (uint256 i; i < actors.length; i++) {
             (uint128 pending,) = batchRequestManager.redeemRequest(poolId, scId, assetId, actors[i].toBytes32());

@@ -58,9 +58,7 @@ contract TestMainMethodsChecks is TestCommon {
         hubHandler.request(PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), EMPTY_BYTES);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        hubHandler.updateHoldingAmount(
-            CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, false, true, 0
-        );
+        hubHandler.updateAssets(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), AssetId.wrap(0), 0, false, true, 0);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         hubHandler.updateShares(CHAIN_A, PoolId.wrap(0), ShareClassId.wrap(0), 0, true, true, 0);
@@ -157,7 +155,7 @@ contract TestUpdateHoldingAmount is TestCommon {
         );
 
         vm.prank(AUTH);
-        hubHandler.updateHoldingAmount(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, true, true, NONCE);
+        hubHandler.updateAssets(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, true, true, NONCE);
     }
 
     function testDecreaseJournalsReturnedValue() public {
@@ -174,7 +172,7 @@ contract TestUpdateHoldingAmount is TestCommon {
         );
 
         vm.prank(AUTH);
-        hubHandler.updateHoldingAmount(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, false, true, NONCE);
+        hubHandler.updateAssets(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, false, true, NONCE);
     }
 
     function testUninitializedSkipsAccounting() public {
@@ -192,7 +190,7 @@ contract TestUpdateHoldingAmount is TestCommon {
         );
 
         vm.prank(AUTH);
-        hubHandler.updateHoldingAmount(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, true, true, NONCE);
+        hubHandler.updateAssets(CHAIN_A, POOL_A, SC_A, ASSET_A, AMOUNT, true, true, NONCE);
     }
 }
 

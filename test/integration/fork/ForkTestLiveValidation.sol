@@ -275,7 +275,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         config.contracts.spoke = address(report.core.spoke);
         config.contracts.spokeHandler = address(report.core.spokeHandler);
         config.contracts.spokeRegistry = address(report.core.spokeRegistry);
-        config.contracts.spokeV3_1_0 = address(report.core.spokeV3_1_0);
         config.contracts.envoy = address(report.core.envoy);
         config.contracts.contractUpdater = address(report.core.contractUpdater);
         config.contracts.poolEscrowFactory = address(report.core.poolEscrowFactory);

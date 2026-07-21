@@ -31,13 +31,14 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     function nowDepositEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
         return
-            batchRequestManager.nowDepositEpoch(vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId);
+            batchRequestManager.nowDepositEpoch(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(vault).assetId);
     }
 
     /// @dev Get the current redeem epoch for the current vault
     function nowRedeemEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
-        return batchRequestManager.nowRedeemEpoch(vault.poolId(), vault.scId(), spokeV3_1_0.vaultDetails(vault).assetId);
+        return
+            batchRequestManager.nowRedeemEpoch(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(vault).assetId);
     }
 
     /// === SANITY CHECKS === ///
@@ -476,17 +477,17 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
-        uint16 centrifugeId = spokeV3_1_0.vaultDetails(vault).assetId.centrifugeId();
+        uint16 centrifugeId = spokeRegistry.vaultDetails(vault).assetId.centrifugeId();
 
-        hub_updateHoldingAmount(100, true);
+        hub_updateAssets(100, true);
         property_deficitCountMatchesHoldings();
         eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "no deficit after increase");
 
-        hub_updateHoldingAmount(150, false); // over-decrease
+        hub_updateAssets(150, false); // over-decrease
         property_deficitCountMatchesHoldings();
         eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 1, "deficit after over-decrease");
 
-        hub_updateHoldingAmount(50, true); // refill to equality
+        hub_updateAssets(50, true); // refill to equality
         property_deficitCountMatchesHoldings();
         eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "deficit cleared after refill");
     }

@@ -52,7 +52,7 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.InitiateTransferShares) return "initiateTransferShares";
         if (kind == MessageType.ExecuteTransferShares) return "executeTransferShares";
         if (kind == MessageType.UpdateRestriction) return "updateRestriction";
-        if (kind == MessageType.ManagerCall) return "managerCall";
+        if (kind == MessageType.ManagerCallFromHub) return "managerCallFromHub";
         if (kind == MessageType.RequestCallback) return "requestCallback";
         if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
@@ -64,11 +64,11 @@ contract MessageBenchmarker is IMessageHandler, Test {
         if (kind == MessageType.SetRequestManager) return "setRequestManager";
         if (kind == MessageType.SetManifest) return "setManifest";
         if (kind == MessageType.UpdateManager) return "updateManager";
-        if (kind == MessageType.UpdateHoldingAmount) return "updateHoldingAmount";
+        if (kind == MessageType.UpdateAssets) return "updateAssets";
         if (kind == MessageType.UpdateShares) return "updateShares";
         if (kind == MessageType.ManagerCallFromSpoke) return "managerCallFromSpoke";
-        if (kind == MessageType.Authorize) return "authorize";
-        if (kind == MessageType.Unauthorize) return "unauthorize";
+        if (kind == MessageType.AuthorizeSpokeCall) return "authorizeSpokeCall";
+        if (kind == MessageType.UnauthorizeSpokeCall) return "unauthorizeSpokeCall";
         revert("Cannot benchmark message"); // Unreachable
     }
 

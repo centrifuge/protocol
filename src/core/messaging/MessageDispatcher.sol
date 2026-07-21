@@ -214,7 +214,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendManagerHubCall(
+    function sendManagerCallFromHub(
         uint16 centrifugeId,
         PoolId poolId,
         address target,
@@ -235,7 +235,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             _send(
                 centrifugeId,
-                MessageLib.ManagerCall({
+                MessageLib.ManagerCallFromHub({
                         poolId: poolId.raw(), target: target.toBytes32(), extraGasLimit: extraGasLimit, payload: payload
                     }).serialize(),
                 false,
@@ -294,7 +294,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendAuthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+    function sendAuthorizeSpokeCall(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
         external
         payable
         auth
@@ -303,12 +303,17 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             spokeHandler.authorize(poolId, data);
             _refund(refund);
         } else {
-            _send(centrifugeId, MessageLib.Authorize({poolId: poolId.raw(), data: data}).serialize(), false, refund);
+            _send(
+                centrifugeId,
+                MessageLib.AuthorizeSpokeCall({poolId: poolId.raw(), payload: data}).serialize(),
+                false,
+                refund
+            );
         }
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUnauthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+    function sendUnauthorizeSpokeCall(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
         external
         payable
         auth
@@ -317,7 +322,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             spokeHandler.unauthorize(poolId, data);
             _refund(refund);
         } else {
-            _send(centrifugeId, MessageLib.Unauthorize({poolId: poolId.raw(), data: data}).serialize(), false, refund);
+            _send(
+                centrifugeId,
+                MessageLib.UnauthorizeSpokeCall({poolId: poolId.raw(), payload: data}).serialize(),
+                false,
+                refund
+            );
         }
     }
 
@@ -469,7 +479,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc ISpokeMessageSender
-    function sendUpdateHoldingAmount(
+    function sendUpdateAssets(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -478,14 +488,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) public payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hubHandler.updateHoldingAmount(
+            hubHandler.updateAssets(
                 localCentrifugeId, poolId, scId, assetId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
             _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
-                MessageLib.UpdateHoldingAmount({
+                MessageLib.UpdateAssets({
                         poolId: poolId.raw(),
                         scId: scId.raw(),
                         assetId: assetId.raw(),
@@ -503,8 +513,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc ISpokeMessageSender
-    /// @dev ABI-compatibility overload for the deployed v3.1.0 BalanceSheet; the price is ignored
-    ///      (the hub values holding deltas at its own valuation).
+    /// @dev ABI-compatibility overload of `sendUpdateAssets` for the deployed v3.1.0 BalanceSheet; the price is
+    ///      ignored (the hub values holding deltas at its own valuation).
     function sendUpdateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,
@@ -514,7 +524,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint128 extraGasLimit,
         address refund
     ) external payable {
-        sendUpdateHoldingAmount(poolId, scId, assetId, data, extraGasLimit, refund);
+        sendUpdateAssets(poolId, scId, assetId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc ISpokeMessageSender
@@ -598,7 +608,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc ISpokeMessageSender
-    function sendManagerSpokeCall(
+    function sendManagerCallFromSpoke(
         PoolId poolId,
         bytes32 target,
         bytes calldata payload,

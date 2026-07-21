@@ -294,7 +294,6 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         spoke.rely(address(this));
         spokeHandler.rely(address(this));
         spokeRegistry.rely(address(this));
-        spokeV3_1_0.rely(address(this));
         contractUpdater.rely(address(this));
         refundEscrowFactory.rely(address(this));
         asyncVaultFactory.rely(address(this));

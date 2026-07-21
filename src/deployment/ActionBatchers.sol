@@ -17,7 +17,6 @@ import {AssetId, newAssetId} from "../core/types/AssetId.sol";
 import {SnapshotQueue} from "../core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
-import {SpokeV3_1_0} from "../core/spoke/legacy/SpokeV3_1_0.sol";
 import {ContractUpdater} from "../core/utils/ContractUpdater.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../core/hub/ShareClassManager.sol";
@@ -75,7 +74,6 @@ struct CoreReport {
     ContractUpdater contractUpdater;
     SpokeHandler spokeHandler;
     SpokeRegistry spokeRegistry;
-    SpokeV3_1_0 spokeV3_1_0;
     ContractUpdaterForwarder contractUpdaterForwarder;
     Envoy envoy;
     HubRegistry hubRegistry;
@@ -160,7 +158,6 @@ contract CoreActionBatcher is Constants {
         report.contractUpdater.rely(root);
         report.spokeRegistry.rely(root);
         report.spokeHandler.rely(root);
-        report.spokeV3_1_0.rely(root);
         report.envoy.rely(root);
 
         report.hubRegistry.rely(root);
@@ -194,12 +191,6 @@ contract CoreActionBatcher is Constants {
         // Rely spoke
         report.messageDispatcher.rely(address(report.spoke));
         report.snapshotQueue.rely(address(report.spoke));
-
-        // Rely spokeV3_1_0: needed because SpokeV3_1_0.request() calls messageDispatcher.sendRequest() which has auth
-        report.messageDispatcher.rely(address(report.spokeV3_1_0));
-        // Rely spokeV3_1_0 on Spoke: SpokeV3_1_0.crosschainTransferShares() forwards the original caller as the
-        // share `owner`, which requires ward status to bridge on the caller's behalf.
-        report.spoke.rely(address(report.spokeV3_1_0));
 
         // Rely spokeHandler
         report.spokeHandler.rely(address(report.messageProcessor));
@@ -269,9 +260,6 @@ contract CoreActionBatcher is Constants {
 
         report.spoke.file("sender", address(report.messageDispatcher));
 
-        report.spokeV3_1_0.file("spoke", address(report.spoke));
-        report.spokeV3_1_0.file("spokeRegistry", address(report.spokeRegistry));
-
         report.hub.file("sender", address(report.messageDispatcher));
 
         report.hubHandler.file("sender", address(report.messageDispatcher));
@@ -304,7 +292,6 @@ contract CoreActionBatcher is Constants {
         report.poolEscrowFactory.deny(address(this));
         report.spokeRegistry.deny(address(this));
         report.spokeHandler.deny(address(this));
-        report.spokeV3_1_0.deny(address(this));
         report.envoy.deny(address(this));
 
         report.hubRegistry.deny(address(this));

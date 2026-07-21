@@ -74,7 +74,7 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateHoldingAmount(
+    function updateAssets(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,

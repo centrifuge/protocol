@@ -81,10 +81,10 @@ interface IHubMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Routes a manager call to its target. Local: through the `Envoy`, forwarding `value`. Remote:
-    ///         emits a `ManagerCall` message delivered on the destination chain via its `Envoy`.
+    ///         emits a `ManagerCallFromHub` message delivered on the destination chain via its `Envoy`.
     /// @dev    `Hub.managerCall` enforces `value == msgValue()` locally / `value == 0` remotely. `extraGasLimit`
     ///         meters the remote delivery (inert on the local branch).
-    function sendManagerHubCall(
+    function sendManagerCallFromHub(
         uint16 centrifugeId,
         PoolId poolId,
         address target,
@@ -112,10 +112,14 @@ interface IHubMessageSender is ILocalCentrifugeId {
     function sendSetManifest(uint16 centrifugeId, PoolId poolId, bytes32 manifest, address refund) external payable;
 
     /// @notice Creates and send the message
-    function sendAuthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund) external payable;
+    function sendAuthorizeSpokeCall(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+        external
+        payable;
 
     /// @notice Creates and send the message
-    function sendUnauthorize(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund) external payable;
+    function sendUnauthorizeSpokeCall(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+        external
+        payable;
 
     /// @notice Creates and send the message
     function sendUpdateManager(
@@ -187,7 +191,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     /// @dev    The message carries no price; the hub values the delta at its own valuation.
-    function sendUpdateHoldingAmount(
+    function sendUpdateAssets(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
@@ -197,7 +201,8 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     ) external payable;
 
     /// @notice Creates and send the message
-    /// @dev    ABI-compatibility overload for the deployed v3.1.0 BalanceSheet; the price is ignored.
+    /// @dev    ABI-compatibility overload of `sendUpdateAssets` for the deployed v3.1.0 BalanceSheet; the price
+    ///         is ignored (the hub values the delta at its own valuation).
     function sendUpdateHoldingAmount(
         PoolId poolId,
         ShareClassId scId,
@@ -236,7 +241,7 @@ interface ISpokeMessageSender is ILocalCentrifugeId {
     /// @param sender The spoke-side initiator (as bytes32)
     /// @param extraGasLimit Additional gas for cross-chain execution
     /// @param refund Address to refund excess payment
-    function sendManagerSpokeCall(
+    function sendManagerCallFromSpoke(
         PoolId poolId,
         bytes32 target,
         bytes calldata payload,

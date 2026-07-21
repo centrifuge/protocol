@@ -46,9 +46,9 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
-    event SetAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] adapters, uint8 threshold);
-    event BlockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
-    event UnblockSession(uint16 centrifugeId, PoolId poolId, uint16 sessionId);
+    event SetAdapters(uint16 centrifugeId, PoolId indexed poolId, IAdapter[] adapters, uint8 threshold);
+    event BlockSession(uint16 centrifugeId, PoolId indexed poolId, uint16 sessionId);
+    event UnblockSession(uint16 centrifugeId, PoolId indexed poolId, uint16 sessionId);
     event Vote(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event Execute(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
     event SendPayload(
@@ -61,7 +61,7 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
         uint256 gasPaid,
         address refund
     );
-    event UpdateManager(PoolId poolId, address who, bool canManage);
+    event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
 
     //----------------------------------------------------------------------------------------------
     // Errors

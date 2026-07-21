@@ -103,23 +103,17 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, liabilityAsset));
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0
-        );
+        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CV, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), true, false, 1
-        );
+        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), true, false, 1);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 3300e18, true, true, 2);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0
-        );
+        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
@@ -243,7 +237,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         );
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, true, true, 2);
+        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, true, true, 2);
 
         uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
@@ -266,13 +260,11 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         // current average price (assetAmountValue / assetAmount). The liability is decreased in full
         // (50e18 of 50e18), so its value is fully released regardless of pro-rata math.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, false, false, 3);
+        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, false, false, 3);
         // asset3 holds 500 units valued at 500e18 (average price 1:1). Removing 100 of 500 units takes
         // 100/500 = 1/5 of the value, i.e. 100e18, regardless of the asset's current spot price.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CP, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), false, true, 4
-        );
+        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), false, true, 4);
 
         navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
         navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
@@ -362,9 +354,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3));
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0
-        );
+        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
 
         // Issue shares only to destination network to have some global issuance
         vm.prank(address(messageDispatcher));
@@ -402,9 +392,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         emit INAVManager.SkipSync(POOL_A, scId, CHAIN_CV, 1);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), false, true, 3
-        );
+        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), false, true, 3);
 
         // Gate engaged: live NAV reflects the shortfall, but the published price is held.
         assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 1);
@@ -417,9 +405,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId));
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4
-        );
+        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
 
         assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 0);
         (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);

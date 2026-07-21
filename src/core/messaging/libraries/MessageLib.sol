@@ -11,32 +11,39 @@ import {AssetId} from "../../types/AssetId.sol";
 enum MessageType {
     /// @dev Placeholder for null message type
     _Invalid,
-    // -- Pool independent messages
+    // --- Protocol-wide (pool-independent) ---
+    // NOTE: everything below `NotifyPool` is treated as pool-dependent (carries its PoolId at offset 1);
+    // see `messagePoolId` / `messageSourceCentrifugeId`. Keep pool-independent messages above `NotifyPool`.
     ScheduleUpgrade,
     CancelUpgrade,
     RegisterAsset,
     SetPoolAdapters,
-    // -- Pool dependent messages
+    // --- Pool & share-class notifications ---
     NotifyPool,
     NotifyShareClass,
     NotifyPricePoolPerShare,
     NotifyPricePoolPerAsset,
     NotifyShareMetadata,
+    // --- Share transfers ---
     InitiateTransferShares,
     ExecuteTransferShares,
+    // --- Vaults & restrictions ---
     UpdateRestriction,
     UpdateVault,
-    UpdateHoldingAmount,
+    // --- Balance sheet ---
+    UpdateAssets,
     UpdateShares,
+    // --- Investment requests ---
     Request,
     RequestCallback,
     SetRequestManager,
+    // --- Manager calls & authorization ---
     ManagerCallFromSpoke,
+    ManagerCallFromHub,
     UpdateManager,
-    ManagerCall,
     SetManifest,
-    Authorize,
-    Unauthorize
+    AuthorizeSpokeCall,
+    UnauthorizeSpokeCall
 }
 
 /// @dev Used internally in the UpdateVault message (not represent a submessage)
@@ -83,17 +90,17 @@ library MessageLib {
         (89  << uint8(MessageType.ExecuteTransferShares) * 8) +
         (41  << uint8(MessageType.UpdateRestriction) * 8) +
         (90  << uint8(MessageType.UpdateVault) * 8) +
-        (91  << uint8(MessageType.UpdateHoldingAmount) * 8) +
+        (91  << uint8(MessageType.UpdateAssets) * 8) +
         (75  << uint8(MessageType.UpdateShares) * 8) +
         (57  << uint8(MessageType.Request) * 8) +
         (57  << uint8(MessageType.RequestCallback) * 8) +
         (41  << uint8(MessageType.SetRequestManager) * 8) +
         (89  << uint8(MessageType.ManagerCallFromSpoke) * 8) +
         (43  << uint8(MessageType.UpdateManager) * 8) +
-        (57  << uint8(MessageType.ManagerCall) * 8) +
+        (57  << uint8(MessageType.ManagerCallFromHub) * 8) +
         (41  << uint8(MessageType.SetManifest) * 8) +
-        (9   << uint8(MessageType.Authorize) * 8) +
-        (9   << uint8(MessageType.Unauthorize) * 8);
+        (9   << uint8(MessageType.AuthorizeSpokeCall) * 8) +
+        (9   << uint8(MessageType.UnauthorizeSpokeCall) * 8);
 
     function messageType(bytes memory message) internal pure returns (MessageType) {
         return MessageType(message.toUint8(0));
@@ -112,7 +119,7 @@ library MessageLib {
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.ManagerCall)) {
+        } else if (kind == uint8(MessageType.ManagerCallFromHub)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.ManagerCallFromSpoke)) {
             length += 2 + message.toUint16(length); //payloadLength
@@ -120,9 +127,9 @@ library MessageLib {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.RequestCallback)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.Authorize)) {
+        } else if (kind == uint8(MessageType.AuthorizeSpokeCall)) {
             length += 2 + message.toUint16(length); //payloadLength
-        } else if (kind == uint8(MessageType.Unauthorize)) {
+        } else if (kind == uint8(MessageType.UnauthorizeSpokeCall)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.SetPoolAdapters)) {
             length += message.toUint16(10) * 32; // message with variable length
@@ -154,12 +161,12 @@ library MessageLib {
 
         // Hub->spoke: SetPoolAdapters and all messages from NotifyPool upward, except the spoke->hub
         // exclusions below. All hub->spoke messages carry their poolId at offset 1 (big-endian uint64).
-        // Request and UpdateHoldingAmount are excluded here and handled by the asset-homed branch below.
+        // Request and UpdateAssets are excluded here and handled by the asset-homed branch below.
         if (
             kind == MessageType.SetPoolAdapters
                 || (kind >= MessageType.NotifyPool
                     && kind != MessageType.InitiateTransferShares
-                    && kind != MessageType.UpdateHoldingAmount
+                    && kind != MessageType.UpdateAssets
                     && kind != MessageType.UpdateShares
                     && kind != MessageType.Request
                     && kind != MessageType.ManagerCallFromSpoke)
@@ -173,20 +180,19 @@ library MessageLib {
         if (kind == MessageType.ScheduleUpgrade || kind == MessageType.CancelUpgrade) {
             return MAINNET_CENTRIFUGE_ID;
         }
-        if (kind == MessageType.RegisterAsset || kind == MessageType.Request || kind == MessageType.UpdateHoldingAmount)
-        {
+        if (kind == MessageType.RegisterAsset || kind == MessageType.Request || kind == MessageType.UpdateAssets) {
             return messageAssetId(kind, message).centrifugeId();
         }
         return 0;
     }
 
     /// @dev The AssetId embedded in `message`. RegisterAsset carries it at offset 1; Request and
-    ///      UpdateHoldingAmount carry it at offset 25 (after poolId and scId).
+    ///      UpdateAssets carry it at offset 25 (after poolId and scId).
     function messageAssetId(MessageType kind, bytes memory message) internal pure returns (AssetId) {
         if (kind == MessageType.RegisterAsset) {
             return AssetId.wrap(message.toUint128(1));
         }
-        if (kind == MessageType.Request || kind == MessageType.UpdateHoldingAmount) {
+        if (kind == MessageType.Request || kind == MessageType.UpdateAssets) {
             return AssetId.wrap(message.toUint128(25));
         }
         revert UnknownMessageType();
@@ -213,7 +219,7 @@ library MessageLib {
             return message.toUint128(73);
         } else if (kind == uint8(MessageType.UpdateRestriction)) {
             return message.toUint128(25);
-        } else if (kind == uint8(MessageType.ManagerCall)) {
+        } else if (kind == uint8(MessageType.ManagerCallFromHub)) {
             return message.toUint128(41);
         } else if (kind == uint8(MessageType.ManagerCallFromSpoke)) {
             return message.toUint128(73);
@@ -223,7 +229,7 @@ library MessageLib {
             return message.toUint128(41);
         } else if (kind == uint8(MessageType.UpdateVault)) {
             return message.toUint128(74);
-        } else if (kind == uint8(MessageType.UpdateHoldingAmount)) {
+        } else if (kind == uint8(MessageType.UpdateAssets)) {
             return message.toUint128(75);
         } else if (kind == uint8(MessageType.UpdateShares)) {
             return message.toUint128(59);
@@ -559,23 +565,23 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    ManagerCall
+    //    ManagerCallFromHub
     //---------------------------------------
 
     /// @dev Generic hub->target manager call routed through the Envoy on the receiving chain. Pool-scoped;
     ///      any `scId` is encoded inside `payload` by the caller. Legacy trusted-contract updates ride this
     ///      message with `target` = the ContractUpdater (which unwraps and forwards to `trustedCall`).
-    struct ManagerCall {
+    struct ManagerCallFromHub {
         uint64 poolId;
         bytes32 target;
         uint128 extraGasLimit;
         bytes payload; // As sequence of bytes
     }
 
-    function deserializeManagerCall(bytes memory data) internal pure returns (ManagerCall memory) {
-        require(messageType(data) == MessageType.ManagerCall, UnknownMessageType());
+    function deserializeManagerCallFromHub(bytes memory data) internal pure returns (ManagerCallFromHub memory) {
+        require(messageType(data) == MessageType.ManagerCallFromHub, UnknownMessageType());
         uint16 payloadLength = data.toUint16(57);
-        return ManagerCall({
+        return ManagerCallFromHub({
             poolId: data.toUint64(1),
             target: data.toBytes32(9),
             extraGasLimit: data.toUint128(41),
@@ -583,9 +589,9 @@ library MessageLib {
         });
     }
 
-    function serialize(ManagerCall memory t) internal pure returns (bytes memory) {
+    function serialize(ManagerCallFromHub memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.ManagerCall, t.poolId, t.target, t.extraGasLimit, t.payload.length.toUint16(), t.payload
+            MessageType.ManagerCallFromHub, t.poolId, t.target, t.extraGasLimit, t.payload.length.toUint16(), t.payload
         );
     }
 
@@ -741,10 +747,10 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //    UpdateHoldingAmount
+    //    UpdateAssets
     //---------------------------------------
 
-    struct UpdateHoldingAmount {
+    struct UpdateAssets {
         uint64 poolId;
         bytes16 scId;
         uint128 assetId;
@@ -756,10 +762,10 @@ library MessageLib {
         uint128 extraGasLimit;
     }
 
-    function deserializeUpdateHoldingAmount(bytes memory data) internal pure returns (UpdateHoldingAmount memory h) {
-        require(messageType(data) == MessageType.UpdateHoldingAmount, UnknownMessageType());
+    function deserializeUpdateAssets(bytes memory data) internal pure returns (UpdateAssets memory h) {
+        require(messageType(data) == MessageType.UpdateAssets, UnknownMessageType());
 
-        return UpdateHoldingAmount({
+        return UpdateAssets({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
@@ -772,9 +778,9 @@ library MessageLib {
         });
     }
 
-    function serialize(UpdateHoldingAmount memory t) internal pure returns (bytes memory) {
+    function serialize(UpdateAssets memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateHoldingAmount,
+            MessageType.UpdateAssets,
             t.poolId,
             t.scId,
             t.assetId,
@@ -872,42 +878,42 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   Authorize
+    //   AuthorizeSpokeCall
     //---------------------------------------
 
-    struct Authorize {
+    struct AuthorizeSpokeCall {
         uint64 poolId;
-        bytes data; // The exact spoke calldata being authorized
+        bytes payload; // The exact spoke calldata being authorized
     }
 
-    function deserializeAuthorize(bytes memory data) internal pure returns (Authorize memory) {
-        require(messageType(data) == MessageType.Authorize, UnknownMessageType());
+    function deserializeAuthorizeSpokeCall(bytes memory data) internal pure returns (AuthorizeSpokeCall memory) {
+        require(messageType(data) == MessageType.AuthorizeSpokeCall, UnknownMessageType());
 
         uint16 payloadLength = data.toUint16(9);
-        return Authorize({poolId: data.toUint64(1), data: data.slice(11, payloadLength)});
+        return AuthorizeSpokeCall({poolId: data.toUint64(1), payload: data.slice(11, payloadLength)});
     }
 
-    function serialize(Authorize memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.Authorize, t.poolId, t.data.length.toUint16(), t.data);
+    function serialize(AuthorizeSpokeCall memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.AuthorizeSpokeCall, t.poolId, t.payload.length.toUint16(), t.payload);
     }
 
     //---------------------------------------
-    //   Unauthorize
+    //   UnauthorizeSpokeCall
     //---------------------------------------
 
-    struct Unauthorize {
+    struct UnauthorizeSpokeCall {
         uint64 poolId;
-        bytes data; // The exact spoke calldata whose authorization is being revoked
+        bytes payload; // The exact spoke calldata whose authorization is being revoked
     }
 
-    function deserializeUnauthorize(bytes memory data) internal pure returns (Unauthorize memory) {
-        require(messageType(data) == MessageType.Unauthorize, UnknownMessageType());
+    function deserializeUnauthorizeSpokeCall(bytes memory data) internal pure returns (UnauthorizeSpokeCall memory) {
+        require(messageType(data) == MessageType.UnauthorizeSpokeCall, UnknownMessageType());
 
         uint16 payloadLength = data.toUint16(9);
-        return Unauthorize({poolId: data.toUint64(1), data: data.slice(11, payloadLength)});
+        return UnauthorizeSpokeCall({poolId: data.toUint64(1), payload: data.slice(11, payloadLength)});
     }
 
-    function serialize(Unauthorize memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.Unauthorize, t.poolId, t.data.length.toUint16(), t.data);
+    function serialize(UnauthorizeSpokeCall memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.UnauthorizeSpokeCall, t.poolId, t.payload.length.toUint16(), t.payload);
     }
 }

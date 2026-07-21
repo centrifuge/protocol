@@ -140,14 +140,12 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(spoke));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
-        vm.assume(nonWard != address(spokeV3_1_0));
 
         assertEq(messageDispatcher.wards(address(root)), 1);
         assertEq(messageDispatcher.wards(address(protocolGuardian)), 1);
         assertEq(messageDispatcher.wards(address(spoke)), 1);
         assertEq(messageDispatcher.wards(address(hub)), 1);
         assertEq(messageDispatcher.wards(address(hubHandler)), 1);
-        assertEq(messageDispatcher.wards(address(spokeV3_1_0)), 1);
         assertEq(messageDispatcher.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -204,11 +202,8 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
     function testSpoke(address nonWard) public view {
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeV3_1_0));
 
         assertEq(spoke.wards(address(root)), 1);
-        // SpokeV3_1_0 is warded on Spoke so it can forward crosschainTransferShares on the caller's behalf.
-        assertEq(spoke.wards(address(spokeV3_1_0)), 1);
         assertEq(spoke.wards(nonWard), 0);
 
         // dependencies set correctly

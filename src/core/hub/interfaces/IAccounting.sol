@@ -30,6 +30,9 @@ interface IAccounting {
     /// @notice Dispatched when the pool is already unlocked.
     error AccountingAlreadyUnlocked();
 
+    /// @notice Dispatched when trying to unlock the null pool sentinel.
+    error InvalidPoolId();
+
     /// @notice Dispatched when the pool is not unlocked to interact with.
     error AccountingLocked();
 

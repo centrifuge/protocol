@@ -79,7 +79,7 @@ contract TestMessageLibIds is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeManagerCall() public {
-        MessageLib.deserializeManagerCall(_prepareFor());
+        MessageLib.deserializeManagerCallFromHub(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -89,7 +89,7 @@ contract TestMessageLibIds is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeUpdateHoldingAmount() public {
-        MessageLib.deserializeUpdateHoldingAmount(_prepareFor());
+        MessageLib.deserializeUpdateAssets(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -124,12 +124,12 @@ contract TestMessageLibIds is Test {
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeAuthorize() public {
-        MessageLib.deserializeAuthorize(_prepareFor());
+        MessageLib.deserializeAuthorizeSpokeCall(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
     function testDeserializeUnauthorize() public {
-        MessageLib.deserializeUnauthorize(_prepareFor());
+        MessageLib.deserializeUnauthorizeSpokeCall(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -371,9 +371,10 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testManagerCall(uint64 poolId, bytes32 target, uint128 extraGasLimit, bytes memory payload) public pure {
-        MessageLib.ManagerCall memory a =
-            MessageLib.ManagerCall({poolId: poolId, target: target, extraGasLimit: extraGasLimit, payload: payload});
-        MessageLib.ManagerCall memory b = MessageLib.deserializeManagerCall(a.serialize());
+        MessageLib.ManagerCallFromHub memory a = MessageLib.ManagerCallFromHub({
+            poolId: poolId, target: target, extraGasLimit: extraGasLimit, payload: payload
+        });
+        MessageLib.ManagerCallFromHub memory b = MessageLib.deserializeManagerCallFromHub(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.target, b.target);
@@ -492,11 +493,11 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testAuthorize(uint64 poolId, bytes memory data) public pure {
-        MessageLib.Authorize memory a = MessageLib.Authorize({poolId: poolId, data: data});
-        MessageLib.Authorize memory b = MessageLib.deserializeAuthorize(a.serialize());
+        MessageLib.AuthorizeSpokeCall memory a = MessageLib.AuthorizeSpokeCall({poolId: poolId, payload: data});
+        MessageLib.AuthorizeSpokeCall memory b = MessageLib.deserializeAuthorizeSpokeCall(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.data, b.data);
+        assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -504,11 +505,11 @@ contract TestMessageLibIdentities is Test {
     }
 
     function testUnauthorize(uint64 poolId, bytes memory data) public pure {
-        MessageLib.Unauthorize memory a = MessageLib.Unauthorize({poolId: poolId, data: data});
-        MessageLib.Unauthorize memory b = MessageLib.deserializeUnauthorize(a.serialize());
+        MessageLib.UnauthorizeSpokeCall memory a = MessageLib.UnauthorizeSpokeCall({poolId: poolId, payload: data});
+        MessageLib.UnauthorizeSpokeCall memory b = MessageLib.deserializeUnauthorizeSpokeCall(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.data, b.data);
+        assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -541,7 +542,7 @@ contract TestMessageLibIdentities is Test {
         uint64 nonce,
         uint128 extraGasLimit
     ) public pure {
-        MessageLib.UpdateHoldingAmount memory a = MessageLib.UpdateHoldingAmount({
+        MessageLib.UpdateAssets memory a = MessageLib.UpdateAssets({
             poolId: poolId,
             scId: scId,
             assetId: assetId,
@@ -553,7 +554,7 @@ contract TestMessageLibIdentities is Test {
             extraGasLimit: extraGasLimit
         });
 
-        MessageLib.UpdateHoldingAmount memory b = MessageLib.deserializeUpdateHoldingAmount(a.serialize());
+        MessageLib.UpdateAssets memory b = MessageLib.deserializeUpdateAssets(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.scId, b.scId);
@@ -663,10 +664,10 @@ contract TestMessageLibSourceCentrifugeId is Test {
         expected[uint256(MessageType.RequestCallback)] = 1;
         expected[uint256(MessageType.SetRequestManager)] = 1;
         expected[uint256(MessageType.UpdateManager)] = 1;
-        expected[uint256(MessageType.ManagerCall)] = 1;
+        expected[uint256(MessageType.ManagerCallFromHub)] = 1;
         expected[uint256(MessageType.SetManifest)] = 1;
-        expected[uint256(MessageType.Authorize)] = 1;
-        expected[uint256(MessageType.Unauthorize)] = 1;
+        expected[uint256(MessageType.AuthorizeSpokeCall)] = 1;
+        expected[uint256(MessageType.UnauthorizeSpokeCall)] = 1;
 
         // Mainnet-only messages (centrifugeId=MAINNET_CENTRIFUGE_ID=1).
         expected[uint256(MessageType.ScheduleUpgrade)] = 1;
@@ -675,7 +676,7 @@ contract TestMessageLibSourceCentrifugeId is Test {
         // Asset-homed messages (centrifugeId=1 from the encoded assetId).
         expected[uint256(MessageType.RegisterAsset)] = 1; // assetId at offset 1
         expected[uint256(MessageType.Request)] = 1; // assetId at offset 25
-        expected[uint256(MessageType.UpdateHoldingAmount)] = 1; // assetId at offset 25
+        expected[uint256(MessageType.UpdateAssets)] = 1; // assetId at offset 25
 
         // Unrestricted spoke->hub messages (0 = any source permitted).
         expected[uint256(MessageType.InitiateTransferShares)] = 0;

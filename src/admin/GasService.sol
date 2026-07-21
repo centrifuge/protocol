@@ -51,17 +51,17 @@ contract GasService is IGasService {
     uint128 public immutable initiateTransferShares;
     uint128 public immutable executeTransferShares;
     uint128 public immutable updateRestriction;
-    uint128 public immutable managerCall;
+    uint128 public immutable managerCallFromHub;
     uint128 public immutable requestCallback;
     uint128 public immutable updateVaultDeployAndLink;
     uint128 public immutable updateVaultLink;
     uint128 public immutable updateVaultUnlink;
     uint128 public immutable setRequestManager;
     uint128 public immutable setManifest;
-    uint128 public immutable authorize;
-    uint128 public immutable unauthorize;
+    uint128 public immutable authorizeSpokeCall;
+    uint128 public immutable unauthorizeSpokeCall;
     uint128 public immutable updateManager;
-    uint128 public immutable updateHoldingAmount;
+    uint128 public immutable updateAssets;
     uint128 public immutable updateShares;
     uint128 public immutable managerCallFromSpoke;
 
@@ -73,32 +73,32 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        scheduleUpgrade = _gasValue(161030);
-        cancelUpgrade = _gasValue(141523);
-        registerAsset = _gasValue(169989);
-        setPoolAdapters = _gasValue(788910); // using MAX_ADAPTER_COUNT
-        request = _gasValue(285464);
-        notifyPool = _gasValue(1357073);
-        notifyShareClass = _gasValue(1871928);
-        notifyPricePoolPerShare = _gasValue(176552);
-        notifyPricePoolPerAsset = _gasValue(180745);
-        notifyShareMetadata = _gasValue(198092);
-        initiateTransferShares = _gasValue(371054);
-        executeTransferShares = _gasValue(253821);
-        updateRestriction = _gasValue(193470);
-        managerCall = _gasValue(227978);
-        requestCallback = _gasValue(467241); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2880082);
-        updateVaultLink = _gasValue(215013);
-        updateVaultUnlink = _gasValue(180836);
-        setRequestManager = _gasValue(175558);
-        setManifest = _gasValue(174422);
-        authorize = _gasValue(183258);
-        unauthorize = _gasValue(160986);
-        updateManager = _gasValue(175424);
-        updateHoldingAmount = _gasValue(394566);
-        updateShares = _gasValue(264185);
-        managerCallFromSpoke = _gasValue(150317);
+        scheduleUpgrade = _gasValue(160876);
+        cancelUpgrade = _gasValue(141369);
+        registerAsset = _gasValue(169835);
+        setPoolAdapters = _gasValue(788852); // using MAX_ADAPTER_COUNT
+        request = _gasValue(285246);
+        notifyPool = _gasValue(1356919);
+        notifyShareClass = _gasValue(1871774);
+        notifyPricePoolPerShare = _gasValue(176398);
+        notifyPricePoolPerAsset = _gasValue(180591);
+        notifyShareMetadata = _gasValue(197938);
+        initiateTransferShares = _gasValue(370922);
+        executeTransferShares = _gasValue(253667);
+        updateRestriction = _gasValue(193316);
+        managerCallFromHub = _gasValue(227824);
+        requestCallback = _gasValue(467087); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2879928);
+        updateVaultLink = _gasValue(214859);
+        updateVaultUnlink = _gasValue(180682);
+        setRequestManager = _gasValue(175404);
+        setManifest = _gasValue(174268);
+        authorizeSpokeCall = _gasValue(183104);
+        unauthorizeSpokeCall = _gasValue(160832);
+        updateManager = _gasValue(175270);
+        updateAssets = _gasValue(394830);
+        updateShares = _gasValue(264009);
+        managerCallFromSpoke = _gasValue(150163);
     }
 
     /// @inheritdoc IMessageProperties
@@ -141,7 +141,7 @@ contract GasService is IGasService {
         if (kind == MessageType.InitiateTransferShares) return initiateTransferShares;
         if (kind == MessageType.ExecuteTransferShares) return executeTransferShares;
         if (kind == MessageType.UpdateRestriction) return updateRestriction;
-        if (kind == MessageType.ManagerCall) return managerCall;
+        if (kind == MessageType.ManagerCallFromHub) return managerCallFromHub;
         if (kind == MessageType.RequestCallback) return requestCallback;
         if (kind == MessageType.UpdateVault) {
             VaultUpdateKind vaultKind = VaultUpdateKind(message.deserializeUpdateVault().kind);
@@ -152,10 +152,10 @@ contract GasService is IGasService {
         }
         if (kind == MessageType.SetRequestManager) return setRequestManager;
         if (kind == MessageType.SetManifest) return setManifest;
-        if (kind == MessageType.Authorize) return authorize;
-        if (kind == MessageType.Unauthorize) return unauthorize;
+        if (kind == MessageType.AuthorizeSpokeCall) return authorizeSpokeCall;
+        if (kind == MessageType.UnauthorizeSpokeCall) return unauthorizeSpokeCall;
         if (kind == MessageType.UpdateManager) return updateManager;
-        if (kind == MessageType.UpdateHoldingAmount) return updateHoldingAmount;
+        if (kind == MessageType.UpdateAssets) return updateAssets;
         if (kind == MessageType.UpdateShares) return updateShares;
         if (kind == MessageType.ManagerCallFromSpoke) return managerCallFromSpoke;
         revert InvalidMessageType(); // Unreachable

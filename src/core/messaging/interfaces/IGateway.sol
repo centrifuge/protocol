@@ -32,13 +32,13 @@ interface IGateway is IMessageHandler, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
-    event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
+    event PrepareMessage(uint16 indexed centrifugeId, PoolId indexed poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes32 messageHash);
     event FailMessage(uint16 indexed centrifugeId, bytes32 messageHash, bytes error);
     event ClearFailedMessage(uint16 indexed centrifugeId, bytes32 messageHash);
-    event SetRefundAddress(PoolId poolId, IRecoverable refund);
+    event SetRefundAddress(PoolId indexed poolId, IRecoverable refund);
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
@@ -119,7 +119,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @dev    WARNING: Gateway managers carry very significant permissions. A manager can call
     ///         `Gateway.handle` directly with an arbitrary centrifugeId and raw message bytes,
     ///         which lets it forge any hub-originated message for its pool — including
-    ///         `SetPoolAdapters`, `UpdateManager`, and `ManagerCall`. This is intentional for
+    ///         `SetPoolAdapters`, `UpdateManager`, and `ManagerCallFromHub`. This is intentional for
     ///         recovery scenarios (e.g. replaying a valid message that the transport dropped), but
     ///         it means a compromised or malicious manager key is equivalent to hub-level authority
     ///         over that pool. Grant this role only to smart contracts that constrain what messages

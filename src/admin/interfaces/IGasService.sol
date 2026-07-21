@@ -28,17 +28,17 @@ interface IGasService is IMessageProperties {
     function initiateTransferShares() external view returns (uint128);
     function executeTransferShares() external view returns (uint128);
     function updateRestriction() external view returns (uint128);
-    function managerCall() external view returns (uint128);
+    function managerCallFromHub() external view returns (uint128);
     function requestCallback() external view returns (uint128);
     function updateVaultDeployAndLink() external view returns (uint128);
     function updateVaultLink() external view returns (uint128);
     function updateVaultUnlink() external view returns (uint128);
     function setRequestManager() external view returns (uint128);
     function setManifest() external view returns (uint128);
-    function authorize() external view returns (uint128);
-    function unauthorize() external view returns (uint128);
+    function authorizeSpokeCall() external view returns (uint128);
+    function unauthorizeSpokeCall() external view returns (uint128);
     function updateManager() external view returns (uint128);
-    function updateHoldingAmount() external view returns (uint128);
+    function updateAssets() external view returns (uint128);
     function updateShares() external view returns (uint128);
     function managerCallFromSpoke() external view returns (uint128);
 }

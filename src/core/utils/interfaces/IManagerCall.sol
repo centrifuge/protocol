@@ -10,10 +10,10 @@ import {PoolId} from "../../types/PoolId.sol";
 ///         selector mismatch is the direction boundary; do not collapse the two interfaces. `payable` is
 ///         required for value forwarding. The signature is final: the `Envoy` holds it across releases and
 ///         must never redeploy. No origin `(centrifugeId, sender)`: the call is already authorized at the
-///         Hub (`_protected` + manifest) and the origin is always the hub's own chain.
+///         Hub (`_enforce` + manifest) and the origin is always the hub's own chain.
 interface IManagerCallFromHub {
     /// @notice Triggers a manifest-supervised manager action. Caller MUST be the `Envoy`.
-    /// @dev    Authorization is enforced at `Hub.managerCall` -> `_protected` -> manifest before this runs.
+    /// @dev    Authorization is enforced at `Hub.managerCall` -> `_enforce` -> manifest before this runs.
     ///         Value (if any) funds downstream messages.
     /// @param  poolId The pool the call is scoped to
     /// @param  payload Action-specific encoding decoded by the target
