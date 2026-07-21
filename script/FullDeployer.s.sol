@@ -262,6 +262,8 @@ contract FullActionBatcher is CoreActionBatcher {
 
         report.batchRequestManager.file("hub", address(report.core.hub));
 
+        report.tokenBridge.file("gateway", address(report.core.gateway));
+
         // Endorse methods
         if (newRoot) {
             report.root.endorse(address(report.core.balanceSheet));

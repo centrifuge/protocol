@@ -4,22 +4,25 @@ pragma solidity 0.8.28;
 import {ITokenBridge} from "./interfaces/ITokenBridge.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Recoverable} from "../misc/Recoverable.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
+import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 
 /// @title  TokenBridge
 /// @notice Wrapper contract for cross-chain token transfers.
 /// @dev    Integrates a relayer which is used for spoke -> hub -> spoke transfers, where the relayer pays
 ///         for the second leg on the hub chain, using the overpayment of the first leg on the source chain.
-contract TokenBridge is Auth, ITokenBridge {
+contract TokenBridge is Recoverable, ITokenBridge {
     using MathLib for uint256;
 
     ISpoke public spoke;
+    IGateway public gateway;
 
     uint16 public immutable localCentrifugeId;
 
@@ -40,6 +43,7 @@ contract TokenBridge is Auth, ITokenBridge {
     function file(bytes32 what, address data) external auth {
         if (what == "relayer") relayer = data;
         else if (what == "spoke") spoke = ISpoke(data);
+        else if (what == "gateway") gateway = IGateway(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -79,6 +83,7 @@ contract TokenBridge is Auth, ITokenBridge {
     {
         uint16 centrifugeId = chainIdToCentrifugeId[destinationChainId];
         require(centrifugeId != 0, InvalidChainId());
+        require(!gateway.isBatching(), NotBatchable());
 
         (PoolId poolId, ShareClassId scId) = spoke.shareTokenDetails(token);
 
@@ -88,11 +93,10 @@ contract TokenBridge is Auth, ITokenBridge {
 
         _crosschainTransfer(centrifugeId, poolId, scId, receiver, amount.toUint128(), refundAddress);
 
-        emit Send(token, msg.sender, destinationChainId, receiver, amount);
+        emit Send(token, msg.sender, destinationChainId, receiver, amount, refundAddress);
         return bytes("");
     }
 
-    /// @dev Reads the pool/share-class gas limits once and forwards the transfer to the spoke.
     function _crosschainTransfer(
         uint16 centrifugeId,
         PoolId poolId,

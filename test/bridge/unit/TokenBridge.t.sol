@@ -8,6 +8,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import "forge-std/Test.sol";
 
@@ -29,6 +30,7 @@ contract TokenBridgeTest is Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = 7;
 
     address spoke = address(new IsContract());
+    address gateway = address(new IsContract());
     address shareToken1 = makeAddr("shareToken1");
     address shareToken2 = makeAddr("shareToken2");
     address user = makeAddr("user");
@@ -40,6 +42,7 @@ contract TokenBridgeTest is Test {
 
     function setUp() public virtual {
         _setupMocks();
+        bridge.file("gateway", gateway);
 
         vm.deal(user, 1 ether);
     }
@@ -70,6 +73,8 @@ contract TokenBridgeTest is Test {
         vm.mockCall(shareToken2, abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
         vm.mockCall(shareToken2, abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
         vm.mockCall(shareToken2, abi.encodeWithSelector(IERC20.allowance.selector), abi.encode(0));
+
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(false));
     }
 }
 
@@ -97,6 +102,15 @@ contract TokenBridgeFileTest is TokenBridgeTest {
         bridge.file("spoke", newSpoke);
 
         assertEq(address(bridge.spoke()), newSpoke);
+    }
+
+    function testFileGatewaySuccess() public {
+        address newGateway = makeAddr("newGateway");
+        vm.expectEmit(true, true, true, true);
+        emit ITokenBridge.File("gateway", newGateway);
+        bridge.file("gateway", newGateway);
+
+        assertEq(address(bridge.gateway()), newGateway);
     }
 
     function testFileRelayerUnrecognizedParam() public {
@@ -228,7 +242,7 @@ contract TokenBridgeSendTest is TokenBridgeTest {
         );
 
         vm.expectEmit(true, true, true, true);
-        emit ITokenBridge.Send(shareToken1, address(this), EVM_CHAIN_ID_1, receiver.toBytes32(), DEFAULT_AMOUNT);
+        emit ITokenBridge.Send(shareToken1, address(this), EVM_CHAIN_ID_1, receiver.toBytes32(), DEFAULT_AMOUNT, user);
 
         bridge.send{value: 0.1 ether}(shareToken1, DEFAULT_AMOUNT, receiver.toBytes32(), EVM_CHAIN_ID_1, user);
     }
@@ -347,6 +361,13 @@ contract TokenBridgeSendTest is TokenBridgeTest {
         );
 
         bridge.send(shareToken3, DEFAULT_AMOUNT, receiver.toBytes32(), EVM_CHAIN_ID_1, user);
+    }
+
+    function testSendWhileBatching() public {
+        vm.mockCall(gateway, abi.encodeWithSelector(IGateway.isBatching.selector), abi.encode(true));
+
+        vm.expectRevert(ITokenBridge.NotBatchable.selector);
+        bridge.send{value: 0.1 ether}(shareToken1, DEFAULT_AMOUNT, receiver.toBytes32(), EVM_CHAIN_ID_1, user);
     }
 
     function testSendInvalidChainId() public {

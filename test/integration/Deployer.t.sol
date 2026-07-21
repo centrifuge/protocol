@@ -748,6 +748,7 @@ contract FullDeploymentTestPeripherals is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(tokenBridge.spoke()), address(spoke));
+        assertEq(address(tokenBridge.gateway()), address(gateway));
 
         // root endorsements
         assertEq(root.endorsed(address(tokenBridge)), true);
