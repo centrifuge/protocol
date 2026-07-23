@@ -24,6 +24,7 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
+import {RequestId} from "../core/types/RequestId.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
@@ -497,7 +498,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        bytes32 investor,
+        RequestId requestId,
         uint32 maxClaims,
         address refund
     ) external payable protected {
@@ -507,7 +508,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutShareAmount, uint128 paymentAssetAmount, uint128 cancelled, bool canClaimAgain) =
-                _claimDeposit(poolId, scId, investor, assetId);
+                _claimDeposit(poolId, scId, bytes32(requestId.raw()), assetId);
 
             totalPayoutShareAmount += payoutShareAmount;
             totalPaymentAssetAmount += paymentAssetAmount;
@@ -530,7 +531,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledDepositRequest(
-                        investor, totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
+                        bytes32(requestId.raw()), totalPaymentAssetAmount, totalPayoutShareAmount, cancelledAssetAmount
                     ).serialize(),
                 0,
                 false,
@@ -622,7 +623,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
-        bytes32 investor,
+        RequestId requestId,
         uint32 maxClaims,
         address refund
     ) external payable protected {
@@ -632,7 +633,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
 
         for (uint32 i = 0; i < maxClaims; i++) {
             (uint128 payoutAssetAmount, uint128 paymentShareAmount, uint128 cancelled, bool canClaimAgain) =
-                _claimRedeem(poolId, scId, investor, assetId);
+                _claimRedeem(poolId, scId, bytes32(requestId.raw()), assetId);
 
             totalPayoutAssetAmount += payoutAssetAmount;
             totalPaymentShareAmount += paymentShareAmount;
@@ -654,7 +655,7 @@ contract BatchRequestManager is Auth, BatchedMulticall, IBatchRequestManager {
                 scId,
                 assetId,
                 RequestCallbackMessageLib.FulfilledRedeemRequest(
-                        investor, totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
+                        bytes32(requestId.raw()), totalPayoutAssetAmount, totalPaymentShareAmount, cancelledShareAmount
                     ).serialize(),
                 0,
                 false,

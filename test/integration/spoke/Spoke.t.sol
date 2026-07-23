@@ -218,9 +218,10 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
         // Deploy and link via SpokeHandler (the only entry point for factory calls), then unlink to reach
         // the deployed-but-unlinked state (there is no standalone deploy-without-link operation).
+        vm.recordLogs();
         vm.prank(address(messageProcessor));
         spokeHandler.updateVault(POOL_A, SC_1, assetId, address(asyncVaultFactory), VaultUpdateKind.DeployAndLink);
-        address vaultAddr = address(spokeRegistry.vault(POOL_A, SC_1, assetId, spokeRegistry.requestManager(POOL_A)));
+        address vaultAddr = _deployedVaultFromLogs();
 
         vm.prank(address(messageProcessor));
         spokeHandler.updateVault(POOL_A, SC_1, assetId, vaultAddr, VaultUpdateKind.Unlink);
@@ -239,9 +240,10 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         spokeHandler.setRequestManager(POOL_A, asyncRequestManager);
 
         // Deploy and link via SpokeHandler (the only entry point for factory calls)
+        vm.recordLogs();
         vm.prank(address(messageProcessor));
         spokeHandler.updateVault(POOL_A, SC_1, assetId, address(asyncVaultFactory), VaultUpdateKind.DeployAndLink);
-        address vaultAddr = address(spokeRegistry.vault(POOL_A, SC_1, assetId, spokeRegistry.requestManager(POOL_A)));
+        address vaultAddr = _deployedVaultFromLogs();
 
         _assertVaultSetup(vaultAddr, true);
         _assertShareSetup();

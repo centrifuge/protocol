@@ -15,7 +15,7 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IRegistrar} from "../core/spoke/interfaces/IRegistrar.sol";
-import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
+import {VaultDetails} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 import {ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
 
@@ -94,8 +94,16 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
         (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId_);
         require(tokenId == 0, NonZeroTokenId());
 
-        IRequestManager rm = spokeRegistry.requestManager(poolId);
-        require(spokeRegistry.vault(poolId, scId, assetId_, rm) == IVault(vault), VaultMismatch());
+        // Validate declaratively against registry storage (poolId/scId are validated at registration, so no
+        // need to trust the vault's own getters): a non-zero pointer must be a currently-linked vault that
+        // belongs to this (poolId, scId, assetId).
+        if (vault != address(0)) {
+            VaultDetails memory details = spokeRegistry.vaultDetails(IVault(vault));
+            require(
+                details.isLinked && details.assetId == assetId_ && details.poolId == poolId && details.scId == scId,
+                VaultMismatch()
+            );
+        }
 
         IShareToken(token).updateVault(asset, vault);
     }
@@ -140,6 +148,13 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
     /// @inheritdoc IRegistrar
     function authTransferFrom(address token, address sender, address from, address to, uint256 amount) external auth {
         IShareToken(token).authTransferFrom(sender, from, to, amount);
+    }
+
+    /// @inheritdoc IRegistrar
+    /// @dev The registry has already validated the link, so this trusted path is a thin pass-through; the
+    ///      governance override (`RegistrarCall.SetVault` via `fromHub`) keeps its own declarative validation.
+    function updateVault(address token, address asset, address vault) external auth {
+        IShareToken(token).updateVault(asset, vault);
     }
 
     /// @inheritdoc IRegistrar

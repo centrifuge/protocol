@@ -269,7 +269,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 fulfilledShares,
         uint128 cancelledAssets
     ) internal {
-        IAsyncVault vault_ = IAsyncVault(address(spokeRegistry.vault(poolId, scId, assetId, this)));
+        IAsyncVault vault_ = IAsyncVault(address(_requestVault(poolId, scId, assetId)));
         AsyncInvestmentState storage state = investments[vault_][user];
 
         require(state.pendingDepositRequest != 0, NoPendingRequest());
@@ -301,7 +301,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         uint128 fulfilledShares,
         uint128 cancelledShares
     ) internal {
-        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(spokeRegistry.vault(poolId, scId, assetId, this)));
+        IAsyncRedeemVault vault_ = IAsyncRedeemVault(address(_requestVault(poolId, scId, assetId)));
 
         AsyncInvestmentState storage state = investments[vault_][user];
         require(state.pendingRedeemRequest != 0, NoPendingRequest());
@@ -710,5 +710,16 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     /// @dev Here to reduce contract bytesize
     function _checkIsLinked(IVault vault_) internal view {
         require(spokeRegistry.isLinked(vault_), VaultNotLinked());
+    }
+
+    /// @dev Resolves a fulfillment callback (keyed by the tuple) back to its vault via the share token's
+    ///      ERC-7575 pointer, which the registrar keeps aimed at the currently-linked vault for `assetId`.
+    function _requestVault(PoolId poolId, ShareClassId scId, AssetId assetId)
+        internal
+        view
+        returns (IBaseVault vault_)
+    {
+        (address asset,) = spokeRegistry.idToAsset(assetId);
+        vault_ = IBaseVault(IShareToken(address(spokeRegistry.shareToken(poolId, scId))).vault(asset));
     }
 }

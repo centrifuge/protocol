@@ -5,8 +5,8 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
-import {IERC7575} from "../../../src/misc/interfaces/IERC7575.sol";
 import {IERC20, IERC20Metadata} from "../../../src/misc/interfaces/IERC20.sol";
+import {IERC7575, IERC7575Share} from "../../../src/misc/interfaces/IERC7575.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
@@ -120,21 +120,18 @@ contract AsyncRequestManagerTest is Test {
             abi.encodeWithSelector(spokeRegistry.isLinked.selector, asyncVault),
             abi.encode(true)
         );
-        VaultDetails memory vd = VaultDetails(ASSET_ID, asset, TOKEN_ID, true);
+        VaultDetails memory vd = VaultDetails(POOL_A, SC_1, ASSET_ID, asset, TOKEN_ID, true);
         vm.mockCall(
             address(spokeRegistry),
             abi.encodeWithSelector(spokeRegistry.vaultDetails.selector, asyncVault),
             abi.encode(vd)
         );
-        vm.mockCall(
-            address(spokeRegistry),
-            abi.encodeWithSelector(spokeRegistry.vault.selector, POOL_A, SC_1, ASSET_ID, manager),
-            abi.encode(asyncVault)
-        );
-
         vm.mockCall(address(asyncVault), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
         vm.mockCall(address(asyncVault), abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
         vm.mockCall(address(asyncVault), abi.encodeWithSelector(IERC7575.share.selector), abi.encode(shareToken));
+        vm.mockCall(
+            address(shareToken), abi.encodeWithSelector(IERC7575Share.vault.selector, asset), abi.encode(asyncVault)
+        );
 
         vm.mockCall(address(asyncVault), abi.encodeWithSelector(asyncVault.onDepositClaimable.selector), abi.encode());
         vm.mockCall(address(asyncVault), abi.encodeWithSelector(asyncVault.onRedeemClaimable.selector), abi.encode());

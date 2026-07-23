@@ -382,15 +382,12 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
+        vm.recordLogs();
         spokeHandler.updateVault(
             POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
         );
 
-        vaultAddress = address(
-            spokeRegistry.vault(
-                POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), spokeRegistry.requestManager(POOL_A)
-            )
-        );
+        vaultAddress = _deployedVaultFromLogs();
         poolId = POOL_A.raw();
     }
 

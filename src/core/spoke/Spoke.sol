@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {ISpoke} from "./interfaces/ISpoke.sol";
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
+import {IRequestRouter} from "./interfaces/IRequestRouter.sol";
 import {ISnapshotQueue} from "./interfaces/ISnapshotQueue.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
@@ -347,7 +348,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     // Requests & manager calls
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ISpoke
+    /// @inheritdoc IRequestRouter
     function request(
         PoolId poolId,
         ShareClassId scId,

@@ -19,6 +19,7 @@ import {AccountId} from "../../src/core/types/AccountId.sol";
 import {Accounting} from "../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
+import {RequestId} from "../../src/core/types/RequestId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
@@ -413,6 +414,27 @@ contract EndToEndUtils is EndToEndDeployment {
 
         vm.recordLogs();
     }
+
+    /// @dev Address of the vault most recently deployed via {_deployAndLinkVault}. The declarative registry
+    ///      keeps no tuple -> vault reverse lookup, so flows that deploy a vault and later re-resolve it
+    ///      (e.g. redeem-after-deposit) read it from here.
+    address internal lastLinkedVault;
+
+    /// @dev Deploy+link a vault through the Hub and return its address, recovered from the `LinkVault` event
+    ///      (there is no reverse lookup to query). The caller must already hold the FM prank.
+    function _deployAndLinkVault(bytes32 factory) internal returns (address vaultAddr) {
+        vm.recordLogs();
+        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, factory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND);
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics[0] == ISpokeRegistry.LinkVault.selector) {
+                (, vaultAddr) = abi.decode(logs[i].data, (uint256, address));
+            }
+        }
+        require(vaultAddr != address(0), "vault not linked");
+        lastLinkedVault = vaultAddr;
+    }
 }
 
 /// Base investment flows that can be shared between EndToEnd tests
@@ -635,11 +657,8 @@ contract EndToEndFlows is EndToEndUtils {
         _configurePricesForFlow(nonZeroPrices);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
-        );
+        IAsyncVault vault = IAsyncVault(_deployAndLinkVault(s.asyncVaultFactory));
         vm.stopPrank();
-        IAsyncVault vault = IAsyncVault(address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         ERC20(vault.asset()).approve(address(vault), USDC_AMOUNT_1);
@@ -666,7 +685,7 @@ contract EndToEndFlows is EndToEndUtils {
             POOL_A,
             SC_1,
             s.usdcId,
-            INVESTOR_A.toBytes32(),
+            RequestId.wrap(uint256(INVESTOR_A.toBytes32())),
             h.batchRequestManager.maxDepositClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
             REFUND
         );
@@ -693,11 +712,8 @@ contract EndToEndFlows is EndToEndUtils {
         _configurePricesForFlow(true);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
-        );
+        vault = IAsyncVault(_deployAndLinkVault(s.asyncVaultFactory));
         vm.stopPrank();
-        vault = IAsyncVault(address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
 
         vm.startPrank(INVESTOR_A);
         ERC20(vault.asset()).approve(address(vault), USDC_AMOUNT_1);
@@ -800,7 +816,7 @@ contract EndToEndFlows is EndToEndUtils {
             POOL_A,
             SC_1,
             s.usdcId,
-            INVESTOR_A.toBytes32(),
+            RequestId.wrap(uint256(INVESTOR_A.toBytes32())),
             h.batchRequestManager.maxDepositClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
             REFUND
         );
@@ -854,10 +870,7 @@ contract EndToEndFlows is EndToEndUtils {
         _configurePricesForFlow(nonZeroPrices);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
-        );
-        IBaseVault vault = IBaseVault(address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IBaseVault vault = IBaseVault(_deployAndLinkVault(s.syncDepositVaultFactory));
 
         h.hub.managerCall{value: sameChain ? 0 : GAS}(
             POOL_A,
@@ -898,8 +911,7 @@ contract EndToEndFlows is EndToEndUtils {
         );
 
         // Get vault from manager
-        IAsyncRedeemVault vault =
-            IAsyncRedeemVault(address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IAsyncRedeemVault vault = IAsyncRedeemVault(lastLinkedVault);
 
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A));
@@ -925,7 +937,7 @@ contract EndToEndFlows is EndToEndUtils {
             POOL_A,
             SC_1,
             s.usdcId,
-            INVESTOR_A.toBytes32(),
+            RequestId.wrap(uint256(INVESTOR_A.toBytes32())),
             h.batchRequestManager.maxRedeemClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
             REFUND
         );
@@ -959,8 +971,7 @@ contract EndToEndFlows is EndToEndUtils {
             POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
         );
 
-        IAsyncRedeemVault vault =
-            IAsyncRedeemVault(address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IAsyncRedeemVault vault = IAsyncRedeemVault(lastLinkedVault);
 
         vm.startPrank(INVESTOR_A);
         uint128 shares = uint128(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A));
@@ -1214,11 +1225,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _configurePool(sameChain);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
-        );
-
-        address vault = address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager));
+        address vault = _deployAndLinkVault(s.asyncVaultFactory);
 
         h.hub.updateVault{value: GAS}(
             POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS, REFUND
@@ -1249,11 +1256,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         _configurePricesForFlow(nonZeroPrices);
 
         vm.startPrank(FM);
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, s.asyncVaultFactory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND
-        );
-
-        IAsyncVault vault = IAsyncVault(address(s.spokeRegistry.vault(POOL_A, SC_1, s.usdcId, s.asyncRequestManager)));
+        IAsyncVault vault = IAsyncVault(_deployAndLinkVault(s.asyncVaultFactory));
 
         vm.startPrank(INVESTOR_A);
         s.usdc.approve(address(vault), USDC_AMOUNT_1);

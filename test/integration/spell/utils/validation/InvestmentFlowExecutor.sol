@@ -11,6 +11,7 @@ import {IERC7575Share} from "../../../../../src/misc/interfaces/IERC7575.sol";
 import {Hub} from "../../../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../../src/core/types/AssetId.sol";
+import {RequestId} from "../../../../../src/core/types/RequestId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IVault, VaultKind} from "../../../../../src/core/spoke/interfaces/IVault.sol";
@@ -573,7 +574,7 @@ contract InvestmentFlowExecutor is Test {
             ctx.poolId,
             ctx.scId,
             ctx.assetId,
-            investor.toBytes32(),
+            RequestId.wrap(uint256(investor.toBytes32())),
             ctx.report.batchRequestManager.maxDepositClaims(ctx.poolId, ctx.scId, investor.toBytes32(), ctx.assetId),
             address(this)
         );
@@ -627,7 +628,7 @@ contract InvestmentFlowExecutor is Test {
             ctx.poolId,
             ctx.scId,
             ctx.assetId,
-            investor.toBytes32(),
+            RequestId.wrap(uint256(investor.toBytes32())),
             ctx.report.batchRequestManager.maxRedeemClaims(ctx.poolId, ctx.scId, investor.toBytes32(), ctx.assetId),
             address(this)
         );

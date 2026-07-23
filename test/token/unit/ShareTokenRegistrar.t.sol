@@ -6,7 +6,7 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
+import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
 
@@ -240,14 +240,12 @@ contract ShareTokenRegistrarTest is Test {
             abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, assetId),
             abi.encode(asset, uint256(0))
         );
-        address rm = makeAddr("requestManager");
-        vm.mockCall(
-            spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.requestManager.selector, poolId), abi.encode(rm)
-        );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.vault.selector, poolId, scId, assetId, rm),
-            abi.encode(vault)
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, vault),
+            abi.encode(
+                VaultDetails({poolId: poolId, scId: scId, assetId: assetId, asset: asset, tokenId: 0, isLinked: true})
+            )
         );
 
         bytes memory payload = abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, scId.raw(), assetId.raw(), vault);
@@ -268,8 +266,6 @@ contract ShareTokenRegistrarTest is Test {
         PoolId poolId = PoolId.wrap(1);
         ShareClassId scId = ShareClassId.wrap(bytes16(uint128(2)));
         AssetId assetId = AssetId.wrap(3);
-        address rm = makeAddr("requestManager");
-
         vm.mockCall(
             spokeRegistry,
             abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, poolId, scId),
@@ -280,14 +276,15 @@ contract ShareTokenRegistrarTest is Test {
             abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, assetId),
             abi.encode(makeAddr("asset"), uint256(0))
         );
-        vm.mockCall(
-            spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.requestManager.selector, poolId), abi.encode(rm)
-        );
-        // Registry links a different vault than the one requested
+        // The requested vault is not linked in the registry
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.vault.selector, poolId, scId, assetId, rm),
-            abi.encode(makeAddr("linkedVault"))
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, makeAddr("vault")),
+            abi.encode(
+                VaultDetails({
+                    poolId: poolId, scId: scId, assetId: assetId, asset: makeAddr("asset"), tokenId: 0, isLinked: false
+                })
+            )
         );
 
         bytes memory payload =

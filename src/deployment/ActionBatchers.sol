@@ -200,6 +200,7 @@ contract CoreActionBatcher is Constants {
         // Rely shareTokenRegistrar: core contracts operate share tokens exclusively through the registrar
         report.shareTokenRegistrar.rely(address(report.spokeHandler));
         report.shareTokenRegistrar.rely(address(report.spoke));
+        report.shareTokenRegistrar.rely(address(report.spokeRegistry));
 
         // Rely spokeRegistry
         report.spokeRegistry.rely(address(report.spokeHandler));

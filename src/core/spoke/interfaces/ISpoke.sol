@@ -2,6 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IPoolEscrow} from "./IPoolEscrow.sol";
+import {IRequestRouter} from "./IRequestRouter.sol";
 import {ISnapshotQueue} from "./ISnapshotQueue.sol";
 import {ISpokeRegistry} from "./ISpokeRegistry.sol";
 
@@ -14,7 +15,7 @@ import {IManifest} from "../../hub/interfaces/IManifest.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
-interface ISpoke is IBatchedMulticall {
+interface ISpoke is IBatchedMulticall, IRequestRouter {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -318,24 +319,6 @@ interface ISpoke is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
     // Requests & manager calls
     //----------------------------------------------------------------------------------------------
-
-    /// @notice Handles a request originating from the Spoke side
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @param assetId The asset id
-    /// @param payload The request payload to be processed
-    /// @param extraGasLimit Additional gas stipend for cross-chain execution
-    /// @param unpaid Whether to allow unpaid mode
-    /// @param refund Address to refund excess payment
-    function request(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes memory payload,
-        uint128 extraGasLimit,
-        bool unpaid,
-        address refund
-    ) external payable;
 
     /// @notice Initiates a spoke-direction manager call to a destination contract, routed through the Envoy
     ///         to the target's `IManagerCallFromSpoke.fromSpoke`.

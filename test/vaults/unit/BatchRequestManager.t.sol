@@ -9,6 +9,7 @@ import {IERC165} from "../../../src/misc/interfaces/IERC165.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
+import {RequestId} from "../../../src/core/types/RequestId.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
@@ -1004,7 +1005,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         _callIssueShares(COST, poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
         vm.stopPrank();
 
-        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, investor, 10, REFUND);
+        batchRequestManager.notifyDeposit{value: COST}(
+            poolId, scId, USDC, RequestId.wrap(uint256(investor)), 10, REFUND
+        );
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
     }
 
@@ -1018,7 +1021,9 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         batchRequestManager.requestDeposit(poolId, scId, MIN_REQUEST_AMOUNT_USDC, investor, USDC);
         batchRequestManager.cancelDepositRequest(poolId, scId, investor, USDC);
 
-        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, investor, 10, REFUND);
+        batchRequestManager.notifyDeposit{value: COST}(
+            poolId, scId, USDC, RequestId.wrap(uint256(investor)), 10, REFUND
+        );
         _assertDepositRequestEq(USDC, investor, UserOrder(0, 2));
     }
 
@@ -1031,7 +1036,7 @@ contract BatchRequestManagerDepositsNonTransientTest is BatchRequestManagerBaseT
         (uint128 initialPending, uint32 initialLastUpdate) =
             batchRequestManager.depositRequest(poolId, scId, USDC, investor);
 
-        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, investor, 0, REFUND);
+        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, RequestId.wrap(uint256(investor)), 0, REFUND);
 
         (uint128 finalPending, uint32 finalLastUpdate) =
             batchRequestManager.depositRequest(poolId, scId, USDC, investor);
@@ -1338,7 +1343,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         _callRevokeShares(COST, poolId, scId, USDC, 1, d18(1), SHARE_HOOK_GAS, REFUND);
         vm.stopPrank();
 
-        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, investor, 10, REFUND);
+        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, RequestId.wrap(uint256(investor)), 10, REFUND);
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2));
     }
 
@@ -1352,7 +1357,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
         batchRequestManager.requestRedeem(poolId, scId, MIN_REQUEST_AMOUNT_SHARES, investor, USDC);
         batchRequestManager.cancelRedeemRequest(poolId, scId, investor, USDC);
 
-        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, investor, 10, REFUND);
+        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, RequestId.wrap(uint256(investor)), 10, REFUND);
         _assertRedeemRequestEq(USDC, investor, UserOrder(0, 2));
     }
 
@@ -1364,7 +1369,7 @@ contract BatchRequestManagerRedeemsNonTransientTest is BatchRequestManagerBaseTe
 
         (uint128 initialPending, uint32 initialLastUpdate) =
             batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
-        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, investor, 0, REFUND);
+        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, RequestId.wrap(uint256(investor)), 0, REFUND);
 
         (uint128 finalPending, uint32 finalLastUpdate) = batchRequestManager.redeemRequest(poolId, scId, USDC, investor);
         assertEq(finalPending, initialPending);
@@ -2926,7 +2931,7 @@ contract BatchRequestManagerTotalPendingUnderflowProtection is BatchRequestManag
         }
 
         // First user claims/notifies - with ceiling rounding, their pending becomes 0 (lost 1 wei)
-        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, invs[0], 10, REFUND);
+        batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, RequestId.wrap(uint256(invs[0])), 10, REFUND);
 
         // With ceiling rounding: each user loses their 1 wei pending entirely
         // First user's paymentAmount = ceil(1 × (N-1) / N) = 1 -> pending becomes 0
@@ -2943,7 +2948,9 @@ contract BatchRequestManagerTotalPendingUnderflowProtection is BatchRequestManag
 
         // Claiming for all remaining users
         for (uint8 i = 1; i < numUsers; i++) {
-            batchRequestManager.notifyDeposit{value: COST}(poolId, scId, USDC, invs[i], 10, REFUND);
+            batchRequestManager.notifyDeposit{value: COST}(
+                poolId, scId, USDC, RequestId.wrap(uint256(invs[i])), 10, REFUND
+            );
         }
         assertEq(_sumUserPendingDeposit(invs, USDC), 0, "All users pending cleared");
         // Orphan dust remains - this is bounded by number of users, not approval amount
@@ -2980,7 +2987,7 @@ contract BatchRequestManagerTotalPendingUnderflowProtection is BatchRequestManag
         }
 
         // First user claims/notifies - with ceiling rounding, their pending becomes 0 (lost 1 wei)
-        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, invs[0], 10, REFUND);
+        batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, RequestId.wrap(uint256(invs[0])), 10, REFUND);
 
         // With ceiling rounding: each user loses their 1 wei pending entirely
         // First user's paymentAmount = ceil(1 × (N-1) / N) = 1 → pending becomes 0
@@ -2997,7 +3004,9 @@ contract BatchRequestManagerTotalPendingUnderflowProtection is BatchRequestManag
 
         // Claiming for all remaining users
         for (uint8 i = 1; i < numUsers; i++) {
-            batchRequestManager.notifyRedeem{value: COST}(poolId, scId, USDC, invs[i], 10, REFUND);
+            batchRequestManager.notifyRedeem{value: COST}(
+                poolId, scId, USDC, RequestId.wrap(uint256(invs[i])), 10, REFUND
+            );
         }
         assertEq(_sumUserPendingRedeem(invs, USDC), 0, "All users pending cleared");
         // Orphan dust remains - this is bounded by number of users, not approval amount
@@ -3219,7 +3228,7 @@ contract BatchRequestManagerERC165Support is BatchRequestManagerBaseTest {
     function testERC165SupportBRM(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 hubRequestManager = 0x2f6c33bf;
-        bytes4 hubRequestManagerNotifications = 0x3a2d9da4;
+        bytes4 hubRequestManagerNotifications = 0x30736186;
         bytes4 batchRequestManagerID = type(IBatchRequestManager).interfaceId;
         bytes4 fromHub = type(IManagerCallFromHub).interfaceId;
 

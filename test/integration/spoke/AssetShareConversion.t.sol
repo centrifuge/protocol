@@ -95,6 +95,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         );
 
         // Deploy and link vault (same-chain short-circuit: goes directly to vaultRegistry)
+        vm.recordLogs();
         hub.updateVault{value: 0}(
             poolId,
             SC_1,
@@ -105,7 +106,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             address(this)
         );
 
-        vault = AsyncVault(address(spokeRegistry.vault(poolId, SC_1, assetId, spokeRegistry.requestManager(poolId))));
+        vault = AsyncVault(_deployedVaultFromLogs());
     }
 
     /// Simulates the hub sending back deposit fulfillment messages to the spoke.

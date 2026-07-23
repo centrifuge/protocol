@@ -17,6 +17,7 @@ import {
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
+import {IERC7575Share} from "../../misc/interfaces/IERC7575.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
@@ -51,7 +52,6 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     // Vaults
     mapping(IVault => VaultDetails) internal _vaultDetails;
-    mapping(PoolId => mapping(ShareClassId => mapping(AssetId => mapping(IRequestManager => IVault)))) public vault;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -182,7 +182,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
             require(address(requestManager[poolId]) != address(0), InvalidRequestManager());
         }
 
-        _vaultDetails[vault_] = VaultDetails(assetId, asset, tokenId, false);
+        _vaultDetails[vault_] = VaultDetails(poolId, scId, assetId, asset, tokenId, false);
         emit DeployVault(poolId, scId, asset, tokenId, factory, vault_, vault_.vaultKind());
     }
 
@@ -196,10 +196,9 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
-        require(address(vault[poolId][scId][assetId][requestManager[poolId]]) == address(0), AlreadyLinkedVault());
 
-        vault[poolId][scId][assetId][requestManager[poolId]] = vault_;
         vaultDetails_.isLinked = true;
+        _pointVault(poolId, scId, asset, tokenId, address(vault_), true);
 
         emit LinkVault(poolId, scId, asset, tokenId, vault_);
     }
@@ -214,12 +213,30 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
-        require(vault[poolId][scId][assetId][requestManager[poolId]] == vault_, AlreadyUnlinkedVault());
 
-        delete vault[poolId][scId][assetId][requestManager[poolId]];
         vaultDetails_.isLinked = false;
+        _pointVault(poolId, scId, asset, tokenId, address(vault_), false);
 
         emit UnlinkVault(poolId, scId, asset, tokenId, vault_);
+    }
+
+    /// @dev Keeps the share token's ERC-7575 vault pointer for `asset` in lockstep with links: on link aim it
+    ///      at `vault_`, on unlink clear it but only if it still targets `vault_` (so unlinking one of several
+    ///      vaults sharing a tuple never clobbers another's pointer). ERC-7575 pointers are asset-address keyed,
+    ///      so this applies only to ERC20 assets (`tokenId == 0`); the registrar operates the token on the
+    ///      registry's behalf. On link multiple vaults per tuple is last-writer-wins; governance disambiguates
+    ///      with an explicit `RegistrarCall.SetVault`.
+    function _pointVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address vault_, bool linked)
+        internal
+    {
+        if (tokenId != 0) return;
+        ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
+        address token = address(shareClass_.shareToken);
+        if (linked) {
+            shareClass_.registrar.updateVault(token, asset, vault_);
+        } else if (IERC7575Share(token).vault(asset) == vault_) {
+            shareClass_.registrar.updateVault(token, asset, address(0));
+        }
     }
 
     //----------------------------------------------------------------------------------------------

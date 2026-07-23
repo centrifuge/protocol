@@ -59,7 +59,9 @@ abstract contract SyncManagerBaseTest is Test {
     //----------------------------------------------------------------------------------------------
 
     function _setupVaultDetails(uint8 assetDecimals, uint8 shareDecimals) internal {
-        VaultDetails memory details = VaultDetails({assetId: ASSET_ID, asset: asset, tokenId: TOKEN_ID, isLinked: true});
+        VaultDetails memory details = VaultDetails({
+            poolId: POOL_ID, scId: SC_ID, assetId: ASSET_ID, asset: asset, tokenId: TOKEN_ID, isLinked: true
+        });
 
         vm.mockCall(
             address(spokeRegistry),

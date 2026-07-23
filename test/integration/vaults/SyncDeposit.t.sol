@@ -26,7 +26,6 @@ import {
 } from "../../../src/misc/interfaces/IERC7540.sol";
 
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
@@ -141,14 +140,8 @@ contract SyncDepositTest is SyncDepositTestHelper {
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
-        // Retrieve async vault
-        IVault asyncVault_ = spokeRegistry.vault(
-            syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager()
-        );
-        assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
-        IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(asyncVault_));
-
-        assertEq(address(syncVault), address(asyncVault));
+        // A SyncDepositVault is its own async-redeem vault (same contract).
+        IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(syncVault));
 
         // Will fail - user not member: can not send funds
         vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);

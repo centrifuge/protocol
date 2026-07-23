@@ -10,12 +10,14 @@ import {Spoke} from "../../src/core/spoke/Spoke.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {AccountId} from "../../src/core/types/AccountId.sol";
+import {RequestId} from "../../src/core/types/RequestId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SnapshotQueue} from "../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {ContractUpdaterForwarder} from "../../src/core/utils/ContractUpdaterForwarder.sol";
 import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
@@ -40,6 +42,7 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
 import {BatchRequestManagerCallLib} from "../../test/vaults/utils/BatchRequestManagerCallLib.sol";
 
 import "forge-std/Script.sol";
+import {Vm} from "forge-std/Vm.sol";
 
 import {EnvConfig} from "../utils/EnvConfig.s.sol";
 import {LaunchDeployer} from "../LaunchDeployer.s.sol";
@@ -61,6 +64,10 @@ import {IShareTokenRegistrar} from "../../src/token/interfaces/IShareTokenRegist
 abstract contract BaseTestData is LaunchDeployer {
     using CastLib for *;
     using UpdateRestrictionMessageLib for *;
+
+    /// @dev Vault deployed for each (poolId, scId, assetId, requestManager) key, captured from its DeployVault
+    ///      event at DeployAndLink and resolved via `_vaultFor`.
+    mapping(bytes32 => address) private _deployedVault;
 
     //----------------------------------------------------------------------------------------------
     // CONSTANTS
@@ -228,6 +235,7 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Deploy vault
+        vm.recordLogs();
         hub.updateVault(
             poolId,
             scId,
@@ -237,6 +245,7 @@ abstract contract BaseTestData is LaunchDeployer {
             0,
             msg.sender
         );
+        _captureDeployedVault(poolId, scId, params.assetId);
 
         // Update and notify prices
         hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
@@ -322,6 +331,7 @@ abstract contract BaseTestData is LaunchDeployer {
         );
 
         // Deploy vault
+        vm.recordLogs();
         hub.updateVault(
             poolId,
             scId,
@@ -331,6 +341,7 @@ abstract contract BaseTestData is LaunchDeployer {
             0,
             msg.sender
         );
+        _captureDeployedVault(poolId, scId, params.assetId);
 
         // Update and notify prices
         hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
@@ -355,8 +366,8 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             params.targetCentrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
-                }).serialize(),
+                user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+            }).serialize(),
             0,
             msg.sender
         );
@@ -387,11 +398,28 @@ abstract contract BaseTestData is LaunchDeployer {
         );
     }
 
-    /// @dev Resolve the linked vault from the registry. The ERC-7575 `shareToken.vault(asset)` pointer is no
-    ///      longer set implicitly on link, so it cannot be relied on here.
+    /// @dev Resolve the vault deployed for this tuple, captured from its DeployVault event.
     function _vaultFor(PoolId poolId, ShareClassId scId, ERC20 token) internal view returns (address) {
         AssetId assetId = spokeRegistry.assetToId(address(token), 0);
-        return address(spokeRegistry.vault(poolId, scId, assetId, spokeRegistry.requestManager(poolId)));
+        return _deployedVault[_vaultKey(poolId, scId, assetId)];
+    }
+
+    /// @dev Records the vault from the most recent DeployVault event (requires `vm.recordLogs()` beforehand).
+    function _captureDeployedVault(PoolId poolId, ShareClassId scId, AssetId assetId) private {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = logs.length; i > 0; i--) {
+            if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
+                (,, address v,) = abi.decode(logs[i - 1].data, (uint256, address, address, uint8));
+                _deployedVault[_vaultKey(poolId, scId, assetId)] = v;
+                return;
+            }
+        }
+    }
+
+    /// @dev Cache key mirroring the pool's request-manager scoping, so distinct request managers on one tuple
+    ///      never collide.
+    function _vaultKey(PoolId poolId, ShareClassId scId, AssetId assetId) private view returns (bytes32) {
+        return keccak256(abi.encode(poolId, scId, assetId, spokeRegistry.requestManager(poolId)));
     }
 
     /**
@@ -433,7 +461,9 @@ abstract contract BaseTestData is LaunchDeployer {
         );
         spoke.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
         uint32 maxClaims = batchRequestManager.maxDepositClaims(poolId, scId, msg.sender.toBytes32(), assetId);
-        batchRequestManager.notifyDeposit(poolId, scId, assetId, msg.sender.toBytes32(), maxClaims, msg.sender);
+        batchRequestManager.notifyDeposit(
+            poolId, scId, assetId, RequestId.wrap(uint256(msg.sender.toBytes32())), maxClaims, msg.sender
+        );
         vault.mint(1_000_000e18, msg.sender);
 
         // Update price, deposit principal + yield
@@ -447,8 +477,8 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             targetCentrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
-                }).serialize(),
+                user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+            }).serialize(),
             0,
             msg.sender
         );
@@ -467,7 +497,9 @@ abstract contract BaseTestData is LaunchDeployer {
             poolId, BatchRequestManagerCallLib.revokeShares(scId, assetId, nowRevokeEpoch, d18(11, 10), 0, msg.sender)
         );
         spoke.submitQueuedShares(poolId, scId, DEFAULT_EXTRA_GAS, msg.sender);
-        batchRequestManager.notifyRedeem(poolId, scId, assetId, bytes32(bytes20(msg.sender)), 1, msg.sender);
+        batchRequestManager.notifyRedeem(
+            poolId, scId, assetId, RequestId.wrap(uint256(bytes32(bytes20(msg.sender)))), 1, msg.sender
+        );
 
         // Deposit for withdraw
         token.approve(address(spoke), 1_100_000e18);

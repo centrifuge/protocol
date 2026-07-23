@@ -249,6 +249,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(shareTokenRegistrar.wards(address(root)), 1);
         assertEq(shareTokenRegistrar.wards(address(spokeHandler)), 1);
         assertEq(shareTokenRegistrar.wards(address(spoke)), 1);
+        assertEq(shareTokenRegistrar.wards(address(spokeRegistry)), 1);
         assertEq(shareTokenRegistrar.wards(nonWard), 0);
 
         // dependencies set correctly

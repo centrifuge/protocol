@@ -9,11 +9,14 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
+
+import {Vm} from "forge-std/Vm.sol";
 
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
@@ -139,9 +142,20 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
 
+        // Core no longer keeps a tuple -> vault reverse lookup; recover the deployed vault from the
+        // DeployVault event (via the forge-std cheat, as used elsewhere in this suite under Foundry).
+        Vm forgeVm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+        forgeVm.recordLogs();
         spokeHandler.updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink);
 
-        address vault = address(spokeRegistry.vault(poolId, scId, assetId, spokeRegistry.requestManager(poolId)));
+        Vm.Log[] memory logs = forgeVm.getRecordedLogs();
+        address vault;
+        for (uint256 i = logs.length; i > 0; i--) {
+            if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
+                (,, vault,) = abi.decode(logs[i - 1].data, (uint256, address, address, uint8));
+                break;
+            }
+        }
 
         _addVault(vault);
 

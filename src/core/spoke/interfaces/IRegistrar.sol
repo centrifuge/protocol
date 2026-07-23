@@ -56,6 +56,12 @@ interface IRegistrar {
     /// @dev    MUST revert if neither name nor symbol changes.
     function updateMetadata(address token, string memory name, string memory symbol) external;
 
+    /// @notice Points `token`'s ERC-7575 vault for `asset` at `vault` (or clears it with `address(0)`).
+    /// @dev    Called by the registry to keep the pointer in lockstep with vault links; implementations
+    ///         without an ERC-7575 vault pointer MAY no-op. `asset` is an ERC20 address (ERC-7575 pointers
+    ///         are asset-address keyed).
+    function updateVault(address token, address asset, address vault) external;
+
     /// @notice Applies a restriction update (e.g. freeze, membership) to `token`.
     /// @dev    The payload encoding is standard-specific; the default implementation forwards to the
     ///         token's transfer hook. Implementations without restriction support MUST revert.

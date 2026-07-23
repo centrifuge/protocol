@@ -44,6 +44,11 @@ struct AssetIdKey {
 }
 
 struct VaultDetails {
+    /// @dev PoolId the vault belongs to, validated against the vault at registration so integrators can
+    ///      trust the association from registry storage rather than the vault's own getter
+    PoolId poolId;
+    /// @dev ShareClassId the vault belongs to, validated against the vault at registration
+    ShareClassId scId;
     /// @dev AssetId of the asset
     AssetId assetId;
     /// @dev Address of the asset
@@ -358,10 +363,4 @@ interface ISpokeRegistry {
 
     /// @notice Checks whether a given vault is linked to a share class
     function isLinked(IVault vault) external view returns (bool);
-
-    /// @notice Returns the address of the vault for a given pool, share class, asset and request manager
-    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
-        external
-        view
-        returns (IVault vaultAddress);
 }
