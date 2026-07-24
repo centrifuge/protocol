@@ -366,8 +366,8 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             params.targetCentrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
-            }).serialize(),
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
             0,
             msg.sender
         );
@@ -477,8 +477,8 @@ abstract contract BaseTestData is LaunchDeployer {
             scId,
             targetCentrifugeId,
             UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
-            }).serialize(),
+                    user: bytes32(bytes20(msg.sender)), validUntil: type(uint64).max
+                }).serialize(),
             0,
             msg.sender
         );

@@ -464,7 +464,7 @@ contract FullDeployer is BaseDeployer, Constants {
         vaultRouter = VaultRouter(
             create3(
                 createSalt("vaultRouter", V3_1),
-                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(gateway, spoke, spokeRegistry, batcher))
+                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(spoke, spokeRegistry, batcher))
             )
         );
 

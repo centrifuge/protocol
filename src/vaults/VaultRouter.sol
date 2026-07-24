@@ -7,6 +7,7 @@ import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
 
 import {Auth} from "../misc/Auth.sol";
+import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
@@ -16,8 +17,6 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {PoolId} from "../core/types/PoolId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
-import {BatchedMulticall} from "../core/utils/BatchedMulticall.sol";
 import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IShareToken} from "../token/interfaces/IShareToken.sol";
@@ -25,12 +24,13 @@ import {IShareToken} from "../token/interfaces/IShareToken.sol";
 /// @title  VaultRouter
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
 ///         It removes the need to know about all other contracts and simplifies the way to interact with the protocol.
-///         It also adds the need to fully pay for each step of the transaction execution. VaultRouter allows
-///         the caller to execute multiple function into a single transaction by taking advantage of
-///         the multicall functionality which batches message calls into a single one.
+///         It bundles several calls into one transaction via multicall, each dispatching its own cross-chain
+///         message. Investment requests are paid for by the pool through the request manager, so the caller
+///         should not attach native tokens for them: any value sent for such a call stays in the router
+///         and is only recoverable via `Recoverable`.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
-contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
+contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     using CastLib for address;
 
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -39,10 +39,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     ISpoke public immutable spoke;
     ISpokeRegistry public immutable spokeRegistry;
 
-    constructor(IGateway gateway_, ISpoke spoke_, ISpokeRegistry spokeRegistry_, address deployer)
-        Auth(deployer)
-        BatchedMulticall(gateway_)
-    {
+    constructor(ISpoke spoke_, ISpokeRegistry spokeRegistry_, address deployer) Auth(deployer) {
         spoke = spoke_;
         spokeRegistry = spokeRegistry_;
     }
@@ -52,11 +49,11 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
     //----------------------------------------------------------------------------------------------
 
     function enable(IBaseVault vault) public payable protected {
-        vault.setEndorsedOperator(msgSender(), true);
+        vault.setEndorsedOperator(msg.sender, true);
     }
 
     function disable(IBaseVault vault) external payable protected {
-        vault.setEndorsedOperator(msgSender(), false);
+        vault.setEndorsedOperator(msg.sender, false);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -69,7 +66,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        require(owner == msgSender() || owner == address(this), InvalidOwner());
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
         if (owner == address(this)) {
@@ -85,7 +82,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        require(owner == msgSender() || owner == address(this), InvalidOwner());
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
@@ -106,13 +103,13 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         uint128 remoteExtraGasLimit,
         address refund
     ) external payable protected {
-        require(owner == msgSender() || owner == address(this), InvalidOwner());
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
 
         spokeRegistry.vaultDetails(vault); // Ensure vault is valid
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
         _approveMax(vault.share(), address(spoke));
-        spoke.crosschainTransferShares{value: msgValue()}(
+        spoke.crosschainTransferShares{value: msg.value}(
             centrifugeId,
             vault.poolId(),
             vault.scId(),
@@ -135,7 +132,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function cancelDepositRequest(IAsyncVault vault) external payable protected {
-        vault.cancelDepositRequest(REQUEST_ID, msgSender());
+        vault.cancelDepositRequest(REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IVaultRouter
@@ -158,7 +155,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        require(owner == msgSender() || owner == address(this), InvalidOwner());
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
         vault.requestRedeem(amount, controller, owner);
     }
 
@@ -171,7 +168,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function cancelRedeemRequest(IAsyncVault vault) external payable protected {
-        vault.cancelRedeemRequest(REQUEST_ID, msgSender());
+        vault.cancelRedeemRequest(REQUEST_ID, msg.sender);
     }
 
     /// @inheritdoc IVaultRouter
@@ -194,7 +191,7 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         payable
         protected
     {
-        try IERC20Permit(asset).permit(msgSender(), spender, assets, deadline, v, r, s) {} catch {}
+        try IERC20Permit(asset).permit(msg.sender, spender, assets, deadline, v, r, s) {} catch {}
     }
 
     //----------------------------------------------------------------------------------------------
@@ -224,9 +221,9 @@ contract VaultRouter is BatchedMulticall, Recoverable, IVaultRouter {
         }
     }
 
-    /// @notice Ensures msgSender() is either the controller, or can permissionlessly claim
+    /// @notice Ensures msg.sender is either the controller, or can permissionlessly claim
     ///         on behalf of the controller.
     function _canClaim(IBaseVault vault, address receiver, address controller) internal view {
-        require(controller == msgSender() || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
+        require(controller == msg.sender || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
     }
 }

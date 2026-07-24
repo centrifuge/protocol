@@ -324,7 +324,8 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.claimDeposit.selector, vault_, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestRedeem.selector, vault_, sharePayout, self, self, fuel);
-        vaultRouter.multicall{value: GAS}(calls);
+        // Subsidized requests need no attached value.
+        vaultRouter.multicall(calls);
 
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
@@ -349,7 +350,8 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault1, amount1, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault2, amount2, self, self);
-        vaultRouter.multicall{value: GAS}(calls);
+        // Subsidized requests need no attached value.
+        vaultRouter.multicall(calls);
 
         // trigger - deposit order fulfillment
         AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
@@ -389,7 +391,9 @@ contract VaultRouterTest is BaseTest {
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
 
         assertEq(address(vaultRouter).balance, 0);
-        vaultRouter.multicall{value: GAS}(calls);
+        // Subsidized requests need no attached value, and none is stranded in the router afterwards.
+        vaultRouter.multicall(calls);
+        assertEq(address(vaultRouter).balance, 0);
     }
 
     // --- helpers ---
@@ -491,9 +495,8 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(gateway, spoke, spokeRegistry, address(this));
+        new VaultRouter(spoke, spokeRegistry, address(this));
 
-        assertEq(address(vaultRouter.gateway()), address(gateway));
         assertEq(address(vaultRouter.spoke()), address(spoke));
     }
 
@@ -527,6 +530,76 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
         vaultRouter.requestDeposit(vault, amount, self, self);
         assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
+    }
+
+    function testMulticallRequestDepositRequiresNoPayment() public {
+        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        AsyncVault vault = AsyncVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+        erc20.mint(self, amount);
+        erc20.approve(address(vault_), amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(vaultRouter.enable.selector, vault);
+        calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault, amount, self, self);
+
+        // No native tokens attached: the cross-chain request is paid by the pool subsidy through the
+        // request manager, so the pool's subsidy balance drops and the caller pays nothing.
+        uint256 subsidyBefore = address(refundEscrowFactory.get(vault.poolId())).balance;
+        vaultRouter.multicall(calls);
+
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
+        assertLt(address(refundEscrowFactory.get(vault.poolId())).balance, subsidyBefore);
+        assertEq(address(vaultRouter).balance, 0);
+    }
+
+    /// @dev The router uses a plain multicall (no gateway batching), so two paid cross-chain calls in one
+    ///      multicall each try to forward msg.value; the second fails closed on insufficient balance rather
+    ///      than reusing the value.
+    function testMulticallTwoCrosschainTransfersRevert() public {
+        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+        erc20.mint(self, assets);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        erc20.approve(address(vaultRouter), assets);
+        uint256 shares = vault.previewDeposit(assets);
+
+        uint16 centrifugeId = 2;
+        centrifugeChain.updateMember(
+            vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
+        );
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
+
+        bytes[] memory calls = new bytes[](3);
+        calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), self);
+        calls[1] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares / 2,
+            centrifugeId,
+            self.toBytes32(),
+            address(vaultRouter),
+            uint128(0),
+            uint128(0),
+            address(0)
+        );
+        calls[2] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares / 2,
+            centrifugeId,
+            self.toBytes32(),
+            address(vaultRouter),
+            uint128(0),
+            uint128(0),
+            address(0)
+        );
+
+        // GAS covers one transfer; the second re-forwards msg.value with an empty router balance and reverts.
+        vm.expectRevert();
+        vaultRouter.multicall{value: GAS}(calls);
     }
 
     function testRouterSyncDeposit() public {

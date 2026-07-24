@@ -496,7 +496,6 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(vaultRouter.spoke()), address(spoke));
-        assertEq(address(vaultRouter.gateway()), address(gateway));
 
         // root endorsements
         assertEq(root.endorsed(address(vaultRouter)), true);
