@@ -245,6 +245,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spokeHandler));
         vm.assume(nonWard != address(spoke));
+        vm.assume(nonWard != address(spokeRegistry));
 
         assertEq(shareTokenRegistrar.wards(address(root)), 1);
         assertEq(shareTokenRegistrar.wards(address(spokeHandler)), 1);
@@ -396,6 +397,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(protocolGuardian.root()), address(root));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(address(protocolGuardian.sender()), address(messageDispatcher));
+        assertEq(address(protocolGuardian.tokenBridge()), address(tokenBridge));
     }
 
     function testOpsGuardian() public view {
@@ -403,6 +405,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(opsGuardian.opsSafe()), address(OPS_SAFE));
         assertEq(address(opsGuardian.multiAdapter()), address(multiAdapter));
         assertEq(address(opsGuardian.hub()), address(hub));
+        assertEq(address(opsGuardian.tokenBridge()), address(tokenBridge));
     }
 
     function testSubsidyManager(address nonWard) public view {
@@ -726,6 +729,27 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(chainlinkAdapter.ccipRouter()), CHAINLINK_CCIP_ROUTER);
+    }
+
+    function testTokenBridge(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(protocolGuardian));
+        vm.assume(nonWard != address(opsGuardian));
+
+        assertEq(tokenBridge.wards(address(root)), 1);
+        assertEq(tokenBridge.wards(address(protocolGuardian)), 1);
+        assertEq(tokenBridge.wards(address(opsGuardian)), 1);
+        assertEq(tokenBridge.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(tokenBridge.spoke()), address(spoke));
+        assertEq(address(tokenBridge.gateway()), address(gateway));
+        assertEq(address(tokenBridge.envoy()), address(envoy));
+        assertEq(address(opsGuardian.tokenBridge()), address(tokenBridge));
+
+        // root endorsements
+        assertEq(root.endorsed(address(tokenBridge)), true);
     }
 
     function testHyperlaneAdapter(address nonWard) public view {

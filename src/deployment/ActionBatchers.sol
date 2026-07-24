@@ -53,6 +53,7 @@ import {BatchRequestManager} from "../vaults/BatchRequestManager.sol";
 import {AsyncVaultFactory} from "../vaults/factories/AsyncVaultFactory.sol";
 import {SyncDepositVaultFactory} from "../vaults/factories/SyncDepositVaultFactory.sol";
 
+import {TokenBridge} from "../bridge/TokenBridge.sol";
 import {SubsidyManager} from "../utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../adapters/AxelarAdapter.sol";
 import {ChainlinkAdapter} from "../adapters/ChainlinkAdapter.sol";
@@ -108,6 +109,7 @@ struct NonCoreReport {
     OracleValuation oracleValuation;
     NAVManager navManager;
     SimplePriceManager simplePriceManager;
+    TokenBridge tokenBridge;
     BridgeCircuitBreaker bridgeCircuitBreaker;
 }
 
@@ -311,6 +313,9 @@ contract NonCoreActionBatcher {
         address root = address(report.core.root);
 
         // Rely Root
+        report.tokenBridge.rely(root);
+        report.tokenBridge.rely(address(report.core.protocolGuardian));
+        report.tokenBridge.rely(address(report.core.opsGuardian));
         report.subsidyManager.rely(root);
         report.refundEscrowFactory.rely(root);
         report.asyncVaultFactory.rely(root);
@@ -379,8 +384,10 @@ contract NonCoreActionBatcher {
         // Endorse methods
         report.core.root.endorse(address(report.asyncRequestManager));
         report.core.root.endorse(address(report.vaultRouter));
+        report.core.root.endorse(address(report.tokenBridge));
 
         // Revoke batcher permissions
+        report.tokenBridge.deny(address(this));
         report.refundEscrowFactory.deny(address(this));
         report.asyncVaultFactory.deny(address(this));
         report.asyncRequestManager.deny(address(this));

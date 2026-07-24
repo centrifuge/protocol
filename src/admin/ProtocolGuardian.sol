@@ -9,6 +9,8 @@ import {CastLib} from "../misc/libraries/CastLib.sol";
 
 import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewaySenders.sol";
 
+import {ITokenBridge} from "../bridge/interfaces/ITokenBridge.sol";
+
 /// @title  ProtocolGuardian
 /// @notice This contract provides emergency controls and protocol-level management including pausing,
 ///         permission scheduling, and cross-chain upgrade coordination.
@@ -17,12 +19,14 @@ contract ProtocolGuardian is IProtocolGuardian {
 
     IRoot public immutable root;
     ISafe public safe;
+    ITokenBridge public tokenBridge;
     IScheduleAuthMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IScheduleAuthMessageSender sender_) {
+    constructor(ISafe safe_, IRoot root_, IScheduleAuthMessageSender sender_, ITokenBridge tokenBridge_) {
         safe = safe_;
         root = root_;
         sender = sender_;
+        tokenBridge = tokenBridge_;
     }
 
     modifier onlySafe() {
@@ -43,6 +47,7 @@ contract ProtocolGuardian is IProtocolGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
         else if (what == "sender") sender = IScheduleAuthMessageSender(data);
+        else if (what == "tokenBridge") tokenBridge = ITokenBridge(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -73,6 +78,15 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function cancelRely(address target) external onlySafe {
         root.cancelRely(target);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Bridge Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
+    function fileTokenBridgeRelayer(address relayer) external onlySafe {
+        tokenBridge.file("relayer", relayer);
     }
 
     //----------------------------------------------------------------------------------------------

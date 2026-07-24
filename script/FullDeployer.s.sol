@@ -59,6 +59,7 @@ import {SyncDepositVaultFactory} from "../src/vaults/factories/SyncDepositVaultF
 
 import {VmSafe} from "forge-std/Vm.sol";
 
+import {TokenBridge} from "../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../src/adapters/AxelarAdapter.sol";
 import {ChainlinkAdapter} from "../src/adapters/ChainlinkAdapter.sol";
@@ -167,6 +168,7 @@ contract FullDeployer is BaseDeployer, Constants {
     SyncManager public syncManager;
     VaultRouter public vaultRouter;
 
+    TokenBridge public tokenBridge;
     BridgeCircuitBreaker public bridgeCircuitBreaker;
 
     FreezeOnly public freezeOnlyHook;
@@ -219,7 +221,7 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        _deployNonCore(nonCoreBatcherAddr);
+        _deployNonCore(nonCoreBatcherAddr, input.centrifugeId);
         nonCoreBatcher = NonCoreActionBatcher(
             create3(
                 createSalt("nonCoreBatcher", V3_1),
@@ -260,6 +262,8 @@ contract FullDeployer is BaseDeployer, Constants {
     }
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
+        address tokenBridgeAddr = previewCreate3Address("tokenBridge", V3_3);
+
         // Admin
         root = Root(
             create3(createSalt("root", V3_1), abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher)))
@@ -420,7 +424,8 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("protocolGuardian", V3_1),
                 abi.encodePacked(
-                    type(ProtocolGuardian).creationCode, abi.encode(ISafe(address(batcher)), root, messageDispatcher)
+                    type(ProtocolGuardian).creationCode,
+                    abi.encode(ISafe(address(batcher)), root, messageDispatcher, TokenBridge(tokenBridgeAddr))
                 )
             )
         );
@@ -428,12 +433,15 @@ contract FullDeployer is BaseDeployer, Constants {
         opsGuardian = OpsGuardian(
             create3(
                 createSalt("opsGuardian", V3_1),
-                abi.encodePacked(type(OpsGuardian).creationCode, abi.encode(ISafe(address(batcher)), hub, multiAdapter))
+                abi.encodePacked(
+                    type(OpsGuardian).creationCode,
+                    abi.encode(ISafe(address(batcher)), hub, TokenBridge(tokenBridgeAddr), multiAdapter)
+                )
             )
         );
     }
 
-    function _deployNonCore(address batcher) internal {
+    function _deployNonCore(address batcher, uint16 centrifugeId_) internal {
         refundEscrowFactory = RefundEscrowFactory(
             create3(
                 createSalt("refundEscrowFactory", V3_1),
@@ -674,6 +682,15 @@ contract FullDeployer is BaseDeployer, Constants {
                 )
             )
         );
+
+        tokenBridge = TokenBridge(
+            create3(
+                createSalt("tokenBridge", V3_3),
+                abi.encodePacked(
+                    type(TokenBridge).creationCode, abi.encode(spoke, gateway, centrifugeId_, address(envoy), batcher)
+                )
+            )
+        );
     }
 
     function _deployAdapters(address batcher, AdaptersInput memory input) internal {
@@ -795,6 +812,7 @@ contract FullDeployer is BaseDeployer, Constants {
             oracleValuation,
             navManager,
             simplePriceManager,
+            tokenBridge,
             bridgeCircuitBreaker
         );
     }

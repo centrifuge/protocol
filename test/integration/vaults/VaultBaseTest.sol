@@ -305,6 +305,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         fullRestrictionsHook.rely(address(this));
         freelyTransferableHook.rely(address(this));
         redemptionRestrictionsHook.rely(address(this));
+        tokenBridge.rely(address(this));
         vm.stopPrank();
 
         vm.prank(address(protocolGuardian));

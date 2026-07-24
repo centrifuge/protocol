@@ -13,6 +13,8 @@ import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
+import {ITokenBridge} from "../bridge/interfaces/ITokenBridge.sol";
+
 /// @title  OpsGuardian
 /// @notice This contract manages operational aspects of the protocol including adapter configuration,
 ///         network wiring, and pool creation.
@@ -22,11 +24,13 @@ contract OpsGuardian is IOpsGuardian {
 
     ISafe public opsSafe;
     ICreatePool public hub;
+    ITokenBridge public tokenBridge;
     IMultiAdapter public multiAdapter;
 
-    constructor(ISafe opsSafe_, ICreatePool hub_, IMultiAdapter multiAdapter_) {
+    constructor(ISafe opsSafe_, ICreatePool hub_, ITokenBridge tokenBridge_, IMultiAdapter multiAdapter_) {
         opsSafe = opsSafe_;
         hub = hub_;
+        tokenBridge = tokenBridge_;
         multiAdapter = multiAdapter_;
     }
 
@@ -43,6 +47,7 @@ contract OpsGuardian is IOpsGuardian {
     function file(bytes32 what, address data) external onlySafe {
         if (what == "opsSafe") opsSafe = ISafe(data);
         else if (what == "hub") hub = ICreatePool(data);
+        else if (what == "tokenBridge") tokenBridge = ITokenBridge(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -83,5 +88,15 @@ contract OpsGuardian is IOpsGuardian {
     /// @inheritdoc IOpsGuardian
     function createPool(PoolId poolId, address admin, AssetId currency) external onlySafe {
         hub.createPool(poolId, admin, currency);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Bridge Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IOpsGuardian
+    function fileTokenBridgeCentrifugeId(uint256 evmChainId, uint16 centrifugeId) external onlySafe {
+        require(tokenBridge.chainIdToCentrifugeId(evmChainId) == 0, CentrifugeIdAlreadySet());
+        tokenBridge.file("centrifugeId", evmChainId, centrifugeId);
     }
 }

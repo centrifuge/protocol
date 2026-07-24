@@ -49,6 +49,7 @@ import {SyncDepositVaultFactory} from "../../../../../src/vaults/factories/SyncD
 import {FullDeployer} from "../../../../../script/FullDeployer.s.sol";
 import {ContractsConfig as LiveContracts, EnvConfig} from "../../../../../script/utils/EnvConfig.s.sol";
 
+import {TokenBridge} from "../../../../../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../../../../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../../../../src/adapters/AxelarAdapter.sol";
 import {ChainlinkAdapter} from "../../../../../src/adapters/ChainlinkAdapter.sol";
@@ -121,6 +122,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         OracleValuation(c.oracleValuation),
         NAVManager(c.navManager),
         SimplePriceManager(c.simplePriceManager),
+        TokenBridge(c.tokenBridge),
         BridgeCircuitBreaker(c.bridgeCircuitBreaker)
     );
 

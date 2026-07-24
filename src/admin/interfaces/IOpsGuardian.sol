@@ -10,12 +10,15 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
 import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 
+import {ITokenBridge} from "../../bridge/interfaces/ITokenBridge.sol";
+
 interface IOpsGuardian {
     error NotTheAuthorizedSafe();
     error FileUnrecognizedParam();
     error CannotSetAdaptersForLocalChain();
     error CannotSetAdaptersForMainnet();
     error CannotWireMainnet();
+    error CentrifugeIdAlreadySet();
 
     event File(bytes32 indexed what, address data);
 
@@ -42,7 +45,7 @@ interface IOpsGuardian {
     function blockSession(uint16 centrifugeId, uint16 sessionId) external;
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', or 'multiAdapter'
+    /// @param what Accepts a bytes32 representation of 'opsSafe', 'hub', 'tokenBridge', or 'multiAdapter'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
@@ -56,6 +59,11 @@ interface IOpsGuardian {
     /// @param currency The currency asset ID for the pool
     function createPool(PoolId poolId, address admin, AssetId currency) external;
 
+    /// @notice Configure TokenBridge chain ID mapping (first-time only)
+    /// @param evmChainId The EVM chain ID
+    /// @param centrifugeId The corresponding Centrifuge chain ID
+    function fileTokenBridgeCentrifugeId(uint256 evmChainId, uint16 centrifugeId) external;
+
     /// @notice Return the linked operational safe
     /// @return The operational safe contract
     function opsSafe() external view returns (ISafe);
@@ -65,4 +73,7 @@ interface IOpsGuardian {
 
     /// @notice MultiAdapter used for adapter configuration and wiring on remote networks
     function multiAdapter() external view returns (IMultiAdapter);
+
+    /// @notice TokenBridge used for cross-chain share token transfers
+    function tokenBridge() external view returns (ITokenBridge);
 }

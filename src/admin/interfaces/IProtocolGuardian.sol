@@ -6,6 +6,8 @@ import {ISafe} from "./ISafe.sol";
 
 import {IScheduleAuthMessageSender} from "../../core/messaging/interfaces/IGatewaySenders.sol";
 
+import {ITokenBridge} from "../../bridge/interfaces/ITokenBridge.sol";
+
 interface IProtocolGuardian {
     error NotTheAuthorizedSafe();
     error FileUnrecognizedParam();
@@ -43,8 +45,12 @@ interface IProtocolGuardian {
     /// @param refund Address to receive unused gas refund
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
+    /// @notice Configure TokenBridge relayer address
+    /// @param relayer The relayer address to set
+    function fileTokenBridgeRelayer(address relayer) external;
+
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'safe' or 'sender'
+    /// @param what Accepts a bytes32 representation of 'safe', 'sender', or 'tokenBridge'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
@@ -60,4 +66,7 @@ interface IProtocolGuardian {
 
     /// @notice Dispatches cross-chain messages for remote upgrade scheduling and cancellation
     function sender() external view returns (IScheduleAuthMessageSender);
+
+    /// @notice TokenBridge used for cross-chain share token transfers
+    function tokenBridge() external view returns (ITokenBridge);
 }
