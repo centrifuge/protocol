@@ -707,4 +707,22 @@ contract TestMessageLibSourceCentrifugeId is Test {
         vm.expectRevert(MessageLib.InvalidPoolHome.selector);
         MessageLib.messageSourceCentrifugeId(buf);
     }
+
+    /// @dev An asset-homed message (RegisterAsset/Request/UpdateAssets) whose assetId encodes
+    ///      centrifugeId=0 is an ISO-4217 currency asset, which is never legitimately reported by a
+    ///      spoke, and must revert rather than fall through to the "0 = any source" sentinel.
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testMessageSourceCentrifugeIdRevertsOnZeroAssetHome() public {
+        MessageType[3] memory kinds = [MessageType.RegisterAsset, MessageType.Request, MessageType.UpdateAssets];
+
+        for (uint256 i = 0; i < kinds.length; i++) {
+            bytes memory buf = new bytes(50);
+            buf[0] = bytes1(uint8(kinds[i]));
+            // assetId's centrifugeId (offset 1 for RegisterAsset, offset 25 for Request/UpdateAssets)
+            // is left as 0, encoding an ISO-currency asset.
+
+            vm.expectRevert(MessageLib.InvalidAssetHome.selector);
+            MessageLib.messageSourceCentrifugeId(buf);
+        }
+    }
 }

@@ -69,6 +69,7 @@ library MessageLib {
 
     error UnknownMessageType();
     error InvalidPoolHome();
+    error InvalidAssetHome();
 
     uint16 internal constant MAINNET_CENTRIFUGE_ID = 1;
 
@@ -172,8 +173,8 @@ library MessageLib {
                     && kind != MessageType.ManagerCallFromSpoke)
         ) {
             uint16 hub = messagePoolId(message).centrifugeId();
-            // No real pool has centrifugeId 0 (unlike an asset's home, which is legitimately 0 for
-            // ISO-currency assets); reject outright rather than falling through to "0 = any source".
+            // No real pool has centrifugeId 0; reject outright rather than falling through to
+            // "0 = any source".
             require(hub != 0, InvalidPoolHome());
             return hub;
         }
@@ -181,7 +182,12 @@ library MessageLib {
             return MAINNET_CENTRIFUGE_ID;
         }
         if (kind == MessageType.RegisterAsset || kind == MessageType.Request || kind == MessageType.UpdateAssets) {
-            return messageAssetId(kind, message).centrifugeId();
+            uint16 assetHome = messageAssetId(kind, message).centrifugeId();
+            // ISO-4217 currency assets (centrifugeId 0) are registered locally on the Hub and are never
+            // legitimately reported by a spoke; reject outright rather than falling through to
+            // "0 = any source".
+            require(assetHome != 0, InvalidAssetHome());
+            return assetHome;
         }
         return 0;
     }
