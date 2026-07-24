@@ -27,7 +27,6 @@ interface ISimplePriceManager is INAVHook {
 
     error NotAuthorized();
     error InvalidShareClass();
-    error MismatchedEpochs();
 
     struct Metrics {
         uint128 netAssetValue;

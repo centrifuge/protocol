@@ -41,6 +41,8 @@ contract SimplePriceManagerTest is Test {
     address caller = makeAddr("caller");
     address auth = makeAddr("auth");
 
+    bytes4 constant UPDATE_SHARE_PRICE = bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128)"));
+
     SimplePriceManager priceManager;
 
     function setUp() public virtual {
@@ -50,7 +52,7 @@ contract SimplePriceManagerTest is Test {
 
     function _setupMocks() internal {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.shareClassManager.selector), abi.encode(shareClassManager));
-        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateSharePrice.selector), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(UPDATE_SHARE_PRICE), abi.encode());
 
         vm.mockCall(
             shareClassManager,
@@ -71,6 +73,11 @@ contract SimplePriceManagerTest is Test {
             shareClassManager,
             abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector),
+            abi.encode(uint128(0), uint64(0))
         );
     }
 
@@ -98,7 +105,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
 
         vm.expectCall(
             address(hub),
-            abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_1, d18(10, 1)) // 1000/100 = 10
+            abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(10, 1)) // 1000/100 = 10
         );
 
         vm.expectEmit(true, true, true, true);
@@ -123,7 +130,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         uint128 netAssetValue2 = 1700;
 
         // (1000+1700)/(100+200) = 9
-        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_1, d18(9, 1)));
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(9, 1)));
 
         vm.expectEmit(true, true, true, true);
         emit ISimplePriceManager.Update(POOL_A, SC_1, 2700, 300, d18(9, 1)); // total NAV=2700, total issuance=300
@@ -172,7 +179,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
             abi.encode(0)
         );
 
-        vm.expectCall(address(hub), abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_1, d18(1, 1)));
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(1, 1)));
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
@@ -186,6 +193,43 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.expectRevert(ISimplePriceManager.InvalidShareClass.selector);
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_2, CENTRIFUGE_ID_1, 1000);
+    }
+
+    function testOnUpdateUnchangedPriceSkipsHubCall() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_1),
+            abi.encode(d18(10, 1), uint64(block.timestamp))
+        );
+
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE), 0);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+    }
+
+    function testOnUpdateChangedPriceStillCallsHub() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_1),
+            abi.encode(d18(10, 1), uint64(block.timestamp))
+        );
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(100)
+        );
+
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(12, 1)));
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1200);
     }
 }
 

@@ -48,11 +48,18 @@ contract StdManifest is IStdManifest {
     using BytesLib for bytes;
     using CastLib for bytes32;
 
+    /// @dev Selectors for the two updateSharePrice overloads. Explicit constants are required because
+    ///      Solidity cannot disambiguate IHub.updateSharePrice.selector once the name is overloaded.
+    bytes4 private constant UPDATE_SHARE_PRICE_WITH_TIMESTAMP =
+        bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128,uint64)"));
+    bytes4 private constant UPDATE_SHARE_PRICE = bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128)"));
+
     // Dependencies
     IHub public immutable hub;
     address public immutable navManager;
     address public immutable bridgingHook;
     address public immutable requestManager;
+    address public immutable oracleValuation;
     address public immutable contractUpdaterForwarder;
     IHubRegistry public immutable hubRegistry;
     IMultiAdapter public immutable multiAdapter;
@@ -79,6 +86,7 @@ contract StdManifest is IStdManifest {
         navManager = config.navManager;
         requestManager = config.requestManager;
         bridgingHook = config.bridgingHook;
+        oracleValuation = config.oracleValuation;
         contractUpdaterForwarder = config.contractUpdaterForwarder;
         hubRegistry = hub_.hubRegistry();
         multiAdapter = multiAdapter_;
@@ -117,7 +125,7 @@ contract StdManifest is IStdManifest {
         // In onchainAccounting mode, share-price updates may only be executed by the SimplePriceManager.
         // The check lives here (not in _classify) so pool managers can still pre-authorize out-of-policy
         // price moves via hubRegistry.initiateAuthorization, which calls classify with the manager as caller.
-        if (onchainAccounting && selector == IHub.updateSharePrice.selector) {
+        if (onchainAccounting && (_isSharePriceUpdate(selector))) {
             require(caller == simplePriceManager, OnchainAccountingOnly());
         }
 
@@ -127,8 +135,8 @@ contract StdManifest is IStdManifest {
 
         // Anchor the share-price baseline to this executed update (never from authorize/cancel), so
         // the rate guard measures from actual price changes.
-        if (selector == IHub.updateSharePrice.selector) {
-            (, ShareClassId scId,,) = abi.decode(payload, (PoolId, ShareClassId, D18, uint64));
+        if (_isSharePriceUpdate(selector)) {
+            (, ShareClassId scId) = abi.decode(payload[:64], (PoolId, ShareClassId));
             lastPriceUpdate[poolId][scId] = uint64(block.timestamp);
         }
     }
@@ -158,6 +166,12 @@ contract StdManifest is IStdManifest {
             require(allowed[poolId][caller][selector], CallerNotAllowed());
         }
 
+        // Oracle valuation is in policy for updateHoldingValue with or without onchain accounting.
+        if (oracleValuation != address(0) && caller == oracleValuation && selector == IHub.updateHoldingValue.selector)
+        {
+            return 0;
+        }
+
         // On-chain accounting: accounting selectors come only from the NAVManager, price only from the
         // SimplePriceManager (both run synchronously); any other caller is blocked outright.
         if (onchainAccounting) {
@@ -165,7 +179,7 @@ contract StdManifest is IStdManifest {
                 require(caller == navManager, OnchainAccountingOnly());
                 return 0;
             }
-            if (selector == IHub.updateSharePrice.selector) {
+            if (_isSharePriceUpdate(selector)) {
                 return _checkSharePrice(poolId, payload);
             }
             // The snapshot hook drives the accounting, so it may only point at the NAVManager.
@@ -192,7 +206,9 @@ contract StdManifest is IStdManifest {
         // all others), a share-price move beyond the rate/cap guard, a non-withdrawal contract update,
         // or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
         if (selector == IHub.updateManager.selector) return delay;
-        if (selector == IHub.updateSharePrice.selector) return _checkSharePrice(poolId, payload);
+        if (_isSharePriceUpdate(selector)) {
+            return _checkSharePrice(poolId, payload);
+        }
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
         // Replacing a manifest (local hub policy, or a spoke's pushed policy) disables all future policy on
@@ -215,6 +231,10 @@ contract StdManifest is IStdManifest {
         // delay + sentinel veto, never instant). Sentinel runbook: an authorization for an unknown
         // selector is a high-signal alert and should be scrutinised before its delay elapses.
         return delay;
+    }
+
+    function _isSharePriceUpdate(bytes4 selector) private pure returns (bool) {
+        return selector == UPDATE_SHARE_PRICE_WITH_TIMESTAMP || selector == UPDATE_SHARE_PRICE;
     }
 
     /// @dev Accounting surface owned by the NAVManager under `onchainAccounting`. Share price
@@ -293,7 +313,7 @@ contract StdManifest is IStdManifest {
     function _checkSharePrice(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
         if (thresholdPerSecond == 0 && maxAbsolutePriceDelta == 0) return 0;
 
-        (, ShareClassId scId, D18 newPrice,) = abi.decode(payload, (PoolId, ShareClassId, D18, uint64));
+        (, ShareClassId scId, D18 newPrice) = abi.decode(payload[:96], (PoolId, ShareClassId, D18));
 
         uint64 lastUpdate = lastPriceUpdate[poolId][scId];
         if (lastUpdate == 0) return 0; // no executed baseline yet, first update is in policy

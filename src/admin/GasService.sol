@@ -75,15 +75,15 @@ contract GasService is IGasService {
 
         scheduleUpgrade = _gasValue(161030);
         cancelUpgrade = _gasValue(141523);
-        registerAsset = _gasValue(170142);
+        registerAsset = _gasValue(168036);
         setPoolAdapters = _gasValue(789339); // using MAX_ADAPTER_COUNT
-        request = _gasValue(285545);
+        request = _gasValue(281339);
         notifyPool = _gasValue(1368129);
         notifyShareClass = _gasValue(1872195);
         notifyPricePoolPerShare = _gasValue(176553);
         notifyPricePoolPerAsset = _gasValue(183082);
         notifyShareMetadata = _gasValue(198136);
-        initiateTransferShares = _gasValue(371134);
+        initiateTransferShares = _gasValue(369025);
         executeTransferShares = _gasValue(253843);
         updateRestriction = _gasValue(193492);
         managerCallFromHub = _gasValue(227978);
@@ -96,7 +96,7 @@ contract GasService is IGasService {
         authorizeSpokeCall = _gasValue(183419);
         unauthorizeSpokeCall = _gasValue(161141);
         updateManager = _gasValue(177669);
-        updateAssets = _gasValue(395234);
+        updateAssets = _gasValue(392841);
         updateShares = _gasValue(264199);
         managerCallFromSpoke = _gasValue(150317);
     }

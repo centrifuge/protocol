@@ -16,8 +16,9 @@ interface ICircuitBreakerGuard {
     error ExceedsDeltaLimit(bytes32 key, uint256 currentValue, uint256 newValue, uint256 maxDeltaBps, uint256 window);
     error ZeroAnchor();
 
-    /// @notice Tally an amount and revert if the rolling window limit is exceeded.
+    /// @notice Tally an amount and revert if the fixed-window limit is exceeded.
     ///         Use for bounding total throughput (e.g. bridge outflows per 24h).
+    ///         The window resets on the first tally after expiry; transfers within the same window accumulate.
     /// @param key     Identifier scoping this breaker (e.g. keccak256(abi.encode(poolId, asset))).
     /// @param amount  Amount to add to the tally.
     /// @param max     Maximum cumulative amount per window.

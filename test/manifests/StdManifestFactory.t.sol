@@ -42,6 +42,7 @@ contract StdManifestFactoryTest is Test {
             simplePriceManager: address(0),
             requestManager: brm,
             bridgingHook: address(0),
+            oracleValuation: address(0),
             contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: new IStdManifest.Entry[](0)
         });

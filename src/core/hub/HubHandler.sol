@@ -25,9 +25,10 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     IHub public hub;
     IHoldings public holdings;
-    IHubRegistry public hubRegistry;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
+
+    IHubRegistry public immutable hubRegistry;
 
     constructor(
         IHub hub_,

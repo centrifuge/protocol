@@ -31,7 +31,8 @@ interface IBridgeCircuitBreaker is IAuth, IBridgingHook {
     event AuthorizeTransfer(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint16 indexed centrifugeId,
+        uint16 indexed originCentrifugeId,
+        uint16 targetCentrifugeId,
         bytes32 sender,
         bytes32 receiver,
         uint128 amount
@@ -39,7 +40,8 @@ interface IBridgeCircuitBreaker is IAuth, IBridgingHook {
     event CancelTransferAuthorizations(
         PoolId indexed poolId,
         ShareClassId indexed scId,
-        uint16 indexed centrifugeId,
+        uint16 indexed originCentrifugeId,
+        uint16 targetCentrifugeId,
         bytes32 sender,
         bytes32 receiver,
         uint128 amount
@@ -63,7 +65,7 @@ interface IBridgeCircuitBreaker is IAuth, IBridgingHook {
         returns (uint128 rateMax, uint32 rateWindow);
 
     /// @notice Number of times a specific large transfer has been authorized to bypass the rate limit.
-    ///         Keyed by keccak256(abi.encode(poolId, scId, centrifugeId, sender, receiver, amount)).
+    ///         Keyed by keccak256(abi.encode(poolId, scId, originCentrifugeId, targetCentrifugeId, sender, receiver, amount)).
     ///         Each authorization allows one transfer; the count is decremented on use.
     function authorizations(bytes32 key) external view returns (uint256);
 }

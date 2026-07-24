@@ -701,6 +701,16 @@ contract TestHubFile is TestCommon {
         assertEq(address(hub.shareClassManager()), address(newScm));
     }
 
+    function testFileMultiAdapter() public {
+        IMultiAdapter newMultiAdapter = IMultiAdapter(makeAddr("NewMultiAdapter"));
+
+        vm.expectEmit(true, true, true, true);
+        emit IHub.File("multiAdapter", address(newMultiAdapter));
+
+        hub.file("multiAdapter", address(newMultiAdapter));
+        assertEq(address(hub.multiAdapter()), address(newMultiAdapter));
+    }
+
     function testFileUnrecognizedParam() public {
         vm.expectRevert(IHub.FileUnrecognizedParam.selector);
         hub.file("unknown", address(0));

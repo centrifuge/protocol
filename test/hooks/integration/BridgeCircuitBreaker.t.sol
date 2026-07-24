@@ -154,6 +154,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
                 IBridgeCircuitBreaker.ConfigKind.AuthorizeTransfer,
                 ShareClassId.unwrap(SC_1),
                 LOCAL_CENTRIFUGE_ID,
+                TARGET,
                 sender_,
                 receiver,
                 AMOUNT
@@ -164,6 +165,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
                 IBridgeCircuitBreaker.ConfigKind.AuthorizeTransfer,
                 ShareClassId.unwrap(SC_1),
                 LOCAL_CENTRIFUGE_ID,
+                TARGET,
                 sender_,
                 receiver,
                 AMOUNT
@@ -208,6 +210,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
                 IBridgeCircuitBreaker.ConfigKind.AuthorizeTransfer,
                 ShareClassId.unwrap(SC_1),
                 LOCAL_CENTRIFUGE_ID,
+                TARGET,
                 sender_,
                 receiver,
                 AMOUNT
@@ -218,6 +221,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
                 IBridgeCircuitBreaker.ConfigKind.CancelTransferAuthorizations,
                 ShareClassId.unwrap(SC_1),
                 LOCAL_CENTRIFUGE_ID,
+                TARGET,
                 sender_,
                 receiver,
                 AMOUNT
@@ -260,6 +264,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
                 IBridgeCircuitBreaker.ConfigKind.AuthorizeTransfer,
                 ShareClassId.unwrap(SC_1),
                 LOCAL_CENTRIFUGE_ID,
+                TARGET,
                 bytes32(bytes20(investor)),
                 receiver,
                 AMOUNT

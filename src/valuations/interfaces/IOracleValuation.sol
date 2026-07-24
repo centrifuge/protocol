@@ -17,11 +17,12 @@ import {IManagerCallFromHub, IManagerCallFromSpoke} from "../../core/utils/inter
 ///         Feeder management arrives via `fromHub` (hub-supervised); remote price updates arrive via
 ///         `fromSpoke` (feeder-validated by this contract).
 interface IOracleValuation is IValuation, IManagerCallFromHub, IManagerCallFromSpoke {
-    /// @dev Latest price
+    /// @dev Latest price. `updatedAt` is the hub-chain block.timestamp of the last committed write.
     struct Price {
         D18 value;
         /// @dev This is used to separate default (zero) values from valid 0.0 prices
         bool isValid;
+        uint64 updatedAt;
     }
 
     event UpdatePrice(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, D18 newPrice);
@@ -31,6 +32,7 @@ interface IOracleValuation is IValuation, IManagerCallFromHub, IManagerCallFromS
     error UnexpectedValue();
     error NotFeeder();
     error PriceNotSet();
+    error StalePrice();
 
     //----------------------------------------------------------------------------------------------
     // State variable getters
@@ -55,7 +57,7 @@ interface IOracleValuation is IValuation, IManagerCallFromHub, IManagerCallFromS
     function pricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
-        returns (D18 value, bool isValid);
+        returns (D18 value, bool isValid, uint64 updatedAt);
 
     //----------------------------------------------------------------------------------------------
     // Update price

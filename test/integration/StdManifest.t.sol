@@ -65,6 +65,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         simplePriceManager: address(0),
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
+                        oracleValuation: address(0),
                         contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdManifest.Entry[](0)
                     })
@@ -155,6 +156,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             simplePriceManager: address(0),
                             requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
+                            oracleValuation: address(0),
                             contractUpdaterForwarder: address(contractUpdaterForwarder),
                             allowlist: new IStdManifest.Entry[](0)
                         })
@@ -203,6 +205,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             simplePriceManager: address(0),
                             requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
+                            oracleValuation: address(0),
                             contractUpdaterForwarder: address(contractUpdaterForwarder),
                             allowlist: new IStdManifest.Entry[](0)
                         })
@@ -318,6 +321,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         simplePriceManager: address(0),
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
+                        oracleValuation: address(0),
                         contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdManifest.Entry[](0)
                     })

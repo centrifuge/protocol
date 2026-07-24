@@ -17,6 +17,8 @@ import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
 contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     using CastLib for address;
 
+    bytes4 constant UPDATE_SHARE_PRICE = bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128)"));
+
     // Logical network IDs for NAV segregation — not actual deployed chains
     uint16 constant CHAIN_CP = 5;
     uint16 constant CHAIN_CV = 6;
@@ -108,14 +110,13 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), true, false, 1);
 
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 3300e18, true, true, 2);
 
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
 
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
 
@@ -146,8 +147,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         navManager.updateHoldingValue(POOL_A, scId, asset1);
 
         vm.expectCall(
-            address(hub),
-            abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3650e18) / d18(3800e18))
+            address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, scId, d18(3650e18) / d18(3800e18))
         );
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
@@ -232,8 +232,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
 
         // Increase liability, e.g. fee payable
         vm.expectCall(
-            address(hub),
-            abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId, d18(3750e18) / d18(3800e18))
+            address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, scId, d18(3750e18) / d18(3800e18))
         );
 
         vm.prank(address(messageDispatcher));
@@ -402,8 +401,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         assertEq(issuanceDuring, issuanceBefore);
 
         // Refill asset1 by 1500: holding positive again, deficit clears, trailing snapshot resumes pricing.
-        vm.expectCall(address(hub), abi.encodeWithSelector(hub.updateSharePrice.selector, POOL_A, scId));
-
+        // Global NAV and issuance both return to 3800, so price remains d18(1,1) and Y8 skips the hub call.
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
 

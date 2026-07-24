@@ -17,7 +17,7 @@ import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol"
 ///
 ///         The Supervisor is a registered Hub manager for the pool only so that it can reach
 ///         {IHub.cancelAuthorization} on behalf of sentinels (which are not Hub managers). The hub,
-///         pool, and contract updater are immutable; the sentinel set is managed via {trustedCall}.
+///         pool, and contract updater are immutable; the sentinel set is managed via {IHub.managerCall}.
 contract Supervisor is ISupervisor, IManagerCallFromHub {
     using BytesLib for bytes;
     using CastLib for bytes32;

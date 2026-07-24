@@ -50,7 +50,9 @@ contract SupervisorTest is Test {
     MockHub mockHub = new MockHub(IHubRegistry(address(registry)));
     Supervisor supervisor;
 
-    bytes data = abi.encodeWithSelector(IHub.updateSharePrice.selector, POOL_A, SC_A, uint256(1e18), uint64(1));
+    bytes4 constant UPDATE_SHARE_PRICE_WITH_TIMESTAMP =
+        bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128,uint64)"));
+    bytes data = abi.encodeWithSelector(UPDATE_SHARE_PRICE_WITH_TIMESTAMP, POOL_A, SC_A, uint256(1e18), uint64(1));
 
     function setUp() public {
         supervisor = new Supervisor(IHub(address(mockHub)), POOL_A, envoy);

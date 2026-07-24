@@ -6,7 +6,7 @@ import {ICircuitBreakerGuard, CumulativeState, ReferenceState} from "./interface
 import {MathLib} from "../../../misc/libraries/MathLib.sol";
 
 /// @title  CircuitBreakerGuard
-/// @notice Rolling-window circuit breaker for weiroll scripts. Limits cumulative throughput
+/// @notice Fixed-window circuit breaker for weiroll scripts. Limits cumulative throughput
 ///         (e.g. bridge outflows) and per-update value deviation (e.g. price updates).
 contract CircuitBreakerGuard is ICircuitBreakerGuard {
     using MathLib for uint256;

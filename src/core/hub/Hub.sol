@@ -45,11 +45,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     IHoldings public holdings;
     IFeeAccrual public feeAccrual;
-    IAccounting public accounting;
-    IHubRegistry public hubRegistry;
     IHubMessageSender public sender;
     IMultiAdapter public multiAdapter;
     IShareClassManager public shareClassManager;
+
+    IAccounting public immutable accounting;
+    IHubRegistry public immutable hubRegistry;
 
     constructor(
         IGateway gateway_,
@@ -89,6 +90,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         else if (what == "feeAccrual") feeAccrual = IFeeAccrual(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "sender") sender = IHubMessageSender(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
@@ -297,13 +299,17 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @inheritdoc IHub
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
-        external
+        public
         payable
         enforced(poolId)
     {
         shareClassManager.updateSharePrice(poolId, scId, pricePoolPerShare, computedAt);
-
         _accrue(poolId, scId);
+    }
+
+    /// @inheritdoc IHub
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable {
+        updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
     }
 
     /// @inheritdoc IHub

@@ -85,10 +85,8 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     error NotAuthorized();
     error NotEnvoy();
     error UnexpectedValue();
-    error MismatchedEpochs();
     error AlreadyInitialized();
     error NotInitialized();
-    error ExceedsMaxAccounts();
     error InvalidStateOfAccounts();
     error InvalidNAVHook();
     error UnsupportedSpokeCall();

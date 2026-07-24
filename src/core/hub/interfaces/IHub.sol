@@ -145,7 +145,7 @@ interface IHub is IBatchedMulticall {
     function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Updates a contract parameter
-    /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'holdings', 'sender', 'shareClassManager')
+    /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'holdings', 'sender', 'multiAdapter', 'shareClassManager')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
 
@@ -357,6 +357,12 @@ interface IHub is IBatchedMulticall {
     function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare, uint64 computedAt)
         external
         payable;
+
+    /// @notice Convenience overload that calls updateSharePrice with computedAt = block.timestamp.
+    /// @param poolId The pool identifier
+    /// @param scId The share class identifier
+    /// @param pricePoolPerShare The new price per share
+    function updateSharePrice(PoolId poolId, ShareClassId scId, D18 pricePoolPerShare) external payable;
 
     /// @notice Creates an account
     /// @param poolId The pool identifier

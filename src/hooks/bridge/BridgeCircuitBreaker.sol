@@ -13,7 +13,7 @@ import {IBridgingHook, BridgeSharesParams, BridgeSharesResult} from "../../core/
 import {ICircuitBreakerGuard} from "../../managers/spoke/guards/interfaces/ICircuitBreakerGuard.sol";
 
 /// @title  BridgeCircuitBreaker
-/// @notice Combines pausing and a rolling rate limit into one hook. Both checks run on every transfer.
+/// @notice Combines pausing and a fixed-window rate limit into one hook. Both checks run on every transfer.
 ///         Transfers whose single amount exceeds rateMax can never pass the rate limit organically; a hub
 ///         manager must explicitly authorize them via AuthorizeTransfer before retrying.
 contract BridgeCircuitBreaker is Auth, IManagerCallFromHub, IBridgeCircuitBreaker {
@@ -52,19 +52,35 @@ contract BridgeCircuitBreaker is Auth, IManagerCallFromHub, IBridgeCircuitBreake
             limits[poolId][scId][centrifugeId].rateWindow = windowSeconds;
             emit SetRateLimit(poolId, scId, centrifugeId, max, windowSeconds);
         } else if (kindValue == uint8(ConfigKind.AuthorizeTransfer)) {
-            (, bytes16 scId_, uint16 centrifugeId, bytes32 sender, bytes32 receiver, uint128 amount) =
-                abi.decode(payload, (uint8, bytes16, uint16, bytes32, bytes32, uint128));
+            (
+                ,
+                bytes16 scId_,
+                uint16 originCentrifugeId,
+                uint16 targetCentrifugeId,
+                bytes32 sender,
+                bytes32 receiver,
+                uint128 amount
+            ) = abi.decode(payload, (uint8, bytes16, uint16, uint16, bytes32, bytes32, uint128));
             ShareClassId scId = ShareClassId.wrap(scId_);
-            bytes32 key = _authKey(poolId, scId, centrifugeId, sender, receiver, amount);
+            bytes32 key = _authKey(poolId, scId, originCentrifugeId, targetCentrifugeId, sender, receiver, amount);
             authorizations[key]++;
-            emit AuthorizeTransfer(poolId, scId, centrifugeId, sender, receiver, amount);
+            emit AuthorizeTransfer(poolId, scId, originCentrifugeId, targetCentrifugeId, sender, receiver, amount);
         } else if (kindValue == uint8(ConfigKind.CancelTransferAuthorizations)) {
-            (, bytes16 scId_, uint16 centrifugeId, bytes32 sender, bytes32 receiver, uint128 amount) =
-                abi.decode(payload, (uint8, bytes16, uint16, bytes32, bytes32, uint128));
+            (
+                ,
+                bytes16 scId_,
+                uint16 originCentrifugeId,
+                uint16 targetCentrifugeId,
+                bytes32 sender,
+                bytes32 receiver,
+                uint128 amount
+            ) = abi.decode(payload, (uint8, bytes16, uint16, uint16, bytes32, bytes32, uint128));
             ShareClassId scId = ShareClassId.wrap(scId_);
-            bytes32 key = _authKey(poolId, scId, centrifugeId, sender, receiver, amount);
+            bytes32 key = _authKey(poolId, scId, originCentrifugeId, targetCentrifugeId, sender, receiver, amount);
             delete authorizations[key];
-            emit CancelTransferAuthorizations(poolId, scId, centrifugeId, sender, receiver, amount);
+            emit CancelTransferAuthorizations(
+                poolId, scId, originCentrifugeId, targetCentrifugeId, sender, receiver, amount
+            );
         } else {
             revert UnknownConfigKind();
         }
@@ -86,20 +102,18 @@ contract BridgeCircuitBreaker is Auth, IManagerCallFromHub, IBridgeCircuitBreake
             });
     }
 
-    /// @dev For transfers within the rate limit, tallies the amount against the rolling window.
-    ///      For transfers exceeding rateMax (including when rateMax is 0, which blocks all organic
-    ///      transfers), the transfer must have been pre-authorized via AuthorizeTransfer. The
-    ///      authorization is consumed on use.
+    /// @dev Authorized transfers bypass all rate limiting. Unauthorized transfers are tallied
+    ///      against the fixed window; the guard reverts if the cumulative total is exceeded.
     function _consumeRateLimit(BridgeSharesParams calldata p) private {
-        Limits memory l = limits[p.poolId][p.scId][p.originCentrifugeId];
-
-        if (p.amount > l.rateMax) {
-            bytes32 key = _authKey(p.poolId, p.scId, p.originCentrifugeId, p.sender, p.receiver, p.amount);
-            require(authorizations[key] > 0, TransferNotAuthorized());
+        bytes32 key =
+            _authKey(p.poolId, p.scId, p.originCentrifugeId, p.targetCentrifugeId, p.sender, p.receiver, p.amount);
+        if (authorizations[key] > 0) {
             authorizations[key]--;
             return;
         }
 
+        Limits memory l = limits[p.poolId][p.scId][p.originCentrifugeId];
+        require(p.amount <= l.rateMax, TransferNotAuthorized());
         circuitBreakerGuard.tally(
             keccak256(abi.encode(p.poolId, p.scId, p.originCentrifugeId)), p.amount, l.rateMax, l.rateWindow
         );
@@ -108,11 +122,12 @@ contract BridgeCircuitBreaker is Auth, IManagerCallFromHub, IBridgeCircuitBreake
     function _authKey(
         PoolId poolId,
         ShareClassId scId,
-        uint16 centrifugeId,
+        uint16 originCentrifugeId,
+        uint16 targetCentrifugeId,
         bytes32 sender,
         bytes32 receiver,
         uint128 amount
     ) private pure returns (bytes32) {
-        return keccak256(abi.encode(poolId, scId, centrifugeId, sender, receiver, amount));
+        return keccak256(abi.encode(poolId, scId, originCentrifugeId, targetCentrifugeId, sender, receiver, amount));
     }
 }
