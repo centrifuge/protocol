@@ -10,10 +10,10 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IFeeHook} from "../../../../src/core/hub/interfaces/IFeeHook.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IFeeAccrual} from "../../../../src/core/hub/interfaces/IFeeAccrual.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ContractUpdateLib} from "../../../../src/core/utils/ContractUpdateLib.sol";
@@ -26,7 +26,7 @@ import {IHubMessageSender} from "../../../../src/core/messaging/interfaces/IGate
 
 import "forge-std/Test.sol";
 
-contract MockFeeHook is IFeeHook {
+contract MockFeeAccrual is IFeeAccrual {
     mapping(PoolId => mapping(ShareClassId => uint32)) public calls;
 
     function accrue(PoolId poolId, ShareClassId scId) external {
@@ -55,7 +55,7 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     IHubMessageSender immutable sender = IHubMessageSender(makeAddr("Sender"));
-    MockFeeHook immutable feeHook = new MockFeeHook();
+    MockFeeAccrual immutable feeAccrual = new MockFeeAccrual();
 
     Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
 
@@ -72,7 +72,7 @@ contract TestCommon is Test {
 
         vm.mockCall(address(sender), abi.encodeWithSelector(sender.localCentrifugeId.selector), abi.encode(CHAIN_A));
 
-        hub.file("feeHook", address(feeHook));
+        hub.file("feeAccrual", address(feeAccrual));
         hub.file("sender", address(sender));
     }
 
@@ -271,6 +271,7 @@ contract TestNotifyShareClass is TestCommon {
 
 contract TestInitializeHolding is TestCommon {
     function testErrAssetNotFound() public {
+        vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(true));
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
         );
@@ -295,12 +296,12 @@ contract TestUpdateSharePrice is TestCommon {
             abi.encode(false)
         );
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 0);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 0);
 
         vm.prank(ADMIN);
         hub.updateSharePrice(POOL_A, SC_A, d18(1, 1), uint64(block.timestamp));
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 1);
     }
 }
 
@@ -320,12 +321,12 @@ contract TestNotifyAssetPrice is TestCommon {
             abi.encode()
         );
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 0);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 0);
 
         vm.prank(ADMIN);
         hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 1);
     }
 
     function testNotifyAssetPriceSendsValuationPriceWhenHoldingInitialized() public {
@@ -358,7 +359,7 @@ contract TestNotifyAssetPrice is TestCommon {
         vm.prank(ADMIN);
         hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 1);
     }
 }
 
@@ -660,14 +661,14 @@ contract TestHubFile is TestCommon {
         assertEq(address(hub.gateway()), address(newGateway));
     }
 
-    function testFileFeeHook() public {
-        IFeeHook newFeeHook = IFeeHook(makeAddr("NewFeeHook"));
+    function testFileFeeAccrual() public {
+        IFeeAccrual newFeeAccrual = IFeeAccrual(makeAddr("NewFeeAccrual"));
 
         vm.expectEmit(true, true, true, true);
-        emit IHub.File("feeHook", address(newFeeHook));
+        emit IHub.File("feeAccrual", address(newFeeAccrual));
 
-        hub.file("feeHook", address(newFeeHook));
-        assertEq(address(hub.feeHook()), address(newFeeHook));
+        hub.file("feeAccrual", address(newFeeAccrual));
+        assertEq(address(hub.feeAccrual()), address(newFeeAccrual));
     }
 
     function testFileHoldings() public {

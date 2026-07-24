@@ -53,7 +53,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
 
     /// @notice Creates and send the message
     function sendNotifyPricePoolPerShare(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,

@@ -107,8 +107,9 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     function deposit(ShareClassId scId, address asset, uint256 tokenId, uint128 value) external;
 
     /// @notice Withdraws `value` of `asset` in underlying `poolId` and given `scId`
-    /// @dev If wasNoted is true, funds were already added to 'total' (decrements total and emits event)
-    ///      If wasNoted is false, funds are in 'reserved' only (just transfers, no accounting change)
+    /// @dev Accounting only: decreases `total` by `value` and reverts unless the available
+    ///      (non-reserved) balance covers `value`. The caller pairs it with `authTransferTo`
+    ///      to move the actual tokens.
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be withdrawn
     /// @param tokenId The id of the asset - 0 for ERC20
@@ -122,7 +123,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param asset The address of the asset to be reserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to reserve
-    /// @param caller The address of the manager creating the reservation (passed by BalanceSheet)
+    /// @param caller The address of the manager creating the reservation (passed by Spoke)
     /// @param reason The reason code (1=DEPOSIT, 2=REDEEM)
     function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
         external;

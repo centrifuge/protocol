@@ -1117,7 +1117,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.prank(FM);
         h.hub.authorizeSpokeCall{value: GAS}(POOL_A, s.centrifugeId, data, REFUND);
 
-        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), manifest, data));
+        bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
         // The manifest consumes it on the spoke side, as its enforce would for the matching call.
@@ -1141,7 +1141,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.prank(FM);
         h.hub.authorizeSpokeCall{value: GAS}(POOL_A, s.centrifugeId, data, REFUND);
 
-        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), manifest, data));
+        bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
         // The Hub retires the not-yet-consumed authorization, decrementing the counter back to zero.
@@ -1178,7 +1178,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         // Hub authorizes the exact spoke calldata.
         vm.prank(FM);
         h.hub.authorizeSpokeCall{value: GAS}(POOL_A, s.centrifugeId, data, REFUND);
-        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), address(manifest), data));
+        bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
         // Now the same call runs: enforce consumes the authorization and the deposit takes effect.

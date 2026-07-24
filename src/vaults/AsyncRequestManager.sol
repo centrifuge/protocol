@@ -32,8 +32,8 @@ import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
-import {IRequestManager} from "../core/interfaces/IRequestManager.sol";
 import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
+import {ISpokeRequestManager} from "../core/spoke/interfaces/ISpokeRequestManager.sol";
 import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IShareToken} from "../token/interfaces/IShareToken.sol";
@@ -227,7 +227,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
                 m.cancelledShareAmount
             );
         } else {
-            revert IRequestManager.UnknownRequestCallbackType();
+            revert ISpokeRequestManager.UnknownRequestCallbackType();
         }
     }
 

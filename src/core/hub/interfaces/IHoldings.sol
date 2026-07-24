@@ -82,6 +82,9 @@ interface IHoldings {
     /// @notice Item was not found for a required action.
     error HoldingNotFound();
 
+    /// @notice Dispatched when the pool does not exist.
+    error NonExistingPool();
+
     /// @notice Valuation is not valid.
     error WrongValuation();
 
@@ -126,24 +129,29 @@ interface IHoldings {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
+    /// @param centrifugeId The network this increase is reported for, used to bucket `deficitCount`
     /// @param amount Amount to increase by
     /// @return value The value the holding has incremented
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint16 centrifugeId, uint128 amount)
         external
         returns (uint128 value);
 
     /// @notice Decrements the amount of a holding and updates the value for that decrement
     /// @dev    A decrease beyond the current amount is not clamped away: it accrues against `decreasedAmount`
-    ///         and nets off future increases, so it never reverts (which would stall the ordered message
-    ///         stream) yet never permanently loses the excess. Carrying value is removed pro-rata to the
-    ///         realized decrease, so the returned value exactly mirrors the storage mutation and can never
-    ///         over-journal. Pushing a holding into deficit increments `deficitCount`.
+    ///         and nets off future increases, so the amount side never reverts on an over-decrease (which
+    ///         would stall the ordered message stream) yet never permanently loses the excess.
+    ///         The realized decrease is valued at the hub-side valuation, symmetric with `increase`: an
+    ///         oracle-backed valuation that reverts on a stale or unset price stalls this call exactly as
+    ///         it would stall `increase`, instead of only ever blocking inflows. The quote is capped at the
+    ///         currently stored carrying value so the returned value can never over-journal the accounts.
+    ///         Pushing a holding into deficit increments `deficitCount`.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
+    /// @param centrifugeId The network this decrease is reported for, used to bucket `deficitCount`
     /// @param amount Amount to decrease by
     /// @return value The value the holding has decremented
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint16 centrifugeId, uint128 amount)
         external
         returns (uint128 value);
 

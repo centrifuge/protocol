@@ -8,7 +8,7 @@ import {Auth} from "../../misc/Auth.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
-import {IBridgingHook, TransferSharesParams, TransferSharesResult} from "../../core/hub/interfaces/IBridgingHook.sol";
+import {IBridgingHook, BridgeSharesParams, BridgeSharesResult} from "../../core/hub/interfaces/IBridgingHook.sol";
 
 import {ICircuitBreakerGuard} from "../../managers/spoke/guards/interfaces/ICircuitBreakerGuard.sol";
 
@@ -75,25 +75,22 @@ contract BridgeCircuitBreaker is Auth, IManagerCallFromHub, IBridgeCircuitBreake
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IBridgingHook
-    function onInitiateTransferShares(TransferSharesParams calldata p)
-        external
-        auth
-        returns (TransferSharesResult memory)
-    {
+    function onBridgeShares(BridgeSharesParams calldata p) external auth returns (BridgeSharesResult memory) {
         require(!paused[p.poolId][p.scId], Paused());
 
         _consumeRateLimit(p);
 
-        return TransferSharesResult({
-            receiver: p.receiver, amount: p.amount, extraGasLimit: p.extraGasLimit, refund: p.refund
-        });
+        return
+            BridgeSharesResult({
+                receiver: p.receiver, amount: p.amount, extraGasLimit: p.extraGasLimit, refund: p.refund
+            });
     }
 
     /// @dev For transfers within the rate limit, tallies the amount against the rolling window.
     ///      For transfers exceeding rateMax (including when rateMax is 0, which blocks all organic
     ///      transfers), the transfer must have been pre-authorized via AuthorizeTransfer. The
     ///      authorization is consumed on use.
-    function _consumeRateLimit(TransferSharesParams calldata p) private {
+    function _consumeRateLimit(BridgeSharesParams calldata p) private {
         Limits memory l = limits[p.poolId][p.scId][p.originCentrifugeId];
 
         if (p.amount > l.rateMax) {

@@ -21,6 +21,13 @@ interface IHubRegistry is IERC6909Decimals {
         uint8 decimals;
     }
 
+    /// @dev Packed into one slot so authorization-id computation reads the manifest and its install
+    ///      nonce with a single SLOAD.
+    struct ManifestInfo {
+        IManifest manifest;
+        uint64 nonce;
+    }
+
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -29,7 +36,6 @@ interface IHubRegistry is IERC6909Decimals {
     event NewPool(PoolId indexed poolId, address indexed manager, AssetId indexed currency);
     event UpdateManager(PoolId indexed poolId, address indexed manager, bool canManage);
     event SetMetadata(PoolId indexed poolId, bytes metadata);
-    event UpdateDependency(PoolId indexed poolId, bytes32 indexed what, address dependency);
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
     event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
     event SetBridgingHook(PoolId indexed poolId, address hook);
@@ -52,13 +58,20 @@ interface IHubRegistry is IERC6909Decimals {
     // Errors
     //----------------------------------------------------------------------------------------------
 
-    error NonExistingPool(PoolId id);
+    error NonExistingPool();
+    error InvalidPool();
     error AssetAlreadyRegistered();
     error PoolAlreadyRegistered();
     error EmptyAccount();
     error EmptyCurrency();
     error EmptyShareClassManager();
     error AssetNotFound();
+    /// @notice Dispatched when {registerAsset} targets the null AssetId, which is the "no currency"
+    ///         sentinel: registering it would make decimal lookups succeed for non-existent pools.
+    error EmptyAssetId();
+    /// @notice Dispatched when {registerAsset} declares more than 18 decimals, the bound PricingLib
+    ///         conversions assume (mirrors the spoke-side check in Spoke.registerAsset).
+    error TooManyDecimals();
     /// @notice Dispatched when {updateCurrency} targets a currency whose decimals differ from the pool's current
     ///         currency; pool decimals must stay fixed to match already-deployed share tokens.
     error CurrencyDecimalsMismatch();
@@ -79,14 +92,14 @@ interface IHubRegistry is IERC6909Decimals {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Register a new asset
-    /// @param assetId The asset identifier
-    /// @param decimals_ The number of decimals for the asset
+    /// @param assetId The asset identifier; must not be the null AssetId
+    /// @param decimals_ The number of decimals for the asset, at most 18
     function registerAsset(AssetId assetId, uint8 decimals_) external;
 
     /// @notice Register a new pool
     /// @param poolId The pool identifier
     /// @param manager The initial manager address for the pool
-    /// @param currency The currency asset for the pool
+    /// @param currency The currency asset for the pool; must already be registered
     function registerPool(PoolId poolId, address manager, AssetId currency) external;
 
     //----------------------------------------------------------------------------------------------
@@ -95,9 +108,9 @@ interface IHubRegistry is IERC6909Decimals {
 
     /// @notice Allow/disallow an address as a manager for the pool
     /// @param poolId The pool identifier
-    /// @param newManager The address to update manager status for
+    /// @param who The address to update manager status for
     /// @param canManage Whether the address can manage the pool
-    function updateManager(PoolId poolId, address newManager, bool canManage) external;
+    function updateManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Set the hub request manager for a pool on a specific network
     /// @param poolId The pool identifier
@@ -114,7 +127,6 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param poolId The pool identifier
     /// @param what The dependency identifier
     /// @param dependency The dependency contract address
-    function updateDependency(PoolId poolId, bytes32 what, address dependency) external;
 
     /// @notice Updates the currency of the pool
     /// @param poolId The pool identifier
@@ -166,8 +178,14 @@ interface IHubRegistry is IERC6909Decimals {
     function authorizedAfter(bytes32 authId) external view returns (uint48 validAfter);
 
     /// @notice The identifier of an authorization for `data` on `poolId`, namespaced by the pool's
-    ///         current manifest so swapping the manifest invalidates all of its pending authorizations.
+    ///         current manifest and its install nonce, so any manifest change (including re-installing
+    ///         a previous manifest address) invalidates all pending authorizations.
     function authId(PoolId poolId, bytes calldata data) external view returns (bytes32);
+
+    /// @notice Incremented on every {setManifest}. Part of the {authId} namespace, so re-installing a
+    ///         previously used manifest address cannot resurrect authorizations from its earlier tenure.
+    /// @param poolId The pool identifier
+    function manifestNonce(PoolId poolId) external view returns (uint64);
 
     /// @notice Returns the metadata attached to the pool, if any
     /// @param poolId The pool identifier
@@ -178,12 +196,6 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param poolId The pool identifier
     /// @return The currency asset identifier
     function currency(PoolId poolId) external view returns (AssetId);
-
-    /// @notice Returns the dependency used in the system
-    /// @param poolId The pool identifier
-    /// @param what The dependency identifier
-    /// @return The dependency contract address
-    function dependency(PoolId poolId, bytes32 what) external view returns (address);
 
     /// @notice Returns whether the account is a manager
     /// @param poolId The pool identifier

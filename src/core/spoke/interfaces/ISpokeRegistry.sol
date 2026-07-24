@@ -3,6 +3,7 @@ pragma solidity >=0.5.0;
 
 import {IRegistrar} from "./IRegistrar.sol";
 import {IVault, VaultKind} from "./IVault.sol";
+import {ISpokeRequestManager} from "./ISpokeRequestManager.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
 import {IERC20} from "../../../misc/interfaces/IERC20.sol";
@@ -12,7 +13,6 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IManifest} from "../../hub/interfaces/IManifest.sol";
-import {IRequestManager} from "../../interfaces/IRequestManager.sol";
 import {IVaultFactory} from "../factories/interfaces/IVaultFactory.sol";
 
 /// @dev Centrifuge pools
@@ -59,6 +59,13 @@ struct VaultDetails {
     bool isLinked;
 }
 
+/// @dev Packed into one slot so authorization-id computation reads the manifest and its install
+///      nonce with a single SLOAD.
+struct ManifestInfo {
+    IManifest manifest;
+    uint64 nonce;
+}
+
 interface ISpokeRegistry {
     //----------------------------------------------------------------------------------------------
     // Events
@@ -76,7 +83,7 @@ interface ISpokeRegistry {
     /// @notice Emitted when a recorded authorization is consumed by an executing out-of-policy call.
     event AuthorizationConsumed(PoolId indexed poolId, address indexed caller, bytes32 indexed authId);
     event AddShareClass(PoolId indexed poolId, ShareClassId indexed scId, address token, IRegistrar registrar);
-    event SetRequestManager(PoolId indexed poolId, IRequestManager manager);
+    event SetRequestManager(PoolId indexed poolId, ISpokeRequestManager manager);
     event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
     event UpdateBridger(PoolId indexed poolId, address indexed who, bool canBridge);
     event UpdateAssetPrice(
@@ -129,6 +136,14 @@ interface ISpokeRegistry {
     error NoOutstandingAuthorization();
     /// @notice Dispatched when {consumeAuthorization} is called by anyone other than the pool's manifest.
     error NotManifest();
+    /// @notice Dispatched when {addShareClass}/{linkToken} pass a zero registrar, whose slot is the
+    ///         share-class existence sentinel.
+    error EmptyRegistrar();
+    /// @notice Dispatched when {createAssetId} is called with a zero centrifugeId, whose raw ids would
+    ///         collide with the ISO-4217 currency-reference encoding.
+    error InvalidCentrifugeId();
+    /// @notice Dispatched when {createAssetId} targets an (asset, tokenId) pair that already has an id.
+    error AssetAlreadyRegistered();
 
     //----------------------------------------------------------------------------------------------
     // Setter methods
@@ -146,7 +161,9 @@ interface ISpokeRegistry {
     function addShareClass(PoolId poolId, ShareClassId scId, address shareToken_, IRegistrar registrar_) external;
 
     /// @notice Links a share token and its registrar to a pool and share class, overwriting any existing link
-    /// @dev Governance-only (not reachable from a hub message); used to attach a registrar to an existing token
+    /// @dev Governance-only (not reachable from a hub message); used to attach a registrar to an existing token.
+    ///      Requires an active pool; on a token swap the outgoing token's reverse lookup is retired, so
+    ///      exactly one token resolves to the share class at any time
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param shareToken_ The share token address
@@ -156,7 +173,7 @@ interface ISpokeRegistry {
     /// @notice Sets the request manager for a pool
     /// @param poolId The pool identifier
     /// @param manager The request manager contract
-    function setRequestManager(PoolId poolId, IRequestManager manager) external;
+    function setRequestManager(PoolId poolId, ISpokeRequestManager manager) external;
 
     /// @notice Grants or revokes the pool manager role for an address
     /// @param poolId The pool identifier
@@ -185,6 +202,7 @@ interface ISpokeRegistry {
     function unauthorize(PoolId poolId, bytes calldata data) external;
 
     /// @notice Install or replace the policy manifest for a pool (address(0) to clear). Auth-gated.
+    /// @dev    Bumps the pool's manifest nonce, invalidating every outstanding authorization.
     function setManifest(PoolId poolId, IManifest manifest) external;
 
     /// @notice Consume a recorded authorization for an executing out-of-policy call. Callable only by the
@@ -196,6 +214,16 @@ interface ISpokeRegistry {
 
     /// @notice Returns the policy manifest installed for a pool (address(0) if none).
     function manifest(PoolId poolId) external view returns (IManifest);
+
+    /// @notice Incremented on every {setManifest}. Part of the authorization-id namespace, so re-installing
+    ///         a previously used manifest address cannot resurrect authorizations from its earlier tenure.
+    /// @param poolId The pool identifier
+    function manifestNonce(PoolId poolId) external view returns (uint64);
+
+    /// @notice The identifier of an authorization for `data` on `poolId`, namespaced by the pool's
+    ///         current manifest and its install nonce, so any manifest change (including re-installing
+    ///         a previous manifest address) invalidates all outstanding authorizations.
+    function authId(PoolId poolId, bytes calldata data) external view returns (bytes32);
 
     /// @notice The number of Hub-authorized instances of a call currently recorded and awaiting consumption.
     function authorizations(bytes32 authId) external view returns (uint256 count);
@@ -349,7 +377,7 @@ interface ISpokeRegistry {
     /// @notice Returns the request manager for a given pool
     /// @param poolId The pool id
     /// @return manager The request manager for the pool
-    function requestManager(PoolId poolId) external view returns (IRequestManager manager);
+    function requestManager(PoolId poolId) external view returns (ISpokeRequestManager manager);
 
     /// @notice Returns whether an address holds the pool manager role
     function manager(PoolId poolId, address who) external view returns (bool);

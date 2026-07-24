@@ -337,8 +337,9 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         erc20 = _newErc20("X's Dollar", "USDX", 6);
         erc6909 = new MockERC6909();
 
-        // Subsidy and balance sheet manager for POOL_A
+        // Subsidy and balance sheet manager for POOL_A (roles require the pool to be active)
         subsidyManager.deposit{value: 0.5 ether}(POOL_A);
+        centrifugeChain.addPool(POOL_A.raw());
         spokeRegistry.updateManager(POOL_A, address(this), true);
 
         // Prevent confusion with block.chainid

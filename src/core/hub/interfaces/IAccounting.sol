@@ -39,6 +39,9 @@ interface IAccounting {
     /// @notice Dispatched when the debit and credit side do not match at the end of a transaction.
     error Unbalanced();
 
+    /// @notice Dispatched when trying to create an account with the null id (the unset-slot sentinel).
+    error InvalidAccountId();
+
     /// @notice Dispatched when trying to create an account that already exists.
     error AccountExists();
 

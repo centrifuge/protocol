@@ -7,6 +7,7 @@ import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IRequestRouter} from "./interfaces/IRequestRouter.sol";
 import {ISnapshotQueue} from "./interfaces/ISnapshotQueue.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
+import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
 import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -14,7 +15,7 @@ import {Recoverable} from "../../misc/Recoverable.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {IERC20, IERC20Metadata} from "../../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
-import {IERC6909, IERC6909MetadataExt} from "../../misc/interfaces/IERC6909.sol";
+import {IERC6909, IERC6909MetadataExt, TransferFailed} from "../../misc/interfaces/IERC6909.sol";
 
 import {IGateway} from "../messaging/interfaces/IGateway.sol";
 import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
@@ -24,7 +25,6 @@ import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
-import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  Spoke
 /// @notice Management contract that integrates all spoke-side operations of a pool:
@@ -136,7 +136,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         if (tokenId == 0) {
             SafeTransferLib.safeTransferFrom(asset, msgSender(), address(escrow_), amount);
         } else {
-            IERC6909(asset).transferFrom(msgSender(), address(escrow_), tokenId, amount);
+            require(IERC6909(asset).transferFrom(msgSender(), address(escrow_), tokenId, amount), TransferFailed());
         }
         emit Deposit(poolId, scId, msgSender(), asset, tokenId, amount);
     }
@@ -184,8 +184,6 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     ) external payable enforced(poolId) {
         IPoolEscrow escrow_ = escrow(poolId);
 
-        // Release the reservation and withdraw the freed balance: reserved and total both decrease by
-        // `amount`, with no queue update since the holding decrease was already queued at reserve time.
         escrow_.unreserve(scId, asset, tokenId, amount, reserver, reason);
         escrow_.withdraw(scId, asset, tokenId, receiver, amount);
         escrow_.authTransferTo(asset, tokenId, receiver, amount);
@@ -251,8 +249,6 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable enforced(poolId) {
         snapshotQueue.queueShares(poolId, scId, shares, false);
 
-        // Pull the shares to this contract (the caller approves this spoke, not the registrar),
-        // then grant the registrar an allowance over this contract's balance so it can pull-and-burn.
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
         SafeTransferLib.safeTransferFrom(address(token), msgSender(), address(this), shares);
         SafeTransferLib.safeApprove(address(token), address(registrar), shares);
@@ -267,8 +263,6 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         payable
         enforced(poolId)
     {
-        // Share tokens parked in the escrow carry no holding accounting (issuance is queued via issue/revoke),
-        // so this is a plain hook-checked transfer out of the escrow with no Hub queue.
         IERC20 token = spokeRegistry.shareToken(poolId, scId);
         escrow(poolId).authTransferTo(address(token), 0, receiver, amount);
 
@@ -318,12 +312,11 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     ) public payable protected {
         require(msgSender() == owner || wards[msgSender()] == 1, NotAuthorized());
         require(spokeRegistry.bridger(poolId, owner), NotBridger());
+        require(amount != 0, EmptyAmount());
 
         (IERC20 share, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
-        require(
-            registrar.canTransferCrosschain(address(share), owner, centrifugeId, amount), CrossChainTransferNotAllowed()
-        );
+        require(registrar.canBridge(address(share), owner, centrifugeId, amount), BridgeNotAllowed());
 
         SafeTransferLib.safeTransferFrom(address(share), owner, address(this), amount);
         SafeTransferLib.safeApprove(address(share), address(registrar), amount);
@@ -344,6 +337,20 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         );
     }
 
+    /// @inheritdoc ISpoke
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
+    ) external payable {
+        crosschainTransferShares(
+            centrifugeId, poolId, scId, receiver, msgSender(), msgSender(), amount, 0, remoteExtraGasLimit, msgSender()
+        );
+    }
+
     //----------------------------------------------------------------------------------------------
     // Requests & manager calls
     //----------------------------------------------------------------------------------------------
@@ -358,7 +365,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         bool unpaid,
         address refund
     ) external payable {
-        IRequestManager manager = spokeRegistry.requestManager(poolId);
+        ISpokeRequestManager manager = spokeRegistry.requestManager(poolId);
         require(address(manager) != address(0), InvalidRequestManager());
         require(msg.sender == address(manager), NotAuthorized());
 

@@ -15,9 +15,8 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IRegistrar} from "../core/spoke/interfaces/IRegistrar.sol";
-import {VaultDetails} from "../core/spoke/interfaces/ISpokeRegistry.sol";
-import {ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
+import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
 /// @title  ShareTokenRegistrar
 /// @notice Registrar for the protocol's own ShareToken standard. Deploys deterministic ShareToken
@@ -187,11 +186,7 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IRegistrar
-    function canTransferCrosschain(address token, address from, uint16 centrifugeId, uint256 amount)
-        external
-        view
-        returns (bool)
-    {
+    function canBridge(address token, address from, uint16 centrifugeId, uint256 amount) external view returns (bool) {
         return IShareToken(token).checkTransferRestriction(from, address(uint160(centrifugeId)), amount);
     }
 

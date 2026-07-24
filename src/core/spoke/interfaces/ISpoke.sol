@@ -79,7 +79,10 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     error TooManyDecimals();
     error AssetMissingDecimals();
     error LocalTransferNotAllowed();
-    error CrossChainTransferNotAllowed();
+    /// @notice Dispatched when a cross-chain share transfer names a zero amount: the origin-chain
+    ///         burn would be final, with nothing meaningful to execute remotely.
+    error EmptyAmount();
+    error BridgeNotAllowed();
     error InvalidRequestManager();
     error NotBridger();
     error NotManager();
@@ -294,6 +297,8 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @param receiver A bytes32 representation of the receiver address
     /// @param sender The originator of the transfer; attributed in the event and forwarded to the
     ///        destination-side bridging hook (e.g. the circuit breaker). A router/bridge passes the real user.
+    ///        NOT authenticated here: it is attribution supplied by the (trusted) bridger or ward, so
+    ///        hook authorizations keyed on it rely on that trust, not on a cryptographic identity.
     /// @param owner The account whose shares are transferred and burned; must hold the bridger role and be
     ///        the resolved sender unless the caller is a ward (e.g. a router bridging shares it pulled, or a
     ///        compatibility layer forwarding the original caller). Must have granted this contract
@@ -314,6 +319,17 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
         uint128 extraGasLimit,
         uint128 remoteExtraGasLimit,
         address refund
+    ) external payable;
+
+    /// @notice Convenience overload for the caller bridging its own shares: `sender`, `owner`, and `refund`
+    ///         default to the caller and `extraGasLimit` to 0.
+    function crosschainTransferShares(
+        uint16 centrifugeId,
+        PoolId poolId,
+        ShareClassId scId,
+        bytes32 receiver,
+        uint128 amount,
+        uint128 remoteExtraGasLimit
     ) external payable;
 
     //----------------------------------------------------------------------------------------------

@@ -16,12 +16,12 @@ import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
-import {IRequestManager} from "../../../src/core/interfaces/IRequestManager.sol";
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
+import {ISpokeRequestManager} from "../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
@@ -1190,7 +1190,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         if (isV3_1()) {
             actualVault = address(
                 ISpokeV3_1_0(config.contracts.vaultRegistry)
-                    .vault(poolId, shareClassId, assetId, IRequestManager(config.contracts.asyncRequestManager))
+                    .vault(poolId, shareClassId, assetId, ISpokeRequestManager(config.contracts.asyncRequestManager))
             );
         } else {
             actualVault =

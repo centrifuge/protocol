@@ -21,7 +21,7 @@ import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
-import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {ISpokeRequestManager} from "../spoke/interfaces/ISpokeRequestManager.sol";
 
 /// @title  MessageProcessor
 /// @notice This contract deserializes and processes incoming cross-chain messages, routing them to appropriate
@@ -184,7 +184,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             );
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);
-            spokeHandler.setRequestManager(PoolId.wrap(m.poolId), IRequestManager(m.manager.toAddress()));
+            spokeHandler.setRequestManager(PoolId.wrap(m.poolId), ISpokeRequestManager(m.manager.toAddress()));
         } else if (kind == MessageType.SetPoolAdapters) {
             MessageLib.SetPoolAdapters memory m = message.deserializeSetPoolAdapters();
             PoolId poolId = PoolId.wrap(m.poolId);

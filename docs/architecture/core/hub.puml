@@ -18,7 +18,7 @@ class Accounting
 
 interface ISnapshotHook
 interface IValuation
-interface IFeeHook
+interface IFeeAccrual
 interface IHubRequestManager
 
 Hub --> Holdings
@@ -26,7 +26,7 @@ Hub --> HubRegistry
 Hub --> ShareClassManager
 Hub --> Accounting
 Hub --> IMessageDispatcher
-Hub .[dotted].> IFeeHook
+Hub .[dotted].> IFeeAccrual
 
 HubHandler --> Hub
 IMesssageProcessor --> HubHandler

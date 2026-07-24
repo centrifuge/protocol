@@ -22,7 +22,7 @@ import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IManifest} from "../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
-import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {ISpokeRequestManager} from "../spoke/interfaces/ISpokeRequestManager.sol";
 
 /// @title  MessageDispatcher
 /// @notice This contract serializes and dispatches outgoing cross-chain messages, handling both local and
@@ -94,7 +94,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spokeHandler.addShareClass(poolId, scId, name, symbol, decimals, salt, IRegistrar(registrar.toAddress()));
-            SafeTransferLib.safeTransferETH(refund, msg.value);
+            _refund(refund);
         } else {
             _send(
                 centrifugeId,
@@ -139,19 +139,19 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IHubMessageSender
     function sendNotifyPricePoolPerShare(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,
         uint64 computedAt,
         address refund
     ) external payable auth {
-        if (chainId == localCentrifugeId) {
+        if (centrifugeId == localCentrifugeId) {
             spokeHandler.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, computedAt);
             _refund(refund);
         } else {
             _send(
-                chainId,
+                centrifugeId,
                 MessageLib.NotifyPricePoolPerShare({
                         poolId: poolId.raw(), scId: scId.raw(), price: pricePoolPerShare.raw(), timestamp: computedAt
                     }).serialize(),
@@ -281,7 +281,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (centrifugeId == localCentrifugeId) {
-            spokeHandler.setRequestManager(poolId, IRequestManager(manager.toAddress()));
+            spokeHandler.setRequestManager(poolId, ISpokeRequestManager(manager.toAddress()));
             _refund(refund);
         } else {
             _send(

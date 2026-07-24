@@ -18,6 +18,9 @@ import {PoolId, newPoolId} from "../types/PoolId.sol";
 contract HubRegistry is Auth, IHubRegistry {
     using MathLib for uint256;
 
+    /// @dev PricingLib conversions assume decimals <= 18; mirrors the spoke-side bound in Spoke.registerAsset.
+    uint8 internal constant MAX_DECIMALS = 18;
+
     // Assets
     mapping(AssetId => AssetInfo) public asset;
 
@@ -27,12 +30,11 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => mapping(address => bool)) public manager;
 
     // Policy
-    mapping(PoolId => IManifest) public manifest;
+    mapping(PoolId => ManifestInfo) internal _manifest;
     mapping(bytes32 authId => uint48 validAfter) public authorizedAfter;
 
     // Dependencies
     mapping(PoolId => IBridgingHook) public bridgingHook;
-    mapping(PoolId => mapping(bytes32 => address)) public dependency;
     mapping(PoolId => mapping(uint16 centrifugeId => IHubRequestManager)) public hubRequestManager;
 
     constructor(address deployer) Auth(deployer) {}
@@ -43,6 +45,8 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function registerAsset(AssetId assetId, uint8 decimals_) external auth {
+        require(!assetId.isNull(), EmptyAssetId());
+        require(decimals_ <= MAX_DECIMALS, TooManyDecimals());
         require(!asset[assetId].registered, AssetAlreadyRegistered());
 
         asset[assetId] = AssetInfo(true, decimals_);
@@ -52,8 +56,10 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function registerPool(PoolId poolId_, address manager_, AssetId currency_) external auth {
+        require(!poolId_.isNull(), InvalidPool());
         require(manager_ != address(0), EmptyAccount());
         require(!currency_.isNull(), EmptyCurrency());
+        require(isRegistered(currency_), AssetNotFound());
         require(currency[poolId_].isNull(), PoolAlreadyRegistered());
 
         manager[poolId_][manager_] = true;
@@ -67,18 +73,18 @@ contract HubRegistry is Auth, IHubRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry
-    function updateManager(PoolId poolId_, address manager_, bool canManage) external auth {
-        require(exists(poolId_), NonExistingPool(poolId_));
-        require(manager_ != address(0), EmptyAccount());
+    function updateManager(PoolId poolId_, address who, bool canManage) external auth {
+        require(exists(poolId_), NonExistingPool());
+        require(who != address(0), EmptyAccount());
 
-        manager[poolId_][manager_] = canManage;
+        manager[poolId_][who] = canManage;
 
-        emit UpdateManager(poolId_, manager_, canManage);
+        emit UpdateManager(poolId_, who, canManage);
     }
 
     /// @inheritdoc IHubRegistry
     function setMetadata(PoolId poolId_, bytes calldata metadata_) external auth {
-        require(exists(poolId_), NonExistingPool(poolId_));
+        require(exists(poolId_), NonExistingPool());
 
         metadata[poolId_] = metadata_;
 
@@ -86,17 +92,8 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function updateDependency(PoolId poolId_, bytes32 what, address dependency_) external auth {
-        require(exists(poolId_), NonExistingPool(poolId_));
-
-        dependency[poolId_][what] = dependency_;
-
-        emit UpdateDependency(poolId_, what, dependency_);
-    }
-
-    /// @inheritdoc IHubRegistry
     function updateCurrency(PoolId poolId_, AssetId currency_) external auth {
-        require(exists(poolId_), NonExistingPool(poolId_));
+        require(exists(poolId_), NonExistingPool());
         require(!currency_.isNull(), EmptyCurrency());
         require(isRegistered(currency_), AssetNotFound());
         require(asset[currency_].decimals == asset[currency[poolId_]].decimals, CurrencyDecimalsMismatch());
@@ -108,16 +105,16 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function setManifest(PoolId poolId_, IManifest manifest_) external auth {
-        require(exists(poolId_), NonExistingPool(poolId_));
+        require(exists(poolId_), NonExistingPool());
 
-        manifest[poolId_] = manifest_;
+        _manifest[poolId_] = ManifestInfo(manifest_, _manifest[poolId_].nonce + 1);
 
         emit SetManifest(poolId_, manifest_);
     }
 
     /// @inheritdoc IHubRegistry
     function setHubRequestManager(PoolId poolId_, uint16 centrifugeId, IHubRequestManager manager_) external auth {
-        require(exists(poolId_), NonExistingPool(poolId_));
+        require(exists(poolId_), NonExistingPool());
 
         hubRequestManager[poolId_][centrifugeId] = manager_;
 
@@ -126,6 +123,8 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function setBridgingHook(PoolId poolId_, IBridgingHook hook_) external auth {
+        require(exists(poolId_), NonExistingPool());
+
         bridgingHook[poolId_] = hook_;
         emit SetBridgingHook(poolId_, address(hook_));
     }
@@ -136,15 +135,15 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function initiateAuthorization(PoolId poolId_, address caller, bytes calldata data) external auth {
-        IManifest m = manifest[poolId_];
-        require(address(m) != address(0), NoManifest());
+        ManifestInfo memory m = _manifest[poolId_];
+        require(address(m.manifest) != address(0), NoManifest());
 
         // Only an out-of-policy call may be authorized: an in-policy call would mature instantly.
-        uint48 delaySeconds = m.classify(poolId_, caller, data);
+        uint48 delaySeconds = m.manifest.classify(poolId_, caller, data);
         require(delaySeconds != 0, InPolicy());
 
         // Reject re-authorizing: it would silently reset the maturity clock, so cancel first.
-        bytes32 id = _authId(poolId_, address(m), data);
+        bytes32 id = _authId(poolId_, address(m.manifest), m.nonce, data);
         require(authorizedAfter[id] == 0, AlreadyAuthorized());
 
         uint48 validAfter = uint48(block.timestamp) + delaySeconds;
@@ -163,10 +162,10 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function consumeAuthorization(PoolId poolId_, address caller, bytes calldata data, uint48 expiry) external {
-        IManifest m = manifest[poolId_];
-        require(msg.sender == address(m), NotManifest());
+        ManifestInfo memory m = _manifest[poolId_];
+        require(msg.sender == address(m.manifest), NotManifest());
 
-        bytes32 id = _authId(poolId_, address(m), data);
+        bytes32 id = _authId(poolId_, address(m.manifest), m.nonce, data);
         uint48 validAfter = authorizedAfter[id];
         // Matured and not yet expired: a stale auth fails closed, so it can't be fired much later (once
         // the baseline has drifted) with no fresh veto window.
@@ -183,16 +182,32 @@ contract HubRegistry is Auth, IHubRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry
-    /// @dev `authId` is namespaced by the pool's current manifest, so swapping the manifest makes every
-    ///      pending authorization unreachable (the new manifest computes different ids) without needing
-    ///      to enumerate and clear them — mirroring the old per-manifest-instance ledger.
+    /// @dev `authId` is namespaced by the pool's current manifest and its install nonce, so any
+    ///      manifest change makes every pending authorization unreachable without needing to enumerate
+    ///      and clear them — including re-installing a previously used manifest address, which must not
+    ///      resurrect authorizations matured under its earlier tenure.
     function authId(PoolId poolId_, bytes calldata data) public view returns (bytes32) {
-        return _authId(poolId_, address(manifest[poolId_]), data);
+        ManifestInfo memory m = _manifest[poolId_];
+        return _authId(poolId_, address(m.manifest), m.nonce, data);
     }
 
-    /// @dev Computes the id from an already-loaded manifest, so callers holding it avoid re-reading the slot.
-    function _authId(PoolId poolId_, address manifest_, bytes calldata data) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(poolId_.raw(), manifest_, data));
+    /// @dev Computes the id from an already-loaded manifest slot, so callers holding it avoid re-reading it.
+    function _authId(PoolId poolId_, address manifest_, uint64 nonce_, bytes calldata data)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(poolId_.raw(), manifest_, nonce_, data));
+    }
+
+    /// @inheritdoc IHubRegistry
+    function manifest(PoolId poolId_) external view returns (IManifest) {
+        return _manifest[poolId_].manifest;
+    }
+
+    /// @inheritdoc IHubRegistry
+    function manifestNonce(PoolId poolId_) external view returns (uint64) {
+        return _manifest[poolId_].nonce;
     }
 
     /// @inheritdoc IHubRegistry

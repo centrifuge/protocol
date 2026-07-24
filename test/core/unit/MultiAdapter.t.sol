@@ -228,18 +228,23 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, uint8(threeAdapters.length + 1));
     }
 
+    function testErrZeroThreshold() public {
+        vm.expectRevert(IMultiAdapter.ZeroThreshold.selector);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 0);
+    }
+
     function testErrNoDuplicatedAllowed() public {
         IAdapter[] memory duplicatedAdapters = new IAdapter[](2);
         duplicatedAdapters[0] = IAdapter(address(10));
         duplicatedAdapters[1] = IAdapter(address(10));
 
         vm.expectRevert(IMultiAdapter.NoDuplicatesAllowed.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, duplicatedAdapters, 0);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, duplicatedAdapters, 1);
     }
 
     function testMultiAdapterSetAdapters() public {
         vm.expectEmit();
-        emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
+        emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, 1, threeAdapters, 1);
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
 
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
@@ -270,9 +275,15 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
             return;
         }
 
-        // threshold <= quorum is always accepted, including threshold == 1 with quorum > 1: MultiAdapter
-        // enforces no floor on threshold relative to quorum (reviewed and accepted as a pool-operator
-        // configuration choice, not a code gap).
+        if (threshold == 0 && quorumCount > 0) {
+            vm.expectRevert(IMultiAdapter.ZeroThreshold.selector);
+            multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+            return;
+        }
+
+        // 1 <= threshold <= quorum is always accepted, including threshold == 1 with quorum > 1: above the
+        // zero floor, MultiAdapter enforces no floor on threshold relative to quorum (reviewed and accepted
+        // as a pool-operator configuration choice, not a code gap).
         multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), quorumCount);
         assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), threshold);

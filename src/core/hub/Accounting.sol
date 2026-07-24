@@ -69,6 +69,7 @@ contract Accounting is Auth, IAccounting {
 
     /// @inheritdoc IAccounting
     function createAccount(PoolId poolId, AccountId account, bool isDebitNormal) external auth {
+        require(!account.isNull(), InvalidAccountId());
         require(accounts[poolId][account].lastUpdated == 0, AccountExists());
         accounts[poolId][account] = Account(0, 0, isDebitNormal, uint64(block.timestamp), "");
         emit CreateAccount(poolId, account, isDebitNormal);

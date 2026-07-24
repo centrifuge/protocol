@@ -6,7 +6,7 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {IEscrow} from "../../../../src/misc/interfaces/IEscrow.sol";
 import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
-import {IERC6909, IERC6909MetadataExt} from "../../../../src/misc/interfaces/IERC6909.sol";
+import {IERC6909, IERC6909MetadataExt, TransferFailed} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
@@ -16,10 +16,10 @@ import {SnapshotQueue} from "../../../../src/core/spoke/SnapshotQueue.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {ISnapshotQueue} from "../../../../src/core/spoke/interfaces/ISnapshotQueue.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ISpokeMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
+import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import "forge-std/Test.sol";
@@ -53,7 +53,7 @@ contract SpokeTest is Test {
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
     IRegistrar registrar = IRegistrar(address(new IsContract()));
-    IRequestManager requestManager = IRequestManager(address(new IsContract()));
+    ISpokeRequestManager requestManager = ISpokeRequestManager(address(new IsContract()));
 
     address erc20 = address(new IsContract());
     address erc6909 = address(new IsContract());
@@ -322,11 +322,19 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         );
     }
 
+    function testErrEmptyAmount() public {
+        vm.prank(ANY);
+        vm.expectRevert(ISpoke.EmptyAmount.selector);
+        spoke.crosschainTransferShares{value: COST}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), ANY, ANY, 0, 0, 0, REFUND
+        );
+    }
+
     function _mockCrossTransferShare(address sender_, bool value) public {
         vm.mockCall(
             address(registrar),
             abi.encodeWithSelector(
-                IRegistrar.canTransferCrosschain.selector, address(share), sender_, REMOTE_CENTRIFUGE_ID, AMOUNT
+                IRegistrar.canBridge.selector, address(share), sender_, REMOTE_CENTRIFUGE_ID, AMOUNT
             ),
             abi.encode(value)
         );
@@ -428,6 +436,36 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         emit ISpoke.InitiateTransferShares(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, ANY, ANY, RECEIVER.toBytes32(), AMOUNT);
         spoke.crosschainTransferShares{value: COST}(
             REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), ANY, ANY, AMOUNT, 0, 100, ANY
+        );
+    }
+
+    /// @dev The 6-param overload defaults sender, owner, and refund to the caller and extraGasLimit to 0.
+    function testCrossChainTransferOwnSharesOverload() public {
+        _mockShareToken();
+        _mockCrossTransferShare(ANY, true);
+        vm.mockCall(
+            address(sender),
+            COST,
+            abi.encodeWithSelector(
+                sender.sendInitiateTransferShares.selector,
+                REMOTE_CENTRIFUGE_ID,
+                POOL_A,
+                SC_1,
+                ANY.toBytes32(),
+                RECEIVER.toBytes32(),
+                AMOUNT,
+                0,
+                100,
+                ANY
+            ),
+            abi.encode()
+        );
+
+        vm.prank(ANY);
+        vm.expectEmit();
+        emit ISpoke.InitiateTransferShares(REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, ANY, ANY, RECEIVER.toBytes32(), AMOUNT);
+        spoke.crosschainTransferShares{value: COST}(
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), AMOUNT, 100
         );
     }
 
@@ -634,6 +672,19 @@ contract SpokeTestDeposit is SpokeTest {
 
         vm.expectCall(erc6909, abi.encodeWithSelector(IERC6909.transferFrom.selector, MANAGER, escrow, TOKEN_1, AMOUNT));
         vm.prank(MANAGER);
+        spoke.deposit(POOL_A, SC_1, address(erc6909), TOKEN_1, AMOUNT);
+    }
+
+    function testErrDepositERC6909TransferFailed() public {
+        _mockEscrowDeposit(erc6909, TOKEN_1, AMOUNT);
+        vm.mockCall(
+            address(erc6909),
+            abi.encodeWithSelector(IERC6909.transferFrom.selector, MANAGER, escrow, TOKEN_1, AMOUNT),
+            abi.encode(false)
+        );
+
+        vm.prank(MANAGER);
+        vm.expectRevert(TransferFailed.selector);
         spoke.deposit(POOL_A, SC_1, address(erc6909), TOKEN_1, AMOUNT);
     }
 }

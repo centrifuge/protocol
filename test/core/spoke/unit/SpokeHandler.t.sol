@@ -12,9 +12,9 @@ import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {SpokeHandler, ISpokeHandler} from "../../../../src/core/spoke/SpokeHandler.sol";
+import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import "forge-std/Test.sol";
@@ -35,7 +35,7 @@ contract SpokeHandlerTest is Test {
     IPoolEscrowFactory poolEscrowFactory = IPoolEscrowFactory(address(new IsContract()));
     address share = address(new IsContract());
     IPoolEscrow escrow = IPoolEscrow(address(new IsContract()));
-    IRequestManager requestManager = IRequestManager(address(new IsContract()));
+    ISpokeRequestManager requestManager = ISpokeRequestManager(address(new IsContract()));
 
     address HOOK = makeAddr("hook");
     address HOOK2 = makeAddr("hook2");

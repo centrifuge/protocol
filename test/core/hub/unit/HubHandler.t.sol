@@ -15,8 +15,8 @@ import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 import {
     IBridgingHook,
-    TransferSharesParams,
-    TransferSharesResult
+    BridgeSharesParams,
+    BridgeSharesResult
 } from "../../../../src/core/hub/interfaces/IBridgingHook.sol";
 
 import "forge-std/Test.sol";
@@ -141,7 +141,7 @@ contract TestUpdateHoldingAmount is TestCommon {
         _mockCommon(true);
         vm.mockCall(
             address(holdings),
-            abi.encodeWithSelector(IHoldings.increase.selector, POOL_A, SC_A, ASSET_A, AMOUNT),
+            abi.encodeWithSelector(IHoldings.increase.selector, POOL_A, SC_A, ASSET_A, CHAIN_A, AMOUNT),
             abi.encode(VALUE)
         );
 
@@ -162,7 +162,7 @@ contract TestUpdateHoldingAmount is TestCommon {
         _mockCommon(true);
         vm.mockCall(
             address(holdings),
-            abi.encodeWithSelector(IHoldings.decrease.selector, POOL_A, SC_A, ASSET_A, AMOUNT),
+            abi.encodeWithSelector(IHoldings.decrease.selector, POOL_A, SC_A, ASSET_A, CHAIN_A, AMOUNT),
             abi.encode(VALUE)
         );
 
@@ -179,7 +179,7 @@ contract TestUpdateHoldingAmount is TestCommon {
         _mockCommon(false);
         vm.mockCall(
             address(holdings),
-            abi.encodeWithSelector(IHoldings.increase.selector, POOL_A, SC_A, ASSET_A, AMOUNT),
+            abi.encodeWithSelector(IHoldings.increase.selector, POOL_A, SC_A, ASSET_A, CHAIN_A, AMOUNT),
             abi.encode(uint128(0))
         );
 
@@ -195,14 +195,11 @@ contract TestUpdateHoldingAmount is TestCommon {
 }
 
 contract MockBridgingHook is IBridgingHook {
-    function onInitiateTransferShares(TransferSharesParams calldata p)
-        external
-        pure
-        returns (TransferSharesResult memory)
-    {
-        return TransferSharesResult({
-            receiver: p.receiver, amount: p.amount, extraGasLimit: p.extraGasLimit, refund: p.refund
-        });
+    function onBridgeShares(BridgeSharesParams calldata p) external pure returns (BridgeSharesResult memory) {
+        return
+            BridgeSharesResult({
+                receiver: p.receiver, amount: p.amount, extraGasLimit: p.extraGasLimit, refund: p.refund
+            });
     }
 }
 

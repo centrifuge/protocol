@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../types/PoolId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
-struct TransferSharesParams {
+struct BridgeSharesParams {
     uint16 originCentrifugeId;
     uint16 targetCentrifugeId;
     PoolId poolId;
@@ -18,7 +18,7 @@ struct TransferSharesParams {
 
 /// @dev Fields the hook is allowed to modify. Immutable routing fields (poolId, scId, chain IDs,
 ///      sender) are intentionally absent.
-struct TransferSharesResult {
+struct BridgeSharesResult {
     bytes32 receiver;
     uint128 amount;
     uint128 extraGasLimit;
@@ -27,5 +27,5 @@ struct TransferSharesResult {
 
 interface IBridgingHook {
     /// @notice Called before forwarding a cross-chain share transfer.
-    function onInitiateTransferShares(TransferSharesParams calldata p) external returns (TransferSharesResult memory);
+    function onBridgeShares(BridgeSharesParams calldata p) external returns (BridgeSharesResult memory);
 }

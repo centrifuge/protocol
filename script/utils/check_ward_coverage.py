@@ -32,7 +32,7 @@ _NAME_ALIASES = {
 # address(0) and are only invoked when set). These are exempt from the "must be initialized" check.
 # Keyed by (contract, param_name), matched case-insensitively.
 _OPTIONAL_FILE_PARAMETERS = {
-    ("Hub", "feeHook"),  # optional fee hook; Hub only calls it when address(feeHook) != address(0)
+    ("Hub", "feeAccrual"),  # optional fee hook; Hub only calls it when address(feeAccrual) != address(0)
 }
 
 def normalize_name(name: str) -> str:

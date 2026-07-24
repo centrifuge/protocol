@@ -87,6 +87,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     {
         uint8 quorum_ = addresses.length.toUint8();
         require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
+        require(threshold_ > 0 || quorum_ == 0, ZeroThreshold());
         require(threshold_ <= quorum_, ThresholdHigherThanQuorum());
 
         // Increment session id to reset pending votes, wrapping from max back to 1 (skipping 0)
@@ -100,7 +101,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         _installSession(centrifugeId, poolId, sessionId, addresses, threshold_);
         _activeAdapters[centrifugeId][poolId] = Adapters(sessionId, addresses);
 
-        emit SetAdapters(centrifugeId, poolId, addresses, threshold_);
+        emit SetAdapters(centrifugeId, poolId, sessionId, addresses, threshold_);
     }
 
     /// @inheritdoc IMultiAdapter

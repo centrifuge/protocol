@@ -19,7 +19,7 @@ class SpokeRegistry
 class SnapshotQueue
 class ShareToken
 interface ITransferHook
-interface IRequestManager
+interface ISpokeRequestManager
 
 Spoke -down-> SpokeRegistry
 Spoke -down-> SnapshotQueue
@@ -32,7 +32,7 @@ SpokeHandler --> PoolEscrowFactory
 
 Spoke --> PoolEscrowFactory
 
-SpokeRegistry o-- "n" IRequestManager
+SpokeRegistry o-- "n" ISpokeRequestManager
 SpokeRegistry o-- "n" ShareToken
 
 ' Factories

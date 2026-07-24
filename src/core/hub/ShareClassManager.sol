@@ -38,6 +38,8 @@ contract ShareClassManager is Auth, IShareClassManager {
         auth
         returns (ShareClassId scId_)
     {
+        require(hubRegistry.exists(poolId), IHubRegistry.NonExistingPool());
+
         PoolId prefixedPoolId = PoolId.wrap(uint64(bytes8(salt)));
         require(poolId == prefixedPoolId, InvalidSalt());
         require(!salts[salt], AlreadyUsedSalt());

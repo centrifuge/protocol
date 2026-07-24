@@ -10,6 +10,7 @@ import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IBridgingHook} from "../../../../src/core/hub/interfaces/IBridgingHook.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
@@ -21,6 +22,7 @@ contract HubRegistryTest is Test {
 
     uint16 constant CENTRIFUGE_ID = 23;
     AssetId constant USD = AssetId.wrap(840);
+    AssetId constant EUR = AssetId.wrap(978);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16("sc"));
     PoolId constant POOL_A = PoolId.wrap(33);
     PoolId constant POOL_B = PoolId.wrap(44);
@@ -39,6 +41,7 @@ contract HubRegistryTest is Test {
 
     function setUp() public {
         registry = new HubRegistry(address(this));
+        registry.registerAsset(USD, 6);
     }
 
     function testPoolRegistration(address fundAdmin) public nonZero(fundAdmin) notThisContract(fundAdmin) {
@@ -53,6 +56,9 @@ contract HubRegistryTest is Test {
 
         vm.expectRevert(IHubRegistry.EmptyCurrency.selector);
         registry.registerPool(poolId, address(this), AssetId.wrap(0));
+
+        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
+        registry.registerPool(poolId, address(this), AssetId.wrap(979));
 
         vm.expectEmit();
         emit IHubRegistry.NewPool(newPoolId(CENTRIFUGE_ID, 1), fundAdmin, USD);
@@ -83,7 +89,7 @@ contract HubRegistryTest is Test {
         registry.updateManager(poolId, additionalAdmin, true);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
         registry.updateManager(nonExistingPool, additionalAdmin, true);
 
         vm.expectRevert(IHubRegistry.EmptyAccount.selector);
@@ -115,7 +121,7 @@ contract HubRegistryTest is Test {
         registry.setMetadata(poolId, metadata);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
         registry.setMetadata(nonExistingPool, metadata);
 
         vm.expectEmit();
@@ -137,13 +143,71 @@ contract HubRegistryTest is Test {
         registry.setManifest(poolId, manifest);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
         registry.setManifest(nonExistingPool, manifest);
 
         vm.expectEmit();
         emit IHubRegistry.SetManifest(poolId, manifest);
         registry.setManifest(poolId, manifest);
         assertEq(address(registry.manifest(poolId)), address(manifest));
+    }
+
+    function testSetBridgingHook() public {
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
+
+        IBridgingHook hook = IBridgingHook(makeAddr("bridgingHook"));
+
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.setBridgingHook(poolId, hook);
+
+        PoolId nonExistingPool = PoolId.wrap(0xDEAD);
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
+        registry.setBridgingHook(nonExistingPool, hook);
+
+        vm.expectEmit();
+        emit IHubRegistry.SetBridgingHook(poolId, address(hook));
+        registry.setBridgingHook(poolId, hook);
+        assertEq(address(registry.bridgingHook(poolId)), address(hook));
+    }
+
+    function testManifestReinstallChangesAuthId(bytes calldata data) public {
+        IManifest manifest = IManifest(makeAddr("manifest"));
+
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
+        registry.setManifest(poolId, manifest);
+        assertEq(registry.manifestNonce(poolId), 1);
+
+        bytes32 id = registry.authId(poolId, data);
+
+        // Re-installing the same manifest address bumps the nonce, re-namespacing every id.
+        registry.setManifest(poolId, manifest);
+        assertEq(registry.manifestNonce(poolId), 2);
+        assertNotEq(registry.authId(poolId, data), id);
+    }
+
+    function testManifestSwapBackDoesNotResurrectAuthorization() public {
+        address fundAdmin = makeAddr("fundAdmin");
+        IManifest manifest = IManifest(makeAddr("manifest"));
+        bytes memory data = "authorized calldata";
+
+        PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
+        registry.registerPool(poolId, fundAdmin, USD);
+        registry.setManifest(poolId, manifest);
+
+        vm.mockCall(address(manifest), abi.encodeWithSelector(IManifest.classify.selector), abi.encode(uint48(1 days)));
+        registry.initiateAuthorization(poolId, fundAdmin, data);
+        vm.warp(block.timestamp + 1 days);
+
+        // Swap the manifest away and back: the matured authorization must not be resurrected.
+        registry.setManifest(poolId, IManifest(makeAddr("otherManifest")));
+        registry.setManifest(poolId, manifest);
+
+        vm.prank(address(manifest));
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        registry.consumeAuthorization(poolId, fundAdmin, data, 1 days);
     }
 
     function testAuthorizeRevertsWithoutManifest(bytes calldata data) public {
@@ -175,27 +239,9 @@ contract HubRegistryTest is Test {
         registry.consumeAuthorization(poolId, caller, data, expiry);
     }
 
-    function testUpdateDependency(bytes32 what, address dependency) public nonZero(dependency) {
-        // First register asset and pool to use for dependency testing
-        registry.registerAsset(USD, 18);
-        registry.registerPool(POOL_A, address(this), USD);
-
-        assertEq(address(registry.dependency(POOL_A, what)), address(0));
-
-        vm.prank(makeAddr("unauthorizedAddress"));
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.updateDependency(POOL_A, what, dependency);
-
-        vm.expectEmit();
-        emit IHubRegistry.UpdateDependency(POOL_A, what, dependency);
-        registry.updateDependency(POOL_A, what, dependency);
-        assertEq(address(registry.dependency(POOL_A, what)), address(dependency));
-    }
-
     function testUpdateCurrency(AssetId currency) public nonZero(address(uint160(currency.raw()))) {
         address fundAdmin = makeAddr("fundAdmin");
 
-        registry.registerAsset(USD, 6);
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
 
@@ -204,7 +250,7 @@ contract HubRegistryTest is Test {
         registry.updateCurrency(poolId, currency);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
-        vm.expectRevert(abi.encodeWithSelector(IHubRegistry.NonExistingPool.selector, nonExistingPool));
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
         registry.updateCurrency(nonExistingPool, currency);
 
         vm.expectRevert(IHubRegistry.EmptyCurrency.selector);
@@ -224,7 +270,6 @@ contract HubRegistryTest is Test {
     function testUpdateCurrencyRevertsOnUnregisteredCurrency() public {
         address fundAdmin = makeAddr("fundAdmin");
 
-        registry.registerAsset(USD, 6);
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
 
@@ -246,75 +291,86 @@ contract HubRegistryTest is Test {
     }
 
     function testRegisterAsset(uint8 decimals) public {
-        assertFalse(registry.isRegistered(USD));
+        decimals = uint8(bound(decimals, 0, 18));
+        assertFalse(registry.isRegistered(EUR));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.registerAsset(USD, decimals);
+        registry.registerAsset(EUR, decimals);
 
         vm.expectEmit();
-        emit IHubRegistry.NewAsset(USD, decimals);
-        registry.registerAsset(USD, decimals);
+        emit IHubRegistry.NewAsset(EUR, decimals);
+        registry.registerAsset(EUR, decimals);
 
-        assertTrue(registry.isRegistered(USD));
-        assertEq(registry.decimals(USD), decimals);
-        assertEq(registry.decimals(uint256(AssetId.unwrap(USD))), decimals);
+        assertTrue(registry.isRegistered(EUR));
+        assertEq(registry.decimals(EUR), decimals);
+        assertEq(registry.decimals(uint256(AssetId.unwrap(EUR))), decimals);
 
-        (bool registered, uint8 assetDecimals) = registry.asset(USD);
+        (bool registered, uint8 assetDecimals) = registry.asset(EUR);
         assertTrue(registered);
         assertEq(assetDecimals, decimals);
     }
 
-    function testAssetGetter() public {
-        AssetId unregistered = AssetId.wrap(978);
+    function testRegisterAssetNullId() public {
+        vm.expectRevert(IHubRegistry.EmptyAssetId.selector);
+        registry.registerAsset(AssetId.wrap(0), 6);
+    }
 
+    function testRegisterAssetTooManyDecimals(uint8 decimals) public {
+        decimals = uint8(bound(decimals, 19, type(uint8).max));
+
+        vm.expectRevert(IHubRegistry.TooManyDecimals.selector);
+        registry.registerAsset(EUR, decimals);
+    }
+
+    function testAssetGetter() public {
         // Unregistered asset reads as (false, 0), not a revert.
-        (bool registered, uint8 assetDecimals) = registry.asset(unregistered);
+        (bool registered, uint8 assetDecimals) = registry.asset(EUR);
         assertFalse(registered);
         assertEq(assetDecimals, 0);
 
-        registry.registerAsset(USD, 6);
+        registry.registerAsset(EUR, 6);
 
-        (registered, assetDecimals) = registry.asset(USD);
+        (registered, assetDecimals) = registry.asset(EUR);
         assertTrue(registered);
         assertEq(assetDecimals, 6);
     }
 
     function testRegisterAssetZeroDecimals() public {
-        assertFalse(registry.isRegistered(USD));
+        assertFalse(registry.isRegistered(EUR));
 
-        registry.registerAsset(USD, 0);
+        registry.registerAsset(EUR, 0);
 
         // A 0-decimal asset is registered, not conflated with "not registered".
-        assertTrue(registry.isRegistered(USD));
-        assertEq(registry.decimals(USD), 0);
-        assertEq(registry.decimals(uint256(AssetId.unwrap(USD))), 0);
+        assertTrue(registry.isRegistered(EUR));
+        assertEq(registry.decimals(EUR), 0);
+        assertEq(registry.decimals(uint256(AssetId.unwrap(EUR))), 0);
 
         // And usable as a pool currency, whose decimals(PoolId) getter returns 0.
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
-        registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
+        registry.registerPool(poolId, makeAddr("fundAdmin"), EUR);
         assertEq(registry.decimals(poolId), 0);
     }
 
     function testRegisterAssetRevertsOnDuplicate() public {
-        registry.registerAsset(USD, 6);
+        registry.registerAsset(EUR, 6);
 
         vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
-        registry.registerAsset(USD, 6);
+        registry.registerAsset(EUR, 6);
 
         // A different decimals value does not change the outcome: still reverts, no overwrite.
         vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
-        registry.registerAsset(USD, 18);
+        registry.registerAsset(EUR, 18);
 
-        assertEq(registry.decimals(USD), 6);
+        assertEq(registry.decimals(EUR), 6);
     }
 
     function testRegisterAssetZeroDecimalsRevertsOnDuplicate() public {
-        registry.registerAsset(USD, 0);
+        registry.registerAsset(EUR, 0);
 
         // The registered flag, not the decimals value, gates re-registration.
         vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
-        registry.registerAsset(USD, 0);
+        registry.registerAsset(EUR, 0);
     }
 
     function testDecimalsRevertsOnUnregistered() public {
@@ -328,7 +384,7 @@ contract HubRegistryTest is Test {
     }
 
     function testUpdateCurrencyRevertsOnDecimalsMismatch() public {
-        registry.registerAsset(USD, 6); // incumbent pool currency: 6 decimals
+        // Incumbent pool currency (USD, registered in setUp): 6 decimals.
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
 
@@ -349,7 +405,6 @@ contract HubRegistryTest is Test {
     }
 
     function testUpdateCurrencySameDecimalsDifferentAsset() public {
-        registry.registerAsset(USD, 6);
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
 

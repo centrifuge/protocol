@@ -9,7 +9,7 @@ import {ShareClassId} from "../../types/ShareClassId.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
 import {IManifest} from "../../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../spoke/interfaces/IRegistrar.sol";
-import {IRequestManager} from "../../interfaces/IRequestManager.sol";
+import {ISpokeRequestManager} from "../../spoke/interfaces/ISpokeRequestManager.sol";
 
 //--------------------------------------------------------------------------------------------------
 // Hub Handlers
@@ -90,7 +90,7 @@ interface ISpokeGatewayHandler {
     /// @notice Updates the request manager for a pool
     /// @param  poolId The centrifuge pool id
     /// @param  manager The new request manager address
-    function setRequestManager(PoolId poolId, IRequestManager manager) external;
+    function setRequestManager(PoolId poolId, ISpokeRequestManager manager) external;
 
     /// @notice Install or replace the policy manifest enforced on this pool's balance-sheet manager methods
     /// @param  poolId The pool id

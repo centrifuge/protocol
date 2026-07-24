@@ -46,7 +46,9 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
-    event SetAdapters(uint16 centrifugeId, PoolId indexed poolId, IAdapter[] adapters, uint8 threshold);
+    event SetAdapters(
+        uint16 centrifugeId, PoolId indexed poolId, uint16 sessionId, IAdapter[] adapters, uint8 threshold
+    );
     event BlockSession(uint16 centrifugeId, PoolId indexed poolId, uint16 sessionId);
     event UnblockSession(uint16 centrifugeId, PoolId indexed poolId, uint16 sessionId);
     event Vote(uint16 indexed centrifugeId, bytes32 indexed payloadId, bytes payload, IAdapter adapter);
@@ -75,6 +77,10 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
 
     /// @notice Dispatched when the threshold number is higher than the number of configured adapters (aka quorum).
     error ThresholdHigherThanQuorum();
+
+    /// @notice Dispatched when the threshold is zero while adapters are configured, which would let any
+    ///         single adapter forward payloads without consensus.
+    error ZeroThreshold();
 
     /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
     error ExceedsMax();
@@ -106,12 +112,17 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     ///         this directly (a low-level recovery path, e.g. `AdapterFailover`) bypasses that handshake, so the
     ///         caller is responsible for ensuring the resulting sessionId matches the other endpoint, otherwise
     ///         messages wrapped with the new session won't verify.
+    /// @dev    Known limitation: the sessionId wraps back to 1 after 65535 reconfigurations of the same
+    ///         (centrifugeId, poolId) route. State of superseded or blocked sessions is never cleared, so a
+    ///         recycled sessionId collides with that epoch's leftovers (stale adapters staying eligible to
+    ///         vote, duplicate-check reverts, stale blocked-session stashes). Accepted as unreachable in
+    ///         practice, since it requires 65535 deliberate admin reconfigurations of a single route.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
     ///         If the array is empty, it disables the usage for messages of that pool.
-    /// @param  threshold Minimum number of adapters required to process the messages
-    ///         If not wanted a threshold set `adapters.length` value
+    /// @param  threshold Minimum number of adapters required to process the messages.
+    ///         Must be at least 1 when `adapters` is non-empty; set `adapters.length` for full consensus.
     function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;
 
     /// @notice Mark a session as blocked, preventing its adapters from voting on incoming messages and, if it is the

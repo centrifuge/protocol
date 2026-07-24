@@ -39,6 +39,16 @@ bytes32 constant SC_SECOND_SALT = bytes32(uint256(bytes32(bytes8(POOL_ID))) + 2)
 uint32 constant STORAGE_INDEX_METRICS = 3;
 
 contract HubRegistryMock {
+    bool public poolExists = true;
+
+    function setPoolExists(bool poolExists_) external {
+        poolExists = poolExists_;
+    }
+
+    function exists(PoolId) external view returns (bool) {
+        return poolExists;
+    }
+
     function decimals(PoolId) external pure returns (uint8) {
         return DECIMALS_POOL;
     }
@@ -278,6 +288,13 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         // vm.expectRevert(ShareClassManager.DecreaseMoreThanIssued.selector); // Error doesn't exist
         vm.expectRevert();
         shareClass.updateShares(centrifugeId, poolId, scId, 1, false);
+    }
+
+    function testAddShareClassNonExistingPool() public {
+        HubRegistryMock(hubRegistryMock).setPoolExists(false);
+
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
+        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT);
     }
 
     function testAddShareClassInvalidNameEmpty() public {

@@ -9,9 +9,9 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IVault, VaultKind} from "../../../../src/core/spoke/interfaces/IVault.sol";
-import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
+import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -27,7 +27,7 @@ contract VaultRegistryTest is Test {
     IVaultFactory vaultFactory = IVaultFactory(address(new IsContract()));
     address share = address(new IsContract());
     IRegistrar registrar = IRegistrar(address(new IsContract()));
-    IRequestManager requestManager = IRequestManager(address(new IsContract()));
+    ISpokeRequestManager requestManager = ISpokeRequestManager(address(new IsContract()));
     IVault vault = IVault(address(new IsContract()));
 
     address NO_HOOK = address(0);
@@ -101,6 +101,41 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
     }
+
+    function testErrShareTokenDoesNotExist() public {
+        _utilRegisterERC6909();
+        _utilAddPool();
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+    }
+
+    function testErrUnknownAssetMismatch() public {
+        _utilRegisterERC6909();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+
+        // The passed (asset, tokenId) must match what assetId resolves to.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc20, 0, vaultFactory, vault);
+    }
+
+    function testErrReregisterLinkedVault() public {
+        _utilRegisterERC6909();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+
+        vm.startPrank(AUTH);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+
+        // Overwriting a linked vault's details would desynchronize them from the live forward mapping.
+        vm.expectRevert(ISpokeRegistry.AlreadyLinkedVault.selector);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        vm.stopPrank();
+    }
 }
 
 contract VaultRegistryTestLinkVault is VaultRegistryTest {
@@ -144,6 +179,19 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
         spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+    }
+
+    function testErrAssetIdMismatch() public {
+        _utilRegisterERC6909();
+        _utilRegisterERC20();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+        _utilDeployVault(erc6909, TOKEN_1, ASSET_ID_6909_1);
+
+        // Linking under a different assetId than the vault was registered with is rejected.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_20, vault);
     }
 
     function testErrAlreadyLinkedVault() public {

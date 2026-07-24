@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../types/PoolId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
-interface IFeeHook {
+interface IFeeAccrual {
     /// @notice Accrue the fee amount for a specific pool and share class.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier

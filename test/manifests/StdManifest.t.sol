@@ -68,6 +68,7 @@ contract StdManifestTest is Test {
         manifest = StdManifest(address(factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0)))));
 
         // Register the pool (manager becomes a manager; outsider is not) and install the manifest.
+        hubRegistry.registerAsset(AssetId.wrap(1), 6);
         hubRegistry.registerPool(POOL_A, manager, AssetId.wrap(1));
         hubRegistry.setManifest(POOL_A, manifest);
 

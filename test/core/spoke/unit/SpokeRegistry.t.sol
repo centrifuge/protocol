@@ -9,8 +9,8 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
-import {IRequestManager} from "../../../../src/core/interfaces/IRequestManager.sol";
 import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
+import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 
 import "forge-std/Test.sol";
 
@@ -24,7 +24,7 @@ contract SpokeRegistryTest is Test {
 
     address share = address(new IsContract());
     IRegistrar registrar = IRegistrar(address(new IsContract()));
-    IRequestManager requestManager = IRequestManager(address(new IsContract()));
+    ISpokeRequestManager requestManager = ISpokeRequestManager(address(new IsContract()));
 
     address erc20 = address(new IsContract());
     address erc6909 = address(new IsContract());
@@ -68,6 +68,12 @@ contract SpokeRegistryTestAddPool is SpokeRegistryTest {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.addPool(POOL_A);
+    }
+
+    function testErrNullPoolId() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
+        registry.addPool(PoolId.wrap(0));
     }
 
     function testErrPoolAlreadyAdded() public {
@@ -143,6 +149,15 @@ contract SpokeRegistryTestAddShareClass is SpokeRegistryTest {
         vm.expectRevert(ISpokeRegistry.NotAContract.selector);
         registry.addShareClass(POOL_A, SC_1, makeAddr("noCode"), registrar);
     }
+
+    function testErrEmptyRegistrar() public {
+        _addPool();
+
+        // The registrar slot is the share-class existence sentinel, so it must be non-zero
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.EmptyRegistrar.selector);
+        registry.addShareClass(POOL_A, SC_1, share, IRegistrar(address(0)));
+    }
 }
 
 contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
@@ -152,13 +167,23 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
         registry.linkToken(POOL_A, SC_1, share, registrar);
     }
 
+    function testErrInvalidPool() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
+        registry.linkToken(POOL_A, SC_1, share, registrar);
+    }
+
     function testErrNotAContract() public {
+        _addPool();
+
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.NotAContract.selector);
         registry.linkToken(POOL_A, SC_1, makeAddr("noCode"), registrar);
     }
 
     function testLinkToken() public {
+        _addPool();
+
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpokeRegistry.AddShareClass(POOL_A, SC_1, share, registrar);
@@ -170,6 +195,27 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
         (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(share);
         assertEq(poolId.raw(), POOL_A.raw());
         assertEq(scId.raw(), SC_1.raw());
+    }
+
+    function testLinkTokenSwapRetiresOldToken() public {
+        _addPoolAndShareClass();
+
+        // Swap the share class's token: the new token resolves, the outgoing one is retired.
+        address newShare = address(new IsContract());
+        vm.prank(AUTH);
+        registry.linkToken(POOL_A, SC_1, newShare, registrar);
+
+        assertEq(address(registry.shareToken(POOL_A, SC_1)), newShare);
+        (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(newShare);
+        assertEq(poolId.raw(), POOL_A.raw());
+        assertEq(scId.raw(), SC_1.raw());
+
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        registry.shareTokenDetails(share);
+
+        // The retired token's address is free again for another share class.
+        vm.prank(AUTH);
+        registry.linkToken(POOL_A, ShareClassId.wrap(bytes16("sc2")), share, registrar);
     }
 }
 
@@ -212,7 +258,21 @@ contract SpokeRegistryTestUpdateBridger is SpokeRegistryTest {
         registry.updateBridger(POOL_A, ANY, true);
     }
 
+    function testErrInvalidPoolBridger() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
+        registry.updateBridger(POOL_A, ANY, true);
+    }
+
+    function testErrInvalidPoolManager() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
+        registry.updateManager(POOL_A, ANY, true);
+    }
+
     function testUpdateBridger() public {
+        _addPool();
+
         vm.prank(AUTH);
         vm.expectEmit();
         emit ISpokeRegistry.UpdateBridger(POOL_A, ANY, true);
@@ -245,6 +305,28 @@ contract SpokeRegistryTestCreateAssetId is SpokeRegistryTest {
         vm.prank(AUTH);
         AssetId id2 = registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc20, 0);
         assertEq(id2.raw(), newAssetId(LOCAL_CENTRIFUGE_ID, 2).raw());
+    }
+
+    function testErrZeroAsset() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        registry.createAssetId(LOCAL_CENTRIFUGE_ID, address(0), 0);
+    }
+
+    function testErrInvalidCentrifugeId() public {
+        // A zero centrifugeId would produce raw ids colliding with the ISO-4217 currency encoding.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidCentrifugeId.selector);
+        registry.createAssetId(0, erc20, 0);
+    }
+
+    function testErrAssetAlreadyRegistered() public {
+        _createAssetId();
+
+        // Re-registering the same (asset, tokenId) would orphan the previously issued id.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.AssetAlreadyRegistered.selector);
+        registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc6909, TOKEN_1);
     }
 }
 
@@ -291,13 +373,24 @@ contract SpokeRegistryTestUpdatePricePoolPerAsset is SpokeRegistryTest {
         registry.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID, PRICE, PRESENT);
     }
 
+    function testErrShareTokenDoesNotExist() public {
+        _createAssetId();
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        registry.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID, PRICE, FUTURE);
+    }
+
     function testErrUnknownAsset() public {
+        _addPoolAndShareClass();
+
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
         registry.updatePricePoolPerAsset(POOL_A, SC_1, ASSET_ID, PRICE, FUTURE);
     }
 
     function testErrCannotSetOlderPrice() public {
+        _addPoolAndShareClass();
         _createAssetId();
 
         vm.prank(AUTH);
@@ -309,6 +402,7 @@ contract SpokeRegistryTestUpdatePricePoolPerAsset is SpokeRegistryTest {
     }
 
     function testUpdatePricePoolPerAsset() public {
+        _addPoolAndShareClass();
         _createAssetId();
 
         vm.prank(AUTH);
@@ -363,6 +457,7 @@ contract SpokeRegistryTestPricePoolPerAsset is SpokeRegistryTest {
     }
 
     function testPricePoolPerAssetWithValidity() public {
+        _addPoolAndShareClass();
         _createAssetId();
 
         vm.prank(AUTH);
@@ -378,6 +473,7 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
     bytes data = hex"1234";
 
     function _installManifest() internal {
+        _addPool();
         vm.prank(AUTH);
         registry.setManifest(POOL_A, manifest);
     }
@@ -387,13 +483,22 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
         registry.setManifest(POOL_A, manifest);
     }
 
+    function testSetManifestErrInvalidPool() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
+        registry.setManifest(POOL_A, manifest);
+    }
+
     function testSetManifest() public {
+        _addPool();
+
         vm.expectEmit();
         emit ISpokeRegistry.SetManifest(POOL_A, manifest);
         vm.prank(AUTH);
         registry.setManifest(POOL_A, manifest);
 
         assertEq(address(registry.manifest(POOL_A)), address(manifest));
+        assertEq(registry.manifestNonce(POOL_A), 1);
     }
 
     function testAuthorizeErrNotAuthorized() public {
@@ -411,7 +516,7 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
 
     function testAuthorizeAndConsume() public {
         _installManifest();
-        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), address(manifest), data));
+        bytes32 id = registry.authId(POOL_A, data);
 
         // Several authorizations of the same call can be outstanding at once (a counter, not a flag).
         vm.prank(AUTH);
@@ -452,7 +557,7 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
 
     function testUnauthorize() public {
         _installManifest();
-        bytes32 id = keccak256(abi.encodePacked(POOL_A.raw(), address(manifest), data));
+        bytes32 id = registry.authId(POOL_A, data);
 
         vm.startPrank(AUTH);
         registry.authorize(POOL_A, data);
@@ -469,5 +574,33 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
         vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         registry.unauthorize(POOL_A, data);
         vm.stopPrank();
+    }
+
+    function testManifestReinstallChangesAuthId() public {
+        _installManifest();
+        bytes32 id = registry.authId(POOL_A, data);
+
+        // Re-installing the same manifest address bumps the nonce, re-namespacing every id.
+        vm.prank(AUTH);
+        registry.setManifest(POOL_A, manifest);
+        assertEq(registry.manifestNonce(POOL_A), 2);
+        assertNotEq(registry.authId(POOL_A, data), id);
+    }
+
+    function testManifestSwapBackDoesNotResurrectAuthorization() public {
+        _installManifest();
+
+        vm.prank(AUTH);
+        registry.authorize(POOL_A, data);
+
+        // Swap the manifest away and back: the outstanding authorization must not be resurrected.
+        vm.startPrank(AUTH);
+        registry.setManifest(POOL_A, IManifest(makeAddr("otherManifest")));
+        registry.setManifest(POOL_A, manifest);
+        vm.stopPrank();
+
+        vm.prank(address(manifest));
+        vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
+        registry.consumeAuthorization(POOL_A, address(this), data);
     }
 }

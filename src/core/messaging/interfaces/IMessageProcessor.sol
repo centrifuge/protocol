@@ -51,7 +51,8 @@ interface IMessageProcessor is IMessageHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Name of the parameter to update (accepts 'hubRegistry')
+    /// @param what Name of the parameter to update
+    ///         (accepts 'hubHandler', 'gateway', 'spokeHandler', 'multiAdapter', 'envoy')
     /// @param data New value given to the `what` parameter
     function file(bytes32 what, address data) external;
 }

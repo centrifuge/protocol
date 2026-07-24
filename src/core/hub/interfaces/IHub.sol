@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IFeeHook} from "./IFeeHook.sol";
 import {IHoldings} from "./IHoldings.sol";
 import {IManifest} from "./IManifest.sol";
 import {IValuation} from "./IValuation.sol";
+import {IFeeAccrual} from "./IFeeAccrual.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
 import {IAccounting, JournalEntry} from "./IAccounting.sol";
@@ -67,7 +67,6 @@ interface IHub is IBatchedMulticall {
     event UpdateVault(
         PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
     );
-    event SetBridgingHook(PoolId indexed poolId, address hook);
     event ManagerCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 target, bytes payload);
     event ForwardTransferShares(
         uint16 indexed fromCentrifugeId,
@@ -135,8 +134,8 @@ interface IHub is IBatchedMulticall {
     /// @return The share class manager contract instance
     function shareClassManager() external view returns (IShareClassManager);
 
-    /// @notice Hook that calculates and applies protocol fees on NAV updates
-    function feeHook() external view returns (IFeeHook);
+    /// @notice Module that accrues protocol fees on NAV updates
+    function feeAccrual() external view returns (IFeeAccrual);
 
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
@@ -146,7 +145,7 @@ interface IHub is IBatchedMulticall {
     function manifest(PoolId poolId) external view returns (IManifest);
 
     /// @notice Updates a contract parameter
-    /// @param what Name of the parameter to update (accepts 'hubRegistry', 'accounting', 'holdings', 'gateway', 'sender')
+    /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'holdings', 'sender', 'shareClassManager')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
 
@@ -242,7 +241,7 @@ interface IHub is IBatchedMulticall {
     ///      a gateway manager can inject arbitrary hub-originated messages for the pool.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain where the manager will operate
-    /// @param kind Which contract's manager mapping is updated (BalanceSheet, Adapter, Gateway, Spoke)
+    /// @param kind Which contract's manager mapping is updated (Adapter, Gateway, Spoke, Bridger)
     /// @param who Address to update manager status for
     /// @param canManage Whether the address can manage the target
     /// @param refund Address to receive excess gas refund

@@ -34,6 +34,9 @@ import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 /// @dev Local account-role taxonomy, used only to derive distinct account IDs for the fuzzer.
 ///      Maps onto core settlement slots ({AccountKind}) inside hub_initializeHolding/Liability.
 enum AccountType {
+    // AccountId(0) is the protocol's unset-slot sentinel and cannot be a real account
+    // (Accounting.createAccount rejects it), so harness account ids start at 1.
+    Unset,
     Asset,
     Equity,
     Loss,

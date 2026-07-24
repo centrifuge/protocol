@@ -7,7 +7,7 @@ import {IHubHandler} from "./interfaces/IHubHandler.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
-import {IBridgingHook, TransferSharesParams, TransferSharesResult} from "./interfaces/IBridgingHook.sol";
+import {IBridgingHook, BridgeSharesParams, BridgeSharesResult} from "./interfaces/IBridgingHook.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 
@@ -87,8 +87,8 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         // The delta is valued at the hub-side valuation; the journaled value mirrors the holding
         // mutation exactly, so the accounts stay in sync with the holding.
         uint128 value = isIncrease
-            ? holdings.increase(poolId, scId, assetId, amount)
-            : holdings.decrease(poolId, scId, assetId, amount);
+            ? holdings.increase(poolId, scId, assetId, centrifugeId, amount)
+            : holdings.decrease(poolId, scId, assetId, centrifugeId, amount);
 
         if (holdings.isInitialized(poolId, scId, assetId)) {
             hub.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
@@ -126,8 +126,8 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     ) external payable auth {
         IBridgingHook hook = hubRegistry.bridgingHook(poolId);
         if (address(hook) != address(0)) {
-            TransferSharesResult memory result = hook.onInitiateTransferShares(
-                TransferSharesParams({
+            BridgeSharesResult memory result = hook.onBridgeShares(
+                BridgeSharesParams({
                     originCentrifugeId: originCentrifugeId,
                     targetCentrifugeId: targetCentrifugeId,
                     poolId: poolId,

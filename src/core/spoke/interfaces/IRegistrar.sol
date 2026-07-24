@@ -7,15 +7,15 @@ pragma solidity >=0.5.0;
 ///         updates, and maintains metadata. One registrar is deployed per token standard per chain, and
 ///         each share class selects its registrar at creation (via the `NotifyShareClass` message).
 /// @dev    Registrar implementations MUST restrict all state-changing methods to the core spoke contracts
-///         (Spoke, SpokeHandler, BalanceSheet, SpokeRegistry). A registrar is chosen per pool, so a
-///         malicious registrar can only affect the share classes that selected it.
+///         (Spoke, SpokeHandler, SpokeRegistry). A registrar is chosen per pool, so a malicious
+///         registrar can only affect the share classes that selected it.
 /// @dev    The registrar abstracts only privileged operations; core still moves shares via the token's
 ///         ERC20 `transfer`/`transferFrom`/`approve` directly, so every registrar's token MUST be
 ///         ERC20-transfer-compatible.
 /// @dev    Because the core no longer force-transfers, a registrar's token MUST permit plain ERC20
-///         transfers into the root-endorsed core contracts (Spoke, BalanceSheet): cross-chain transfers
-///         pull the shares in with `transferFrom` and `revoke`/`burn` pulls them in before burning. A
-///         restriction policy that blocks transfers to those endorsed addresses will brick those flows.
+///         transfers into the root-endorsed core contract (Spoke): cross-chain transfers pull the
+///         shares in with `transferFrom` and `revoke`/`burn` pulls them in before burning. A restriction
+///         policy that blocks transfers to that endorsed address will brick those flows.
 interface IRegistrar {
     /// @notice Deploys (or registers) a new share token for this standard.
     /// @dev    In order to have the same address on different EVMs, `salt` should be used
@@ -67,11 +67,8 @@ interface IRegistrar {
     ///         token's transfer hook. Implementations without restriction support MUST revert.
     function updateRestriction(address token, bytes memory update) external;
 
-    /// @notice Returns whether `from` may transfer `amount` of `token` cross-chain to `centrifugeId`.
+    /// @notice Returns whether `from` may bridge `amount` of `token` to `centrifugeId`.
     /// @dev    The destination chain is encoded as a pseudo-address (`address(uint160(centrifugeId))`) for
     ///         the transfer-restriction check. Implementations without restriction support MUST return true.
-    function canTransferCrosschain(address token, address from, uint16 centrifugeId, uint256 amount)
-        external
-        view
-        returns (bool);
+    function canBridge(address token, address from, uint16 centrifugeId, uint256 amount) external view returns (bool);
 }

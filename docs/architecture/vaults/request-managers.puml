@@ -12,7 +12,7 @@ package misc {
 package spoke {
     class Spoke
     class SnapshotQueue
-    interface IRequestManager
+    interface ISpokeRequestManager
     interface ITrustedContractUpdate
 }
 
@@ -20,7 +20,7 @@ interface IBaseRequestManager
 interface IAsyncRequestManager
 interface ISyncManager
 
-IBaseRequestManager -up-|> IRequestManager
+IBaseRequestManager -up-|> ISpokeRequestManager
 
 IAsyncRequestManager -up-|> IBaseRequestManager
 ISyncManager -up-|> ITrustedContractUpdate

@@ -88,6 +88,8 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IHoldings
     function setSnapshotHook(PoolId poolId, ISnapshotHook hook) external auth {
+        require(hubRegistry.exists(poolId), NonExistingPool());
+
         snapshotHook[poolId] = hook;
 
         emit SetSnapshotHook(poolId, hook);
@@ -134,7 +136,7 @@ contract Holdings is Auth, IHoldings {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHoldings
-    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
+    function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint16 centrifugeId, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
@@ -153,13 +155,13 @@ contract Holdings is Auth, IHoldings {
             : 0;
 
         holding_.assetAmountValue += amountValue;
-        _updateDeficit(poolId, assetId.centrifugeId(), wasDeficit, holding_.decreasedAmount > holding_.increasedAmount);
+        _updateDeficit(poolId, centrifugeId, wasDeficit, holding_.decreasedAmount > holding_.increasedAmount);
 
         emit Increase(poolId, scId, assetId, amount_, amountValue);
     }
 
     /// @inheritdoc IHoldings
-    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 amount_)
+    function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint16 centrifugeId, uint128 amount_)
         external
         auth
         returns (uint128 amountValue)
@@ -173,11 +175,13 @@ contract Holdings is Auth, IHoldings {
 
         // Remove carrying value pro-rata to the realized decrease (an over-decrease is capped at the current
         // amount and its excess carried on `decreasedAmount`), so the returned value always mirrors the
-        // storage mutation and can never over-journal the accounts.
+        // storage mutation and can never over-journal. Deliberately NOT a live oracle quote like increase():
+        // pro-rata preserves `amount == 0 => value == 0`, which a live quote would break when the price has
+        // moved since the last update() (a full drain would leave residual value behind).
         amountValue = oldAmount == 0 ? 0 : (uint256(holding_.assetAmountValue) * removedAmount / oldAmount).toUint128();
 
         holding_.assetAmountValue -= amountValue;
-        _updateDeficit(poolId, assetId.centrifugeId(), wasDeficit, holding_.decreasedAmount > holding_.increasedAmount);
+        _updateDeficit(poolId, centrifugeId, wasDeficit, holding_.decreasedAmount > holding_.increasedAmount);
 
         emit Decrease(poolId, scId, assetId, amount_, amountValue);
     }

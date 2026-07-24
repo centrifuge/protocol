@@ -52,7 +52,7 @@ Both `hub` and `spoke` expose a set of pool-scoped extension points that periphe
 - **Manifest** (`IManifest`) - the same policy contract, enforced locally by `Spoke` on every chain a pool touches.
 - **Registrar** (`IRegistrar`) - pluggable per-share-class contract that deploys and operates the share token.
 - **Bridger** - the per-pool role allowed to initiate cross-chain share transfers.
-- **Request manager** (`IRequestManager`) - the spoke-side counterpart to the hub's request manager; the only caller allowed to dispatch outbound requests.
+- **Request manager** (`ISpokeRequestManager`) - the spoke-side counterpart to the hub's request manager; the only caller allowed to dispatch outbound requests.
 - **`managerCall` / Envoy** (`IManagerCallFromSpoke`) - permissionless escape hatch to call any contract implementing `fromSpoke`, which validates the caller itself.
 
 ### Supporting code
@@ -60,4 +60,3 @@ Both `hub` and `spoke` expose a set of pool-scoped extension points that periphe
 - **[`types`](./types)** - Custom value types (`PoolId`, `ShareClassId`, `AssetId`, `AccountId`, `RequestId`) used throughout `core` instead of raw `uint`/`bytes` to prevent cross-pool or cross-asset mix-ups.
 - **[`utils`](./utils)** - Shared primitives used by both `hub` and `spoke`: `BatchedMulticall` for batching calls into a single transaction, `Envoy` as the stable `msg.sender` anchor for manager calls, and the `ContractUpdater`/`ContractUpdaterForwarder` pair for the legacy contract-update message path.
 - **[`libraries`](./libraries)** - `PricingLib`, shared pricing conversion math used across `hub` and `spoke`.
-- **[`interfaces`](./interfaces)** - Cross-cutting interfaces shared between `hub` and `spoke`, such as `IRequestManager`.

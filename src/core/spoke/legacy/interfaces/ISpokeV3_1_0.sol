@@ -7,8 +7,8 @@ import {PoolId} from "../../../types/PoolId.sol";
 import {AssetId} from "../../../types/AssetId.sol";
 import {IVault} from "../../interfaces/IVault.sol";
 import {ShareClassId} from "../../../types/ShareClassId.sol";
-import {IRequestManager} from "../../../interfaces/IRequestManager.sol";
 import {IShareToken} from "../../../../token/interfaces/IShareToken.sol";
+import {ISpokeRequestManager} from "../../interfaces/ISpokeRequestManager.sol";
 import {VaultDetails, ISpokeRegistry} from "../../interfaces/ISpokeRegistry.sol";
 
 /// @title  ISpokeV3_1_0
@@ -98,7 +98,7 @@ interface ISpokeV3_1_0 {
         returns (uint64 computedAt, uint64 maxAge, uint64 validUntil);
 
     /// @notice See SpokeRegistry.requestManager
-    function requestManager(PoolId poolId) external view returns (IRequestManager manager);
+    function requestManager(PoolId poolId) external view returns (ISpokeRequestManager manager);
 
     //----------------------------------------------------------------------------------------------
     // Vault management
@@ -112,7 +112,7 @@ interface ISpokeV3_1_0 {
     function isLinked(IVault vault) external view returns (bool);
 
     /// @notice Returns the address of the vault for a given pool, share class, asset and request manager
-    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, IRequestManager manager)
+    function vault(PoolId poolId, ShareClassId scId, AssetId assetId, ISpokeRequestManager manager)
         external
         view
         returns (IVault vaultAddress);

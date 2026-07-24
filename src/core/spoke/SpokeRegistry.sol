@@ -5,12 +5,14 @@ import {Price} from "./types/Price.sol";
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {IVault, VaultKind} from "./interfaces/IVault.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
+import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
 import {
     AssetIdKey,
     Pool,
     ShareClassDetails,
     TokenDetails,
     VaultDetails,
+    ManifestInfo,
     ISpokeRegistry
 } from "./interfaces/ISpokeRegistry.sol";
 
@@ -23,7 +25,6 @@ import {PoolId} from "../types/PoolId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {newAssetId, AssetId} from "../types/AssetId.sol";
 import {IManifest} from "../hub/interfaces/IManifest.sol";
-import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  SpokeRegistry
 /// @notice This contract stores pool, share class, asset, and price state for the spoke side. It also holds
@@ -32,7 +33,7 @@ import {IRequestManager} from "../interfaces/IRequestManager.sol";
 contract SpokeRegistry is Auth, ISpokeRegistry {
     // Pools & share classes
     mapping(PoolId => Pool) public pool;
-    mapping(PoolId => IRequestManager) public requestManager;
+    mapping(PoolId => ISpokeRequestManager) public requestManager;
     mapping(address token => TokenDetails) internal _tokenDetails;
     mapping(PoolId => mapping(ShareClassId => ShareClassDetails)) public shareClass;
 
@@ -41,7 +42,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     mapping(PoolId => mapping(address => bool)) public bridger;
 
     // Policy
-    mapping(PoolId => IManifest) public manifest;
+    mapping(PoolId => ManifestInfo) internal _manifest;
     mapping(bytes32 authId => uint256 count) public authorizations;
 
     // Assets & prices
@@ -61,6 +62,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function addPool(PoolId poolId) external auth {
+        require(!poolId.isNull(), InvalidPool());
         Pool storage pool_ = pool[poolId];
         require(pool_.createdAt == 0, PoolAlreadyAdded());
         pool_.createdAt = uint64(block.timestamp);
@@ -78,15 +80,19 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function linkToken(PoolId poolId, ShareClassId scId, address shareToken_, IRegistrar registrar_) external auth {
+        require(isPoolActive(poolId), InvalidPool());
         _linkToken(poolId, scId, shareToken_, registrar_);
     }
 
     function _linkToken(PoolId poolId, ShareClassId scId, address shareToken_, IRegistrar registrar_) internal {
         // Must already be deployed, so a registrar cannot reserve another pool's future token address
         require(shareToken_.code.length > 0, NotAContract());
+        require(address(registrar_) != address(0), EmptyRegistrar());
         require(_tokenDetails[shareToken_].poolId.isNull(), TokenAlreadyRegistered());
 
         ShareClassDetails storage shareClass_ = shareClass[poolId][scId];
+        if (address(shareClass_.shareToken) != address(0)) delete _tokenDetails[address(shareClass_.shareToken)];
+
         shareClass_.shareToken = IERC20(shareToken_);
         shareClass_.registrar = registrar_;
         _tokenDetails[shareToken_] = TokenDetails(poolId, scId);
@@ -94,7 +100,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     }
 
     /// @inheritdoc ISpokeRegistry
-    function setRequestManager(PoolId poolId, IRequestManager manager_) external auth {
+    function setRequestManager(PoolId poolId, ISpokeRequestManager manager_) external auth {
         require(isPoolActive(poolId), InvalidPool());
         requestManager[poolId] = manager_;
         emit SetRequestManager(poolId, manager_);
@@ -106,19 +112,22 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function updateManager(PoolId poolId, address who, bool canManage) external auth {
+        require(isPoolActive(poolId), InvalidPool());
         manager[poolId][who] = canManage;
         emit UpdateManager(poolId, who, canManage);
     }
 
     /// @inheritdoc ISpokeRegistry
     function updateBridger(PoolId poolId, address who, bool canBridge) external auth {
+        require(isPoolActive(poolId), InvalidPool());
         bridger[poolId][who] = canBridge;
         emit UpdateBridger(poolId, who, canBridge);
     }
 
     /// @inheritdoc ISpokeRegistry
     function setManifest(PoolId poolId, IManifest manifest_) external auth {
-        manifest[poolId] = manifest_;
+        require(isPoolActive(poolId), InvalidPool());
+        _manifest[poolId] = ManifestInfo(manifest_, _manifest[poolId].nonce + 1);
         emit SetManifest(poolId, manifest_);
     }
 
@@ -126,10 +135,10 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     function authorize(PoolId poolId, bytes calldata data) external auth {
         // The Hub already ran the timelock, so the spoke just counts the call as authorized. A counter (not
         // a flag) lets several authorizations of the same call be outstanding; a matching call later consumes one.
-        IManifest m = manifest[poolId];
-        require(address(m) != address(0), NoManifest());
+        ManifestInfo memory m = _manifest[poolId];
+        require(address(m.manifest) != address(0), NoManifest());
 
-        bytes32 id = _authId(poolId, address(m), data);
+        bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
         authorizations[id]++;
         emit AuthorizationGranted(poolId, id, data);
     }
@@ -137,7 +146,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     /// @inheritdoc ISpokeRegistry
     function unauthorize(PoolId poolId, bytes calldata data) external auth {
         // Lets the Hub revoke an outstanding, not-yet-consumed authorization (decrements the counter).
-        bytes32 id = _authId(poolId, address(manifest[poolId]), data);
+        ManifestInfo memory m = _manifest[poolId];
+        bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
         uint256 count = authorizations[id];
         require(count != 0, NoOutstandingAuthorization());
         authorizations[id] = count - 1;
@@ -146,18 +156,32 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function consumeAuthorization(PoolId poolId, address caller, bytes calldata data) external {
-        IManifest m = manifest[poolId];
-        require(msg.sender == address(m), NotManifest());
+        ManifestInfo memory m = _manifest[poolId];
+        require(msg.sender == address(m.manifest), NotManifest());
 
-        bytes32 id = _authId(poolId, address(m), data);
+        bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
         uint256 count = authorizations[id];
         require(count != 0, NoOutstandingAuthorization());
         authorizations[id] = count - 1;
         emit AuthorizationConsumed(poolId, caller, id);
     }
 
-    function _authId(PoolId poolId, address manifest_, bytes calldata data) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(poolId.raw(), manifest_, data));
+    /// @inheritdoc ISpokeRegistry
+    /// @dev `authId` is namespaced by the pool's current manifest and its install nonce, so any manifest
+    ///      change makes every outstanding authorization unreachable without needing to enumerate and
+    ///      clear them — including re-installing a previously used manifest address, which must not
+    ///      resurrect authorizations from its earlier tenure.
+    function authId(PoolId poolId, bytes calldata data) public view returns (bytes32) {
+        ManifestInfo memory m = _manifest[poolId];
+        return _authId(poolId, address(m.manifest), m.nonce, data);
+    }
+
+    function _authId(PoolId poolId, address manifest_, uint64 nonce_, bytes calldata data)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(poolId.raw(), manifest_, nonce_, data));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -176,6 +200,12 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     ) external auth {
         require(vault_.poolId() == poolId, InvalidVault());
         require(vault_.scId() == scId, InvalidVault());
+        _shareClass(poolId, scId);
+
+        (address asset_, uint256 tokenId_) = idToAsset(assetId);
+        require(asset_ == asset && tokenId_ == tokenId, UnknownAsset());
+
+        require(!_vaultDetails[vault_].isLinked, AlreadyLinkedVault());
 
         // We need to check if there's a request manager for async vaults
         if (vault_.vaultKind() == VaultKind.Async) {
@@ -195,6 +225,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
+        require(vaultDetails_.assetId.raw() == assetId.raw(), UnknownAsset());
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
         vaultDetails_.isLinked = true;
@@ -249,6 +280,10 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         auth
         returns (AssetId assetId)
     {
+        require(asset != address(0), UnknownAsset());
+        require(centrifugeId != 0, InvalidCentrifugeId());
+        require(_assetToId[asset][tokenId].isNull(), AssetAlreadyRegistered());
+
         _assetCounter++;
         assetId = newAssetId(centrifugeId, _assetCounter);
 
@@ -276,6 +311,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         external
         auth
     {
+        _shareClass(poolId, scId);
         (address asset, uint256 tokenId) = idToAsset(assetId);
         Price storage poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
@@ -292,6 +328,16 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     /// @inheritdoc ISpokeRegistry
     function isPoolActive(PoolId poolId) public view returns (bool) {
         return pool[poolId].createdAt > 0;
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function manifest(PoolId poolId) external view returns (IManifest) {
+        return _manifest[poolId].manifest;
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function manifestNonce(PoolId poolId) external view returns (uint64) {
+        return _manifest[poolId].nonce;
     }
 
     /// @inheritdoc ISpokeRegistry

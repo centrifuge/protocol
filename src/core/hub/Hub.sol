@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IFeeHook} from "./interfaces/IFeeHook.sol";
 import {IHoldings} from "./interfaces/IHoldings.sol";
 import {IManifest} from "./interfaces/IManifest.sol";
 import {IValuation} from "./interfaces/IValuation.sol";
+import {IFeeAccrual} from "./interfaces/IFeeAccrual.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
 import {ISnapshotHook} from "./interfaces/ISnapshotHook.sol";
@@ -43,8 +43,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     using CastLib for bytes32;
     using RequestCallbackMessageLib for *;
 
-    IFeeHook public feeHook;
     IHoldings public holdings;
+    IFeeAccrual public feeAccrual;
     IAccounting public accounting;
     IHubRegistry public hubRegistry;
     IHubMessageSender public sender;
@@ -86,7 +86,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     /// @inheritdoc IHub
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
-        else if (what == "feeHook") feeHook = IFeeHook(data);
+        else if (what == "feeAccrual") feeAccrual = IFeeAccrual(data);
         else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
@@ -153,7 +153,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     /// @inheritdoc IHub
     function setBridgingHook(PoolId poolId, address hook) external enforced(poolId) {
         hubRegistry.setBridgingHook(poolId, IBridgingHook(hook));
-        emit SetBridgingHook(poolId, hook);
     }
 
     /// @inheritdoc IHub
@@ -329,6 +328,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         IValuation valuation,
         AccountId[4] calldata accounts
     ) external payable enforced(poolId) {
+        _requireSC(poolId, scId);
+
         require(hubRegistry.isRegistered(assetId), IHubRegistry.AssetNotFound());
         for (uint256 i; i < accounts.length; i++) {
             require(accounting.exists(poolId, accounts[i]), IAccounting.AccountDoesNotExist());
@@ -587,6 +588,6 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
     /// @dev Accrue protocol fees for the share class if a fee hook is configured.
     function _accrue(PoolId poolId, ShareClassId scId) private {
-        if (address(feeHook) != address(0)) feeHook.accrue(poolId, scId);
+        if (address(feeAccrual) != address(0)) feeAccrual.accrue(poolId, scId);
     }
 }

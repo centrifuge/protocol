@@ -38,9 +38,6 @@ interface IGateway is IMessageHandler, IRecoverable {
     event ExecuteMessage(uint16 indexed centrifugeId, bytes32 messageHash);
     event FailMessage(uint16 indexed centrifugeId, bytes32 messageHash, bytes error);
     event ClearFailedMessage(uint16 indexed centrifugeId, bytes32 messageHash);
-    event SetRefundAddress(PoolId indexed poolId, IRecoverable refund);
-    event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
-    event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
 
     //----------------------------------------------------------------------------------------------
@@ -130,10 +127,11 @@ interface IGateway is IMessageHandler, IRecoverable {
     function updateManager(PoolId poolId, address who, bool canManage) external;
 
     /// @notice Remove a failed message so it can no longer be retried.
-    /// @dev    Restricted to wards or a manager of the message's pool. Unlike `retry`, which anyone may call,
-    ///         this lets the pool's gateway manager discard a failed message that should never be processed
-    ///         (e.g. one that only became valid long after failing). Decrements the failed count by one,
-    ///         mirroring `retry`'s per-instance semantics.
+    /// @dev    Restricted to wards or a manager of the message's pool. Intended for messages that cannot
+    ///         be retried successfully and should not persist in the failed queue. It is NOT a reliable
+    ///         way to block a message that would currently execute: `retry` is permissionless, so anyone
+    ///         can front-run the clear and force execution. Only clear messages that still revert on
+    ///         retry. Decrements the failed count by one, mirroring `retry`'s per-instance semantics.
     /// @param centrifugeId The source chain the message originated from
     /// @param message The failed message to remove
     function clearFailedMessage(uint16 centrifugeId, bytes memory message) external;
@@ -149,7 +147,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     function repay(uint16 centrifugeId, bytes memory batch, address refund) external payable;
 
     /// @notice Retry a failed message
-    /// @param centrifugeId The destination chain
+    /// @dev    Permissionless: anyone may re-execute a failed message once its failure cause is gone.
+    /// @param centrifugeId The source chain the message originated from
     /// @param message The message to retry
     function retry(uint16 centrifugeId, bytes memory message) external;
 

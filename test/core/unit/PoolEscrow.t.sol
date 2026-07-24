@@ -6,6 +6,7 @@ import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {Escrow, IEscrow} from "../../../src/misc/Escrow.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
+import {TransferFailed} from "../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
@@ -37,7 +38,22 @@ contract EscrowTestBase is Test {
 
 contract EscrowTestERC20 is EscrowTestBase {}
 
-contract EscrowTestERC6909 is EscrowTestBase {}
+contract EscrowTestERC6909 is EscrowTestBase {
+    function testAuthTransferToRevertsOnFalseReturn() public {
+        uint256 tokenId = 2;
+        _mint(address(escrow), tokenId, 100);
+
+        // An ERC-6909 token returning false instead of reverting must not pass silently.
+        vm.mockCall(
+            address(erc6909),
+            abi.encodeWithSelector(MockERC6909.transfer.selector, spender, tokenId, uint256(100)),
+            abi.encode(false)
+        );
+
+        vm.expectRevert(TransferFailed.selector);
+        escrow.authTransferTo(address(erc6909), tokenId, spender, 100);
+    }
+}
 
 contract PoolEscrowTestBase is EscrowTestBase {
     function _testDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {

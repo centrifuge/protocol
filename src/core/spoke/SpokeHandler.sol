@@ -6,6 +6,7 @@ import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {ISpokeHandler} from "./interfaces/ISpokeHandler.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
+import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
 import {IPoolEscrowFactory} from "./factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -21,7 +22,6 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
 import {IManifest} from "../hub/interfaces/IManifest.sol";
-import {IRequestManager} from "../interfaces/IRequestManager.sol";
 
 /// @title  SpokeHandler
 /// @notice This contract handles incoming cross-chain messages from the hub,
@@ -172,13 +172,13 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeGatewayHandler
-    function setRequestManager(PoolId poolId, IRequestManager manager) external auth {
+    function setRequestManager(PoolId poolId, ISpokeRequestManager manager) external auth {
         spokeRegistry.setRequestManager(poolId, manager);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
     function requestCallback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes memory payload) external auth {
-        IRequestManager manager = spokeRegistry.requestManager(poolId);
+        ISpokeRequestManager manager = spokeRegistry.requestManager(poolId);
         require(address(manager) != address(0), InvalidRequestManager());
 
         manager.callback(poolId, scId, assetId, payload);
