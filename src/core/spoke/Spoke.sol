@@ -423,8 +423,6 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint128 amount,
         bool isIncrease
     ) internal {
-        if (amount == 0) return;
-
         snapshotQueue.queueAssets(poolId, scId, spokeRegistry.assetToId(asset, tokenId, true), amount, isIncrease);
     }
 

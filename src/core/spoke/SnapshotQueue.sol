@@ -38,13 +38,19 @@ contract SnapshotQueue is Auth, ISnapshotQueue {
 
         if (isIncrease) assetQueue.deposits += amount;
         else assetQueue.withdrawals += amount;
+
+        emit QueueAssets(poolId, scId, assetId, amount, isIncrease);
     }
 
     /// @inheritdoc ISnapshotQueue
     function queueShares(PoolId poolId, ShareClassId scId, uint128 shares, bool isIssuance) external auth {
+        if (shares == 0) return;
+
         ShareQueueAmount storage shareQueue = queuedShares[poolId][scId];
         (shareQueue.delta, shareQueue.isPositive) =
             _netShares(shareQueue.delta, shareQueue.isPositive, shares, isIssuance);
+
+        emit QueueShares(poolId, scId, shares, isIssuance);
     }
 
     //----------------------------------------------------------------------------------------------

@@ -30,6 +30,10 @@ interface ISnapshotQueue {
     // Events
     //----------------------------------------------------------------------------------------------
 
+    event QueueAssets(
+        PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, bool isIncrease
+    );
+    event QueueShares(PoolId indexed poolId, ShareClassId indexed scId, uint128 shares, bool isIssuance);
     event SubmitQueuedShares(PoolId indexed poolId, ShareClassId indexed scId, ISpokeMessageSender.UpdateData data);
     event SubmitQueuedAssets(
         PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId, ISpokeMessageSender.UpdateData data

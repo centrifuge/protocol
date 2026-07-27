@@ -57,6 +57,8 @@ contract QueuesTestAuth is QueuesTest {
 contract QueuesTestQueueAssets is QueuesTest {
     function testQueueAssetsDeposit() public {
         vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISnapshotQueue.QueueAssets(POOL_A, SC_1, ASSET_20, AMOUNT, IS_DEPOSIT);
         snapshotQueue.queueAssets(POOL_A, SC_1, ASSET_20, AMOUNT, IS_DEPOSIT);
 
         (,, uint32 queuedAssetCounter,) = snapshotQueue.queuedShares(POOL_A, SC_1);
@@ -69,6 +71,8 @@ contract QueuesTestQueueAssets is QueuesTest {
 
     function testQueueAssetsWithdrawal() public {
         vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISnapshotQueue.QueueAssets(POOL_A, SC_1, ASSET_20, AMOUNT, !IS_DEPOSIT);
         snapshotQueue.queueAssets(POOL_A, SC_1, ASSET_20, AMOUNT, !IS_DEPOSIT);
 
         (,, uint32 queuedAssetCounter,) = snapshotQueue.queuedShares(POOL_A, SC_1);
@@ -125,11 +129,24 @@ contract QueuesTestQueueAssets is QueuesTest {
 contract QueuesTestQueueShares is QueuesTest {
     function testIssue() public {
         vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISnapshotQueue.QueueShares(POOL_A, SC_1, AMOUNT, IS_ISSUANCE);
         snapshotQueue.queueShares(POOL_A, SC_1, AMOUNT, IS_ISSUANCE);
 
         (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(POOL_A, SC_1);
         assertEq(delta, AMOUNT);
         assertEq(isPositive, true);
+    }
+
+    function testQueueSharesZeroIsNoOp() public {
+        vm.prank(AUTH);
+        vm.recordLogs();
+        snapshotQueue.queueShares(POOL_A, SC_1, 0, IS_ISSUANCE);
+        assertEq(vm.getRecordedLogs().length, 0);
+
+        (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(POOL_A, SC_1);
+        assertEq(delta, 0);
+        assertEq(isPositive, false);
     }
 
     function testIssueTwice() public {
@@ -144,6 +161,8 @@ contract QueuesTestQueueShares is QueuesTest {
 
     function testRevoke() public {
         vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISnapshotQueue.QueueShares(POOL_A, SC_1, AMOUNT, !IS_ISSUANCE);
         snapshotQueue.queueShares(POOL_A, SC_1, AMOUNT, !IS_ISSUANCE);
 
         (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(POOL_A, SC_1);
