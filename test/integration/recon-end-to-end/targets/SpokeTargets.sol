@@ -146,7 +146,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         // DeployVault event (via the forge-std cheat, as used elsewhere in this suite under Foundry).
         Vm forgeVm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
         forgeVm.recordLogs();
-        spokeHandler.updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink);
+        spokeHandler.updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink, bytes(""));
 
         Vm.Log[] memory logs = forgeVm.getRecordedLogs();
         address vault;

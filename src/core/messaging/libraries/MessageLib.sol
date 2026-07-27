@@ -120,6 +120,8 @@ library MessageLib {
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.UpdateVault)) {
+            length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.ManagerCallFromHub)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.ManagerCallFromSpoke)) {
@@ -725,23 +727,34 @@ library MessageLib {
         bytes32 vaultOrFactory;
         uint8 kind; // VaultUpdateKind
         uint128 extraGasLimit;
+        bytes payload; // Opaque, forwarded to the factory on DeployAndLink
     }
 
     function deserializeUpdateVault(bytes memory data) internal pure returns (UpdateVault memory) {
         require(messageType(data) == MessageType.UpdateVault, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(90);
         return UpdateVault({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             assetId: data.toUint128(25),
             vaultOrFactory: data.toBytes32(41),
             kind: data.toUint8(73),
-            extraGasLimit: data.toUint128(74)
+            extraGasLimit: data.toUint128(74),
+            payload: data.slice(92, payloadLength)
         });
     }
 
     function serialize(UpdateVault memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.UpdateVault, t.poolId, t.scId, t.assetId, t.vaultOrFactory, t.kind, t.extraGasLimit
+            MessageType.UpdateVault,
+            t.poolId,
+            t.scId,
+            t.assetId,
+            t.vaultOrFactory,
+            t.kind,
+            t.extraGasLimit,
+            t.payload.length.toUint16(),
+            t.payload
         );
     }
 

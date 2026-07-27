@@ -332,6 +332,7 @@ interface IHub is IBatchedMulticall {
     /// @param assetId The asset id
     /// @param vaultOrFactory The address of the vault or the factory, depending on the kind value
     /// @param kind The kind of action applied
+    /// @param payload Opaque data forwarded to the factory on DeployAndLink; empty otherwise
     /// @param extraGasLimit Extra gas limit for remote computation
     /// @param refund Address to receive excess gas refund
     function updateVault(
@@ -340,6 +341,7 @@ interface IHub is IBatchedMulticall {
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable;

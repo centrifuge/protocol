@@ -158,12 +158,14 @@ interface ISpokeGatewayHandler {
     /// @param  assetId The asset id
     /// @param  vaultOrFactory The address of the vault or the factory, depending on the kind value
     /// @param  kind The kind of action applied
+    /// @param  payload Opaque data forwarded to the factory on DeployAndLink; empty otherwise
     function updateVault(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         address vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        bytes calldata payload
     ) external;
 }
 

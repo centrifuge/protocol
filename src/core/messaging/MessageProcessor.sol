@@ -180,7 +180,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 ShareClassId.wrap(m.scId),
                 AssetId.wrap(m.assetId),
                 m.vaultOrFactory.toAddress(),
-                VaultUpdateKind(m.kind)
+                VaultUpdateKind(m.kind),
+                m.payload
             );
         } else if (kind == MessageType.SetRequestManager) {
             MessageLib.SetRequestManager memory m = MessageLib.deserializeSetRequestManager(message);

@@ -49,7 +49,10 @@ abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
                 0,
                 FM
             );
-        h.hub.updateVault(POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, 0, FM);
+        h.hub
+            .updateVault(
+                POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, bytes(""), 0, FM
+            );
         h.hub
             .updateManager(
                 POOL_A, s.centrifugeId, ManagerKind.Bridger, address(deployA.tokenBridge()).toBytes32(), true, FM

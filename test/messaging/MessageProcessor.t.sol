@@ -128,7 +128,8 @@ contract TestMessageSourceClassification is Test {
                     assetId: 1,
                     vaultOrFactory: bytes32("vault"),
                     kind: 0,
-                    extraGasLimit: 0
+                    extraGasLimit: 0,
+                    payload: bytes("")
                 }).serialize(),
             HOME_CHAIN
         );

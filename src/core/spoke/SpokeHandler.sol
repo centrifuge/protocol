@@ -106,13 +106,14 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         ShareClassId scId,
         AssetId assetId,
         address vaultOrFactory,
-        VaultUpdateKind kind
+        VaultUpdateKind kind,
+        bytes calldata payload
     ) external auth {
         if (kind == VaultUpdateKind.DeployAndLink) {
             (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
             address shareToken = address(spokeRegistry.shareToken(poolId, scId));
 
-            IVault vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken);
+            IVault vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken, payload);
 
             spokeRegistry.registerVault(poolId, scId, assetId, asset, tokenId, IVaultFactory(vaultOrFactory), vault_);
             spokeRegistry.linkVault(poolId, scId, assetId, vault_);

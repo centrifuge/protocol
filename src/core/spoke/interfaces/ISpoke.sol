@@ -181,14 +181,21 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @notice Reserve assets, removing them from the hub-accounted holding.
     /// @dev These assets are removed from the available balance and from the hub holding (accounted = total - reserved),
     ///      queueing a holding decrease. It is possible to reserve more than the current balance, to lock future
-    ///      expected assets. Any manager can reserve on behalf of any address, enabling recovery of stuck funds.
+    ///      expected assets.
+    /// @dev Trust model: `reserver` and `reason` are unauthenticated accounting keys, not checked against
+    ///      `msg.sender`. Any balance-sheet manager can reserve or unreserve any `(reserver, reason)` bucket
+    ///      (including another manager's, e.g. the request manager's pending deposits) and withdraw the freed funds,
+    ///      so grant the role only to parties trusted with the pool's full balance sheet. Core stays permissive on
+    ///      purpose: requiring `reserver == msg.sender` would strand a reserving manager's funds if it broke. A pool
+    ///      can restrict this in its manifest instead, delaying `reserver != msg.sender` calls.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to reserve
-    /// @param reserver The address that will own the reservation (tracked in PoolEscrow)
-    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM)
+    /// @param reserver The address recorded as the reservation's owner in PoolEscrow (an accounting key, not an
+    ///                 authenticated identity)
+    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM); an accounting key, not an authenticated identity
     function reserve(
         PoolId poolId,
         ShareClassId scId,
@@ -201,14 +208,16 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
 
     /// @notice Unreserve assets, returning them to the hub-accounted holding.
     /// @dev Re-adds the funds to the available balance and the hub holding, queueing a holding increase.
-    ///      Any manager can unreserve any reserver's funds, enabling recovery of stuck funds.
+    /// @dev Trust model: `reserver` and `reason` are unauthenticated accounting keys; any balance-sheet manager can
+    ///      unreserve any bucket (including another manager's) and withdraw the freed funds. See {reserve}.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to unreserve
-    /// @param reserver The address that owns the reservation to be unreserved
-    /// @param reason The reason code that was used when reserving
+    /// @param reserver The address recorded as the reservation's owner (an accounting key, not an authenticated
+    ///                 identity)
+    /// @param reason The reason code that was used when reserving; an accounting key, not an authenticated identity
     function unreserve(
         PoolId poolId,
         ShareClassId scId,

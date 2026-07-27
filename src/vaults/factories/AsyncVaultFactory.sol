@@ -24,7 +24,8 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
     }
 
     /// @inheritdoc IVaultFactory
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token)
+    /// @dev The trailing payload is unused: this factory needs no extra deployment configuration.
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token, bytes calldata)
         public
         auth
         returns (IVault)

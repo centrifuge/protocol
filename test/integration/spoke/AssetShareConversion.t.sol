@@ -102,6 +102,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
             assetId,
             bytes32(bytes20(address(asyncVaultFactory))),
             VaultUpdateKind.DeployAndLink,
+            bytes(""),
             0,
             address(this)
         );
@@ -414,7 +415,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         // Unlink vault — price reads should still work since they go through the share class
         hub.updateVault{value: 0}(
-            POOL_A, SC_1, assetId, bytes32(bytes20(address(vault))), VaultUpdateKind.Unlink, 0, address(this)
+            POOL_A, SC_1, assetId, bytes32(bytes20(address(vault))), VaultUpdateKind.Unlink, bytes(""), 0, address(this)
         );
 
         assertEq(vault.priceLastUpdated(), uint64(block.timestamp));

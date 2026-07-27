@@ -68,7 +68,9 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendManagerCallFromHub(LOCAL_CHAIN, POOL_A, makeAddr("target"), EMPTY_BYTES, 0, 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendUpdateVault(POOL_A, SC_A, ASSET_A, bytes32(0), VaultUpdateKind.DeployAndLink, 0, REFUND);
+        dispatcher.sendUpdateVault(
+            POOL_A, SC_A, ASSET_A, bytes32(0), VaultUpdateKind.DeployAndLink, bytes(""), 0, REFUND
+        );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendSetRequestManager(REMOTE_CHAIN, POOL_A, bytes32(0), REFUND);

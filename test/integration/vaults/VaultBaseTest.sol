@@ -386,7 +386,12 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
         vm.recordLogs();
         spokeHandler.updateVault(
-            POOL_A, ShareClassId.wrap(scId), AssetId.wrap(assetId), address(vaultFactory), VaultUpdateKind.DeployAndLink
+            POOL_A,
+            ShareClassId.wrap(scId),
+            AssetId.wrap(assetId),
+            address(vaultFactory),
+            VaultUpdateKind.DeployAndLink,
+            bytes("")
         );
 
         vaultAddress = _deployedVaultFromLogs();

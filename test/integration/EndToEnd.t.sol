@@ -430,7 +430,9 @@ contract EndToEndUtils is EndToEndDeployment {
     ///      (there is no reverse lookup to query). The caller must already hold the FM prank.
     function _deployAndLinkVault(bytes32 factory) internal returns (address vaultAddr) {
         vm.recordLogs();
-        h.hub.updateVault{value: GAS}(POOL_A, SC_1, s.usdcId, factory, VaultUpdateKind.DeployAndLink, EXTRA_GAS, REFUND);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, factory, VaultUpdateKind.DeployAndLink, bytes(""), EXTRA_GAS, REFUND
+        );
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i; i < logs.length; i++) {
@@ -1232,13 +1234,13 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         address vault = _deployAndLinkVault(s.asyncVaultFactory);
 
         h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, EXTRA_GAS, REFUND
+            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, bytes(""), EXTRA_GAS, REFUND
         );
 
         assertEq(s.spokeRegistry.isLinked(IVault(vault)), false);
 
         h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, EXTRA_GAS, REFUND
+            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, bytes(""), EXTRA_GAS, REFUND
         );
 
         assertEq(s.spokeRegistry.isLinked(IVault(vault)), true);

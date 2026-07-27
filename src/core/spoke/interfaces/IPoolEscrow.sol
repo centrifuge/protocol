@@ -118,24 +118,29 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     function withdraw(ShareClassId scId, address asset, uint256 tokenId, address receiver, uint128 value) external;
 
     /// @notice Increases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
-    /// @dev Reserves funds in a specific bucket identified by caller and reason
+    /// @dev Reserves funds in the bucket keyed by `caller` and `reason`. These are unauthenticated accounting keys
+    ///      (not checked against `msg.sender`); access is gated only by `auth` (the trusted Spoke). Per-key isolation
+    ///      holds, but which key is used is the trusted caller's choice. See {ISpoke.reserve} for the trust model.
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be reserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to reserve
-    /// @param caller The address of the manager creating the reservation (passed by Spoke)
-    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM)
+    /// @param caller The bucket owner recorded for the reservation (an accounting key supplied by the Spoke, not an
+    ///               authenticated identity)
+    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM); an accounting key, not an authenticated identity
     function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
         external;
 
     /// @notice Decreases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
     /// @dev Unreserves funds from a specific bucket. MUST fail if bucket has insufficient funds.
+    /// @dev As with {reserve}, `caller` and `reason` are unauthenticated accounting keys: any authorized caller can
+    ///      unreserve any bucket, including one another manager booked. See {ISpoke.unreserve} for the trust model.
     /// @param scId The id of the share class
     /// @param asset The address of the asset to be unreserved
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @param value The amount to decrease
-    /// @param caller The address of the manager that created the reservation
-    /// @param reason The reason code that was used when reserving
+    /// @param caller The bucket owner recorded for the reservation (an accounting key, not an authenticated identity)
+    /// @param reason The reason code that was used when reserving; an accounting key, not an authenticated identity
     function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
         external;
 

@@ -19,7 +19,14 @@ interface IVaultFactory {
     /// @param asset Token id of the underlying asset that is getting deposited inside the pool.
     ///              I.e. zero if asset corresponds to ERC20 or non-zero if asset corresponds to ERC6909.
     /// @param token Address of the share class token that is getting issues against the deposited asset.
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token)
-        external
-        returns (IVault);
+    /// @param payload Opaque, factory-defined deployment data forwarded from the hub. Empty for factories
+    ///               that need no extra configuration; such factories must ignore it.
+    function newVault(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address token,
+        bytes calldata payload
+    ) external returns (IVault);
 }

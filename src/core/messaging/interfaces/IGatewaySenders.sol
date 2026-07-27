@@ -101,6 +101,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable;

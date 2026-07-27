@@ -458,7 +458,8 @@ contract TestMessageLibIdentities is Test {
         bytes32 vaultOrFactory,
         uint128 assetId,
         uint8 kind,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        bytes memory payload
     ) public pure {
         MessageLib.UpdateVault memory a = MessageLib.UpdateVault({
             poolId: poolId,
@@ -466,7 +467,8 @@ contract TestMessageLibIdentities is Test {
             assetId: assetId,
             vaultOrFactory: vaultOrFactory,
             kind: kind,
-            extraGasLimit: extraGasLimit
+            extraGasLimit: extraGasLimit,
+            payload: payload
         });
         MessageLib.UpdateVault memory b = MessageLib.deserializeUpdateVault(a.serialize());
 
@@ -476,10 +478,14 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.vaultOrFactory, b.vaultOrFactory);
         assertEq(a.kind, b.kind);
         assertEq(a.extraGasLimit, b.extraGasLimit);
+        assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
+
+        // Check the payload length is correctly encoded as little endian
+        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
     }
 
     function testSetRequestManager(uint64 poolId, bytes32 manager) public pure {

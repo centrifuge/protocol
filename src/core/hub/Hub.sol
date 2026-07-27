@@ -287,13 +287,16 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable enforced(poolId) {
         _requireSC(poolId, scId);
 
         emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
-        sender.sendUpdateVault{value: msgValue()}(poolId, scId, assetId, vaultOrFactory, kind, extraGasLimit, refund);
+        sender.sendUpdateVault{value: msgValue()}(
+            poolId, scId, assetId, vaultOrFactory, kind, payload, extraGasLimit, refund
+        );
     }
 
     //----------------------------------------------------------------------------------------------

@@ -251,11 +251,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spokeHandler.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+            spokeHandler.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind, payload);
             _refund(refund);
         } else {
             _send(
@@ -266,7 +267,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                         assetId: assetId.raw(),
                         vaultOrFactory: vaultOrFactory,
                         kind: uint8(kind),
-                        extraGasLimit: extraGasLimit
+                        extraGasLimit: extraGasLimit,
+                        payload: payload
                     }).serialize(),
                 false,
                 refund

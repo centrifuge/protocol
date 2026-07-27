@@ -147,7 +147,14 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateVault(
-            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink, 0, REFUND
+            POOL_A,
+            ShareClassId.wrap(0),
+            AssetId.wrap(0),
+            bytes32(0),
+            VaultUpdateKind.DeployAndLink,
+            bytes(""),
+            0,
+            REFUND
         );
 
         vm.expectRevert(IHub.NotManager.selector);

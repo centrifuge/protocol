@@ -242,6 +242,7 @@ abstract contract BaseTestData is LaunchDeployer {
             params.assetId,
             address(asyncVaultFactory).toBytes32(),
             VaultUpdateKind.DeployAndLink,
+            bytes(""),
             0,
             msg.sender
         );
@@ -338,6 +339,7 @@ abstract contract BaseTestData is LaunchDeployer {
             params.assetId,
             address(syncDepositVaultFactory).toBytes32(),
             VaultUpdateKind.DeployAndLink,
+            bytes(""),
             0,
             msg.sender
         );

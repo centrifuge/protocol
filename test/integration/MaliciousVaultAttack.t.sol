@@ -24,10 +24,14 @@ contract MaliciousFactory {
         manager = manager_;
     }
 
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address shareToken)
-        public
-        returns (address)
-    {
+    function newVault(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address shareToken,
+        bytes calldata
+    ) public returns (address) {
         vault = new MaliciousVault(poolId, scId, asset, tokenId, shareToken, manager);
         return address(vault);
     }
@@ -83,6 +87,7 @@ contract MaliciousVaultAttackTest is EndToEndFlows {
             s.usdcId,
             bytes32(bytes20(address(maliciousFactory))),
             VaultUpdateKind.DeployAndLink,
+            bytes(""),
             0,
             REFUND
         );
