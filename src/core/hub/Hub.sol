@@ -410,6 +410,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         ShareClassId scId,
         uint16 centrifugeId,
         bytes32 registrar,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable {
@@ -418,9 +419,9 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         (ShareClassMetadata memory metadata, bytes32 salt) = _shareClassMetadata(poolId, scId);
 
-        emit NotifyShareClass(centrifugeId, poolId, scId);
+        emit NotifyShareClass(centrifugeId, poolId, scId, payload);
         sender.sendNotifyShareClass{value: msgValue()}(
-            centrifugeId, poolId, scId, metadata, salt, registrar, extraGasLimit, refund
+            centrifugeId, poolId, scId, metadata, salt, registrar, payload, extraGasLimit, refund
         );
     }
 

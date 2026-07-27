@@ -44,6 +44,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassMetadata memory metadata,
         bytes32 salt,
         bytes32 registrar,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable;

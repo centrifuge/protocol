@@ -13,7 +13,6 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
-import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol";
@@ -1164,14 +1163,14 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             assertTrue(
-                ISpokeV3_1_0(config.contracts.vaultRegistry).isLinked(IVault(vaultAddress)),
+                ISpokeV3_1_0(config.contracts.vaultRegistry).isLinked(address(vaultAddress)),
                 string(
                     abi.encodePacked("Deployed V3 ", tokenName, " vault should be marked as linked in VaultRegistry")
                 )
             );
         } else {
             assertTrue(
-                IV3_0_1_Spoke(config.contracts.spoke).isLinked(vaultAddress),
+                IV3_0_1_Spoke(config.contracts.spoke).isLinked(address(vaultAddress)),
                 string(abi.encodePacked("Deployed V3 ", tokenName, " vault should be marked as linked in spoke"))
             );
         }

@@ -122,19 +122,19 @@ contract SpokeHandlerTestAddShareClass is SpokeHandlerTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, registrar);
+        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, registrar, PAYLOAD);
     }
 
     function testErrInvalidRegistrar() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpokeHandler.InvalidRegistrar.selector);
-        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, IRegistrar(address(0)));
+        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, IRegistrar(address(0)), PAYLOAD);
     }
 
     function _mockNewToken() internal {
         vm.mockCall(
             address(registrar),
-            abi.encodeWithSelector(IRegistrar.newToken.selector, NAME, SYMBOL, DECIMALS, SALT),
+            abi.encodeCall(IRegistrar.newToken, (NAME, SYMBOL, DECIMALS, SALT, PAYLOAD)),
             abi.encode(share)
         );
         vm.mockCall(
@@ -148,13 +148,13 @@ contract SpokeHandlerTestAddShareClass is SpokeHandlerTest {
         _mockNewToken();
 
         vm.prank(AUTH);
-        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, registrar);
+        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, registrar, PAYLOAD);
     }
 
     function testAddShareClassZeroDecimals() public {
         vm.mockCall(
             address(registrar),
-            abi.encodeWithSelector(IRegistrar.newToken.selector, NAME, SYMBOL, uint8(0), SALT),
+            abi.encodeCall(IRegistrar.newToken, (NAME, SYMBOL, uint8(0), SALT, PAYLOAD)),
             abi.encode(share)
         );
         vm.mockCall(
@@ -164,7 +164,7 @@ contract SpokeHandlerTestAddShareClass is SpokeHandlerTest {
         );
 
         vm.prank(AUTH);
-        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, 0, SALT, registrar);
+        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, 0, SALT, registrar, PAYLOAD);
     }
 }
 

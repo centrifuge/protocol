@@ -50,7 +50,7 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
 
         hub.notifyPool{value: 0}(poolId, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            poolId, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), 0, address(this)
+            poolId, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), "", 0, address(this)
         );
 
         // Token deploys hookless (v3.1+); set the restriction hook via the registrar's Envoy path

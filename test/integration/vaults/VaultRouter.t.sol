@@ -8,8 +8,7 @@ import {
     ERC20,
     MockAdapter,
     PoolId,
-    SyncDepositVault,
-    VaultKind
+    SyncDepositVault
 } from "./VaultBaseTest.sol";
 
 import "../../../src/misc/interfaces/IERC7575.sol";
@@ -55,7 +54,7 @@ contract VaultRouterTest is BaseTest {
         // accounted twice over the request/approve lifecycle (noteDeposit, then unreserve).
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -116,7 +115,7 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testEnableDisableVaults() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -160,7 +159,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
         // deposit
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -305,7 +304,7 @@ contract VaultRouterTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         // deposit
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -373,7 +372,7 @@ contract VaultRouterTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -441,9 +440,9 @@ contract VaultRouterTest is BaseTest {
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
         (, address vault1_,) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20X), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20X), 0);
         (, address vault2_,) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), bytes16(bytes("2")), address(erc20Y), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), bytes16(bytes("2")), address(erc20Y), 0);
         vault1 = AsyncVault(vault1_);
         vault2 = AsyncVault(vault2_);
         vm.label(vault1_, "vault1");
@@ -501,7 +500,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testGetVault() public {
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -516,7 +515,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testRequestDeposit() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -533,7 +532,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testMulticallRequestDepositRequiresNoPayment() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
         erc20.mint(self, amount);
@@ -558,7 +557,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     ///      multicall each try to forward msg.value; the second fails closed on insufficient balance rather
     ///      than reusing the value.
     function testMulticallTwoCrosschainTransfersRevert() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 assets = 100 * 10 ** 18;
         erc20.mint(self, assets);
@@ -603,7 +602,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testRouterSyncDeposit() public {
-        (uint64 poolId, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (uint64 poolId, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
         vm.label(vault_, "vault");
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -620,7 +619,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testRouterSyncDepositAndTransfer() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
         vm.label(vault_, "vault");
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 assets = 100 * 10 ** 18;
@@ -655,7 +654,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testCancelDepositRequest() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
 
@@ -681,7 +680,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testClaimCancelDepositRequest() public {
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
 
@@ -718,7 +717,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testRequestRedeem() external {
         // Deposit first
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -749,7 +748,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testCancelRedeemRequest() public {
         // Deposit first
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -784,7 +783,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testClaimCancelRedeemRequest() public {
         // Deposit first
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -829,7 +828,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testPermit() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
 
         bytes32 PERMIT_TYPEHASH =
@@ -858,7 +857,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testEnableAndDisable() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -874,7 +873,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testIfUserIsPermittedToExecuteRequests() public {
         uint256 amount = 100 * 10 ** 18;
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
 

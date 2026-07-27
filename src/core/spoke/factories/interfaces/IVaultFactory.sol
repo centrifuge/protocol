@@ -2,7 +2,6 @@
 pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../types/PoolId.sol";
-import {IVault} from "../../interfaces/IVault.sol";
 import {ShareClassId} from "../../../types/ShareClassId.sol";
 
 /// @title  IVaultFactory
@@ -30,5 +29,5 @@ interface IVaultFactory {
         uint256 tokenId,
         address token,
         bytes calldata payload
-    ) external returns (IVault);
+    ) external returns (address);
 }

@@ -21,7 +21,6 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {RequestId} from "../../src/core/types/RequestId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
-import {IVault} from "../../src/core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../src/core/spoke/SpokeHandler.sol";
@@ -549,7 +548,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId, REFUND);
         h.hub.notifyShareClass{value: GAS}(
-            POOL_A, SC_1, s_.centrifugeId, address(s_.shareTokenRegistrar).toBytes32(), 0, REFUND
+            POOL_A, SC_1, s_.centrifugeId, address(s_.shareTokenRegistrar).toBytes32(), "", 0, REFUND
         );
         _setHook(s_, address(s_.redemptionRestrictionsHook));
 
@@ -1237,13 +1236,13 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
             POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, bytes(""), EXTRA_GAS, REFUND
         );
 
-        assertEq(s.spokeRegistry.isLinked(IVault(vault)), false);
+        assertEq(s.spokeRegistry.isLinked(address(vault)), false);
 
         h.hub.updateVault{value: GAS}(
             POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, bytes(""), EXTRA_GAS, REFUND
         );
 
-        assertEq(s.spokeRegistry.isLinked(IVault(vault)), true);
+        assertEq(s.spokeRegistry.isLinked(address(vault)), true);
     }
 
     /// forge-config: default.isolate = true

@@ -81,7 +81,6 @@ import {
 
 string constant V3_1 = "v3.1";
 string constant V3_1_1 = "v3.1.1";
-string constant V3_X = "v3.x"; // Next undecided version
 string constant V3_2 = "v3.2";
 string constant V3_3 = "v3.3";
 
@@ -271,7 +270,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         gasService = GasService(
             create3(
-                createSalt("gasService", V3_1),
+                createSalt("gasService", V3_3),
                 abi.encodePacked(type(GasService).creationCode, abi.encode(input.txLimits, input.centrifugeId))
             )
         );
@@ -279,7 +278,7 @@ contract FullDeployer is BaseDeployer, Constants {
         // Utils
         contractUpdater = ContractUpdater(
             create3(
-                createSalt("contractUpdater", V3_1),
+                createSalt("contractUpdater", V3_3),
                 abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
             )
         );
@@ -287,14 +286,14 @@ contract FullDeployer is BaseDeployer, Constants {
         // Messaging
         gateway = Gateway(
             create3(
-                createSalt("gateway", V3_1),
+                createSalt("gateway", V3_3),
                 abi.encodePacked(type(Gateway).creationCode, abi.encode(input.centrifugeId, root, batcher))
             )
         );
 
         multiAdapter = MultiAdapter(
             create3(
-                createSalt("multiAdapter", V3_1),
+                createSalt("multiAdapter", V3_3),
                 abi.encodePacked(type(MultiAdapter).creationCode, abi.encode(input.centrifugeId, gateway, batcher))
             )
         );
@@ -313,14 +312,14 @@ contract FullDeployer is BaseDeployer, Constants {
 
         messageProcessor = MessageProcessor(
             create3(
-                createSalt("messageProcessor", V3_1),
+                createSalt("messageProcessor", V3_3),
                 abi.encodePacked(type(MessageProcessor).creationCode, abi.encode(root, batcher))
             )
         );
 
         messageDispatcher = MessageDispatcher(
             create3(
-                createSalt("messageDispatcher", V3_1),
+                createSalt("messageDispatcher", V3_3),
                 abi.encodePacked(
                     type(MessageDispatcher).creationCode, abi.encode(input.centrifugeId, root, gateway, batcher)
                 )
@@ -330,35 +329,35 @@ contract FullDeployer is BaseDeployer, Constants {
         // Spoke
         shareTokenRegistrar = ShareTokenRegistrar(
             create3(
-                createSalt("shareTokenRegistrar", V3_X),
+                createSalt("shareTokenRegistrar", V3_3),
                 abi.encodePacked(type(ShareTokenRegistrar).creationCode, abi.encode(root, batcher))
             )
         );
 
         poolEscrowFactory = PoolEscrowFactory(
             create3(
-                createSalt("poolEscrowFactory", V3_1),
+                createSalt("poolEscrowFactory", V3_3),
                 abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
             )
         );
 
         spokeRegistry = SpokeRegistry(
             create3(
-                createSalt("spokeRegistry", V3_X),
+                createSalt("spokeRegistry", V3_3),
                 abi.encodePacked(type(SpokeRegistry).creationCode, abi.encode(batcher))
             )
         );
 
         snapshotQueue = SnapshotQueue(
             create3(
-                createSalt("snapshotQueue", V3_X),
+                createSalt("snapshotQueue", V3_3),
                 abi.encodePacked(type(SnapshotQueue).creationCode, abi.encode(batcher))
             )
         );
 
         spoke = Spoke(
             create3(
-                createSalt("spoke", V3_X),
+                createSalt("spoke", V3_3),
                 abi.encodePacked(
                     type(Spoke).creationCode,
                     abi.encode(gateway, snapshotQueue, spokeRegistry, poolEscrowFactory, batcher)
@@ -368,7 +367,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         spokeHandler = SpokeHandler(
             create3(
-                createSalt("spokeHandler", V3_X),
+                createSalt("spokeHandler", V3_3),
                 abi.encodePacked(type(SpokeHandler).creationCode, abi.encode(spokeRegistry, poolEscrowFactory, batcher))
             )
         );
@@ -376,33 +375,33 @@ contract FullDeployer is BaseDeployer, Constants {
         // Hub
         hubRegistry = HubRegistry(
             create3(
-                createSalt("hubRegistry", V3_1), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher))
+                createSalt("hubRegistry", V3_3), abi.encodePacked(type(HubRegistry).creationCode, abi.encode(batcher))
             )
         );
 
         accounting = Accounting(
             create3(
-                createSalt("accounting", V3_1), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher))
+                createSalt("accounting", V3_3), abi.encodePacked(type(Accounting).creationCode, abi.encode(batcher))
             )
         );
 
         holdings = Holdings(
             create3(
-                createSalt("holdings", V3_1),
+                createSalt("holdings", V3_3),
                 abi.encodePacked(type(Holdings).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
 
         shareClassManager = ShareClassManager(
             create3(
-                createSalt("shareClassManager", V3_1),
+                createSalt("shareClassManager", V3_3),
                 abi.encodePacked(type(ShareClassManager).creationCode, abi.encode(hubRegistry, batcher))
             )
         );
 
         hub = Hub(
             create3(
-                createSalt("hub", V3_1),
+                createSalt("hub", V3_3),
                 abi.encodePacked(
                     type(Hub).creationCode,
                     abi.encode(gateway, holdings, accounting, hubRegistry, multiAdapter, shareClassManager, batcher)
@@ -412,7 +411,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         hubHandler = HubHandler(
             create3(
-                createSalt("hubHandler", V3_1),
+                createSalt("hubHandler", V3_3),
                 abi.encodePacked(
                     type(HubHandler).creationCode, abi.encode(hub, holdings, hubRegistry, shareClassManager, batcher)
                 )
@@ -422,7 +421,7 @@ contract FullDeployer is BaseDeployer, Constants {
         // Admin (depends on core contracts)
         protocolGuardian = ProtocolGuardian(
             create3(
-                createSalt("protocolGuardian", V3_1),
+                createSalt("protocolGuardian", V3_3),
                 abi.encodePacked(
                     type(ProtocolGuardian).creationCode,
                     abi.encode(ISafe(address(batcher)), root, messageDispatcher, TokenBridge(tokenBridgeAddr))
@@ -432,7 +431,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         opsGuardian = OpsGuardian(
             create3(
-                createSalt("opsGuardian", V3_1),
+                createSalt("opsGuardian", V3_3),
                 abi.encodePacked(
                     type(OpsGuardian).creationCode,
                     abi.encode(ISafe(address(batcher)), hub, TokenBridge(tokenBridgeAddr), multiAdapter)
@@ -451,34 +450,34 @@ contract FullDeployer is BaseDeployer, Constants {
 
         subsidyManager = SubsidyManager(
             create3(
-                createSalt("subsidyManager", V3_1),
+                createSalt("subsidyManager", V3_3),
                 abi.encodePacked(type(SubsidyManager).creationCode, abi.encode(refundEscrowFactory, batcher))
             )
         );
 
         asyncRequestManager = AsyncRequestManager(
             payable(create3(
-                    createSalt("asyncRequestManager", V3_1),
+                    createSalt("asyncRequestManager", V3_3),
                     abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(subsidyManager, batcher))
                 ))
         );
 
         syncManager = SyncManager(
             create3(
-                createSalt("syncManager", V3_1), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher))
+                createSalt("syncManager", V3_3), abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher))
             )
         );
 
         vaultRouter = VaultRouter(
             create3(
-                createSalt("vaultRouter", V3_1),
+                createSalt("vaultRouter", V3_3),
                 abi.encodePacked(type(VaultRouter).creationCode, abi.encode(spoke, spokeRegistry, batcher))
             )
         );
 
         asyncVaultFactory = AsyncVaultFactory(
             create3(
-                createSalt("asyncVaultFactory", V3_1),
+                createSalt("asyncVaultFactory", V3_3),
                 abi.encodePacked(
                     type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
                 )
@@ -487,7 +486,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         syncDepositVaultFactory = SyncDepositVaultFactory(
             create3(
-                createSalt("syncDepositVaultFactory", V3_1),
+                createSalt("syncDepositVaultFactory", V3_3),
                 abi.encodePacked(
                     type(SyncDepositVaultFactory).creationCode,
                     abi.encode(address(root), syncManager, asyncRequestManager, batcher)
@@ -497,7 +496,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         freezeOnlyHook = FreezeOnly(
             create3(
-                createSalt("freezeOnlyHook", V3_1),
+                createSalt("freezeOnlyHook", V3_3),
                 abi.encodePacked(
                     type(FreezeOnly).creationCode,
                     abi.encode(
@@ -516,7 +515,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         fullRestrictionsHook = FullRestrictions(
             create3(
-                createSalt("fullRestrictionsHook", V3_1),
+                createSalt("fullRestrictionsHook", V3_3),
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
                     abi.encode(
@@ -535,7 +534,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         freelyTransferableHook = FreelyTransferable(
             create3(
-                createSalt("freelyTransferableHook", V3_1),
+                createSalt("freelyTransferableHook", V3_3),
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
                     abi.encode(
@@ -554,7 +553,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         redemptionRestrictionsHook = RedemptionRestrictions(
             create3(
-                createSalt("redemptionRestrictionsHook", V3_1),
+                createSalt("redemptionRestrictionsHook", V3_3),
                 abi.encodePacked(
                     type(RedemptionRestrictions).creationCode,
                     abi.encode(
@@ -573,14 +572,14 @@ contract FullDeployer is BaseDeployer, Constants {
 
         queueManager = QueueManager(
             create3(
-                createSalt("queueManager", V3_1),
+                createSalt("queueManager", V3_3),
                 abi.encodePacked(type(QueueManager).creationCode, abi.encode(envoy, spoke))
             )
         );
 
         accountingToken = AccountingToken(
             create3(
-                createSalt("accountingToken", V3_2),
+                createSalt("accountingToken", V3_3),
                 abi.encodePacked(type(AccountingToken).creationCode, abi.encode(envoy))
             )
         );
@@ -600,7 +599,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         onchainPMFactory = IOnchainPMFactory(
             create3(
-                createSalt("onchainPMFactory", V3_2),
+                createSalt("onchainPMFactory", V3_3),
                 abi.encodePacked(
                     vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
                     abi.encode(contractUpdater, spoke, gateway)
@@ -617,7 +616,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
         onOffRampFactory = OnOffRampFactory(
             create3(
-                createSalt("onOffRampFactory", V3_2),
+                createSalt("onOffRampFactory", V3_3),
                 abi.encodePacked(type(OnOffRampFactory).creationCode, abi.encode(envoy, spoke, accountingToken))
             )
         );
@@ -627,19 +626,19 @@ contract FullDeployer is BaseDeployer, Constants {
         );
 
         circuitBreakerGuard = CircuitBreakerGuard(
-            create3(createSalt("circuitBreakerGuard", V3_2), abi.encodePacked(type(CircuitBreakerGuard).creationCode))
+            create3(createSalt("circuitBreakerGuard", V3_3), abi.encodePacked(type(CircuitBreakerGuard).creationCode))
         );
 
         slippageGuard = SlippageGuard(
             create3(
-                createSalt("slippageGuard", V3_2),
+                createSalt("slippageGuard", V3_3),
                 abi.encodePacked(type(SlippageGuard).creationCode, abi.encode(spoke, envoy, onchainPMFactory))
             )
         );
 
         batchRequestManager = BatchRequestManager(
             create3(
-                createSalt("batchRequestManager", V3_1),
+                createSalt("batchRequestManager", V3_3),
                 abi.encodePacked(
                     type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, address(envoy), batcher)
                 )
@@ -655,20 +654,20 @@ contract FullDeployer is BaseDeployer, Constants {
 
         oracleValuation = OracleValuation(
             create3(
-                createSalt("oracleValuation", V3_1),
+                createSalt("oracleValuation", V3_3),
                 abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub, hubRegistry, envoy))
             )
         );
 
         navManager = NAVManager(
             create3(
-                createSalt("navManager", V3_1), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub, envoy))
+                createSalt("navManager", V3_3), abi.encodePacked(type(NAVManager).creationCode, abi.encode(hub, envoy))
             )
         );
 
         simplePriceManager = SimplePriceManager(
             create3(
-                createSalt("simplePriceManager", V3_1),
+                createSalt("simplePriceManager", V3_3),
                 abi.encodePacked(type(SimplePriceManager).creationCode, abi.encode(hub, address(navManager)))
             )
         );
@@ -706,7 +705,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
             layerZeroAdapter = LayerZeroAdapter(
                 create3(
-                    createSalt("layerZeroAdapter", V3_1),
+                    createSalt("layerZeroAdapter", V3_3),
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
                         // Set delegate to adapterBatcher initially, to be able to set ULN config
@@ -724,7 +723,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
             axelarAdapter = AxelarAdapter(
                 create3(
-                    createSalt("axelarAdapter", V3_1),
+                    createSalt("axelarAdapter", V3_3),
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(multiAdapter, input.axelar.gateway, input.axelar.gasService, batcher)
@@ -739,7 +738,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
             chainlinkAdapter = ChainlinkAdapter(
                 create3(
-                    createSalt("chainlinkAdapter", V3_1),
+                    createSalt("chainlinkAdapter", V3_3),
                     abi.encodePacked(
                         type(ChainlinkAdapter).creationCode,
                         abi.encode(multiAdapter, input.chainlink.ccipRouter, batcher)
@@ -754,7 +753,7 @@ contract FullDeployer is BaseDeployer, Constants {
 
             hyperlaneAdapter = HyperlaneAdapter(
                 create3(
-                    createSalt("hyperlaneAdapter", V3_1),
+                    createSalt("hyperlaneAdapter", V3_3),
                     abi.encodePacked(
                         type(HyperlaneAdapter).creationCode, abi.encode(multiAdapter, input.hyperlane.mailbox, batcher)
                     )

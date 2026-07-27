@@ -46,7 +46,7 @@ interface IHub is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     event NotifyPool(uint16 indexed centrifugeId, PoolId indexed poolId);
-    event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId);
+    event NotifyShareClass(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
     event NotifyShareMetadata(
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, string name, string symbol
     );
@@ -448,6 +448,7 @@ interface IHub is IBatchedMulticall {
     /// @param scId The share class identifier
     /// @param centrifugeId Chain where CV instance lives
     /// @param registrar The registrar (on the target chain) that deploys and operates the share token
+    /// @param payload Opaque data forwarded verbatim to the registrar's `newToken`; empty if unused
     /// @param extraGasLimit Extra gas for the registrar's `newToken` deployment on the destination chain
     /// @param refund Address to receive excess gas refund
     function notifyShareClass(
@@ -455,6 +456,7 @@ interface IHub is IBatchedMulticall {
         ShareClassId scId,
         uint16 centrifugeId,
         bytes32 registrar,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable;

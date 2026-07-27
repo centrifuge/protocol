@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IVault} from "./interfaces/IVault.sol";
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {ISpokeHandler} from "./interfaces/ISpokeHandler.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
@@ -67,11 +66,12 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         string memory symbol,
         uint8 decimals,
         bytes32 salt,
-        IRegistrar registrar
+        IRegistrar registrar,
+        bytes memory payload
     ) external auth {
         require(address(registrar) != address(0), InvalidRegistrar());
 
-        address shareToken_ = registrar.newToken(name, symbol, decimals, salt);
+        address shareToken_ = registrar.newToken(name, symbol, decimals, salt, payload);
         spokeRegistry.addShareClass(poolId, scId, shareToken_, registrar);
     }
 
@@ -121,16 +121,16 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
             address shareToken = address(spokeRegistry.shareToken(poolId, scId));
             require(shareToken != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
 
-            IVault vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken, payload);
+            address vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken, payload);
 
             spokeRegistry.registerVault(poolId, scId, assetId, asset, tokenId, IVaultFactory(vaultOrFactory), vault_);
             spokeRegistry.linkVault(poolId, scId, assetId, vault_);
+        } else if (kind == VaultUpdateKind.Link) {
+            spokeRegistry.linkVault(poolId, scId, assetId, vaultOrFactory);
+        } else if (kind == VaultUpdateKind.Unlink) {
+            spokeRegistry.unlinkVault(poolId, scId, assetId, vaultOrFactory);
         } else {
-            IVault vault_ = IVault(vaultOrFactory);
-
-            if (kind == VaultUpdateKind.Link) spokeRegistry.linkVault(poolId, scId, assetId, vault_);
-            else if (kind == VaultUpdateKind.Unlink) spokeRegistry.unlinkVault(poolId, scId, assetId, vault_);
-            else revert MalformedVaultUpdateMessage(); // Unreachable due to the enum check
+            revert MalformedVaultUpdateMessage(); // Unreachable due to the enum check
         }
     }
 

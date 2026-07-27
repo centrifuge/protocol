@@ -5,7 +5,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {FreelyTransferable} from "../../../src/token/hooks/FreelyTransferable.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, VaultKind} from "../vaults/VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest} from "../vaults/VaultBaseTest.sol";
 
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
@@ -18,7 +18,7 @@ contract FreelyTransferableTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(freelyTransferableHook), bytes16(bytes("1")), address(erc20), 0);
+            deployVault(asyncVaultFactory, 6, address(freelyTransferableHook), bytes16(bytes("1")), address(erc20), 0);
         AsyncVault vault = AsyncVault(vault_);
         FreelyTransferable hook = FreelyTransferable(freelyTransferableHook);
         IShareToken shareToken = IShareToken(address(vault.share()));

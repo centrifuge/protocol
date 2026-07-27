@@ -8,7 +8,6 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {VaultKind} from "../../src/core/spoke/interfaces/IVault.sol";
 import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
@@ -59,10 +58,6 @@ contract MaliciousVault {
         tokenId = tokenId_;
         share = shareToken_;
         manager = manager_;
-    }
-
-    function vaultKind() public pure returns (VaultKind vaultKind_) {
-        return VaultKind.Async;
     }
 
     function attack() public {

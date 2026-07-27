@@ -43,7 +43,14 @@ abstract contract OnOffRampBaseTest is BaseTest {
         assetId = spoke.registerAsset{value: 0.1 ether}(OTHER_CHAIN_ID, address(erc20), erc20TokenId, address(this));
         if (!spokeRegistry.isPoolActive(POOL_A)) spokeHandler.addPool(POOL_A);
         spokeHandler.addShareClass(
-            POOL_A, defaultTypedShareClassId, "testShareClass", "tsc", defaultDecimals, bytes32(""), shareTokenRegistrar
+            POOL_A,
+            defaultTypedShareClassId,
+            "testShareClass",
+            "tsc",
+            defaultDecimals,
+            bytes32(""),
+            shareTokenRegistrar,
+            ""
         );
         vm.prank(shareTokenRegistrar.envoy());
         shareTokenRegistrar.fromHub(

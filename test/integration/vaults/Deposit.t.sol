@@ -8,8 +8,7 @@ import {
     ERC20,
     MockAdapter,
     PoolId,
-    ShareClassId,
-    VaultKind
+    ShareClassId
 } from "./VaultBaseTest.sol";
 
 import {D18} from "../../../src/misc/types/D18.sol";
@@ -62,7 +61,7 @@ contract DepositTest is BaseTest {
 
         uint128 price = 2 * 10 ** 18;
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updatePricePoolPerShare(
@@ -184,7 +183,12 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0
+            asyncVaultFactory,
+            SHARE_TOKEN_DECIMALS,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(asset),
+            0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
@@ -227,7 +231,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
+    //     AsyncVault vault = AsyncVault(deploySimpleVault(asyncVaultFactory));
     //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
@@ -289,7 +293,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
+    //     AsyncVault vault = AsyncVault(deploySimpleVault(asyncVaultFactory));
     //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
@@ -341,7 +345,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
@@ -398,7 +402,7 @@ contract DepositTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
@@ -459,7 +463,12 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0
+            asyncVaultFactory,
+            SHARE_TOKEN_DECIMALS,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(asset),
+            0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
@@ -526,7 +535,7 @@ contract DepositTest is BaseTest {
     function testDepositAndRedeemPrecisionWithInverseDecimals(bytes16 scId) public {
         ERC20 asset = _newErc20("Currency", "CR", 18);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000000000000, uint64(block.timestamp));
@@ -598,7 +607,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -637,7 +646,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -673,7 +682,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -764,7 +773,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 

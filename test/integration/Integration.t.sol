@@ -60,7 +60,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i = logs.length; i > 0; i--) {
             if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
-                (,, address v,) = abi.decode(logs[i - 1].data, (uint256, address, address, uint8));
+                (,, address v) = abi.decode(logs[i - 1].data, (uint256, address, address));
                 return v;
             }
         }

@@ -2,7 +2,6 @@
 pragma solidity >=0.5.0;
 
 import {IRegistrar} from "./IRegistrar.sol";
-import {IVault, VaultKind} from "./IVault.sol";
 import {ISpokeRequestManager} from "./ISpokeRequestManager.sol";
 
 import {D18} from "../../../misc/types/D18.sol";
@@ -44,10 +43,10 @@ struct AssetIdKey {
 }
 
 struct VaultDetails {
-    /// @dev PoolId the vault belongs to, validated against the vault at registration so integrators can
-    ///      trust the association from registry storage rather than the vault's own getter
+    /// @dev PoolId the vault belongs to. The registry is the sole authority on this association: it is
+    ///      recorded from the registering hub message, never read back from the vault
     PoolId poolId;
-    /// @dev ShareClassId the vault belongs to, validated against the vault at registration
+    /// @dev ShareClassId the vault belongs to, recorded alongside `poolId`
     ShareClassId scId;
     /// @dev AssetId of the asset
     AssetId assetId;
@@ -101,14 +100,13 @@ interface ISpokeRegistry {
         address indexed asset,
         uint256 tokenId,
         IVaultFactory factory,
-        IVault vault,
-        VaultKind kind
+        address vault
     );
     event LinkVault(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IVault vault
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, address vault
     );
     event UnlinkVault(
-        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, IVault vault
+        PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, address vault
     );
 
     //----------------------------------------------------------------------------------------------
@@ -125,7 +123,6 @@ interface ISpokeRegistry {
     error UnknownAsset();
     error ShareTokenDoesNotExist();
     error InvalidPrice();
-    error InvalidRequestManager();
     error UnknownVault();
     error InvalidVault();
     error AlreadyLinkedVault();
@@ -242,14 +239,14 @@ interface ISpokeRegistry {
         address asset,
         uint256 tokenId,
         IVaultFactory factory,
-        IVault vault
+        address vault
     ) external;
 
-    /// @notice Links a deployed vault to the given pool, share class and asset
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
+    /// @notice Links a registered vault to the given pool, share class and asset
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault) external;
 
     /// @notice Removes the link between a vault and the given pool, share class and asset
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault) external;
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault) external;
 
     /// @notice Creates a new asset ID and registers the asset mapping in the registry
     /// @param centrifugeId The centrifuge chain ID
@@ -393,12 +390,12 @@ interface ISpokeRegistry {
     function bridger(PoolId poolId, address who) external view returns (bool);
 
     /// @notice Returns whether a vault has been registered (regardless of its link state)
-    function isVaultRegistered(IVault vault) external view returns (bool);
+    function isVaultRegistered(address vault) external view returns (bool);
 
     /// @notice Returns the details of a vault
     /// @dev Returns a zeroed struct if the vault is not registered; use {isVaultRegistered} to probe existence
-    function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
+    function vaultDetails(address vault) external view returns (VaultDetails memory details);
 
     /// @notice Checks whether a given vault is linked to a share class
-    function isLinked(IVault vault) external view returns (bool);
+    function isLinked(address vault) external view returns (bool);
 }

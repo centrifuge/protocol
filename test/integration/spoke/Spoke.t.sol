@@ -7,14 +7,12 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {ShareToken} from "../../../src/token/ShareToken.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
@@ -44,7 +42,7 @@ contract SpokeRestrictionTest is CentrifugeIntegrationTest {
         // Push pool and share class to spoke
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), 0, address(this)
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), "", 0, address(this)
         );
 
         // Token deploys hookless (v3.1+); set the restriction hook via the registrar's Envoy path
@@ -154,7 +152,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), 0, address(this)
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), "", 0, address(this)
         );
     }
 
@@ -172,14 +170,14 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
         assertTrue(spokeRegistry.isPoolActive(POOL_A));
 
-        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(IBaseVault(vaultAddress));
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vaultAddress));
         assertEq(assetId.raw(), vaultDetails.assetId.raw(), "vault assetId mismatch");
         assertEq(address(asset), vaultDetails.asset, "vault asset mismatch");
         assertEq(uint256(0), vaultDetails.tokenId, "vault tokenId mismatch");
         assertEq(isLinked, vaultDetails.isLinked, "vault isLinked mismatch");
 
         if (isLinked) {
-            assertTrue(spokeRegistry.isLinked(IBaseVault(vaultAddress)));
+            assertTrue(spokeRegistry.isLinked(address(vaultAddress)));
 
             AsyncVault vault = AsyncVault(vaultAddress);
             assertEq(vault.asset(), address(asset), "asset mismatch");
@@ -191,7 +189,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
             assertEq(vault.wards(address(this)), 0);
             assertEq(asyncRequestManager.wards(vaultAddress), 1);
         } else {
-            assertFalse(spokeRegistry.isLinked(IBaseVault(vaultAddress)));
+            assertFalse(spokeRegistry.isLinked(address(vaultAddress)));
         }
     }
 
@@ -279,7 +277,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
     }
 }
 
-/// @dev Minimal vault that satisfies the register/link checks (poolId/scId/vaultKind) for payload-forwarding tests.
+/// @dev Minimal vault that satisfies the register/link checks for payload-forwarding tests.
 contract RecordingVault {
     PoolId public immutable poolId;
     ShareClassId public immutable scId;
@@ -287,10 +285,6 @@ contract RecordingVault {
     constructor(PoolId poolId_, ShareClassId scId_) {
         poolId = poolId_;
         scId = scId_;
-    }
-
-    function vaultKind() external pure returns (VaultKind) {
-        return VaultKind.Async;
     }
 }
 

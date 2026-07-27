@@ -322,7 +322,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         hub.notifyShareClass{value: MAX_MESSAGE_COST}(
-            poolId, scId, centrifugeId, bytes32(bytes20(address(shareTokenRegistrar))), 0, _getActor()
+            poolId, scId, centrifugeId, bytes32(bytes20(address(shareTokenRegistrar))), "", 0, _getActor()
         );
     }
 

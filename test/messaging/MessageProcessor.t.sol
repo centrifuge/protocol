@@ -87,7 +87,8 @@ contract TestMessageSourceClassification is Test {
                     decimals: 6,
                     salt: bytes32("salt"),
                     registrar: bytes32("registrar"),
-                    extraGasLimit: 0
+                    extraGasLimit: 0,
+                    payload: ""
                 }).serialize(),
             HOME_CHAIN
         );

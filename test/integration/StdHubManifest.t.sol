@@ -518,7 +518,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.startPrank(FM);
         hub.notifyPool{value: GAS}(POOL_A, localId, FUNDED);
         hub.notifyShareClass{value: GAS}(
-            POOL_A, SC_1, localId, bytes32(bytes20(address(shareTokenRegistrar))), 0, FUNDED
+            POOL_A, SC_1, localId, bytes32(bytes20(address(shareTokenRegistrar))), "", 0, FUNDED
         );
         vm.stopPrank();
 

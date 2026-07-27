@@ -5,7 +5,6 @@ import {D18} from "../../../../misc/types/D18.sol";
 
 import {PoolId} from "../../../types/PoolId.sol";
 import {AssetId} from "../../../types/AssetId.sol";
-import {IVault} from "../../interfaces/IVault.sol";
 import {ShareClassId} from "../../../types/ShareClassId.sol";
 import {IShareToken} from "../../../../token/interfaces/IShareToken.sol";
 import {ISpokeRequestManager} from "../../interfaces/ISpokeRequestManager.sol";
@@ -106,14 +105,14 @@ interface ISpokeV3_1_0 {
 
     /// @notice Returns the details of a vault
     /// @dev Reverts if vault does not exist
-    function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
+    function vaultDetails(address vault) external view returns (VaultDetails memory details);
 
     /// @notice Checks whether a given vault is linked to a share class
-    function isLinked(IVault vault) external view returns (bool);
+    function isLinked(address vault) external view returns (bool);
 
     /// @notice Returns the address of the vault for a given pool, share class, asset and request manager
     function vault(PoolId poolId, ShareClassId scId, AssetId assetId, ISpokeRequestManager manager)
         external
         view
-        returns (IVault vaultAddress);
+        returns (address vaultAddress);
 }

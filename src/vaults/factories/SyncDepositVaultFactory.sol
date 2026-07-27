@@ -5,7 +5,6 @@ import {Auth} from "../../misc/Auth.sol";
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {IVault} from "../../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
@@ -36,7 +35,7 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token, bytes calldata)
         public
         auth
-        returns (IVault)
+        returns (address)
     {
         require(tokenId == 0, UnsupportedTokenId());
 
@@ -53,6 +52,6 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         IAuth(address(asyncRedeemManager)).rely(address(vault));
 
         vault.deny(address(this));
-        return vault;
+        return address(vault);
     }
 }

@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    AssetId,
-    VaultBaseTest as BaseTest,
-    PoolId,
-    ShareClassId,
-    SyncDepositVault,
-    VaultKind
-} from "./VaultBaseTest.sol";
+import {AssetId, VaultBaseTest as BaseTest, PoolId, ShareClassId, SyncDepositVault} from "./VaultBaseTest.sol";
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -25,7 +18,7 @@ contract SyncManagerBaseTest is BaseTest {
         internal
         returns (SyncDepositVault syncVault, uint128 assetId)
     {
-        (, address syncVault_, uint128 assetId_) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address syncVault_, uint128 assetId_) = deploySimpleVault(syncDepositVaultFactory);
         assetId = assetId_;
         syncVault = SyncDepositVault(syncVault_);
 
@@ -73,7 +66,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
     // --- Simple Errors ---
     function testMintUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
-        spokeRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        spokeRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), address(vault));
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncManager.mint(vault, 1, address(0), address(0));
@@ -81,7 +74,7 @@ contract SyncManagerTest is SyncManagerBaseTest {
 
     function testDepositUnlinkedVault() public {
         (SyncDepositVault vault, uint128 assetId) = _deploySyncDepositVault(d18(1), d18(1));
-        spokeRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), vault);
+        spokeRegistry.unlinkVault(vault.poolId(), vault.scId(), AssetId.wrap(assetId), address(vault));
 
         vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
         syncManager.deposit(vault, 1, address(0), address(0));

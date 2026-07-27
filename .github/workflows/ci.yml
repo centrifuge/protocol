@@ -208,7 +208,10 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          # Must stay pinned: GasService constants are gas-exact and regenerated locally via
+          # `benchmarks.sh apply`. A floating version meters gas differently than contributors'
+          # toolchain, making the check demand values nobody can reproduce.
+          version: v1.4.4
 
       - name: Setup Python
         uses: actions/setup-python@v4

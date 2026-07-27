@@ -137,7 +137,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
-        AssetId assetId = spokeRegistry.vaultDetails(_getVault()).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
 
         (uint256 pendingDepositBefore,) =
             batchRequestManager.depositRequest(poolId, scId, assetId, _getActor().toBytes32());
@@ -362,7 +362,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
-        AssetId assetId = spokeRegistry.vaultDetails(_getVault()).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
 
         (, uint32 latestRedeemApproval,,) = batchRequestManager.epochId(poolId, scId, assetId);
 
@@ -816,7 +816,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         (uint128 maxMintState,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
 
         if (!depositPrice.isZero()) {
-            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(_getVault()));
             uint128 sharesUp = PricingLib.assetToShareAmount(
                 _getVault().share(),
                 vaultDetails.asset,
@@ -847,7 +847,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         (,, D18 depositPrice,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
 
         if (!depositPrice.isZero()) {
-            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(_getVault()));
             uint256 assetsRequired = PricingLib.shareToAssetAmount(
                 _getVault().share(),
                 mintAmount.toUint128(),
@@ -880,7 +880,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
         if (!redeemPrice.isZero()) {
             // Calculate shares required for the withdraw using exact AsyncRequestManager logic
-            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(_getVault());
+            VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(_getVault()));
             uint128 sharesRequired = PricingLib.assetToShareAmount(
                 _getVault().share(),
                 vaultDetails.asset,

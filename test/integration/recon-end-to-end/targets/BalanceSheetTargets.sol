@@ -36,7 +36,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
         _captureShareQueueState(poolId, scId);
 
         // Track authorization - deposit() requires isManager(poolId)
@@ -149,7 +149,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
         address asset = vault.asset();
 
         // Track authorization - noteDeposit() requires isManager(poolId)
@@ -205,7 +205,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         address asset = vault.asset();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         IPoolEscrow poolEscrow = poolEscrowFactory.escrow(poolId);
         (state.total, state.reserved) = PoolEscrow(address(poolEscrow)).holding(scId, asset, tokenId);
@@ -236,7 +236,8 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
             "balanceSheet_withdrawReserved: queued withdrawals should not change"
         );
 
-        bytes32 key = keccak256(abi.encode(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(vault).assetId));
+        bytes32 key =
+            keccak256(abi.encode(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId));
         if (ghost_netReserved[key] >= amount) ghost_netReserved[key] -= amount;
         sumOfManagerWithdrawals[asset] += amount;
     }
@@ -396,7 +397,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
         _captureShareQueueState(poolId, scId);
 
         // Track authorization - withdraw() requires isManager(poolId)
@@ -438,7 +439,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         // Track authorization - reserve() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -487,7 +488,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         // Track authorization - unreserve() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);
@@ -527,7 +528,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         // Track authorization - submitQueuedAssets() requires isManager(poolId)
         _trackAuthorization(_getActor(), poolId);

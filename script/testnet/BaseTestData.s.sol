@@ -184,7 +184,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
-            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), 0, msg.sender
+            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), "", 0, msg.sender
         );
         hub.managerCall(
             poolId,
@@ -282,7 +282,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
-            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), 0, msg.sender
+            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), "", 0, msg.sender
         );
         hub.managerCall(
             poolId,
@@ -411,7 +411,7 @@ abstract contract BaseTestData is LaunchDeployer {
         Vm.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i = logs.length; i > 0; i--) {
             if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
-                (,, address v,) = abi.decode(logs[i - 1].data, (uint256, address, address, uint8));
+                (,, address v) = abi.decode(logs[i - 1].data, (uint256, address, address));
                 _deployedVault[_vaultKey(poolId, scId, assetId)] = v;
                 return;
             }

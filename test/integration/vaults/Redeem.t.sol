@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    AssetId,
-    AsyncVault,
-    VaultBaseTest as BaseTest,
-    ERC20,
-    PoolId,
-    ShareClassId,
-    VaultKind
-} from "./VaultBaseTest.sol";
+import {AssetId, AsyncVault, VaultBaseTest as BaseTest, ERC20, PoolId, ShareClassId} from "./VaultBaseTest.sol";
 
 import {D18} from "../../../src/misc/types/D18.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
@@ -33,7 +25,7 @@ contract RedeemTest is BaseTest {
     function testRedeem(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -47,7 +39,7 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
-        centrifugeChain.unlinkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
+        centrifugeChain.unlinkVault(vault.poolId().raw(), vault.scId().raw(), address(vault_));
         vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
@@ -57,7 +49,7 @@ contract RedeemTest is BaseTest {
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
 
         // success
-        centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
+        centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), address(vault_));
         vault.requestRedeem(amount, address(this), address(this));
         assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(vault.pendingRedeemRequest(0, self), amount);
@@ -107,7 +99,7 @@ contract RedeemTest is BaseTest {
     function testWithdraw(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -155,7 +147,7 @@ contract RedeemTest is BaseTest {
         uint256 amount = redemption1 + redemption2;
         vm.assume(amountAssumption(amount));
 
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -180,7 +172,7 @@ contract RedeemTest is BaseTest {
         // accounting, so the effective ceiling is MAX_UINT128 / 4 per unit of `amount`.
         amount = uint128(bound(amount, 2, MAX_UINT128 / 4));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
@@ -233,7 +225,7 @@ contract RedeemTest is BaseTest {
     }
 
     function testPartialRedemptionExecutions() public {
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         PoolId poolId = vault.poolId();

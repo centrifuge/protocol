@@ -68,7 +68,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
-        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
         require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());
         if (owner == address(this)) {
             _approveMax(vaultDetails.asset, address(vault));
@@ -86,7 +86,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
-        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
         require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
@@ -107,14 +107,39 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     ) external payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
-        require(spokeRegistry.isVaultRegistered(vault), ISpokeRegistry.UnknownVault());
+        require(spokeRegistry.isVaultRegistered(address(vault)), ISpokeRegistry.UnknownVault());
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
-
         _approveMax(vault.share(), address(spoke));
+
+        _crosschainTransferShares(
+            spokeRegistry.vaultDetails(address(vault)),
+            shares,
+            centrifugeId,
+            receiver,
+            owner,
+            extraGasLimit,
+            remoteExtraGasLimit,
+            refund
+        );
+    }
+
+    /// @dev Split out of {crosschainTransferShares}: holding the vault details in the outer frame alongside
+    ///      its eight parameters exceeds the stack limit. The registry lookup doubles as the vault validity
+    ///      check, so ordering it after the share pull is safe, the whole call reverts either way.
+    function _crosschainTransferShares(
+        VaultDetails memory vaultDetails,
+        uint128 shares,
+        uint16 centrifugeId,
+        bytes32 receiver,
+        address owner,
+        uint128 extraGasLimit,
+        uint128 remoteExtraGasLimit,
+        address refund
+    ) internal {
         spoke.crosschainTransferShares{value: msg.value}(
             centrifugeId,
-            vault.poolId(),
-            vault.scId(),
+            vaultDetails.poolId,
+            vaultDetails.scId,
             receiver,
             owner,
             address(this),

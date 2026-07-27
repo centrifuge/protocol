@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {Auth, IAuth} from "../../misc/Auth.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {IVault} from "../../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
@@ -28,7 +27,7 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
     function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token, bytes calldata)
         public
         auth
-        returns (IVault)
+        returns (address)
     {
         require(tokenId == 0, UnsupportedTokenId());
 
@@ -42,6 +41,6 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         IAuth(address(asyncRequestManager)).rely(address(vault));
 
         vault.deny(address(this));
-        return vault;
+        return address(vault);
     }
 }

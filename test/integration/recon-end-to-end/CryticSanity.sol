@@ -30,15 +30,17 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
     /// @dev Get the current deposit epoch for the current vault
     function nowDepositEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
-        return
-            batchRequestManager.nowDepositEpoch(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(vault).assetId);
+        return batchRequestManager.nowDepositEpoch(
+            vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId
+        );
     }
 
     /// @dev Get the current redeem epoch for the current vault
     function nowRedeemEpoch() private view returns (uint32) {
         IBaseVault vault = IBaseVault(_getVault());
-        return
-            batchRequestManager.nowRedeemEpoch(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(vault).assetId);
+        return batchRequestManager.nowRedeemEpoch(
+            vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId
+        );
     }
 
     /// === SANITY CHECKS === ///
@@ -477,7 +479,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
-        uint16 centrifugeId = spokeRegistry.vaultDetails(vault).assetId.centrifugeId();
+        uint16 centrifugeId = spokeRegistry.vaultDetails(address(vault)).assetId.centrifugeId();
 
         hub_updateAssets(100, true);
         property_deficitCountMatchesHoldings();

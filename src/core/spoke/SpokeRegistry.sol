@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {Price} from "./types/Price.sol";
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
-import {IVault, VaultKind} from "./interfaces/IVault.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
 import {
@@ -52,7 +51,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     mapping(PoolId => mapping(ShareClassId => mapping(AssetId => Price))) internal _pricePoolPerAsset;
 
     // Vaults
-    mapping(IVault => VaultDetails) internal _vaultDetails;
+    mapping(address vault => VaultDetails) internal _vaultDetails;
 
     constructor(address deployer) Auth(deployer) {}
 
@@ -232,10 +231,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         address asset,
         uint256 tokenId,
         IVaultFactory factory,
-        IVault vault_
+        address vault_
     ) external auth {
-        require(vault_.poolId() == poolId, InvalidVault());
-        require(vault_.scId() == scId, InvalidVault());
         require(hasShareClass(poolId, scId), ShareTokenDoesNotExist());
 
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
@@ -244,48 +241,39 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
         require(!_vaultDetails[vault_].isLinked, AlreadyLinkedVault());
 
-        if (vault_.vaultKind() == VaultKind.Async) {
-            require(address(requestManager[poolId]) != address(0), InvalidRequestManager());
-        }
-
         _vaultDetails[vault_] = VaultDetails(poolId, scId, assetId, asset, tokenId, false);
-        emit DeployVault(poolId, scId, asset, tokenId, factory, vault_, vault_.vaultKind());
+        emit DeployVault(poolId, scId, asset, tokenId, factory, vault_);
     }
 
     /// @inheritdoc ISpokeRegistry
-    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_) external auth {
-        require(vault_.poolId() == poolId, InvalidVault());
-        require(vault_.scId() == scId, InvalidVault());
-
+    function linkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault_) external auth {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(assetIdKey.asset != address(0), UnknownAsset());
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
+        require(!vaultDetails_.isLinked, AlreadyLinkedVault());
         require(vaultDetails_.asset != address(0), UnknownVault());
         require(vaultDetails_.assetId.raw() == assetId.raw(), UnknownAsset());
-        require(!vaultDetails_.isLinked, AlreadyLinkedVault());
+        require(vaultDetails_.poolId == poolId && vaultDetails_.scId == scId, InvalidVault());
 
         vaultDetails_.isLinked = true;
-        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, address(vault_), true);
+        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_, true);
 
         emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_);
     }
 
     /// @inheritdoc ISpokeRegistry
-    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, IVault vault_) external auth {
-        require(vault_.poolId() == poolId, InvalidVault());
-        require(vault_.scId() == scId, InvalidVault());
-
+    function unlinkVault(PoolId poolId, ShareClassId scId, AssetId assetId, address vault_) external auth {
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         require(assetIdKey.asset != address(0), UnknownAsset());
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
-        require(vaultDetails_.asset != address(0), UnknownVault());
-        require(vaultDetails_.assetId.raw() == assetId.raw(), UnknownAsset());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
+        require(vaultDetails_.assetId.raw() == assetId.raw(), UnknownAsset());
+        require(vaultDetails_.poolId == poolId && vaultDetails_.scId == scId, InvalidVault());
 
         vaultDetails_.isLinked = false;
-        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, address(vault_), false);
+        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_, false);
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_);
     }
@@ -308,17 +296,17 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     }
 
     /// @inheritdoc ISpokeRegistry
-    function isVaultRegistered(IVault vault_) public view returns (bool) {
+    function isVaultRegistered(address vault_) public view returns (bool) {
         return _vaultDetails[vault_].asset != address(0);
     }
 
     /// @inheritdoc ISpokeRegistry
-    function vaultDetails(IVault vault_) public view returns (VaultDetails memory details) {
+    function vaultDetails(address vault_) public view returns (VaultDetails memory details) {
         return _vaultDetails[vault_];
     }
 
     /// @inheritdoc ISpokeRegistry
-    function isLinked(IVault vault_) public view returns (bool) {
+    function isLinked(address vault_) public view returns (bool) {
         return _vaultDetails[vault_].isLinked;
     }
 

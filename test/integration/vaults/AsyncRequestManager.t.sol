@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 pragma abicoder v2;
 
-import {VaultBaseTest as BaseTest, VaultKind} from "./VaultBaseTest.sol";
+import {VaultBaseTest as BaseTest} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -13,7 +13,7 @@ contract AsyncRequestManagerTest is BaseTest {
     function testSuccess(uint128 depositAmount) public {
         depositAmount = uint128(bound(depositAmount, 2, MAX_UINT128 / 2));
 
-        (, address vaultAddress,) = deploySimpleVault(VaultKind.Async);
+        (, address vaultAddress,) = deploySimpleVault(asyncVaultFactory);
         IAsyncVault vault = IAsyncVault(vaultAddress);
 
         uint128 assetId = spokeRegistry.assetToId(address(erc20), erc20TokenId).raw();
@@ -69,7 +69,7 @@ contract AsyncRequestManagerTest is BaseTest {
     function testCancellations(uint128 depositAmount) public {
         depositAmount = uint128(bound(depositAmount, 100, MAX_UINT128 / 2));
 
-        (, address vaultAddress,) = deploySimpleVault(VaultKind.Async);
+        (, address vaultAddress,) = deploySimpleVault(asyncVaultFactory);
         IAsyncVault vault = IAsyncVault(vaultAddress);
 
         uint128 assetId = spokeRegistry.assetToId(address(erc20), erc20TokenId).raw();

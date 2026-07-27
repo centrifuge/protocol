@@ -93,12 +93,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassMetadata memory metadata,
         bytes32 salt,
         bytes32 registrar,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
             spokeHandler.addShareClass(
-                poolId, scId, metadata.name, metadata.symbol, metadata.decimals, salt, IRegistrar(registrar.toAddress())
+                poolId,
+                scId,
+                metadata.name,
+                metadata.symbol,
+                metadata.decimals,
+                salt,
+                IRegistrar(registrar.toAddress()),
+                payload
             );
             _refund(refund);
         } else {
@@ -112,7 +120,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                         decimals: metadata.decimals,
                         salt: salt,
                         registrar: registrar,
-                        extraGasLimit: extraGasLimit
+                        extraGasLimit: extraGasLimit,
+                        payload: payload
                     }).serialize(),
                 false,
                 refund

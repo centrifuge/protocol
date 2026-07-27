@@ -24,17 +24,25 @@ interface IRegistrar {
     /// @param  symbol Symbol of the new token
     /// @param  decimals Decimals of the new token
     /// @param  salt Salt used for deterministic deployments
+    /// @param  payload Opaque, registrar-defined creation data forwarded from the hub. The core does not
+    ///         inspect or validate it in any way; interpreting it is entirely the registrar's
+    ///         responsibility. Empty for registrars that need no extra configuration; such registrars
+    ///         must ignore it.
     /// @return token The address of the new token
-    function newToken(string memory name, string memory symbol, uint8 decimals, bytes32 salt)
+    function newToken(string memory name, string memory symbol, uint8 decimals, bytes32 salt, bytes memory payload)
         external
         returns (address token);
 
     /// @notice Returns the address `newToken` would deploy for the given parameters, without deploying.
-    /// @dev    Enables same-address deployments across EVMs to be verified ahead of creation.
-    function previewTokenAddress(string memory name, string memory symbol, uint8 decimals, bytes32 salt)
-        external
-        view
-        returns (address token);
+    /// @dev    Enables same-address deployments across EVMs to be verified ahead of creation. Takes `payload`
+    ///         because a registrar may derive the token's address from it.
+    function previewTokenAddress(
+        string memory name,
+        string memory symbol,
+        uint8 decimals,
+        bytes32 salt,
+        bytes memory payload
+    ) external view returns (address token);
 
     /// @notice Mints `amount` of `token` to `to`.
     function mint(address token, address to, uint256 amount) external;

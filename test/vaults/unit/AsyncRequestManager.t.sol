@@ -10,7 +10,6 @@ import {IERC7575, IERC7575Share} from "../../../src/misc/interfaces/IERC7575.sol
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
@@ -126,8 +125,6 @@ contract AsyncRequestManagerTest is Test {
             abi.encodeWithSelector(spokeRegistry.vaultDetails.selector, asyncVault),
             abi.encode(vd)
         );
-        vm.mockCall(address(asyncVault), abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
-        vm.mockCall(address(asyncVault), abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
         vm.mockCall(address(asyncVault), abi.encodeWithSelector(IERC7575.share.selector), abi.encode(shareToken));
         vm.mockCall(
             address(shareToken), abi.encodeWithSelector(IERC7575Share.vault.selector, asset), abi.encode(asyncVault)
@@ -1073,8 +1070,6 @@ contract AsyncRequestManagerTestPriceCalculations is AsyncRequestManagerTest {
 
     function testPriceLastUpdatedErrUnknownVault() public {
         address unknownVault = makeAddr("unknownVault");
-        vm.mockCall(unknownVault, abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
-        vm.mockCall(unknownVault, abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
         // A vault with no registered details (zero asset) must be rejected, not silently read as 0.
         vm.mockCall(
             address(spokeRegistry),
@@ -1093,10 +1088,14 @@ contract AsyncRequestManagerTestPoolEscrow is AsyncRequestManagerTest {
 
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(spokeRegistry.isLinked.selector, IVault(mockVault)),
+            abi.encodeWithSelector(spokeRegistry.isLinked.selector, address(mockVault)),
             abi.encode(true)
         );
-        vm.mockCall(address(mockVault), abi.encodeWithSelector(mockVault.poolId.selector), abi.encode(POOL_A));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.vaultDetails.selector, address(mockVault)),
+            abi.encode(VaultDetails(POOL_A, SC_1, ASSET_ID, asset, TOKEN_ID, true))
+        );
 
         vm.prank(address(mockVault));
         assertEq(address(manager.globalEscrow()), address(poolEscrow));
@@ -1104,9 +1103,7 @@ contract AsyncRequestManagerTestPoolEscrow is AsyncRequestManagerTest {
 
     function testGlobalEscrowRevertsForNonVault() public {
         vm.mockCall(
-            address(spokeRegistry),
-            abi.encodeWithSelector(spokeRegistry.isLinked.selector, IVault(ANY)),
-            abi.encode(false)
+            address(spokeRegistry), abi.encodeWithSelector(spokeRegistry.isLinked.selector, ANY), abi.encode(false)
         );
 
         vm.prank(ANY);

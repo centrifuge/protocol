@@ -16,7 +16,6 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {IERC7540Operator, IERC7540Redeem, IERC7714, IERC7741, IERC7887Redeem} from "../misc/interfaces/IERC7540.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
@@ -30,9 +29,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IRoot public immutable root;
     IBaseRequestManager public baseManager;
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IBaseVault
     PoolId public immutable poolId;
-    /// @inheritdoc IVault
+    /// @inheritdoc IBaseVault
     ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575

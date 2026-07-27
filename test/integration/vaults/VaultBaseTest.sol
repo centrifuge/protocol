@@ -14,7 +14,6 @@ import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
-import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
@@ -26,7 +25,6 @@ import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/Up
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
-import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
@@ -74,7 +72,14 @@ contract MockCentrifugeChainDirect is Test {
         address hook
     ) public {
         spokeHandler.addShareClass(
-            PoolId.wrap(poolId), ShareClassId.wrap(scId), tokenName, tokenSymbol, decimals, salt, shareTokenRegistrar
+            PoolId.wrap(poolId),
+            ShareClassId.wrap(scId),
+            tokenName,
+            tokenSymbol,
+            decimals,
+            salt,
+            shareTokenRegistrar,
+            ""
         );
         if (hook != address(0)) {
             vm.prank(shareTokenRegistrar.envoy());
@@ -222,17 +227,17 @@ contract MockCentrifugeChainDirect is Test {
     }
 
     function linkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vd = vaultRegistry.vaultDetails(IBaseVault(vault));
-        vaultRegistry.linkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.assetId, IBaseVault(vault));
+        VaultDetails memory vd = vaultRegistry.vaultDetails(address(vault));
+        vaultRegistry.linkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.assetId, address(vault));
     }
 
     function unlinkVault(uint64 poolId, bytes16 scId, address vault) public {
-        VaultDetails memory vd = vaultRegistry.vaultDetails(IBaseVault(vault));
-        vaultRegistry.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.assetId, IBaseVault(vault));
+        VaultDetails memory vd = vaultRegistry.vaultDetails(address(vault));
+        vaultRegistry.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.assetId, address(vault));
     }
 
     function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
-        VaultDetails memory vd = vaultRegistry.vaultDetails(IBaseVault(vault));
+        VaultDetails memory vd = vaultRegistry.vaultDetails(address(vault));
         syncManager.setMaxReserve(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.asset, vd.tokenId, maxReserve);
     }
 }
@@ -350,7 +355,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
     // --- Helpers ---
 
     function deployVault(
-        VaultKind vaultKind,
+        IVaultFactory vaultFactory,
         uint8 shareTokenDecimals,
         address hook,
         bytes16 scId,
@@ -383,7 +388,6 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
 
         syncManager.setMaxReserve(POOL_A, ShareClassId.wrap(scId), asset, 0, type(uint128).max);
 
-        IVaultFactory vaultFactory = _vaultKindToVaultFactory(vaultKind);
         vm.recordLogs();
         spokeHandler.updateVault(
             POOL_A,
@@ -398,19 +402,19 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         poolId = POOL_A.raw();
     }
 
-    function deployVault(VaultKind vaultKind, uint8 decimals, bytes16 scId)
+    function deployVault(IVaultFactory vaultFactory, uint8 decimals, bytes16 scId)
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
-        return deployVault(vaultKind, decimals, address(fullRestrictionsHook), scId, address(erc20), erc20TokenId);
+        return deployVault(vaultFactory, decimals, address(fullRestrictionsHook), scId, address(erc20), erc20TokenId);
     }
 
-    function deploySimpleVault(VaultKind vaultKind)
+    function deploySimpleVault(IVaultFactory vaultFactory)
         public
         returns (uint64 poolId, address vaultAddress, uint128 assetId)
     {
         return deployVault(
-            vaultKind, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20), erc20TokenId
+            vaultFactory, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20), erc20TokenId
         );
     }
 
@@ -463,16 +467,6 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         if (maxValue == 1) return maxValue;
         uint256 randomnumber = uint256(keccak256(abi.encodePacked(block.timestamp, self, nonce))) % (maxValue - 1);
         return randomnumber + 1;
-    }
-
-    function _vaultKindToVaultFactory(VaultKind vaultKind) internal view returns (IVaultFactory vaultFactory) {
-        if (vaultKind == VaultKind.Async) {
-            vaultFactory = asyncVaultFactory;
-        } else if (vaultKind == VaultKind.SyncDepositAsyncRedeem) {
-            vaultFactory = syncDepositVaultFactory;
-        } else {
-            revert("VaultBaseTest/unsupported-vault-kind");
-        }
     }
 
     function amountAssumption(uint256 amount) public pure returns (bool) {

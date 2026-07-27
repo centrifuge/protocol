@@ -77,6 +77,7 @@ interface ISpokeGatewayHandler {
     function addPool(PoolId poolId) external;
 
     /// @notice     New share class details from an existing Centrifuge pool are added.
+    /// @param      payload Opaque data forwarded to the registrar on token creation; empty if unused
     function addShareClass(
         PoolId poolId,
         ShareClassId scId,
@@ -84,7 +85,8 @@ interface ISpokeGatewayHandler {
         string memory tokenSymbol,
         uint8 decimals,
         bytes32 salt,
-        IRegistrar registrar
+        IRegistrar registrar,
+        bytes memory payload
     ) external;
 
     /// @notice Updates the request manager for a pool

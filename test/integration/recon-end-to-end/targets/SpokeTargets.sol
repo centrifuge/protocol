@@ -116,7 +116,8 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             symbol,
             decimals,
             keccak256(abi.encodePacked(_getPool(), scId)),
-            shareTokenRegistrar
+            shareTokenRegistrar,
+            ""
         );
         address newToken = address(spokeRegistry.shareToken(_getPool(), ShareClassId.wrap(scId)));
         shareTokenRegistrar.fromHub(
@@ -152,7 +153,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         address vault;
         for (uint256 i = logs.length; i > 0; i--) {
             if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
-                (,, vault,) = abi.decode(logs[i - 1].data, (uint256, address, address, uint8));
+                (,, vault) = abi.decode(logs[i - 1].data, (uint256, address, address));
                 break;
             }
         }
@@ -181,7 +182,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         ShareClassId scId = vaultInstance.scId();
         AssetId assetId = _getAssetId();
 
-        spokeRegistry.linkVault(poolId, scId, assetId, IBaseVault(vault));
+        spokeRegistry.linkVault(poolId, scId, assetId, address(vault));
     }
 
     function spoke_linkVault_clamped() public {
@@ -190,7 +191,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Extra 7 - remove the vault
     function spoke_unlinkVault() public updateGhosts asAdmin {
-        spokeRegistry.unlinkVault(_getPool(), _getShareClassId(), _getAssetId(), IBaseVault(_getVault()));
+        spokeRegistry.unlinkVault(_getPool(), _getShareClassId(), _getAssetId(), address(_getVault()));
     }
 
     /**

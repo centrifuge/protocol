@@ -217,7 +217,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         // Set zero price directly
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         // Set zero prices in hub and transient valuation
         hub.updateSharePrice(poolId, scId, D18.wrap(0), uint64(block.timestamp));

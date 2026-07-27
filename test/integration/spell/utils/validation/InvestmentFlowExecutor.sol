@@ -14,7 +14,6 @@ import {AssetId} from "../../../../../src/core/types/AssetId.sol";
 import {RequestId} from "../../../../../src/core/types/RequestId.sol";
 import {ShareClassId} from "../../../../../src/core/types/ShareClassId.sol";
 import {IAdapter} from "../../../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IVault, VaultKind} from "../../../../../src/core/spoke/interfaces/IVault.sol";
 import {MessageLib} from "../../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
@@ -64,7 +63,7 @@ contract PassthroughAdapter is IAdapter {
 
 struct InvestmentFlowResult {
     address vault;
-    VaultKind kind;
+    bool isAsync;
     bool isCrossChain;
     bool depositPassed;
     bool redeemPassed;
@@ -132,7 +131,7 @@ contract InvestmentFlowExecutor is Test {
         uint256 index
     ) internal returns (InvestmentFlowResult memory result) {
         result.vault = gql.vault;
-        result.kind = _parseVaultKind(gql.kind);
+        result.isAsync = _parseIsAsync(gql.kind);
         result.isCrossChain = gql.hubCentrifugeId != localCentrifugeId;
 
         string memory tokenName = _getShareTokenName(gql.vault);
@@ -151,25 +150,25 @@ contract InvestmentFlowExecutor is Test {
         // Many previously linked vaults have been unlinked pre-migration to block investments,
         // but we still need to validate they work correctly post-migration
         AssetId assetId = report.core.spoke.spokeRegistry().assetToId(gql.assetAddress, 0);
-        if (!report.core.spokeRegistry.isLinked(IVault(gql.vault))) {
+        if (!report.core.spokeRegistry.isLinked(address(gql.vault))) {
             console.log("LINKING for validation: %s [%s]", gql.vault, tokenName);
             PoolId poolId = PoolId.wrap(gql.poolIdRaw);
             ShareClassId scId = ShareClassId.wrap(gql.tokenIdRaw);
             vm.prank(address(report.core.root));
-            report.core.spokeRegistry.linkVault(poolId, scId, assetId, IVault(gql.vault));
+            report.core.spokeRegistry.linkVault(poolId, scId, assetId, gql.vault);
         }
 
         console.log("VALIDATING: %s [%s] (%s)", gql.vault, tokenName, gql.kind);
 
         InvestmentFlowContext memory ctx = _buildContext(report, gql, localCentrifugeId);
 
-        if (result.kind == VaultKind.Async) {
+        if (result.isAsync) {
             if (result.isCrossChain) {
                 _executeCrossChainAsync(ctx, index, result);
             } else {
                 _executeLocalAsync(ctx, index, result);
             }
-        } else if (result.kind == VaultKind.SyncDepositAsyncRedeem) {
+        } else {
             _executeSyncDeposit(ctx, index, result);
         }
     }
@@ -854,11 +853,11 @@ contract InvestmentFlowExecutor is Test {
         return "Unknown ShareToken";
     }
 
-    function _parseVaultKind(string memory kind) internal pure returns (VaultKind) {
+    function _parseIsAsync(string memory kind) internal pure returns (bool) {
         if (keccak256(bytes(kind)) == keccak256("Async")) {
-            return VaultKind.Async;
+            return true;
         } else if (keccak256(bytes(kind)) == keccak256("SyncDepositAsyncRedeem")) {
-            return VaultKind.SyncDepositAsyncRedeem;
+            return false;
         }
         revert(string.concat("Unknown vault kind: ", kind));
     }

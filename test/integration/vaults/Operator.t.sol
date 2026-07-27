@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AsyncVault, VaultBaseTest as BaseTest, VaultKind} from "./VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest} from "./VaultBaseTest.sol";
 
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
@@ -20,7 +20,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -83,7 +83,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -166,7 +166,7 @@ contract OperatorTest is BaseTest {
         amount = uint128(bound(amount, 4, MAX_UINT128 / 4));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -220,7 +220,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);

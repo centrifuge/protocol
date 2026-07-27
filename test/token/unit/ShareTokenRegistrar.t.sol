@@ -34,7 +34,7 @@ contract ShareTokenRegistrarTest is Test {
     }
 
     function _newToken() internal returns (address) {
-        return registrar.newToken(NAME, SYMBOL, DECIMALS, SALT);
+        return registrar.newToken(NAME, SYMBOL, DECIMALS, SALT, "");
     }
 
     /// @dev Set `hook` on `token` via the envoy SetHook path (hooks are no longer set through a direct method).
@@ -76,10 +76,10 @@ contract ShareTokenRegistrarTest is Test {
             )
         );
 
-        address token = registrar_.newToken(name, symbol, decimals, tokenSalt);
+        address token = registrar_.newToken(name, symbol, decimals, tokenSalt, "");
 
         assertEq(token, predictedAddress);
-        assertEq(registrar_.previewTokenAddress(name, symbol, decimals, tokenSalt), token);
+        assertEq(registrar_.previewTokenAddress(name, symbol, decimals, tokenSalt, ""), token);
     }
 
     function testNewTokenWards() public {
@@ -106,7 +106,7 @@ contract ShareTokenRegistrarTest is Test {
     function testNewTokenNotAuthorized() public {
         vm.prank(makeAddr("notAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registrar.newToken(NAME, SYMBOL, DECIMALS, SALT);
+        registrar.newToken(NAME, SYMBOL, DECIMALS, SALT, "");
     }
 
     function testMint() public {

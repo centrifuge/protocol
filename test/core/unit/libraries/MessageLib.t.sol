@@ -231,7 +231,8 @@ contract TestMessageLibIdentities is Test {
         uint8 decimals,
         bytes32 salt,
         bytes32 registrar,
-        uint128 extraGasLimit
+        uint128 extraGasLimit,
+        bytes memory payload
     ) public pure {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
             poolId: poolId,
@@ -241,7 +242,8 @@ contract TestMessageLibIdentities is Test {
             decimals: decimals,
             salt: salt,
             registrar: registrar,
-            extraGasLimit: extraGasLimit
+            extraGasLimit: extraGasLimit,
+            payload: payload
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
 
@@ -255,10 +257,16 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.salt, b.salt);
         assertEq(a.registrar, b.registrar);
         assertEq(a.extraGasLimit, b.extraGasLimit);
+        assertEq(a.payload, b.payload);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), extraGasLimit);
+
+        // Check the payload length is correctly encoded as a 2-byte big-endian prefix ahead of the payload
+        bytes memory serialized = a.serialize();
+        uint256 lengthIndex = serialized.messageLength() - a.payload.length - 2;
+        assertEq((uint256(uint8(serialized[lengthIndex])) << 8) | uint8(serialized[lengthIndex + 1]), a.payload.length);
     }
 
     function testNotifyPricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 timestamp) public pure {

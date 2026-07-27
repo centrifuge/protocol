@@ -141,7 +141,8 @@ contract MessageProcessor is Auth, IMessageProcessor {
                 m.symbol.toString(),
                 m.decimals,
                 m.salt,
-                IRegistrar(m.registrar.toAddress())
+                IRegistrar(m.registrar.toAddress()),
+                m.payload
             );
         } else if (kind == MessageType.NotifyPricePoolPerShare) {
             MessageLib.NotifyPricePoolPerShare memory m = MessageLib.deserializeNotifyPricePoolPerShare(message);

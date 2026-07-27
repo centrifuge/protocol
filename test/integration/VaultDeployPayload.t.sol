@@ -5,10 +5,9 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {VaultKind} from "../../src/core/spoke/interfaces/IVault.sol";
 import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
-/// @dev Minimal vault that satisfies the register/link checks (poolId/scId/vaultKind).
+/// @dev Minimal vault that satisfies the register/link checks.
 contract PayloadVault {
     PoolId public immutable poolId;
     ShareClassId public immutable scId;
@@ -16,10 +15,6 @@ contract PayloadVault {
     constructor(PoolId poolId_, ShareClassId scId_) {
         poolId = poolId_;
         scId = scId_;
-    }
-
-    function vaultKind() external pure returns (VaultKind) {
-        return VaultKind.Async;
     }
 }
 

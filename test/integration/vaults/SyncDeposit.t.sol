@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    AssetId,
-    ERC20,
-    VaultBaseTest as BaseTest,
-    PoolId,
-    ShareClassId,
-    SyncDepositVault,
-    VaultKind
-} from "./VaultBaseTest.sol";
+import {AssetId, ERC20, VaultBaseTest as BaseTest, PoolId, ShareClassId, SyncDepositVault} from "./VaultBaseTest.sol";
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -45,7 +37,7 @@ contract SyncDepositTestHelper is BaseTest {
         internal
         returns (SyncDepositVault syncVault, uint128 assetId)
     {
-        (, address syncVault_, uint128 assetId_) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address syncVault_, uint128 assetId_) = deploySimpleVault(syncDepositVaultFactory);
         assetId = assetId_;
         syncVault = SyncDepositVault(syncVault_);
 
@@ -61,7 +53,7 @@ contract SyncDepositTestHelper is BaseTest {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
         address syncDepositManager = address(vault.syncDepositManager());
 
         vm.expectEmit();
@@ -198,7 +190,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         asyncVault.requestRedeem(shareBalance, self, self);
         assertEq(asyncVault.pendingRedeemRequest(0, self), shareBalance);
 
-        spokeRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
+        spokeRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), address(syncVault));
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 
@@ -233,12 +225,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         // deployVault registers the 0-decimal asset on the spoke and wires prices to 1:1.
         (uint64 poolId, address vaultAddr, uint128 assetId) = deployVault(
-            VaultKind.SyncDepositAsyncRedeem,
-            18,
-            address(fullRestrictionsHook),
-            bytes16(bytes("1")),
-            address(zeroDec),
-            0
+            syncDepositVaultFactory, 18, address(fullRestrictionsHook), bytes16(bytes("1")), address(zeroDec), 0
         );
         SyncDepositVault syncVault = SyncDepositVault(vaultAddr);
         IShareToken shareToken = IShareToken(address(syncVault.share()));

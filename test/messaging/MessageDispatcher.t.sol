@@ -51,7 +51,15 @@ contract TestAuthChecks is TestCommon {
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendNotifyShareClass(
-            REMOTE_CHAIN, POOL_A, SC_A, ShareClassMetadata("name", "SYM", 18), bytes32(0), bytes32(0), 0, REFUND
+            REMOTE_CHAIN,
+            POOL_A,
+            SC_A,
+            ShareClassMetadata("name", "SYM", 18),
+            bytes32(0),
+            bytes32(0),
+            EMPTY_BYTES,
+            0,
+            REFUND
         );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);

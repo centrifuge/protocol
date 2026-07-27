@@ -120,11 +120,13 @@ library MessageLib {
         // NotifyShareClass carries a fixed 16-byte extraGasLimit suffix but its base length (250) leaves no
         // room for it within the single-byte table slot, so add it here. NotifyShareMetadata is kept uniform.
         if (kind == uint8(MessageType.NotifyShareClass) || kind == uint8(MessageType.NotifyShareMetadata)) {
-            return length + 16;
+            length += 16;
         }
 
         // Special treatment for messages with dynamic size:
-        if (kind == uint8(MessageType.UpdateRestriction)) {
+        if (kind == uint8(MessageType.NotifyShareClass)) {
+            length += 2 + message.toUint16(length); //payloadLength
+        } else if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.UpdateVault)) {
             length += 2 + message.toUint16(length); //payloadLength
@@ -377,10 +379,12 @@ library MessageLib {
         bytes32 salt;
         bytes32 registrar;
         uint128 extraGasLimit;
+        bytes payload; // Opaque, forwarded to the registrar on token creation
     }
 
     function deserializeNotifyShareClass(bytes memory data) internal pure returns (NotifyShareClass memory) {
         require(messageType(data) == MessageType.NotifyShareClass, UnknownMessageType());
+        uint16 payloadLength = data.toUint16(266);
         return NotifyShareClass({
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
@@ -389,7 +393,8 @@ library MessageLib {
             decimals: data.toUint8(185),
             salt: data.toBytes32(186),
             registrar: data.toBytes32(218),
-            extraGasLimit: data.toUint128(250)
+            extraGasLimit: data.toUint128(250),
+            payload: data.slice(268, payloadLength)
         });
     }
 
@@ -403,7 +408,9 @@ library MessageLib {
             t.decimals,
             t.salt,
             t.registrar,
-            t.extraGasLimit
+            t.extraGasLimit,
+            t.payload.length.toUint16(),
+            t.payload
         );
     }
 

@@ -12,7 +12,6 @@ import {IERC20} from "../misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {AssetId} from "../core/types/AssetId.sol";
-import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IRegistrar} from "../core/spoke/interfaces/IRegistrar.sol";
 import {IManagerCallFromHub} from "../core/utils/interfaces/IManagerCall.sol";
@@ -93,11 +92,10 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
         (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId_, true);
         require(tokenId == 0, NonZeroTokenId());
 
-        // Validate declaratively against registry storage (poolId/scId are validated at registration, so no
-        // need to trust the vault's own getters): a non-zero pointer must be a currently-linked vault that
-        // belongs to this (poolId, scId, assetId).
+        // Validate declaratively against registry storage, the sole authority on where a vault belongs:
+        // a non-zero pointer must be a currently-linked vault that belongs to this (poolId, scId, assetId).
         if (vault != address(0)) {
-            VaultDetails memory details = spokeRegistry.vaultDetails(IVault(vault));
+            VaultDetails memory details = spokeRegistry.vaultDetails(vault);
             require(
                 details.isLinked && details.assetId == assetId_ && details.poolId == poolId && details.scId == scId,
                 VaultMismatch()
@@ -112,7 +110,9 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IRegistrar
-    function newToken(string memory name, string memory symbol, uint8 decimals, bytes32 salt)
+    /// @dev `payload` is ignored: a ShareToken needs no creation data beyond its metadata, and hooks are set
+    ///      afterwards over the Envoy path.
+    function newToken(string memory name, string memory symbol, uint8 decimals, bytes32 salt, bytes memory)
         external
         auth
         returns (address)
@@ -192,8 +192,8 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
 
     /// @inheritdoc IRegistrar
     /// @dev The ShareToken address depends only on `decimals` and `salt`; name and symbol are set
-    ///      post-deployment via `file`, so they do not affect the CREATE2 address.
-    function previewTokenAddress(string memory, string memory, uint8 decimals, bytes32 salt)
+    ///      post-deployment via `file` and `payload` is ignored, so they do not affect the CREATE2 address.
+    function previewTokenAddress(string memory, string memory, uint8 decimals, bytes32 salt, bytes memory)
         external
         view
         returns (address)
