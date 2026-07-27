@@ -82,6 +82,10 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     ///         single adapter forward payloads without consensus.
     error ZeroThreshold();
 
+    /// @notice Dispatched when the provided `targetSessionId` does not equal the pool's next session id, so a
+    ///         reordered, stale or reentrant configuration cannot desync the two endpoints under the same id.
+    error UnexpectedSessionId();
+
     /// @notice Dispatched when the contract is configured with a number of adapter exceeding the maximum.
     error ExceedsMax();
 
@@ -107,23 +111,27 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     function file(bytes32 what, address data) external;
 
     /// @notice Configure new adapters for a determined pool.
-    /// @dev    Bumps the pool's local sessionId. The normal path (`Hub.setAdapters`) keeps both endpoints in
-    ///         sync by sending `SetPoolAdapters` so the remote bumps its session in lockstep. A manager calling
-    ///         this directly (a low-level recovery path, e.g. `AdapterFailover`) bypasses that handshake, so the
-    ///         caller is responsible for ensuring the resulting sessionId matches the other endpoint, otherwise
-    ///         messages wrapped with the new session won't verify.
-    /// @dev    Known limitation: the sessionId wraps back to 1 after 65535 reconfigurations of the same
-    ///         (centrifugeId, poolId) route. State of superseded or blocked sessions is never cleared, so a
-    ///         recycled sessionId collides with that epoch's leftovers (stale adapters staying eligible to
-    ///         vote, duplicate-check reverts, stale blocked-session stashes). Accepted as unreachable in
-    ///         practice, since it requires 65535 deliberate admin reconfigurations of a single route.
+    /// @dev    Bumps the pool's local sessionId to `targetSessionId`, which must equal the pool's next session id
+    ///         (current + 1), reverting otherwise. The normal path (`Hub.setAdapters`) derives that id once and
+    ///         uses it for both endpoints, so the remote bumps its session in lockstep; a reordered, stale or
+    ///         reentrant configuration fails closed. A manager calling this directly (a low-level recovery path,
+    ///         e.g. `AdapterFailover`) passes its own next session id and is responsible for ensuring the
+    ///         resulting sessionId matches the other endpoint, otherwise messages wrapped with the new session
+    ///         won't verify.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.
     ///         If the array is empty, it disables the usage for messages of that pool.
     /// @param  threshold Minimum number of adapters required to process the messages.
     ///         Must be at least 1 when `adapters` is non-empty; set `adapters.length` for full consensus.
-    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata adapters, uint8 threshold) external;
+    /// @param  targetSessionId The session id to install; must equal the pool's next session id (current + 1)
+    function setAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        IAdapter[] calldata adapters,
+        uint8 threshold,
+        uint16 targetSessionId
+    ) external;
 
     /// @notice Mark a session as blocked, preventing its adapters from voting on incoming messages and, if it is the
     ///         active session, from sending outgoing messages. The session can later be recovered with unblockSession().
@@ -203,6 +211,12 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     /// @param poolId The pool identifier
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint16);
 
+    /// @notice Returns the next session id to install for a given chain and pool (current + 1).
+    ///         Callers are expected to pass this as the `targetSessionId` to {setAdapters}.
+    /// @param centrifugeId The source chain identifier
+    /// @param poolId The pool identifier
+    function nextActiveSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint16);
+
     /// @notice Returns whether a session has been blocked
     /// @param centrifugeId The source chain identifier
     /// @param poolId The pool identifier
@@ -237,9 +251,10 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     ///         the result of two or more independent request from the user of the same type.
     ///         i.e. Same user would like to deposit same underlying asset with the same amount more then once.
     /// @param  centrifugeId Chain where the adapter is configured for
-    /// @param  payloadHash The hash value of the incoming message.
+    /// @param  voteKey The vote-tally key: `keccak256(abi.encodePacked(routedPoolId, wrappedPayload))`, so a
+    ///         global-set vote and a pool-set vote on the same bytes land in separate slots.
     /// @return The votes array
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory);
+    function votes(uint16 centrifugeId, bytes32 voteKey) external view returns (int16[MAX_ADAPTER_COUNT] memory);
 
     /// @notice Returns the active adapter set for a pool
     /// @param centrifugeId Chain where the adapters are configured for

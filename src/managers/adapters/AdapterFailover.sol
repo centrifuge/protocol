@@ -85,7 +85,9 @@ contract AdapterFailover is IManagerCallFromHub, IAdapterFailover {
         require(block.timestamp <= pending.executableAt + timelock, FailoverExpired());
         require(keccak256(abi.encode(adapters, threshold)) == pending.paramsHash, ParamsMismatch());
         delete pendingFailover[centrifugeId][poolId];
-        multiAdapter.setAdapters(centrifugeId, poolId, adapters, threshold);
+
+        uint16 targetSessionId = multiAdapter.nextActiveSessionId(centrifugeId, poolId);
+        multiAdapter.setAdapters(centrifugeId, poolId, adapters, threshold, targetSessionId);
 
         emit ExecuteFailover(centrifugeId, poolId, adapters, threshold);
     }

@@ -109,6 +109,12 @@ contract HyperlaneAdapterTestSetIsm is HyperlaneAdapterTestBase {
 
         assertEq(address(adapter.interchainSecurityModule()), address(newIsm));
     }
+
+    /// @dev A zero ISM silently defers to the Mailbox default module and must be rejected.
+    function testSetIsmRejectsZero() public {
+        vm.expectRevert(IHyperlaneAdapter.IsmZero.selector);
+        adapter.setIsm(IInterchainSecurityModule(address(0)));
+    }
 }
 
 contract HyperlaneAdapterTest is HyperlaneAdapterTestBase {
@@ -131,9 +137,20 @@ contract HyperlaneAdapterTest is HyperlaneAdapterTestBase {
         // estimate() builds metadata with refund = address(this) (the adapter itself).
         // MockMailbox.quoteDispatch echoes keccak256(metadata), so this asserts the exact bytes.
         bytes memory expectedMetadata = abi.encodePacked(
-            uint16(1), uint256(0), uint256(uint256(gasLimit) + adapter.RECEIVE_COST()), address(adapter)
+            uint16(1), uint256(0), uint256(uint256(gasLimit) + adapter.DEFAULT_RECEIVE_COST()), address(adapter)
         );
         assertEq(adapter.estimate(CENTRIFUGE_ID, "irrelevant", gasLimit), uint256(keccak256(expectedMetadata)));
+    }
+
+    /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
+    function testEstimateUsesMonadReceiveCost(uint64 gasLimit) public {
+        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        adapter.wire(monadId, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER));
+
+        bytes memory expectedMetadata = abi.encodePacked(
+            uint16(1), uint256(0), uint256(uint256(gasLimit) + adapter.MONAD_RECEIVE_COST()), address(adapter)
+        );
+        assertEq(adapter.estimate(monadId, "irrelevant", gasLimit), uint256(keccak256(expectedMetadata)));
     }
 
     function testIncomingCalls(
@@ -203,8 +220,9 @@ contract HyperlaneAdapterTest is HyperlaneAdapterTestBase {
         assertEq(mockMailbox.values_bytes32("recipientAddress"), destinationAdapter.toBytes32LeftPadded());
         assertEq(mockMailbox.values_bytes("body"), payload);
 
-        bytes memory expectedMetadata =
-            abi.encodePacked(uint16(1), uint256(0), uint256(uint128(gasLimit) + adapter.RECEIVE_COST()), refund);
+        bytes memory expectedMetadata = abi.encodePacked(
+            uint16(1), uint256(0), uint256(uint128(gasLimit) + adapter.DEFAULT_RECEIVE_COST()), refund
+        );
         assertEq(mockMailbox.values_bytes("metadata"), expectedMetadata);
 
         // the full fee is forwarded to the mailbox

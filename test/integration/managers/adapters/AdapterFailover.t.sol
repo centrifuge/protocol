@@ -32,7 +32,7 @@ contract AdapterFailoverIntegrationTest is CentrifugeIntegrationTest {
 
         vm.startPrank(address(root));
         // The pool's current adapter set for the REMOTE channel (the one that will "go dark").
-        multiAdapter.setAdapters(REMOTE, poolId, deadAdapters, 1);
+        multiAdapter.setAdapters(REMOTE, poolId, deadAdapters, 1, 1);
         // Enable failover for the pool: AdapterFailover becomes a MultiAdapter manager with a steward.
         multiAdapter.updateManager(poolId, address(adapterFailover), true);
         vm.stopPrank();

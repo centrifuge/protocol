@@ -27,18 +27,20 @@ contract MockAxelarGateway is Mock {
 }
 
 contract MockAxelarGasService is Mock {
+    /// @dev Echoes the received gasLimit so tests can assert the per-destination receive cost the
+    ///      adapter added (view function reached via STATICCALL, so it cannot record to storage).
     function estimateGasFee(
         string calldata,
         string calldata,
         bytes calldata,
-        uint256,
+        uint256 gasLimit,
         bytes calldata /* params */
     )
         external
-        view
+        pure
         returns (uint256 gasEstimate)
     {
-        return values_uint256_return["estimateGasFee"];
+        return gasLimit;
     }
 
     function payNativeGasForContractCall(
@@ -109,16 +111,24 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
     }
 
     function testEstimate(uint256 gasLimit) public {
-        gasLimit = uint128(bound(gasLimit, 1, adapter.RECEIVE_COST() - 1));
+        gasLimit = bound(gasLimit, 0, type(uint128).max);
 
         adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
 
-        bytes memory payload = "irrelevant";
+        // The mock echoes the gasLimit it received, so this asserts the default receive cost is added.
+        uint256 estimation = adapter.estimate(CENTRIFUGE_CHAIN_ID, "irrelevant", gasLimit);
+        assertEq(estimation, gasLimit + adapter.DEFAULT_RECEIVE_COST());
+    }
 
-        axelarGasService.setReturn("estimateGasFee", gasLimit - 1);
+    /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
+    function testEstimateUsesMonadReceiveCost(uint256 gasLimit) public {
+        gasLimit = bound(gasLimit, 0, type(uint128).max);
+        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
 
-        uint256 estimation = adapter.estimate(CENTRIFUGE_CHAIN_ID, payload, gasLimit);
-        assertEq(estimation, gasLimit - 1);
+        adapter.wire(monadId, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
+
+        uint256 estimation = adapter.estimate(monadId, "irrelevant", gasLimit);
+        assertEq(estimation, gasLimit + adapter.MONAD_RECEIVE_COST());
     }
 
     function testIncomingCalls(

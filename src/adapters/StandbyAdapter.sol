@@ -66,9 +66,9 @@ contract StandbyAdapter is IStandbyAdapter {
         forwardable[id]--;
 
         require(msg.value >= underlying.estimate(centrifugeId, payload, gasLimit), NotEnoughValue());
-        underlying.send{value: msg.value}(centrifugeId, payload, gasLimit, msg.sender);
+        bytes32 adapterData = underlying.send{value: msg.value}(centrifugeId, payload, gasLimit, msg.sender);
 
-        emit Forward(centrifugeId, id, payload, gasLimit);
+        emit Forward(centrifugeId, id, payload, gasLimit, adapterData);
     }
 
     /// @dev Internal bookkeeping key, not the MultiAdapter payloadId. Hashing in gasLimit binds `forward`

@@ -72,7 +72,8 @@ contract TestMessageSourceClassification is Test {
         // Hub->spoke: only valid coming from the pool's home chain.
         cases[0] = Case(
             "SetPoolAdapters",
-            MessageLib.SetPoolAdapters({poolId: p, threshold: 0, adapterList: new bytes32[](0)}).serialize(),
+            MessageLib.SetPoolAdapters({poolId: p, threshold: 0, targetSessionId: 1, adapterList: new bytes32[](0)})
+                .serialize(),
             HOME_CHAIN
         );
         cases[1] = Case("NotifyPool", MessageLib.NotifyPool({poolId: p}).serialize(), HOME_CHAIN);
@@ -313,7 +314,9 @@ contract TestHandleSetPoolAdapters is TestCommon {
     function _message() internal returns (bytes memory) {
         bytes32[] memory adapters = new bytes32[](1);
         adapters[0] = bytes32(bytes20(makeAddr("adapter")));
-        return MessageLib.SetPoolAdapters({poolId: poolId.raw(), threshold: 1, adapterList: adapters}).serialize();
+        return MessageLib.SetPoolAdapters({
+                poolId: poolId.raw(), threshold: 1, targetSessionId: 1, adapterList: adapters
+            }).serialize();
     }
 
     function testDispatchesToMultiAdapter() public {

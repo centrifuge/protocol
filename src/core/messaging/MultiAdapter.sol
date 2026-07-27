@@ -45,7 +45,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         _blockedSessions;
 
     // Inbound messages
-    mapping(uint16 centrifugeId => mapping(bytes32 payloadHash => int16[MAX_ADAPTER_COUNT])) internal _votes;
+    mapping(uint16 centrifugeId => mapping(bytes32 voteKey => int16[MAX_ADAPTER_COUNT])) internal _votes;
 
     constructor(uint16 localCentrifugeId_, IMessageHandler gateway_, address deployer) Auth(deployer) {
         localCentrifugeId = localCentrifugeId_;
@@ -81,21 +81,21 @@ contract MultiAdapter is Auth, IMultiAdapter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMultiAdapter
-    function setAdapters(uint16 centrifugeId, PoolId poolId, IAdapter[] calldata addresses, uint8 threshold_)
-        external
-        onlyAuthOrManager(poolId)
-    {
+    function setAdapters(
+        uint16 centrifugeId,
+        PoolId poolId,
+        IAdapter[] calldata addresses,
+        uint8 threshold_,
+        uint16 targetSessionId
+    ) external onlyAuthOrManager(poolId) {
         uint8 quorum_ = addresses.length.toUint8();
         require(quorum_ <= MAX_ADAPTER_COUNT, ExceedsMax());
         require(threshold_ > 0 || quorum_ == 0, ZeroThreshold());
         require(threshold_ <= quorum_, ThresholdHigherThanQuorum());
 
-        // Increment session id to reset pending votes, wrapping from max back to 1 (skipping 0)
-        uint16 sessionId;
-        unchecked {
-            sessionId = activeSessionId[centrifugeId][poolId] + 1;
-        }
-        if (sessionId == 0) sessionId = 1;
+        // Advance the session id to reset pending votes
+        uint16 sessionId = activeSessionId[centrifugeId][poolId] + 1;
+        require(sessionId == targetSessionId, UnexpectedSessionId());
         activeSessionId[centrifugeId][poolId] = sessionId;
 
         _installSession(centrifugeId, poolId, sessionId, addresses, threshold_);
@@ -172,10 +172,10 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function handle(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) public {
-        (Adapter memory details, bytes32 payloadHash, bytes calldata unwrappedPayload) =
+        (Adapter memory details, bytes32 payloadHash, bytes32 voteKey, bytes calldata unwrappedPayload) =
             _resolve(centrifugeId, payload, adapter);
-        if (_vote(centrifugeId, payload, adapter, details, payloadHash)) {
-            _execute(centrifugeId, payload, adapter, details, payloadHash, unwrappedPayload);
+        if (_vote(centrifugeId, payload, adapter, details, payloadHash, voteKey)) {
+            _execute(centrifugeId, payload, adapter, details, payloadHash, voteKey, unwrappedPayload);
         }
     }
 
@@ -186,8 +186,8 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function vote(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) public {
-        (Adapter memory details, bytes32 payloadHash,) = _resolve(centrifugeId, payload, adapter);
-        _vote(centrifugeId, payload, adapter, details, payloadHash);
+        (Adapter memory details, bytes32 payloadHash, bytes32 voteKey,) = _resolve(centrifugeId, payload, adapter);
+        _vote(centrifugeId, payload, adapter, details, payloadHash, voteKey);
     }
 
     /// @inheritdoc IAdapterEntrypoint
@@ -197,13 +197,13 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @inheritdoc IMultiAdapter
     function execute(uint16 centrifugeId, bytes calldata payload, IAdapter adapter) public {
-        (Adapter memory details, bytes32 payloadHash, bytes calldata unwrappedPayload) =
+        (Adapter memory details, bytes32 payloadHash, bytes32 voteKey, bytes calldata unwrappedPayload) =
             _resolve(centrifugeId, payload, adapter);
 
         require(
-            _votes[centrifugeId][payloadHash].countPositiveValues(details.quorum) >= details.threshold, NotEnoughVotes()
+            _votes[centrifugeId][voteKey].countPositiveValues(details.quorum) >= details.threshold, NotEnoughVotes()
         );
-        _execute(centrifugeId, payload, adapter, details, payloadHash, unwrappedPayload);
+        _execute(centrifugeId, payload, adapter, details, payloadHash, voteKey, unwrappedPayload);
     }
 
     /// @dev Record `adapter`'s vote, emit {Vote} and return whether the threshold has been reached. Votes
@@ -213,10 +213,11 @@ contract MultiAdapter is Auth, IMultiAdapter {
         bytes calldata payload,
         IAdapter adapter,
         Adapter memory details,
-        bytes32 payloadHash
+        bytes32 payloadHash,
+        bytes32 voteKey
     ) internal returns (bool reached) {
-        _votes[centrifugeId][payloadHash][details.id - 1]++;
-        reached = _votes[centrifugeId][payloadHash].countPositiveValues(details.quorum) >= details.threshold;
+        _votes[centrifugeId][voteKey][details.id - 1]++;
+        reached = _votes[centrifugeId][voteKey].countPositiveValues(details.quorum) >= details.threshold;
 
         bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
         emit Vote(centrifugeId, payloadId, payload, adapter);
@@ -230,9 +231,10 @@ contract MultiAdapter is Auth, IMultiAdapter {
         IAdapter adapter,
         Adapter memory details,
         bytes32 payloadHash,
+        bytes32 voteKey,
         bytes calldata unwrappedPayload
     ) internal {
-        _votes[centrifugeId][payloadHash].decreaseFirstNValues(details.quorum);
+        _votes[centrifugeId][voteKey].decreaseFirstNValues(details.quorum);
 
         bytes32 payloadId = keccak256(abi.encodePacked(centrifugeId, localCentrifugeId, payloadHash));
         emit Execute(centrifugeId, payloadId, payload, adapter);
@@ -246,7 +248,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     function _resolve(uint16 centrifugeId, bytes calldata payload, IAdapter adapter)
         internal
         view
-        returns (Adapter memory details, bytes32 payloadHash, bytes calldata unwrappedPayload)
+        returns (Adapter memory details, bytes32 payloadHash, bytes32 voteKey, bytes calldata unwrappedPayload)
     {
         uint16 sessionId = uint16(bytes2(payload[0:2]));
         unwrappedPayload = payload[2:];
@@ -258,6 +260,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
         require(details.id != 0, InvalidAdapter());
 
         payloadHash = keccak256(payload);
+        voteKey = keccak256(abi.encodePacked(poolId.raw(), payload));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -338,13 +341,18 @@ contract MultiAdapter is Auth, IMultiAdapter {
     }
 
     /// @inheritdoc IMultiAdapter
-    function votes(uint16 centrifugeId, bytes32 payloadHash) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
-        return _votes[centrifugeId][payloadHash];
+    function votes(uint16 centrifugeId, bytes32 voteKey) external view returns (int16[MAX_ADAPTER_COUNT] memory) {
+        return _votes[centrifugeId][voteKey];
     }
 
     /// @inheritdoc IMultiAdapter
     function activeAdapters(uint16 centrifugeId, PoolId poolId) external view returns (Adapters memory) {
         return _activeAdapters[centrifugeId][poolId];
+    }
+
+    /// @inheritdoc IMultiAdapter
+    function nextActiveSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint16) {
+        return activeSessionId[centrifugeId][poolId] + 1;
     }
 
     /// @dev Send and handle apply the same rule, so both chains agree on the carrying set.

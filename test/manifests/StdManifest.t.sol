@@ -18,6 +18,8 @@ import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.s
 import {IShareClassManager} from "../../src/core/hub/interfaces/IShareClassManager.sol";
 import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
+import {UpdateRestrictionType} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
+
 import {IOnOffRamp} from "../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 
 import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
@@ -330,6 +332,80 @@ contract StdManifestTest is Test {
 
     function testSetManifestNeedsAuthorization() public {
         assertEq(_delayOf(_setManifestCall(address(this))), ESCALATION);
+    }
+
+    // ─── restriction guard ────────────────────────────────────────────────────
+
+    function _restrictionCall(bytes memory update) internal pure returns (bytes memory) {
+        return abi.encodeWithSelector(
+            IHub.updateRestriction.selector, POOL_A, SC_A, LOCAL_CENTRIFUGE_ID, update, uint128(0), address(0)
+        );
+    }
+
+    function testFreezeRestrictionInPolicy() public view {
+        // A canonical Freeze is strictly tightening, so it runs instantly (delay 0).
+        bytes memory freeze = abi.encodePacked(uint8(UpdateRestrictionType.Freeze), bytes32(bytes20(who)));
+        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(freeze)), 0);
+    }
+
+    function testUnfreezeRestrictionNeedsAuthorization() public view {
+        bytes memory unfreeze = abi.encodePacked(uint8(UpdateRestrictionType.Unfreeze), bytes32(bytes20(who)));
+        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(unfreeze)), DELAY);
+    }
+
+    function testMemberRestrictionNeedsAuthorization() public view {
+        bytes memory member =
+            abi.encodePacked(uint8(UpdateRestrictionType.Member), bytes32(bytes20(who)), uint64(1 days));
+        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(member)), DELAY);
+    }
+
+    function testMalformedRestrictionNeedsAuthorization() public view {
+        // Too short (only the type byte) fails closed to delay.
+        bytes memory short = abi.encodePacked(uint8(UpdateRestrictionType.Freeze));
+        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(short)), DELAY);
+
+        // Canonical 33-byte length but an out-of-range type byte also fails closed to delay (no revert).
+        bytes memory badType = abi.encodePacked(uint8(0xff), bytes32(bytes20(who)));
+        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(badType)), DELAY);
+    }
+
+    function testFreezeWithTrailingBytesNeedsAuthorization() public view {
+        // A Freeze with one trailing byte is not the canonical 33-byte shape, so it stays out of policy.
+        bytes memory freezePlus = abi.encodePacked(uint8(UpdateRestrictionType.Freeze), bytes32(bytes20(who)), uint8(0));
+        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(freezePlus)), DELAY);
+    }
+
+    // ─── constructor timelock validation ─────────────────────────────────
+
+    function _timelockConfig(uint48 delay_, uint48 expiry_, uint48 escalation_)
+        internal
+        view
+        returns (IStdManifest.Config memory c)
+    {
+        c = _config(CAP, RATE, false, address(0), address(0));
+        c.delay = delay_;
+        c.expiry = expiry_;
+        c.escalation = escalation_;
+    }
+
+    function testConstructorRejectsZeroDelay() public {
+        vm.expectRevert(IStdManifest.InvalidConfig.selector);
+        new StdManifest(hub, multiAdapter, scm, _timelockConfig(0, EXPIRY, ESCALATION));
+    }
+
+    function testConstructorRejectsZeroExpiry() public {
+        vm.expectRevert(IStdManifest.InvalidConfig.selector);
+        new StdManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, 0, ESCALATION));
+    }
+
+    function testConstructorRejectsEscalationEqualToDelay() public {
+        vm.expectRevert(IStdManifest.InvalidConfig.selector);
+        new StdManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, EXPIRY, DELAY));
+    }
+
+    function testConstructorRejectsEscalationBelowDelay() public {
+        vm.expectRevert(IStdManifest.InvalidConfig.selector);
+        new StdManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, EXPIRY, DELAY - 1));
     }
 
     // ─── share-price guard ─────────────────────────────────────────────────────────

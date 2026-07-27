@@ -139,6 +139,15 @@ contract TestMessageLibIds is Test {
         vm.expectRevert(MessageLib.UnknownMessageType.selector);
         MessageLib.messageLength(buffer);
     }
+
+    /// @dev _Invalid (kind 0) must be rejected rather than returning length 0.
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testMessageLengthRejectsInvalid() public {
+        bytes memory buffer = new bytes(1);
+        buffer[0] = bytes1(uint8(MessageType._Invalid));
+        vm.expectRevert(MessageLib.UnknownMessageType.selector);
+        MessageLib.messageLength(buffer);
+    }
 }
 
 // The following tests check that the function composition of deserializing and serializing equals to the identity:
@@ -181,15 +190,20 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
-    function testSetPoolAdapters(uint64 poolId, uint8 threshold, bytes32[] memory adapterList) public pure {
+    function testSetPoolAdapters(uint64 poolId, uint8 threshold, uint16 targetSessionId, bytes32[] memory adapterList)
+        public
+        pure
+    {
         vm.assume(adapterList.length <= 20);
 
-        MessageLib.SetPoolAdapters memory a =
-            MessageLib.SetPoolAdapters({poolId: poolId, threshold: threshold, adapterList: adapterList});
+        MessageLib.SetPoolAdapters memory a = MessageLib.SetPoolAdapters({
+            poolId: poolId, threshold: threshold, targetSessionId: targetSessionId, adapterList: adapterList
+        });
         MessageLib.SetPoolAdapters memory b = MessageLib.deserializeSetPoolAdapters(a.serialize());
 
         assertEq(a.poolId, b.poolId);
         assertEq(a.threshold, b.threshold);
+        assertEq(a.targetSessionId, b.targetSessionId);
         assertEq(a.adapterList, b.adapterList);
 
         assertEq(bytes(a.serialize()).length, a.serialize().messageLength());

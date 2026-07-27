@@ -18,6 +18,7 @@ import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
 
 import {IBridgeCircuitBreaker} from "../hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
+import {UpdateRestrictionType} from "../token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 
@@ -81,6 +82,8 @@ contract StdManifest is IStdManifest {
     mapping(PoolId poolId => mapping(address caller => mapping(bytes4 selector => bool))) public allowed;
 
     constructor(IHub hub_, IMultiAdapter multiAdapter_, IShareClassManager shareClassManager_, Config memory config) {
+        require(config.delay > 0 && config.escalation > config.delay && config.expiry > 0, InvalidConfig());
+
         // Dependencies
         hub = hub_;
         navManager = config.navManager;
@@ -209,7 +212,12 @@ contract StdManifest is IStdManifest {
         if (_isSharePriceUpdate(selector)) {
             return _checkSharePrice(poolId, payload);
         }
+        if (selector == IHub.updateRestriction.selector) return _checkRestriction(payload);
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
+
+        // The sentinel veto path runs instantly, but still passes through the per-caller confinement
+        // above, so a restricted manager can't wield it as a pool-wide governance-DoS primitive.
+        if (selector == IHub.cancelAuthorization.selector) return 0;
 
         // Replacing a manifest (local hub policy, or a spoke's pushed policy) disables all future policy on
         // that side, so it uses the longer `escalation`.
@@ -248,6 +256,19 @@ contract StdManifest is IStdManifest {
             || selector == IHub.updateHoldingValue.selector
             || selector == IHub.updateHoldingValuation.selector
             || selector == IHub.setHoldingAccountId.selector;
+    }
+
+    /// @dev A canonical `Freeze` is strictly tightening, so it runs instantly: waiting out `delay` would let
+    ///      the target bridge/redeem/transfer out of reach, and a scheduled authorization would leak the
+    ///      target and maturity publicly. Everything else (Unfreeze, Member, malformed) stays on `delay`.
+    function _checkRestriction(bytes calldata payload) internal view returns (uint48) {
+        // Only `update` is needed; the trailing (extraGasLimit, refund) is skipped via the dynamic offset.
+        (,,, bytes memory update) = abi.decode(payload, (PoolId, ShareClassId, uint16, bytes));
+        // Canonical Freeze is exactly `abi.encodePacked(Freeze, user)` (1-byte type + 32-byte user). Comparing
+        // the raw byte (not casting to the enum) keeps an out-of-range type failing closed instead of reverting.
+        if (update.length != 33) return delay;
+        if (update.toUint8(0) != uint8(UpdateRestrictionType.Freeze)) return delay;
+        return 0;
     }
 
     /// @dev `managerCall` classification, pinned by target: the BRM is in policy but bounded by

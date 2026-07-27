@@ -65,13 +65,16 @@ contract OpsGuardian is IOpsGuardian {
 
     /// @inheritdoc IOpsGuardian
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold) external onlySafe {
-        require(centrifugeId != multiAdapter.localCentrifugeId(), CannotSetAdaptersForLocalChain());
         require(centrifugeId != MAINNET_CENTRIFUGE_ID, CannotSetAdaptersForMainnet());
-        multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold);
+        require(centrifugeId != multiAdapter.localCentrifugeId(), CannotSetAdaptersForLocalChain());
+
+        uint16 targetSessionId = multiAdapter.nextActiveSessionId(centrifugeId, GLOBAL_POOL);
+        multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, targetSessionId);
     }
 
     /// @inheritdoc IOpsGuardian
     function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+        require(centrifugeId != multiAdapter.localCentrifugeId(), CannotWireLocalChain());
         require(centrifugeId != MAINNET_CENTRIFUGE_ID, CannotWireMainnet());
         IAdapterWiring(adapter).wire(centrifugeId, data);
     }

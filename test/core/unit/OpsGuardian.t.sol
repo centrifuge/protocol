@@ -64,11 +64,16 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
             abi.encodeWithSelector(IMultiAdapter.localCentrifugeId.selector),
             abi.encode(LOCAL_CENTRIFUGE_ID)
         );
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.nextActiveSessionId.selector),
+            abi.encode(uint16(1))
+        );
 
         vm.mockCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold
+                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, uint16(1)
             ),
             abi.encode()
         );
@@ -76,7 +81,7 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         vm.expectCall(
             address(multiAdapter),
             abi.encodeWithSelector(
-                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold
+                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, threshold, uint16(1)
             )
         );
 
@@ -95,7 +100,14 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         );
         vm.mockCall(
             address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, 1),
+            abi.encodeWithSelector(IMultiAdapter.nextActiveSessionId.selector),
+            abi.encode(uint16(1))
+        );
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(
+                IMultiAdapter.setAdapters.selector, REMOTE_CENTRIFUGE_ID, GLOBAL_POOL, adapters, 1, uint16(1)
+            ),
             abi.encode()
         );
 
@@ -281,10 +293,18 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
 contract OpsGuardianTestWire is OpsGuardianTest {
     // CENTRIFUGE_ID = 1 = MAINNET_CENTRIFUGE_ID (Ethereum); use a spoke chain for success cases
     uint16 constant REMOTE_CENTRIFUGE_ID = 2;
+    uint16 constant LOCAL_CENTRIFUGE_ID = 3;
+
+    function _mockLocalCentrifugeId(uint16 localId) internal {
+        vm.mockCall(
+            address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.localCentrifugeId.selector), abi.encode(localId)
+        );
+    }
 
     function testWireSuccess() public {
         bytes memory data = abi.encode("some", "data");
 
+        _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
         vm.mockCall(
             address(ADAPTER),
             abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data),
@@ -302,6 +322,7 @@ contract OpsGuardianTestWire is OpsGuardianTest {
     function testWireCanBeCalledMultipleTimes() public {
         bytes memory data = abi.encode("some", "data");
 
+        _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
         vm.mockCall(
             address(ADAPTER),
             abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data),
@@ -314,11 +335,23 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         vm.stopPrank();
     }
 
+    function testWireRevertWhenLocalChain() public {
+        bytes memory data = abi.encode("some", "data");
+
+        _mockLocalCentrifugeId(REMOTE_CENTRIFUGE_ID);
+
+        vm.prank(address(SAFE));
+        vm.expectRevert(IOpsGuardian.CannotWireLocalChain.selector);
+        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
+    }
+
     function testWireRevertWhenMainnet() public {
         bytes memory data = abi.encode("some", "data");
 
         // CENTRIFUGE_ID == 1 == MAINNET_CENTRIFUGE_ID
         assertEq(CENTRIFUGE_ID, opsGuardian.MAINNET_CENTRIFUGE_ID());
+
+        _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
 
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.CannotWireMainnet.selector);

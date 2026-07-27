@@ -86,12 +86,15 @@ interface IHyperlaneAdapter is IAdapter, IAdapterWiring, IMessageRecipient, ISpe
 
     error NotMailbox();
     error InvalidSource();
+    error IsmZero();
 
     //----------------------------------------------------------------------------------------------
     // Admin methods
     //----------------------------------------------------------------------------------------------
 
     /// @notice Update the Interchain Security Module used to verify inbound messages
+    /// @dev    Reverts on a zero address: a zero ISM silently defers to the Mailbox's own default
+    ///         module instead of the pool's intended one, which is not allowed.
     /// @param ism The new ISM address
     function setIsm(IInterchainSecurityModule ism) external;
 

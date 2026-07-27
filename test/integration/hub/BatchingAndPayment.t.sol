@@ -32,7 +32,7 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
         mockAdapters[0] = IAdapter(mockAdapter);
 
         vm.prank(address(root));
-        multiAdapter.setAdapters(TARGET_CHAIN, PoolId.wrap(0), mockAdapters, 1);
+        multiAdapter.setAdapters(TARGET_CHAIN, PoolId.wrap(0), mockAdapters, 1, 1);
     }
 
     /// Test that a multicall with two notifyPool calls for the same pool requires GAS per call.

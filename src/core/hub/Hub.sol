@@ -124,7 +124,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function cancelAuthorization(PoolId poolId, bytes calldata data) external onlyManager(poolId) {
+    function cancelAuthorization(PoolId poolId, bytes calldata data) external enforced(poolId) {
         hubRegistry.cancelAuthorization(poolId, msgSender(), data);
     }
 
@@ -147,9 +147,12 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
 
         // Send the remote update before applying the local set: SetPoolAdapters routes over the pool's
         // own set, so it must travel over the set still shared with the destination.
-        sender.sendSetPoolAdapters{value: msgValue()}(centrifugeId, poolId, remoteAdapters, threshold, refund);
+        uint16 targetSessionId = multiAdapter.nextActiveSessionId(centrifugeId, poolId);
+        sender.sendSetPoolAdapters{value: msgValue()}(
+            centrifugeId, poolId, remoteAdapters, threshold, targetSessionId, refund
+        );
 
-        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold);
+        multiAdapter.setAdapters(centrifugeId, poolId, localAdapters, threshold, targetSessionId);
     }
 
     /// @inheritdoc IHub

@@ -115,8 +115,9 @@ contract GasServiceTest is Test {
     }
 
     function testRoutePoolId() public view {
-        bytes memory message =
-            MessageLib.SetPoolAdapters({poolId: 1, threshold: 1, adapterList: new bytes32[](0)}).serialize();
+        bytes memory message = MessageLib.SetPoolAdapters({
+                poolId: 1, threshold: 1, targetSessionId: 1, adapterList: new bytes32[](0)
+            }).serialize();
 
         assertEq(service.routePoolId(message, true).raw(), message.messagePoolId().raw());
         assertEq(service.routePoolId(message, false).raw(), 0);

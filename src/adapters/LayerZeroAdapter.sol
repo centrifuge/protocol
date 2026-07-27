@@ -34,8 +34,15 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;
 
-    /// @dev Cost of executing `lzReceive()` except entrypoint.handle()
-    uint256 public constant RECEIVE_COST = 4000;
+    /// @dev Cost of executing `lzReceive()` except entrypoint.handle(), reserved per destination chain.
+    uint256 public constant DEFAULT_RECEIVE_COST = 4000;
+
+    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
+    // Monad reprices cold storage access (2100→8100, +6000/slot) and cold account access (2600→10100,
+    // +7500/call) per its published opcode schedule (docs.monad.xyz). lzReceive() makes 1 cold SLOAD
+    // (sources, a single-slot struct) + 1 cold CALL (entrypoint) => +13_500 over DEFAULT (mirrors
+    // GasService's per-chain reserve).
+    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 13_500;
 
     IMessageHandler public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
@@ -110,8 +117,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingReceipt memory receipt =
-            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit + RECEIVE_COST), refund);
+        MessagingReceipt memory receipt = endpoint.send{value: msg.value}(
+            _params(destination, payload, gasLimit + _receiveCost(centrifugeId)), refund
+        );
         adapterData = receipt.guid;
     }
 
@@ -120,8 +128,15 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
+        MessagingFee memory fee =
+            endpoint.quote(_params(destination, payload, gasLimit + _receiveCost(centrifugeId)), address(this));
         return fee.nativeFee;
+    }
+
+    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
+    ///      repricing needs a larger reserve than other chains.
+    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
+        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
     }
 
     /// @dev Generate message parameters

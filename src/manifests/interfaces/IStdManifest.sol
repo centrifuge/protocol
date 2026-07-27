@@ -12,6 +12,7 @@ import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.s
 interface IStdManifest is IManifest {
     error OnchainAccountingOnly();
     error CallerNotAllowed();
+    error InvalidConfig();
 
     /// @notice Confines a caller to a fixed set of selectors for a pool. A (pool, caller) with any
     ///         entry may invoke only its listed selectors; everything else is blocked outright. Set

@@ -160,7 +160,7 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
     }
 
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund) public {
-        vm.assume(gasLimit < adapter.RECEIVE_COST());
+        vm.assume(gasLimit < adapter.DEFAULT_RECEIVE_COST());
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
@@ -188,7 +188,28 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
         // Verify extraArgs contain the gas limit
         bytes memory expectedExtraArgs = abi.encodeWithSelector(
             GENERIC_EXTRA_ARGS_V2_TAG,
-            IClient.GenericExtraArgsV2({gasLimit: gasLimit + adapter.RECEIVE_COST(), allowOutOfOrderExecution: true})
+            IClient.GenericExtraArgsV2({
+                gasLimit: gasLimit + adapter.DEFAULT_RECEIVE_COST(), allowOutOfOrderExecution: true
+            })
+        );
+        assertEq(ccipRouter.values_bytes("extraArgs"), expectedExtraArgs);
+    }
+
+    /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
+    function testSendUsesMonadReceiveCost(bytes calldata payload, uint256 gasLimit, address refund) public {
+        gasLimit = bound(gasLimit, 0, type(uint64).max);
+        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        adapter.wire(monadId, abi.encode(CHAINLINK_CHAIN_SELECTOR, makeAddr("DestinationAdapter")));
+
+        vm.deal(address(GATEWAY), 0.1 ether);
+        vm.prank(address(GATEWAY));
+        adapter.send{value: 0.1 ether}(monadId, payload, gasLimit, refund);
+
+        bytes memory expectedExtraArgs = abi.encodeWithSelector(
+            GENERIC_EXTRA_ARGS_V2_TAG,
+            IClient.GenericExtraArgsV2({
+                gasLimit: gasLimit + adapter.MONAD_RECEIVE_COST(), allowOutOfOrderExecution: true
+            })
         );
         assertEq(ccipRouter.values_bytes("extraArgs"), expectedExtraArgs);
     }

@@ -812,11 +812,10 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
     }
 
-    /// @dev Property: `deficitCount(poolId, centrifugeId)` equals the number of holdings on that pool-network
-    ///      with `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts` (no ghost
-    ///      variable needed). Regression guard for the deficit-gate crossing logic in `Holdings.increase/decrease`.
-    ///      NOTE: the NAV-hook gate itself isn't observable here (the snapshot-hook layer isn't wired into this
-    ///      harness); covered by the NAVManager unit/integration tests instead.
+    /// @dev `deficitCount(poolId, centrifugeId)` must equal the number of holdings on that pool-network with
+    ///      `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts`. Regression guard for
+    ///      the deficit-gate crossing logic in `Holdings.increase/decrease`. The NAV-hook gate itself isn't
+    ///      observable here (snapshot-hook layer not wired into this harness); covered by NAVManager tests.
     function property_deficitCountMatchesHoldings() public {
         PoolId[] memory pools = _getPools();
         AssetId[] memory assetIds = _getAssetIds();

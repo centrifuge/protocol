@@ -15,7 +15,11 @@ interface IStandbyAdapter is IAdapter, IMessageHandler {
     event StandbySend(uint16 indexed centrifugeId, bytes32 indexed id, bytes payload, uint256 gasLimit);
 
     /// @notice Emitted when a standby send is activated (force-dispatched through the underlying adapter).
-    event Forward(uint16 indexed centrifugeId, bytes32 indexed id, bytes payload, uint256 gasLimit);
+    /// @dev    `adapterData` is the value returned by the underlying adapter's `send`, carrying the same
+    ///         off-chain delivery metadata that a normal `SendPayload` exposes.
+    event Forward(
+        uint16 indexed centrifugeId, bytes32 indexed id, bytes payload, uint256 gasLimit, bytes32 adapterData
+    );
 
     //----------------------------------------------------------------------------------------------
     // Errors

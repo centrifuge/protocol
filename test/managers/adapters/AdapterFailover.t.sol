@@ -28,6 +28,11 @@ contract AdapterFailoverTest is Test {
     function setUp() public {
         adapterFailover = new AdapterFailover(envoy, IMultiAdapter(multiAdapter), TIMELOCK);
 
+        // executeFailover derives the next session id from the (mocked) MultiAdapter; keep it at 0 so target == 1.
+        vm.mockCall(
+            multiAdapter, abi.encodeWithSelector(IMultiAdapter.nextActiveSessionId.selector), abi.encode(uint16(1))
+        );
+
         // Assign the test steward via the hub ManagerCall path.
         vm.prank(envoy);
         adapterFailover.fromHub(POOL_A, abi.encode(uint8(IAdapterFailover.HubCall.UpdateSteward), steward, true));
@@ -107,7 +112,9 @@ contract AdapterFailoverTest is Test {
 
         vm.expectCall(
             multiAdapter,
-            abi.encodeWithSelector(IMultiAdapter.setAdapters.selector, HUB_CENTRIFUGE_ID, POOL_A, adapters, threshold)
+            abi.encodeWithSelector(
+                IMultiAdapter.setAdapters.selector, HUB_CENTRIFUGE_ID, POOL_A, adapters, threshold, uint16(1)
+            )
         );
         vm.mockCall(multiAdapter, abi.encodeWithSelector(IMultiAdapter.setAdapters.selector), "");
 

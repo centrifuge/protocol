@@ -161,7 +161,10 @@ contract MultiAdapterTest is Test {
     }
 
     function assertVotes(uint16 sessionId, bytes memory message, int16 r1, int16 r2, int16 r3) internal view {
-        int16[8] memory votes = multiAdapter.votes(REMOTE_CENT_ID, keccak256(_wrap(sessionId, message)));
+        // The vote tally is keyed by the poolId-folded vote key; every message here routes to POOL_A.
+        int16[8] memory votes = multiAdapter.votes(
+            REMOTE_CENT_ID, keccak256(abi.encodePacked(PoolId.unwrap(POOL_A), _wrap(sessionId, message)))
+        );
         assertEq(votes[0], r1);
         assertEq(votes[1], r2);
         assertEq(votes[2], r3);
@@ -214,23 +217,23 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, new IAdapter[](0), 0);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, new IAdapter[](0), 0, 1);
     }
 
     function testErrExceedsMax() public {
         IAdapter[] memory tooMuchAdapters = new IAdapter[](MAX_ADAPTER_COUNT + 1);
         vm.expectRevert(IMultiAdapter.ExceedsMax.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, tooMuchAdapters, uint8(tooMuchAdapters.length));
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, tooMuchAdapters, uint8(tooMuchAdapters.length), 1);
     }
 
     function testErrThresholdHigherThanQuorum() public {
         vm.expectRevert(IMultiAdapter.ThresholdHigherThanQuorum.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, uint8(threeAdapters.length + 1));
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, uint8(threeAdapters.length + 1), 1);
     }
 
     function testErrZeroThreshold() public {
         vm.expectRevert(IMultiAdapter.ZeroThreshold.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 0);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 0, 1);
     }
 
     function testErrNoDuplicatedAllowed() public {
@@ -239,13 +242,13 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         duplicatedAdapters[1] = IAdapter(address(10));
 
         vm.expectRevert(IMultiAdapter.NoDuplicatesAllowed.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, duplicatedAdapters, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, duplicatedAdapters, 1, 1);
     }
 
     function testMultiAdapterSetAdapters() public {
         vm.expectEmit();
         emit IMultiAdapter.SetAdapters(REMOTE_CENT_ID, POOL_A, 1, threeAdapters, 1);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 1);
 
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), threeAdapters.length);
@@ -271,20 +274,20 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
 
         if (threshold > quorumCount) {
             vm.expectRevert(IMultiAdapter.ThresholdHigherThanQuorum.selector);
-            multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+            multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold, 1);
             return;
         }
 
         if (threshold == 0 && quorumCount > 0) {
             vm.expectRevert(IMultiAdapter.ZeroThreshold.selector);
-            multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+            multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold, 1);
             return;
         }
 
         // 1 <= threshold <= quorum is always accepted, including threshold == 1 with quorum > 1: above the
         // zero floor, MultiAdapter enforces no floor on threshold relative to quorum (reviewed and accepted
         // as a pool-operator configuration choice, not a code gap).
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold, 1);
         assertEq(multiAdapter.quorum(REMOTE_CENT_ID, POOL_A), quorumCount);
         assertEq(multiAdapter.threshold(REMOTE_CENT_ID, POOL_A), threshold);
     }
@@ -298,40 +301,60 @@ contract MultiAdapterTestSetAdapters is MultiAdapterTest {
         }
 
         vm.expectRevert(IMultiAdapter.ExceedsMax.selector);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, adapters, threshold, 1);
     }
 
     function testMultiAdapterSetAdaptersAdvanceSession() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
 
         // not increment: different chain
-        multiAdapter.setAdapters(LOCAL_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(LOCAL_CENT_ID, POOL_A, threeAdapters, 3, 1);
         assertEq(multiAdapter.activeSessionId(LOCAL_CENT_ID, POOL_A), 1);
 
         // not increment: different pool
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 1);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 1);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, zeroAdapters, 0);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, zeroAdapters, 0, 2);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 2);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, threeAdapters, 3, 3);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_0), 3);
     }
 
-    function testSessionIdOverflowWrapsToOne() public {
+    function testSessionIdExhaustedReverts() public {
         multiAdapter.setActiveSessionId(REMOTE_CENT_ID, POOL_A, type(uint16).max);
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), type(uint16).max);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
-        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 1);
+        vm.expectRevert(stdError.arithmeticError);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
+    }
+
+    /// @dev setAdapters only installs when targetSessionId == the pool's next session id, so a
+    ///      reordered, stale or reentrant delivery fails closed instead of rolling the active set back.
+    function testSetAdaptersRejectsWrongTargetSessionId() public {
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 0 -> 1
+
+        // Cannot leap over the next id (e.g. a delivery arriving before an earlier one applied).
+        vm.expectRevert(IMultiAdapter.UnexpectedSessionId.selector);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter, 1, 3);
+
+        // The exact next id applies.
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter, 1, 2); // session 1 -> 2
+
+        // A stale re-delivery targeting the now-consumed session 2 is rejected; the active set is NOT rolled back.
+        vm.expectRevert(IMultiAdapter.UnexpectedSessionId.selector);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2);
+
+        assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
+        assertEq(multiAdapter.activeAdapters(REMOTE_CENT_ID, POOL_A).list.length, 1);
     }
 }
 
 contract MultiAdapterTestBlockSession is MultiAdapterTest {
     function testErrBlockSessionNotAuthorized() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
@@ -339,8 +362,8 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testBlockSession() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2
 
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
@@ -359,8 +382,8 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testBlockOldSessionPreservesActiveAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2 (active)
 
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
@@ -382,7 +405,7 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testBlockActiveSessionClearsActiveAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1 (active)
 
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
@@ -409,7 +432,7 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testErrBlockSessionAlreadyBlocked() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
 
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
@@ -419,7 +442,7 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testErrUnblockSessionNotAuthorized() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
         vm.prank(ANY);
@@ -428,14 +451,14 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testErrUnblockSessionNotBlocked() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1, active and not blocked
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1, active and not blocked
 
         vm.expectRevert(IMultiAdapter.SessionNotBlocked.selector);
         multiAdapter.unblockSession(REMOTE_CENT_ID, POOL_A, 1);
     }
 
     function testBlockedSessionView() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
 
         assertFalse(multiAdapter.blockedSession(REMOTE_CENT_ID, POOL_A, 1));
 
@@ -447,8 +470,8 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testUnblockOldSessionRestoresConfiguration() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2); // session 1 (threshold 2)
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1); // session 1 (threshold 2)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2 (active)
 
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
         assertEq(multiAdapter.adaptersLength(REMOTE_CENT_ID, POOL_A, 1), 0);
@@ -475,7 +498,7 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testUnblockActiveSessionRestoresActiveAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2); // session 1 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1); // session 1 (active)
 
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
@@ -494,11 +517,11 @@ contract MultiAdapterTestBlockSession is MultiAdapterTest {
     }
 
     function testUnblockSupersededSessionDoesNotClobberActive() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1 (active)
 
         // Block the active session 1, then configure session 2 which becomes the new active set
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter, 1); // session 2 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, oneAdapter, 1, 2); // session 2 (active)
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
 
         // Unblocking the superseded session 1 restores its details but must NOT overwrite active session 2
@@ -551,10 +574,10 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     ///      an already-configured pool. See PROT-3.
     function testBlockedSessionDoesNotReopenGlobalSetPoolAdaptersRoute() public {
         // Global set (POOL_0) is adapter1; POOL_A's own set is a distinct adapter (adapter2).
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1);
         IAdapter[] memory poolASet = new IAdapter[](1);
         poolASet[0] = adapter2;
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, poolASet, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, poolASet, 1, 1);
 
         // A SetPoolAdapters (routed to POOL_A) delivered over the global adapter is rejected while POOL_A is
         // configured, because verification uses POOL_A's own set which does not contain adapter1.
@@ -576,8 +599,48 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         assertEq(gateway.count(REMOTE_CENT_ID), 0);
     }
 
+    /// @dev The vote tally folds the routed poolId into its key, so a vote leaked onto the global set
+    ///      (before a pool is configured) cannot combine with a later vote on the pool's own set to reach
+    ///      its threshold. adapter1 sits in both sets at different indices.
+    function testGlobalVoteDoesNotLeakIntoPoolTally() public {
+        // Global set (POOL_0): adapter1 at id 1 (slot 0), threshold 2 so a lone vote does not execute.
+        IAdapter[] memory globalSet = new IAdapter[](2);
+        globalSet[0] = adapter1;
+        globalSet[1] = adapter3;
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, globalSet, 2, 1);
+
+        bytes memory message = _wrap(1, SET_POOL_ADAPTERS_MSG);
+
+        // POOL_A unconfigured -> the SetPoolAdapters routes to the global set; adapter1's vote lands there.
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0);
+
+        // Configure POOL_A with adapter1 at id 2 (slot 1), threshold 2.
+        IAdapter[] memory poolSet = new IAdapter[](3);
+        poolSet[0] = adapter2;
+        poolSet[1] = adapter1;
+        poolSet[2] = adapter3;
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, poolSet, 2, 1);
+
+        // Now the identical message routes to POOL_A; adapter1's vote lands in POOL_A's own tally, not the
+        // global one. Under the pre-fix shared key the two votes would combine to reach POOL_A's threshold 2.
+        vm.prank(address(adapter1));
+        multiAdapter.handle(REMOTE_CENT_ID, message);
+        assertEq(gateway.count(REMOTE_CENT_ID), 0, "global vote must not leak into POOL_A threshold");
+
+        // The two votes live in separate, poolId-folded slots.
+        int16[8] memory globalVotes =
+            multiAdapter.votes(REMOTE_CENT_ID, keccak256(abi.encodePacked(PoolId.unwrap(POOL_0), message)));
+        int16[8] memory poolVotes =
+            multiAdapter.votes(REMOTE_CENT_ID, keccak256(abi.encodePacked(PoolId.unwrap(POOL_A), message)));
+        assertEq(globalVotes[0], 1); // adapter1 in the global set
+        assertEq(poolVotes[1], 1); // adapter1 in POOL_A's set
+        assertEq(poolVotes[0], 0);
+    }
+
     function testMessageWithSeveralAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
         bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
@@ -609,7 +672,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testSameMessageAgainWithSeveralAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -638,7 +701,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testOtherMessageWithSeveralAdapters() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message1 = _wrap(1, MESSAGE_1);
         bytes memory message2 = _wrap(1, MESSAGE_2);
@@ -668,7 +731,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testOneFasterAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -701,7 +764,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testVotesAfterNewSession() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
 
         bytes memory message1 = _wrap(1, MESSAGE_1);
 
@@ -710,7 +773,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         vm.prank(address(adapter2));
         multiAdapter.handle(REMOTE_CENT_ID, message1);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2
 
         bytes memory message2 = _wrap(2, MESSAGE_1);
 
@@ -725,7 +788,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testMessageWithThreshold2() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -746,7 +809,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testSameMessageWithThreshold2() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -777,7 +840,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testSameMessageWithThreshold1() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -808,7 +871,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testOldSessionMessagesStillProcessable() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
 
         bytes memory oldMsg = _wrap(1, MESSAGE_1);
 
@@ -821,7 +884,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         assertVotes(1, MESSAGE_1, 1, 1, 0);
 
         // Session advances (adapters rotated)
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2
         assertEq(multiAdapter.activeSessionId(REMOTE_CENT_ID, POOL_A), 2);
 
         // Third vote still arrives under session 1 (in-flight) — should complete
@@ -833,7 +896,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testNewSessionVotesAreIndependent() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
 
         // Two votes arrive under session 1
         vm.prank(address(adapter1));
@@ -842,7 +905,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
         multiAdapter.handle(REMOTE_CENT_ID, _wrap(1, MESSAGE_1));
         assertVotes(1, MESSAGE_1, 1, 1, 0);
 
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2
 
         // Session 2 starts fresh — adapter1 vote on session 2 doesn't carry over from session 1
         vm.prank(address(adapter1));
@@ -855,8 +918,8 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testBlockedSessionMessagesRevert() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 2
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 2); // session 2
 
         // One vote arrives under session 1 before blocking
         vm.prank(address(adapter1));
@@ -878,7 +941,7 @@ contract MultiAdapterTestHandle is MultiAdapterTest {
     }
 
     function testUnblockedSessionResumesProcessing() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1
 
         // One vote arrives before blocking
         vm.prank(address(adapter1));
@@ -915,7 +978,7 @@ contract MultiAdapterTestVote is MultiAdapterTest {
 
     function testVoteRecordsButNeverExecutesEvenWhenThresholdMet() public {
         // threshold 1: a single handle() would execute inline, but vote() must not
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
         bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
@@ -931,7 +994,7 @@ contract MultiAdapterTestVote is MultiAdapterTest {
     }
 
     function testVoteAccumulatesAcrossAdaptersWithoutExecuting() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -950,7 +1013,7 @@ contract MultiAdapterTestVote is MultiAdapterTest {
 
 contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     function testManagerHandleOnBehalfOfAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
         bytes memory message = _wrap(1, MESSAGE_1);
@@ -966,7 +1029,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testManagerVoteOnBehalfOfAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
         bytes memory message = _wrap(1, MESSAGE_1);
@@ -979,7 +1042,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testErrWardCannotSubmitOnBehalfOfAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -990,7 +1053,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testManagerCanDriveFullExecution() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1);
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
         bytes memory message = _wrap(1, MESSAGE_1);
@@ -1007,7 +1070,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testErrNonManagerCannotSubmitOnBehalf() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -1017,7 +1080,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testErrManagerOfOtherPoolCannotSubmit() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         // Manager of POOL_0, but the message routes to POOL_A.
         multiAdapter.updateManager(POOL_0, MANAGER, true);
 
@@ -1029,7 +1092,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testErrManagerCannotSubmitForUnconfiguredAdapter() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
         bytes memory message = _wrap(1, MESSAGE_1);
@@ -1041,7 +1104,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testManagerExecuteAfterVotesReachThreshold() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1);
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
         bytes memory message = _wrap(1, MESSAGE_1);
@@ -1064,7 +1127,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testErrManagerExecuteBelowThreshold() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1);
         multiAdapter.updateManager(POOL_A, MANAGER, true);
 
         bytes memory message = _wrap(1, MESSAGE_1);
@@ -1078,7 +1141,7 @@ contract MultiAdapterTestManagerSubmit is MultiAdapterTest {
     }
 
     function testErrNonManagerCannotExecuteOnBehalf() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 1, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
         vm.prank(address(adapter1));
@@ -1098,7 +1161,7 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
     }
 
     function testErrNotEnoughVotes() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         // No votes cast yet
         vm.prank(address(adapter1));
@@ -1107,7 +1170,7 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
     }
 
     function testErrNotEnoughVotesBelowThreshold() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -1127,7 +1190,7 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
     }
 
     function testExecuteConsumesVotesAndForwards() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
         bytes32 payloadId = keccak256(abi.encodePacked(REMOTE_CENT_ID, LOCAL_CENT_ID, keccak256(message)));
@@ -1153,7 +1216,7 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
 
     function testExecuteDoesNotCastOwnVote() public {
         // threshold 2 / quorum 3: two votes are enough to reach the threshold
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 2, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -1173,7 +1236,7 @@ contract MultiAdapterTestExecute is MultiAdapterTest {
     }
 
     function testHandleAndVoteCanMixBeforeExecute() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
 
@@ -1208,7 +1271,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     }
 
     function testSendMessage() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
         bytes32 payloadId = keccak256(abi.encodePacked(LOCAL_CENT_ID, REMOTE_CENT_ID, keccak256(message)));
@@ -1256,7 +1319,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     }
 
     function testUnblockRestoresSend() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // session 1 (active)
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // session 1 (active)
 
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
@@ -1313,7 +1376,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     /// @dev Any msg.value above the real per-adapter cost (e.g. the caller's estimate used a conservative
     ///      placeholder session prefix) is refunded rather than stranded in the contract.
     function testSendRefundsExcessValue() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(1, MESSAGE_1);
         uint256 cost = GAS_LIMIT * 3 + ADAPTER_ESTIMATE_1 + ADAPTER_ESTIMATE_2 + ADAPTER_ESTIMATE_3;
@@ -1333,7 +1396,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     ///      (the init case). This is the only message type allowed to fall back.
     function testSendSetPoolAdaptersFallsBackToGlobalPool() public {
         // Only the global pool (id 0) is configured; POOL_A has no set.
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1);
 
         bytes memory message = _wrap(1, SET_POOL_ADAPTERS_MSG);
         _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
@@ -1350,8 +1413,8 @@ contract MultiAdapterTestSend is MultiAdapterTest {
 
     /// @dev Once a pool configures its own set, SetPoolAdapters uses it instead of the global fallback.
     function testSendSetPoolAdaptersUsesPoolSetOverGlobal() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1); // global: adapter1
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3); // POOL_A: adapter1,2,3
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1); // global: adapter1
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1); // POOL_A: adapter1,2,3
 
         bytes memory message = _wrap(1, SET_POOL_ADAPTERS_MSG);
         _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);
@@ -1371,7 +1434,7 @@ contract MultiAdapterTestSend is MultiAdapterTest {
     /// @dev Non-SetPoolAdapters messages do NOT fall back: an unconfigured pool still reverts, even when
     ///      the global set exists. The fallback is scoped to the adapter-init message only.
     function testSendNonAdapterMessageDoesNotFallBack() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1); // global set exists
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_0, oneAdapter, 1, 1); // global set exists
         // POOL_A has no set; MESSAGE_1 is a regular POOL_A message, not SetPoolAdapters.
         vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
         multiAdapter.send(REMOTE_CENT_ID, MESSAGE_1, GAS_LIMIT, REFUND);
@@ -1385,7 +1448,7 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
     }
 
     function testBlockedActiveSessionEstimateReverts() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
         multiAdapter.blockSession(REMOTE_CENT_ID, POOL_A, 1);
 
         vm.expectRevert(IMultiAdapter.EmptyAdapterSet.selector);
@@ -1393,7 +1456,7 @@ contract MultiAdapterTestEstimate is MultiAdapterTest {
     }
 
     function testEstimate() public {
-        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3);
+        multiAdapter.setAdapters(REMOTE_CENT_ID, POOL_A, threeAdapters, 3, 1);
 
         bytes memory message = _wrap(uint16((1 << 8) + 1), MESSAGE_1);
         _mockAdapter(adapter1, message, ADAPTER_ESTIMATE_1, ADAPTER_DATA_1);

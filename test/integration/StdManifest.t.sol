@@ -139,6 +139,89 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         hub.updateHubManager(POOL_A, newManager, true);
     }
 
+    // ─── cancelAuthorization confinement ───────────────────────────────────────
+
+    function _manifestWith(IStdManifest.Entry[] memory allowlist) internal returns (StdManifest) {
+        return StdManifest(
+            address(
+                manifestFactory.newStdManifest(
+                    IStdManifest.Config({
+                        delay: POLICY_DELAY,
+                        expiry: POLICY_EXPIRY,
+                        escalation: POLICY_ESCALATION,
+                        maxAbsolutePriceDelta: 0,
+                        thresholdPerSecond: 0,
+                        maxBrmPriceDeviation: type(uint128).max,
+                        onchainAccounting: false,
+                        navManager: address(0),
+                        simplePriceManager: address(0),
+                        requestManager: address(batchRequestManager),
+                        bridgingHook: address(0),
+                        oracleValuation: address(0),
+                        contractUpdaterForwarder: address(contractUpdaterForwarder),
+                        allowlist: allowlist
+                    })
+                )
+            )
+        );
+    }
+
+    function _confine(address caller, bytes4 selector) internal view returns (IStdManifest.Entry[] memory allowlist) {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = selector;
+        allowlist = new IStdManifest.Entry[](1);
+        allowlist[0] = IStdManifest.Entry({poolId: POOL_A, caller: caller, selectors: selectors});
+    }
+
+    function testConfinedManagerCannotCancelArbitraryAuthorization() public {
+        // Confine the operator to notifyPool only. cancelAuthorization now flows through the manifest, so a
+        // manager restricted to a narrow selector set can no longer wield it as a pool-wide governance-DoS.
+        StdManifest confined = _manifestWith(_confine(operator, IHub.notifyPool.selector));
+        vm.prank(address(root));
+        hub.setManifest(POOL_A, confined);
+
+        vm.prank(operator);
+        vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
+        hub.cancelAuthorization(POOL_A, _grantManagerCall());
+    }
+
+    function testSentinelVetoSurvivesRestrictiveManifest() public {
+        // A manifest that confines some manager must NOT break the Supervisor veto: the Supervisor is never
+        // placed in an allowlist, so it stays unrestricted and its cancelAuthorization runs instantly.
+        StdManifest confined = _manifestWith(_confine(newManager, IHub.notifyPool.selector));
+        vm.prank(address(root));
+        hub.setManifest(POOL_A, confined);
+
+        vm.prank(mockUpdater);
+        IManagerCallFromHub(address(supervisor)).fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinel));
+
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, _grantManagerCall());
+
+        vm.prank(sentinel);
+        supervisor.cancelAuthorization(_grantManagerCall());
+
+        // Vetoed under the restrictive manifest: even after the delay the call reverts.
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.updateHubManager(POOL_A, newManager, true);
+    }
+
+    function testUnrestrictedManagerCancelIsInstant() public {
+        // The operator is unrestricted under the setUp manifest, so it can cancel a pending authorization
+        // instantly (delay 0), with no timelock of its own.
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, _grantManagerCall());
+        assertGt(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, _grantManagerCall())), 0);
+
+        vm.prank(operator);
+        hub.cancelAuthorization(POOL_A, _grantManagerCall());
+        assertEq(
+            hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, _grantManagerCall())), 0, "authorization cleared"
+        );
+    }
+
     function testReplacingManifestUsesEscalation() public {
         StdManifest next = StdManifest(
             address(

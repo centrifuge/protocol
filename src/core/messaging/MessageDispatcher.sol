@@ -672,6 +672,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         bytes32[] memory adapters,
         uint8 threshold,
+        uint16 targetSessionId,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
@@ -679,8 +680,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         } else {
             _send(
                 centrifugeId,
-                MessageLib.SetPoolAdapters({poolId: poolId.raw(), threshold: threshold, adapterList: adapters})
-                    .serialize(),
+                MessageLib.SetPoolAdapters({
+                        poolId: poolId.raw(),
+                        threshold: threshold,
+                        targetSessionId: targetSessionId,
+                        adapterList: adapters
+                    }).serialize(),
                 false,
                 refund
             );

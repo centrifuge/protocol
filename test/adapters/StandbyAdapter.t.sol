@@ -19,9 +19,14 @@ contract MockUnderlying is IAdapter {
     uint256 public lastValue;
     uint256 public sendCount;
     uint256 public cost;
+    bytes32 public adapterData;
 
     function setCost(uint256 c) external {
         cost = c;
+    }
+
+    function setAdapterData(bytes32 d) external {
+        adapterData = d;
     }
 
     function send(uint16 centrifugeId, bytes calldata payload, uint256, address) external payable returns (bytes32) {
@@ -29,7 +34,7 @@ contract MockUnderlying is IAdapter {
         lastPayload = payload;
         lastValue = msg.value;
         sendCount++;
-        return bytes32(0);
+        return adapterData;
     }
 
     function estimate(uint16, bytes calldata, uint256) external view returns (uint256) {
@@ -159,7 +164,7 @@ contract StandbyAdapterTest is Test {
         _send();
 
         vm.expectEmit();
-        emit IStandbyAdapter.Forward(REMOTE, _id(), PAYLOAD, GAS);
+        emit IStandbyAdapter.Forward(REMOTE, _id(), PAYLOAD, GAS, bytes32(0));
         standby.forward{value: 1 ether}(REMOTE, PAYLOAD, GAS);
 
         assertEq(underlying.sendCount(), 1);
@@ -167,6 +172,17 @@ contract StandbyAdapterTest is Test {
         assertEq(underlying.lastPayload(), PAYLOAD);
         assertEq(underlying.lastValue(), 1 ether, "caller pays the underlying cost");
         assertEq(standby.forwardable(_id()), 0, "credit consumed");
+    }
+
+    /// @dev the Forward event must carry the adapterData returned by the underlying adapter.
+    function testForwardEmitsUnderlyingAdapterData() public {
+        _send();
+        bytes32 expected = keccak256("delivery-guid");
+        underlying.setAdapterData(expected);
+
+        vm.expectEmit();
+        emit IStandbyAdapter.Forward(REMOTE, _id(), PAYLOAD, GAS, expected);
+        standby.forward{value: 1 ether}(REMOTE, PAYLOAD, GAS);
     }
 
     function testForwardRevertsIfNeverSent() public {
@@ -239,7 +255,7 @@ contract StandbyAdapterMultiAdapterTest is Test {
         set[0] = activeA;
         set[1] = activeB;
         set[2] = standby;
-        multi.setAdapters(REMOTE, POOL_0, set, 2); // 2-of-3
+        multi.setAdapters(REMOTE, POOL_0, set, 2, 1); // 2-of-3
     }
 
     /// @dev MultiAdapter wraps outbound payloads with the active sessionId; the standby records that.

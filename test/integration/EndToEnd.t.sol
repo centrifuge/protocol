@@ -264,7 +264,14 @@ contract EndToEndDeployment is Test {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
         vm.startPrank(address(deploy.protocolGuardian()));
-        deploy.multiAdapter().setAdapters(remoteCentrifugeId, GLOBAL_POOL, adapters, uint8(adapters.length));
+        deploy.multiAdapter()
+            .setAdapters(
+                remoteCentrifugeId,
+                GLOBAL_POOL,
+                adapters,
+                uint8(adapters.length),
+                deploy.multiAdapter().activeSessionId(remoteCentrifugeId, GLOBAL_POOL) + 1
+            );
 
         vm.stopPrank();
     }
@@ -332,10 +339,9 @@ contract EndToEndDeployment is Test {
 
 contract IsContract {}
 
-/// @dev Minimal spoke-side manifest for end-to-end coverage of {Spoke.enforced}. A guarded selector is
-///      out of policy and must be pre-authorized (via {Hub.authorizeSpokeCall}); `enforce` consumes the
-///      matured authorization from the {SpokeRegistry}. `enforce` may only be called by the enforcer (the
-///      Spoke), mirroring {StdManifest}'s `msg.sender == hub` gate — this is what pins the caller identity.
+/// @dev Minimal spoke-side manifest for end-to-end coverage of {Spoke.enforced}. A guarded selector is out
+///      of policy and must be pre-authorized via {Hub.authorizeSpokeCall}; `enforce` consumes the matured
+///      authorization from the {SpokeRegistry} and only runs when called by the enforcer (the Spoke).
 contract MockSpokeManifest is IManifest {
     ISpokeRegistry public immutable registry;
     address public immutable enforcer;
@@ -1102,8 +1108,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     }
 
     /// @dev Hub authorizes an out-of-policy spoke call end-to-end: Hub.authorizeSpokeCall -> Authorize
-    ///      message -> SpokeHandler.authorize -> SpokeRegistry records it; the pool's manifest then consumes
-    ///      it on the spoke (what manifest.enforce does for the matching call).
+    ///      message -> SpokeHandler.authorize -> SpokeRegistry records it, consumed later by the manifest.
     /// forge-config: default.isolate = true
     function testAuthorizeSpokeCall(bool sameChain) public {
         _configurePool(sameChain);
@@ -1112,7 +1117,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.prank(FM);
         h.hub.setSpokeManifest{value: GAS}(POOL_A, s.centrifugeId, manifest.toBytes32(), REFUND);
 
-        bytes memory data = hex"1234"; // the exact spoke calldata being authorized
+        bytes memory data = hex"1234"; // arbitrary; matched by exact bytes
 
         vm.prank(FM);
         h.hub.authorizeSpokeCall{value: GAS}(POOL_A, s.centrifugeId, data, REFUND);
@@ -1120,7 +1125,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
-        // The manifest consumes it on the spoke side, as its enforce would for the matching call.
+        // Manifest consumes the authorization directly.
         vm.prank(manifest);
         s.spokeRegistry.consumeAuthorization(POOL_A, FM, data);
         assertEq(s.spokeRegistry.authorizations(id), 0);
@@ -1136,7 +1141,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.prank(FM);
         h.hub.setSpokeManifest{value: GAS}(POOL_A, s.centrifugeId, manifest.toBytes32(), REFUND);
 
-        bytes memory data = hex"1234"; // the exact spoke calldata being authorized
+        bytes memory data = hex"1234"; // arbitrary; matched by exact bytes
 
         vm.prank(FM);
         h.hub.authorizeSpokeCall{value: GAS}(POOL_A, s.centrifugeId, data, REFUND);
@@ -1144,16 +1149,15 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
-        // The Hub retires the not-yet-consumed authorization, decrementing the counter back to zero.
+        // Hub retires the outstanding authorization, decrementing the counter.
         vm.prank(FM);
         h.hub.unauthorizeSpokeCall{value: GAS}(POOL_A, s.centrifugeId, data, REFUND);
         assertEq(s.spokeRegistry.authorizations(id), 0);
     }
 
-    /// @dev A guarded spoke call is routed through {Spoke.enforced} into a real manifest's {enforce}: the
-    ///      out-of-policy call is blocked until the Hub authorizes it, and the manifest sees the Spoke as its
-    ///      caller (msg.sender) and the acting manager as `caller`. Covers the wiring that the authorize/
-    ///      unauthorize tests skip (they install an EOA manifest and consume directly).
+    /// @dev Routes a guarded spoke call through {Spoke.enforced} into a real manifest's {enforce}: blocked
+    ///      until the Hub authorizes it, with the manifest seeing the Spoke as caller and the acting manager
+    ///      as `caller`. Covers the wiring the authorize/unauthorize tests skip (they consume directly).
     /// forge-config: default.isolate = true
     function testEnforceSpokeCall(bool sameChain) public {
         _configurePool(sameChain);
@@ -1170,7 +1174,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         bytes memory data = abi.encodeCall(Spoke.deposit, (POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1));
 
-        // Not yet authorized: Spoke.enforced -> manifest.enforce -> consumeAuthorization reverts, blocking it.
+        // Not yet authorized: Spoke.enforced -> manifest.enforce -> consumeAuthorization reverts.
         vm.prank(BSM);
         vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
@@ -1181,7 +1185,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
-        // Now the same call runs: enforce consumes the authorization and the deposit takes effect.
+        // Same call now succeeds: enforce consumes the authorization.
         vm.prank(BSM);
         s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
 

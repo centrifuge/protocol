@@ -284,10 +284,10 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    /// @dev Only driver of `Holdings.increase`/`decrease` in this harness: the spoke->hub gateway is mocked
-    ///      as a no-op, so the queued-asset path never reaches the hub. Letting the fuzzer decrease past the
-    ///      current amount drives the deficit state that `property_deficitCountMatchesHoldings` guards.
-    ///      `isSnapshot=true` keeps the hub snapshot nonce self-consistent, since nothing else drives it here.
+    /// @dev Only driver of `Holdings.increase`/`decrease` here: the spoke->hub gateway is mocked as a no-op,
+    ///      so the queued-asset path never reaches the hub. Letting the fuzzer decrease past the current
+    ///      amount drives the deficit state `property_deficitCountMatchesHoldings` guards; `isSnapshot=true`
+    ///      keeps the hub snapshot nonce self-consistent since nothing else drives it here.
     function hub_updateAssets(uint128 amount, bool isIncrease) public updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();

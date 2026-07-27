@@ -81,7 +81,7 @@ library MessageLib {
         (33  << uint8(MessageType.ScheduleUpgrade) * 8) +
         (33  << uint8(MessageType.CancelUpgrade) * 8) +
         (18  << uint8(MessageType.RegisterAsset) * 8) +
-        (12  << uint8(MessageType.SetPoolAdapters) * 8) +
+        (14  << uint8(MessageType.SetPoolAdapters) * 8) +
         (9   << uint8(MessageType.NotifyPool) * 8) +
         (250 << uint8(MessageType.NotifyShareClass) * 8) +
         (49  << uint8(MessageType.NotifyPricePoolPerShare) * 8) +
@@ -113,7 +113,7 @@ library MessageLib {
 
     function messageLength(bytes memory message) internal pure returns (uint16 length) {
         uint8 kind = message.toUint8(0);
-        require(kind <= uint8(type(MessageType).max), UnknownMessageType());
+        require(kind != uint8(MessageType._Invalid) && kind <= uint8(type(MessageType).max), UnknownMessageType());
 
         length = uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]));
 
@@ -133,7 +133,7 @@ library MessageLib {
         } else if (kind == uint8(MessageType.UnauthorizeSpokeCall)) {
             length += 2 + message.toUint16(length); //payloadLength
         } else if (kind == uint8(MessageType.SetPoolAdapters)) {
-            length += message.toUint16(10) * 32; // message with variable length
+            length += message.toUint16(12) * 32; // message with variable length
         }
     }
 
@@ -303,24 +303,35 @@ library MessageLib {
     struct SetPoolAdapters {
         uint64 poolId;
         uint8 threshold;
+        uint16 targetSessionId;
         bytes32[] adapterList;
     }
 
     function deserializeSetPoolAdapters(bytes memory data) internal pure returns (SetPoolAdapters memory) {
         require(messageType(data) == MessageType.SetPoolAdapters, UnknownMessageType());
 
-        uint16 length = data.toUint16(10);
+        uint16 length = data.toUint16(12);
         bytes32[] memory adapterList = new bytes32[](length);
         for (uint256 i; i < length; i++) {
-            adapterList[i] = data.toBytes32(12 + i * 32);
+            adapterList[i] = data.toBytes32(14 + i * 32);
         }
 
-        return SetPoolAdapters({poolId: data.toUint64(1), threshold: data.toUint8(9), adapterList: adapterList});
+        return SetPoolAdapters({
+            poolId: data.toUint64(1),
+            threshold: data.toUint8(9),
+            targetSessionId: data.toUint16(10),
+            adapterList: adapterList
+        });
     }
 
     function serialize(SetPoolAdapters memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.SetPoolAdapters, t.poolId, t.threshold, t.adapterList.length.toUint16(), t.adapterList
+            MessageType.SetPoolAdapters,
+            t.poolId,
+            t.threshold,
+            t.targetSessionId,
+            t.adapterList.length.toUint16(),
+            t.adapterList
         );
     }
 

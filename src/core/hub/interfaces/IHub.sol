@@ -275,10 +275,9 @@ interface IHub is IBatchedMulticall {
     /// @param refund Address to receive excess gas refund
     function setSpokeManifest(PoolId poolId, uint16 centrifugeId, bytes32 manifest_, address refund) external payable;
 
-    /// @notice Authorize an out-of-policy call on a spoke pool. Manager-gated and classified as a std delay by
-    ///         the Hub manifest, so it only proceeds once it has matured through the Hub timelock and survived
-    ///         the sentinel veto window; it then pushes the authorization to the spoke, where a manager can
-    ///         consume it with a matching call. Only the Hub chain needs a secure cold wallet.
+    /// @notice Authorize an out-of-policy call on a spoke pool. Manager-gated and classified as a std delay
+    ///         by the Hub manifest, so it matures through the Hub timelock and sentinel veto before pushing
+    ///         the authorization to the spoke for a manager to consume. Only the Hub chain needs a cold wallet.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain of the spoke the authorized call targets
     /// @param data The exact spoke calldata being authorized

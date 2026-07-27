@@ -325,8 +325,8 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         testAdapters.push(adapter3);
 
         // Route outgoing messages through mock adapters
-        multiAdapter.setAdapters(OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length));
-        multiAdapter.setAdapters(OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length));
+        multiAdapter.setAdapters(OTHER_CHAIN_ID, PoolId.wrap(0), testAdapters, uint8(testAdapters.length), 1);
+        multiAdapter.setAdapters(OTHER_CHAIN_ID, POOL_A, testAdapters, uint8(testAdapters.length), 1);
 
         // Deploy direct chain simulator and give it auth on relevant contracts
         centrifugeChain = new MockCentrifugeChainDirect(spokeHandler, spokeRegistry, syncManager, shareTokenRegistrar);

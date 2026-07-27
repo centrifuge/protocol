@@ -193,7 +193,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
 
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund) public {
         vm.assume(invalidOrigin != address(GATEWAY));
-        gasLimit = uint128(bound(gasLimit, 0, adapter.RECEIVE_COST() - 1));
+        gasLimit = uint128(bound(gasLimit, 0, adapter.DEFAULT_RECEIVE_COST() - 1));
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);
@@ -218,10 +218,30 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit + adapter.RECEIVE_COST())
+            uint128(gasLimit + adapter.DEFAULT_RECEIVE_COST())
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);
         assertEq(endpoint.values_address("refundAddress"), refund);
+    }
+
+    /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
+    function testSendUsesMonadReceiveCost(bytes calldata payload, uint128 gasLimit, address refund) public {
+        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        gasLimit = uint128(bound(gasLimit, 0, type(uint64).max));
+        adapter.wire(monadId, abi.encode(LAYERZERO_ID, makeAddr("DestinationAdapter")));
+
+        vm.deal(address(GATEWAY), 0.1 ether);
+        vm.prank(address(GATEWAY));
+        adapter.send{value: 0.1 ether}(monadId, payload, gasLimit, refund);
+
+        bytes memory expectedOptions = abi.encodePacked(
+            uint16(3), // TYPE_3
+            uint8(1), // WORKER_ID
+            uint16(17), // uint128 gasLimit byte length + 1
+            uint8(1), // OPTION_TYPE_LZ
+            uint128(gasLimit + adapter.MONAD_RECEIVE_COST())
+        );
+        assertEq(endpoint.values_bytes("params.options"), expectedOptions);
     }
 }

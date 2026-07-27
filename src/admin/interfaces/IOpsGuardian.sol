@@ -17,6 +17,7 @@ interface IOpsGuardian {
     error FileUnrecognizedParam();
     error CannotSetAdaptersForLocalChain();
     error CannotSetAdaptersForMainnet();
+    error CannotWireLocalChain();
     error CannotWireMainnet();
     error CentrifugeIdAlreadySet();
 
@@ -31,8 +32,9 @@ interface IOpsGuardian {
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold) external;
 
     /// @notice Wire an adapter to a remote chain (can be called multiple times to re-point a binding)
-    /// @dev Reverts if centrifugeId is the mainnet (ETHEREUM) hub chain. The ETHEREUM connection
-    ///      carries critical messages and can only be wired/rotated through Root, not the OpsGuardian.
+    /// @dev Reverts if centrifugeId is the local chain or the mainnet (ETHEREUM) hub chain. The ETHEREUM
+    ///      connection carries critical messages and can only be wired/rotated through Root, not the
+    ///      OpsGuardian; the local chain is never a valid remote wiring target.
     /// @param adapter Address of the adapter to wire
     /// @param centrifugeId The chain ID to wire to
     /// @param data ABI-encoded adapter-specific configuration data

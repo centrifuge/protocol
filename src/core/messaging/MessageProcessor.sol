@@ -192,7 +192,7 @@ contract MessageProcessor is Auth, IMessageProcessor {
             for (uint256 i; i < adapters.length; i++) {
                 adapters[i] = IAdapter(m.adapterList[i].toAddress());
             }
-            multiAdapter.setAdapters(centrifugeId, poolId, adapters, m.threshold);
+            multiAdapter.setAdapters(centrifugeId, poolId, adapters, m.threshold, m.targetSessionId);
         } else if (kind == MessageType.ManagerCallFromHub) {
             MessageLib.ManagerCallFromHub memory m = MessageLib.deserializeManagerCallFromHub(message);
             envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);

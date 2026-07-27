@@ -756,7 +756,14 @@ contract InvestmentFlowExecutor is Test {
         adapters[0] = IAdapter(address(hubAdapter));
 
         vm.startPrank(address(ctx.report.core.protocolGuardian));
-        ctx.report.core.multiAdapter.setAdapters(hubCentrifugeId, ctx.poolId, adapters, uint8(adapters.length));
+        ctx.report.core.multiAdapter
+            .setAdapters(
+                hubCentrifugeId,
+                ctx.poolId,
+                adapters,
+                uint8(adapters.length),
+                ctx.report.core.multiAdapter.activeSessionId(hubCentrifugeId, ctx.poolId) + 1
+            );
         vm.stopPrank();
     }
 
