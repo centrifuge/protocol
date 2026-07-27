@@ -446,3 +446,27 @@ contract SyncManagerMaxDepositMintConsistencyTest is SyncManagerBaseTest {
         }
     }
 }
+
+contract SyncManagerUnknownVaultTest is SyncManagerBaseTest {
+    /// @dev A vault whose details resolve to a zero asset (unregistered) must be rejected, not read as 0.
+    function _unregisteredVault() internal returns (IBaseVault unregistered) {
+        unregistered = IBaseVault(address(new IsContract()));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, unregistered),
+            abi.encode(VaultDetails(POOL_ID, SC_ID, ASSET_ID, address(0), TOKEN_ID, false))
+        );
+    }
+
+    function testConvertToSharesErrUnknownVault() public {
+        IBaseVault unregistered = _unregisteredVault();
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        syncManager.convertToShares(unregistered, 1e18);
+    }
+
+    function testMaxDepositErrUnknownVault() public {
+        IBaseVault unregistered = _unregisteredVault();
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        syncManager.maxDeposit(unregistered, USER);
+    }
+}

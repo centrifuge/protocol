@@ -33,8 +33,8 @@ import {IManifest} from "../hub/interfaces/IManifest.sol";
 contract SpokeRegistry is Auth, ISpokeRegistry {
     // Pools & share classes
     mapping(PoolId => Pool) public pool;
+    mapping(address token => TokenDetails) public tokenDetails;
     mapping(PoolId => ISpokeRequestManager) public requestManager;
-    mapping(address token => TokenDetails) internal _tokenDetails;
     mapping(PoolId => mapping(ShareClassId => ShareClassDetails)) public shareClass;
 
     // Roles
@@ -88,14 +88,14 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         // Must already be deployed, so a registrar cannot reserve another pool's future token address
         require(shareToken_.code.length > 0, NotAContract());
         require(address(registrar_) != address(0), EmptyRegistrar());
-        require(_tokenDetails[shareToken_].poolId.isNull(), TokenAlreadyRegistered());
+        require(tokenDetails[shareToken_].poolId.isNull(), TokenAlreadyRegistered());
 
         ShareClassDetails storage shareClass_ = shareClass[poolId][scId];
-        if (address(shareClass_.shareToken) != address(0)) delete _tokenDetails[address(shareClass_.shareToken)];
+        if (address(shareClass_.shareToken) != address(0)) delete tokenDetails[address(shareClass_.shareToken)];
 
         shareClass_.shareToken = IERC20(shareToken_);
         shareClass_.registrar = registrar_;
-        _tokenDetails[shareToken_] = TokenDetails(poolId, scId);
+        tokenDetails[shareToken_] = TokenDetails(poolId, scId);
         emit AddShareClass(poolId, scId, shareToken_, registrar_);
     }
 
@@ -104,6 +104,31 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(isPoolActive(poolId), InvalidPool());
         requestManager[poolId] = manager_;
         emit SetRequestManager(poolId, manager_);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function isPoolActive(PoolId poolId) public view returns (bool) {
+        return pool[poolId].createdAt > 0;
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function hasShareClass(PoolId poolId, ShareClassId scId) public view returns (bool) {
+        return address(shareClass[poolId][scId].shareToken) != address(0);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function shareToken(PoolId poolId, ShareClassId scId) public view returns (IERC20) {
+        return shareClass[poolId][scId].shareToken;
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function shareTokenAndRegistrar(PoolId poolId, ShareClassId scId)
+        public
+        view
+        returns (IERC20 token, IRegistrar registrar_)
+    {
+        ShareClassDetails storage shareClass_ = shareClass[poolId][scId];
+        return (shareClass_.shareToken, shareClass_.registrar);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -124,6 +149,10 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         emit UpdateBridger(poolId, who, canBridge);
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Policy & authorization
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc ISpokeRegistry
     function setManifest(PoolId poolId, IManifest manifest_) external auth {
         require(isPoolActive(poolId), InvalidPool());
@@ -133,8 +162,6 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function authorize(PoolId poolId, bytes calldata data) external auth {
-        // The Hub already ran the timelock, so the spoke just counts the call as authorized. A counter (not
-        // a flag) lets several authorizations of the same call be outstanding; a matching call later consumes one.
         ManifestInfo memory m = _manifest[poolId];
         require(address(m.manifest) != address(0), NoManifest());
 
@@ -145,11 +172,11 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function unauthorize(PoolId poolId, bytes calldata data) external auth {
-        // Lets the Hub revoke an outstanding, not-yet-consumed authorization (decrements the counter).
         ManifestInfo memory m = _manifest[poolId];
         bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
         uint256 count = authorizations[id];
         require(count != 0, NoOutstandingAuthorization());
+
         authorizations[id] = count - 1;
         emit AuthorizationRevoked(poolId, id, data);
     }
@@ -162,16 +189,15 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
         uint256 count = authorizations[id];
         require(count != 0, NoOutstandingAuthorization());
+
         authorizations[id] = count - 1;
         emit AuthorizationConsumed(poolId, caller, id);
     }
 
     /// @inheritdoc ISpokeRegistry
-    /// @dev `authId` is namespaced by the pool's current manifest and its install nonce, so any manifest
-    ///      change makes every outstanding authorization unreachable without needing to enumerate and
-    ///      clear them — including re-installing a previously used manifest address, which must not
-    ///      resurrect authorizations from its earlier tenure.
-    function authId(PoolId poolId, bytes calldata data) public view returns (bytes32) {
+    /// @dev Namespaced by the pool's current manifest and its install nonce, so any manifest change (even
+    ///      swapping back to a previously used manifest) makes every outstanding authorization unreachable.
+    function authId(PoolId poolId, bytes calldata data) external view returns (bytes32) {
         ManifestInfo memory m = _manifest[poolId];
         return _authId(poolId, address(m.manifest), m.nonce, data);
     }
@@ -182,6 +208,16 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         returns (bytes32)
     {
         return keccak256(abi.encodePacked(poolId.raw(), manifest_, nonce_, data));
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function manifest(PoolId poolId) external view returns (IManifest) {
+        return _manifest[poolId].manifest;
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function manifestNonce(PoolId poolId) external view returns (uint64) {
+        return _manifest[poolId].nonce;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -200,14 +236,14 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     ) external auth {
         require(vault_.poolId() == poolId, InvalidVault());
         require(vault_.scId() == scId, InvalidVault());
-        _shareClass(poolId, scId);
+        require(hasShareClass(poolId, scId), ShareTokenDoesNotExist());
 
-        (address asset_, uint256 tokenId_) = idToAsset(assetId);
-        require(asset_ == asset && tokenId_ == tokenId, UnknownAsset());
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        require(assetIdKey.asset != address(0), UnknownAsset());
+        require(assetIdKey.asset == asset && assetIdKey.tokenId == tokenId, UnknownAsset());
 
         require(!_vaultDetails[vault_].isLinked, AlreadyLinkedVault());
 
-        // We need to check if there's a request manager for async vaults
         if (vault_.vaultKind() == VaultKind.Async) {
             require(address(requestManager[poolId]) != address(0), InvalidRequestManager());
         }
@@ -221,7 +257,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(vault_.poolId() == poolId, InvalidVault());
         require(vault_.scId() == scId, InvalidVault());
 
-        (address asset, uint256 tokenId) = idToAsset(assetId);
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        require(assetIdKey.asset != address(0), UnknownAsset());
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
@@ -229,9 +266,9 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(!vaultDetails_.isLinked, AlreadyLinkedVault());
 
         vaultDetails_.isLinked = true;
-        _pointVault(poolId, scId, asset, tokenId, address(vault_), true);
+        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, address(vault_), true);
 
-        emit LinkVault(poolId, scId, asset, tokenId, vault_);
+        emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_);
     }
 
     /// @inheritdoc ISpokeRegistry
@@ -239,35 +276,50 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(vault_.poolId() == poolId, InvalidVault());
         require(vault_.scId() == scId, InvalidVault());
 
-        (address asset, uint256 tokenId) = idToAsset(assetId);
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        require(assetIdKey.asset != address(0), UnknownAsset());
 
         VaultDetails storage vaultDetails_ = _vaultDetails[vault_];
         require(vaultDetails_.asset != address(0), UnknownVault());
+        require(vaultDetails_.assetId.raw() == assetId.raw(), UnknownAsset());
         require(vaultDetails_.isLinked, AlreadyUnlinkedVault());
 
         vaultDetails_.isLinked = false;
-        _pointVault(poolId, scId, asset, tokenId, address(vault_), false);
+        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, address(vault_), false);
 
-        emit UnlinkVault(poolId, scId, asset, tokenId, vault_);
+        emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_);
     }
 
-    /// @dev Keeps the share token's ERC-7575 vault pointer for `asset` in lockstep with links: on link aim it
-    ///      at `vault_`, on unlink clear it but only if it still targets `vault_` (so unlinking one of several
-    ///      vaults sharing a tuple never clobbers another's pointer). ERC-7575 pointers are asset-address keyed,
-    ///      so this applies only to ERC20 assets (`tokenId == 0`); the registrar operates the token on the
-    ///      registry's behalf. On link multiple vaults per tuple is last-writer-wins; governance disambiguates
-    ///      with an explicit `RegistrarCall.SetVault`.
+    /// @dev Keeps the share token's ERC-7575 vault pointer in lockstep with links: aim it at `vault_` on link,
+    ///      and on unlink clear it only if it still targets `vault_` (so unlinking one of several vaults sharing
+    ///      a tuple never clobbers another's). Only for ERC20 assets (`tokenId == 0`), since ERC-7575 pointers
+    ///      are asset-address keyed; on link, multiple vaults per tuple is last-writer-wins.
     function _pointVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address vault_, bool linked)
         internal
     {
         if (tokenId != 0) return;
-        ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
+        ShareClassDetails storage shareClass_ = shareClass[poolId][scId];
         address token = address(shareClass_.shareToken);
         if (linked) {
             shareClass_.registrar.updateVault(token, asset, vault_);
         } else if (IERC7575Share(token).vault(asset) == vault_) {
             shareClass_.registrar.updateVault(token, asset, address(0));
         }
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function isVaultRegistered(IVault vault_) public view returns (bool) {
+        return _vaultDetails[vault_].asset != address(0);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function vaultDetails(IVault vault_) public view returns (VaultDetails memory details) {
+        return _vaultDetails[vault_];
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function isLinked(IVault vault_) public view returns (bool) {
+        return _vaultDetails[vault_].isLinked;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -291,14 +343,42 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         _assetToId[asset][tokenId] = assetId;
     }
 
+    /// @inheritdoc ISpokeRegistry
+    function isRegistered(AssetId assetId) public view returns (bool) {
+        return _idToAsset[assetId].asset != address(0);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function idToAsset(AssetId assetId) public view returns (address asset, uint256 tokenId) {
+        return idToAsset(assetId, false);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function idToAsset(AssetId assetId, bool revertOnNull) public view returns (address asset, uint256 tokenId) {
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
+        require(!revertOnNull || assetIdKey.asset != address(0), UnknownAsset());
+        return (assetIdKey.asset, assetIdKey.tokenId);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function assetToId(address asset, uint256 tokenId) public view returns (AssetId assetId) {
+        return assetToId(asset, tokenId, false);
+    }
+
+    /// @inheritdoc ISpokeRegistry
+    function assetToId(address asset, uint256 tokenId, bool revertOnNull) public view returns (AssetId assetId) {
+        assetId = _assetToId[asset][tokenId];
+        require(!revertOnNull || !assetId.isNull(), UnknownAsset());
+    }
+
     //----------------------------------------------------------------------------------------------
     // Price management
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeRegistry
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 price, uint64 computedAt) external auth {
-        ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        Price storage poolPerShare = shareClass_.pricePoolPerShare;
+        require(hasShareClass(poolId, scId), ShareTokenDoesNotExist());
+        Price storage poolPerShare = shareClass[poolId][scId].pricePoolPerShare;
         require(computedAt >= poolPerShare.computedAt, CannotSetOlderPrice());
 
         poolPerShare.price = price;
@@ -311,107 +391,23 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         external
         auth
     {
-        _shareClass(poolId, scId);
-        (address asset, uint256 tokenId) = idToAsset(assetId);
+        require(hasShareClass(poolId, scId), ShareTokenDoesNotExist());
+        require(isRegistered(assetId), UnknownAsset());
+        AssetIdKey memory assetIdKey = _idToAsset[assetId];
         Price storage poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
         poolPerAsset.price = price;
         poolPerAsset.computedAt = computedAt;
-        emit UpdateAssetPrice(poolId, scId, asset, tokenId, price, computedAt);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // View methods
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc ISpokeRegistry
-    function isPoolActive(PoolId poolId) public view returns (bool) {
-        return pool[poolId].createdAt > 0;
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function manifest(PoolId poolId) external view returns (IManifest) {
-        return _manifest[poolId].manifest;
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function manifestNonce(PoolId poolId) external view returns (uint64) {
-        return _manifest[poolId].nonce;
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function shareToken(PoolId poolId, ShareClassId scId) public view returns (IERC20) {
-        return _shareClass(poolId, scId).shareToken;
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    /// @dev Existence is checked against the registrar slot (set atomically with the token in `_linkToken`),
-    ///      so this reads a single slot instead of also loading the token as `_shareClass` would.
-    function registrar(PoolId poolId, ShareClassId scId) public view returns (IRegistrar registrar_) {
-        registrar_ = shareClass[poolId][scId].registrar;
-        require(address(registrar_) != address(0), ShareTokenDoesNotExist());
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function shareTokenAndRegistrar(PoolId poolId, ShareClassId scId)
-        public
-        view
-        returns (IERC20 token, IRegistrar registrar_)
-    {
-        ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        return (shareClass_.shareToken, shareClass_.registrar);
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function shareTokenDetails(address shareToken_) public view returns (PoolId poolId, ShareClassId scId) {
-        TokenDetails storage details = _tokenDetails[shareToken_];
-        poolId = details.poolId;
-        scId = details.scId;
-        require(!poolId.isNull(), ShareTokenDoesNotExist());
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function idToAsset(AssetId assetId) public view returns (address asset, uint256 tokenId) {
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        require(assetIdKey.asset != address(0), UnknownAsset());
-        return (assetIdKey.asset, assetIdKey.tokenId);
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function idToAssetOrNull(AssetId assetId) external view returns (address asset, uint256 tokenId) {
-        AssetIdKey memory assetIdKey = _idToAsset[assetId];
-        return (assetIdKey.asset, assetIdKey.tokenId);
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function assetToId(address asset, uint256 tokenId) public view returns (AssetId assetId) {
-        assetId = _assetToId[asset][tokenId];
-        require(assetId.raw() != 0, UnknownAsset());
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function assetToIdOrNull(address asset, uint256 tokenId) external view returns (AssetId assetId) {
-        return _assetToId[asset][tokenId];
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function vaultDetails(IVault vault_) public view returns (VaultDetails memory details) {
-        details = _vaultDetails[vault_];
-        require(details.asset != address(0), UnknownVault());
-    }
-
-    /// @inheritdoc ISpokeRegistry
-    function isLinked(IVault vault_) public view returns (bool) {
-        return _vaultDetails[vault_].isLinked;
+        emit UpdateAssetPrice(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, price, computedAt);
     }
 
     /// @inheritdoc ISpokeRegistry
     function pricePoolPerShare(PoolId poolId, ShareClassId scId, bool checkValidity) public view returns (D18 price) {
-        ShareClassDetails storage shareClass_ = _shareClass(poolId, scId);
-        require(!checkValidity || shareClass_.pricePoolPerShare.isValid(), InvalidPrice());
+        Price storage poolPerShare = shareClass[poolId][scId].pricePoolPerShare;
+        require(!checkValidity || poolPerShare.isValid(), InvalidPrice());
 
-        return shareClass_.pricePoolPerShare.price;
+        return poolPerShare.price;
     }
 
     /// @inheritdoc ISpokeRegistry
@@ -438,18 +434,5 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         returns (uint64)
     {
         return _pricePoolPerAsset[poolId][scId][assetId].computedAt;
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Internal methods
-    //----------------------------------------------------------------------------------------------
-
-    function _shareClass(PoolId poolId, ShareClassId scId)
-        internal
-        view
-        returns (ShareClassDetails storage shareClass_)
-    {
-        shareClass_ = shareClass[poolId][scId];
-        require(address(shareClass_.shareToken) != address(0), ShareTokenDoesNotExist());
     }
 }

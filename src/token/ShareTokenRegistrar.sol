@@ -90,7 +90,7 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
     function _setVault(PoolId poolId, ShareClassId scId, address token, bytes calldata payload) private {
         (,, uint128 assetId, address vault) = abi.decode(payload, (uint8, bytes16, uint128, address));
         AssetId assetId_ = AssetId.wrap(assetId);
-        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId_);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId_, true);
         require(tokenId == 0, NonZeroTokenId());
 
         // Validate declaratively against registry storage (poolId/scId are validated at registration, so no

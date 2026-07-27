@@ -52,6 +52,9 @@ contract SlippageGuardTest is Test {
             abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
             abi.encode(shareToken)
         );
+        vm.mockCall(
+            spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector, POOL_A, SC_1), abi.encode(true)
+        );
         vm.mockCall(shareToken, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
 
         vm.mockCall(assetA, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
@@ -59,12 +62,12 @@ contract SlippageGuardTest is Test {
 
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, assetA, uint256(0)),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetA, uint256(0)),
             abi.encode(ASSET_ID_1)
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, assetB, uint256(0)),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetB, uint256(0)),
             abi.encode(ASSET_ID_2)
         );
 
@@ -517,7 +520,7 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, erc6909, erc6909TokenId),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), erc6909, erc6909TokenId),
             abi.encode(ASSET_ID_3)
         );
         vm.mockCall(

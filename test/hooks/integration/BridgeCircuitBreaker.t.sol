@@ -37,7 +37,7 @@ contract BridgeCircuitBreakerIntegrationTest is CentrifugeIntegrationTest {
         hub.addShareClass(POOL_A, "Test", "T", bytes32(bytes8(POOL_A.raw())));
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, FM);
         hub.notifyShareClass{value: 0}(
-            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), FM
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), 0, FM
         );
         vm.stopPrank();
 

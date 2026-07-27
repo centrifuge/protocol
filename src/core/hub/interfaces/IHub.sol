@@ -2,8 +2,8 @@
 pragma solidity >=0.5.0;
 
 import {IHoldings} from "./IHoldings.sol";
-import {IManifest} from "./IManifest.sol";
 import {IValuation} from "./IValuation.sol";
+import {IHubManifest} from "./IManifest.sol";
 import {IFeeAccrual} from "./IFeeAccrual.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
@@ -65,7 +65,12 @@ interface IHub is IBatchedMulticall {
         uint16 indexed centrifugeId, PoolId indexed poolId, ManagerKind kind, bytes32 indexed who, bool canManage
     );
     event UpdateVault(
-        PoolId indexed poolId, ShareClassId scId, AssetId assetId, bytes32 vaultOrFactory, VaultUpdateKind kind
+        PoolId indexed poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        bytes32 vaultOrFactory,
+        VaultUpdateKind kind,
+        bytes payload
     );
     event ManagerCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 target, bytes payload);
     event ForwardTransferShares(
@@ -142,7 +147,7 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Returns the policy manifest installed for a pool (address(0) if none),
     ///         consulted on every manager call. Storage lives in the {IHubRegistry}; this reads through.
-    function manifest(PoolId poolId) external view returns (IManifest);
+    function manifest(PoolId poolId) external view returns (IHubManifest);
 
     /// @notice Updates a contract parameter
     /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'holdings', 'sender', 'multiAdapter', 'shareClassManager')
@@ -152,7 +157,7 @@ interface IHub is IBatchedMulticall {
     /// @notice Install or replace the policy manifest for a pool.
     /// @dev    Wards may call directly (break-glass). For managers the current manifest is enforced,
     ///         which typically requires an authorization for its own replacement.
-    function setManifest(PoolId poolId, IManifest manifest_) external;
+    function setManifest(PoolId poolId, IHubManifest manifest_) external;
 
     /// @notice Pre-authorize a future, out-of-policy call against the Hub's timelock ledger. Manager only.
     /// @param poolId The pool the call targets
@@ -332,7 +337,8 @@ interface IHub is IBatchedMulticall {
     /// @param assetId The asset id
     /// @param vaultOrFactory The address of the vault or the factory, depending on the kind value
     /// @param kind The kind of action applied
-    /// @param payload Opaque data forwarded to the factory on DeployAndLink; empty otherwise
+    /// @param payload Opaque data forwarded to the factory on DeployAndLink; empty otherwise. A larger payload
+    ///                costs more calldata/memory on the spoke, so size `extraGasLimit` accordingly.
     /// @param extraGasLimit Extra gas limit for remote computation
     /// @param refund Address to receive excess gas refund
     function updateVault(
@@ -442,17 +448,30 @@ interface IHub is IBatchedMulticall {
     /// @param scId The share class identifier
     /// @param centrifugeId Chain where CV instance lives
     /// @param registrar The registrar (on the target chain) that deploys and operates the share token
+    /// @param extraGasLimit Extra gas for the registrar's `newToken` deployment on the destination chain
     /// @param refund Address to receive excess gas refund
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 registrar, address refund)
-        external
-        payable;
+    function notifyShareClass(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 registrar,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Notify to a CV instance that share metadata has updated
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param centrifugeId Chain where CV instance lives
+    /// @param extraGasLimit Extra gas for the registrar's `updateMetadata` call on the destination chain
     /// @param refund Address to receive excess gas refund
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund) external payable;
+    function notifyShareMetadata(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable;
 
     /// @notice Notify to a CV instance the latest available price in POOL_UNIT / SHARE_UNIT
     /// @param poolId The pool identifier

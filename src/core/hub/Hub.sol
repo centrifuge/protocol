@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {IHoldings} from "./interfaces/IHoldings.sol";
-import {IManifest} from "./interfaces/IManifest.sol";
 import {IValuation} from "./interfaces/IValuation.sol";
+import {IHubManifest} from "./interfaces/IManifest.sol";
 import {IFeeAccrual} from "./interfaces/IFeeAccrual.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
@@ -23,7 +23,7 @@ import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {IAdapter} from "../messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../messaging/interfaces/IGateway.sol";
 import {IMultiAdapter} from "../messaging/interfaces/IMultiAdapter.sol";
-import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
+import {IHubMessageSender, ShareClassMetadata} from "../messaging/interfaces/IGatewaySenders.sol";
 
 import {ICreatePool} from "../../admin/interfaces/ICreatePool.sol";
 
@@ -103,14 +103,14 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function setManifest(PoolId poolId, IManifest manifest_) external {
+    function setManifest(PoolId poolId, IHubManifest manifest_) external {
         if (wards[msgSender()] != 1) _enforce(poolId);
 
         hubRegistry.setManifest(poolId, manifest_);
     }
 
     /// @inheritdoc IHub
-    function manifest(PoolId poolId) external view returns (IManifest) {
+    function manifest(PoolId poolId) external view returns (IHubManifest) {
         return hubRegistry.manifest(poolId);
     }
 
@@ -293,7 +293,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     ) external payable enforced(poolId) {
         _requireSC(poolId, scId);
 
-        emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind);
+        emit UpdateVault(poolId, scId, assetId, vaultOrFactory, kind, payload);
         sender.sendUpdateVault{value: msgValue()}(
             poolId, scId, assetId, vaultOrFactory, kind, payload, extraGasLimit, refund
         );
@@ -405,32 +405,52 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function notifyShareClass(PoolId poolId, ShareClassId scId, uint16 centrifugeId, bytes32 registrar, address refund)
-        external
-        payable
-    {
+    function notifyShareClass(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        bytes32 registrar,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable {
         _enforce(poolId);
         _requireSC(poolId, scId);
 
-        (string memory name, string memory symbol, bytes32 salt) = shareClassManager.metadata(poolId, scId);
-        uint8 decimals = hubRegistry.decimals(poolId);
+        (ShareClassMetadata memory metadata, bytes32 salt) = _shareClassMetadata(poolId, scId);
 
         emit NotifyShareClass(centrifugeId, poolId, scId);
         sender.sendNotifyShareClass{value: msgValue()}(
-            centrifugeId, poolId, scId, name, symbol, decimals, salt, registrar, refund
+            centrifugeId, poolId, scId, metadata, salt, registrar, extraGasLimit, refund
         );
     }
 
-    /// @inheritdoc IHub
-    function notifyShareMetadata(PoolId poolId, ShareClassId scId, uint16 centrifugeId, address refund)
-        external
-        payable
-        enforced(poolId)
+    /// @dev Reads a share class's creation metadata into a struct, keeping the name/symbol locals out of the
+    ///      caller's stack frame (avoids stack-too-deep in {notifyShareClass}).
+    function _shareClassMetadata(PoolId poolId, ShareClassId scId)
+        internal
+        view
+        returns (ShareClassMetadata memory metadata, bytes32 salt)
     {
+        string memory name;
+        string memory symbol;
+        (name, symbol, salt) = shareClassManager.metadata(poolId, scId);
+        metadata = ShareClassMetadata(name, symbol, hubRegistry.decimals(poolId));
+    }
+
+    /// @inheritdoc IHub
+    function notifyShareMetadata(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 centrifugeId,
+        uint128 extraGasLimit,
+        address refund
+    ) external payable enforced(poolId) {
         (string memory name, string memory symbol,) = shareClassManager.metadata(poolId, scId);
 
         emit NotifyShareMetadata(centrifugeId, poolId, scId, name, symbol);
-        sender.sendNotifyShareMetadata{value: msgValue()}(centrifugeId, poolId, scId, name, symbol, refund);
+        sender.sendNotifyShareMetadata{value: msgValue()}(
+            centrifugeId, poolId, scId, name, symbol, extraGasLimit, refund
+        );
     }
 
     /// @inheritdoc IHub
@@ -584,7 +604,7 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function _enforce(PoolId poolId) internal {
         _requireManager(poolId);
 
-        IManifest m = hubRegistry.manifest(poolId);
+        IHubManifest m = hubRegistry.manifest(poolId);
         if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
     }
 

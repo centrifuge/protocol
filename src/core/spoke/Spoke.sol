@@ -92,13 +92,11 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         protected
         returns (AssetId assetId)
     {
-        string memory name;
-        string memory symbol;
-        uint8 decimals;
-
-        decimals = _safeGetAssetDecimals(asset, tokenId);
+        uint8 decimals = _safeGetAssetDecimals(asset, tokenId);
         require(decimals <= MAX_DECIMALS, TooManyDecimals());
 
+        string memory name;
+        string memory symbol;
         if (tokenId == 0) {
             IERC20Metadata meta = IERC20Metadata(asset);
             name = meta.name();
@@ -109,7 +107,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
             symbol = meta.symbol(tokenId);
         }
 
-        assetId = spokeRegistry.assetToIdOrNull(asset, tokenId);
+        assetId = spokeRegistry.assetToId(asset, tokenId);
         bool isInitialization = assetId.isNull();
         if (isInitialization) {
             assetId = spokeRegistry.createAssetId(sender.localCentrifugeId(), asset, tokenId);
@@ -237,9 +235,10 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
 
     /// @inheritdoc ISpoke
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable enforced(poolId) {
-        snapshotQueue.queueShares(poolId, scId, shares, true);
-
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
+
+        snapshotQueue.queueShares(poolId, scId, shares, true);
         registrar.mint(address(token), to, shares);
 
         emit Issue(poolId, scId, msgSender(), to, shares);
@@ -247,9 +246,10 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
 
     /// @inheritdoc ISpoke
     function revoke(PoolId poolId, ShareClassId scId, uint128 shares) external payable enforced(poolId) {
-        snapshotQueue.queueShares(poolId, scId, shares, false);
-
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
+
+        snapshotQueue.queueShares(poolId, scId, shares, false);
         SafeTransferLib.safeTransferFrom(address(token), msgSender(), address(this), shares);
         SafeTransferLib.safeApprove(address(token), address(registrar), shares);
         registrar.burn(address(token), address(this), shares);
@@ -264,6 +264,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         enforced(poolId)
     {
         IERC20 token = spokeRegistry.shareToken(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
         escrow(poolId).authTransferTo(address(token), 0, receiver, amount);
 
         emit WithdrawShares(poolId, scId, receiver, amount);
@@ -289,6 +290,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint256 amount
     ) external payable enforced(poolId) {
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
         registrar.authTransferFrom(address(token), sender_, from, to, amount);
         emit TransferSharesFrom(poolId, scId, sender_, from, to, amount);
     }
@@ -313,6 +315,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         require(msgSender() == owner || wards[msgSender()] == 1, NotAuthorized());
         require(spokeRegistry.bridger(poolId, owner), NotBridger());
         require(amount != 0, EmptyAmount());
+        require(spokeRegistry.hasShareClass(poolId, scId), ISpokeRegistry.ShareTokenDoesNotExist());
 
         (IERC20 share, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
@@ -422,10 +425,10 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     ) internal {
         if (amount == 0) return;
 
-        snapshotQueue.queueAssets(poolId, scId, spokeRegistry.assetToId(asset, tokenId), amount, isIncrease);
+        snapshotQueue.queueAssets(poolId, scId, spokeRegistry.assetToId(asset, tokenId, true), amount, isIncrease);
     }
 
-    function _safeGetAssetDecimals(address asset, uint256 tokenId) private view returns (uint8) {
+    function _safeGetAssetDecimals(address asset, uint256 tokenId) internal view returns (uint8) {
         bytes memory callData;
 
         if (tokenId == 0) {

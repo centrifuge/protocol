@@ -50,7 +50,7 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Pool & token management
+    // Pool & share class management
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeGatewayHandler
@@ -81,12 +81,14 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         auth
     {
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
         registrar.updateMetadata(address(token), name, symbol);
     }
 
     /// @inheritdoc ISpokeGatewayHandler
     function updateRestriction(PoolId poolId, ShareClassId scId, bytes memory update) external auth {
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
         registrar.updateRestriction(address(token), update);
     }
 
@@ -95,10 +97,15 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     ///      identify the flow as a crosschain transfer execution (this contract is the crosschain source).
     function executeTransferShares(PoolId poolId, ShareClassId scId, bytes32 receiver, uint128 amount) external auth {
         (IERC20 token, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(token) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
         registrar.mint(address(token), address(this), amount);
         SafeTransferLib.safeTransfer(address(token), receiver.toAddress(), amount);
         emit ExecuteTransferShares(poolId, scId, receiver.toAddress(), amount);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Vault management
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeGatewayHandler
     function updateVault(
@@ -110,8 +117,9 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         bytes calldata payload
     ) external auth {
         if (kind == VaultUpdateKind.DeployAndLink) {
-            (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+            (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
             address shareToken = address(spokeRegistry.shareToken(poolId, scId));
+            require(shareToken != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
 
             IVault vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken, payload);
 
@@ -126,6 +134,10 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         }
     }
 
+    //----------------------------------------------------------------------------------------------
+    // Roles
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc ISpokeGatewayHandler
     function updateManager(PoolId poolId, address who, bool canManage) external auth {
         spokeRegistry.updateManager(poolId, who, canManage);
@@ -135,6 +147,10 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     function updateBridger(PoolId poolId, address who, bool canBridge) external auth {
         spokeRegistry.updateBridger(poolId, who, canBridge);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // Policy & authorization
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeGatewayHandler
     function setManifest(PoolId poolId, IManifest manifest) external auth {

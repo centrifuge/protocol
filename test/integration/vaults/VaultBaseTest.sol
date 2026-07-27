@@ -357,8 +357,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         address asset,
         uint256 assetTokenId
     ) public returns (uint64 poolId, address vaultAddress, uint128 assetId) {
-        try spokeRegistry.shareToken(POOL_A, ShareClassId.wrap(scId)) {}
-        catch {
+        if (!spokeRegistry.hasShareClass(POOL_A, ShareClassId.wrap(scId))) {
             if (!spokeRegistry.isPoolActive(POOL_A)) {
                 centrifugeChain.addPool(POOL_A.raw());
             }
@@ -366,9 +365,10 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
             centrifugeChain.updatePricePoolPerShare(POOL_A.raw(), scId, uint128(10 ** 18), uint64(block.timestamp));
         }
 
-        try spokeRegistry.assetToId(asset, assetTokenId) {
-            assetId = spokeRegistry.assetToId(asset, assetTokenId).raw();
-        } catch {
+        AssetId existingAssetId = spokeRegistry.assetToId(asset, assetTokenId);
+        if (!existingAssetId.isNull()) {
+            assetId = existingAssetId.raw();
+        } else {
             assetId = spoke.registerAsset{value: DEFAULT_GAS}(OTHER_CHAIN_ID, asset, assetTokenId, address(this)).raw();
             centrifugeChain.updatePricePoolPerAsset(
                 POOL_A.raw(), scId, assetId, uint128(10 ** 18), uint64(block.timestamp)

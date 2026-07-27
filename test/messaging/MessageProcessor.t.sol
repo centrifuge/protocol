@@ -86,7 +86,8 @@ contract TestMessageSourceClassification is Test {
                     symbol: bytes32("SYM"),
                     decimals: 6,
                     salt: bytes32("salt"),
-                    registrar: bytes32("registrar")
+                    registrar: bytes32("registrar"),
+                    extraGasLimit: 0
                 }).serialize(),
             HOME_CHAIN
         );
@@ -103,8 +104,9 @@ contract TestMessageSourceClassification is Test {
         );
         cases[5] = Case(
             "NotifyShareMetadata",
-            MessageLib.NotifyShareMetadata({poolId: p, scId: bytes16("sc"), name: "name", symbol: bytes32("SYM")})
-                .serialize(),
+            MessageLib.NotifyShareMetadata({
+                    poolId: p, scId: bytes16("sc"), name: "name", symbol: bytes32("SYM"), extraGasLimit: 0
+                }).serialize(),
             HOME_CHAIN
         );
         cases[6] = Case(

@@ -8,6 +8,14 @@ import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {VaultUpdateKind, ManagerKind} from "../libraries/MessageLib.sol";
 
+/// @notice Share class metadata carried by the NotifyShareClass message, bundled to keep the sender signature
+///         (and its callers' stack) within limits.
+struct ShareClassMetadata {
+    string name;
+    string symbol;
+    uint8 decimals;
+}
+
 interface ILocalCentrifugeId {
     error CannotBeSentLocally();
 
@@ -33,11 +41,10 @@ interface IHubMessageSender is ILocalCentrifugeId {
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals,
+        ShareClassMetadata memory metadata,
         bytes32 salt,
         bytes32 registrar,
+        uint128 extraGasLimit,
         address refund
     ) external payable;
 
@@ -48,6 +55,7 @@ interface IHubMessageSender is ILocalCentrifugeId {
         ShareClassId scId,
         string memory name,
         string memory symbol,
+        uint128 extraGasLimit,
         address refund
     ) external payable;
 

@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IStdManifest, IStdManifestFactory} from "./interfaces/IStdManifest.sol";
+import {IStdHubManifest, IStdHubManifestFactory} from "./interfaces/IStdHubManifest.sol";
 
-import {D18} from "../misc/types/D18.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {MathLib} from "../misc/libraries/MathLib.sol";
-import {BytesLib} from "../misc/libraries/BytesLib.sol";
+import {D18} from "../../misc/types/D18.sol";
+import {CastLib} from "../../misc/libraries/CastLib.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
-import {AssetId} from "../core/types/AssetId.sol";
-import {IHub} from "../core/hub/interfaces/IHub.sol";
-import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IManifest} from "../core/hub/interfaces/IManifest.sol";
-import {IHubRegistry} from "../core/hub/interfaces/IHubRegistry.sol";
-import {IMultiAdapter} from "../core/messaging/interfaces/IMultiAdapter.sol";
-import {IShareClassManager} from "../core/hub/interfaces/IShareClassManager.sol";
+import {PoolId} from "../../core/types/PoolId.sol";
+import {AssetId} from "../../core/types/AssetId.sol";
+import {IHub} from "../../core/hub/interfaces/IHub.sol";
+import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IManifest, IHubManifest} from "../../core/hub/interfaces/IManifest.sol";
+import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
+import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
-import {IBridgeCircuitBreaker} from "../hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
-import {UpdateRestrictionType} from "../token/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {IBridgeCircuitBreaker} from "../../hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
+import {UpdateRestrictionType} from "../../token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
+import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 
 /// @title  Standard Manifest
 /// @notice Default pool policy installed on the Hub via {IHub.setManifest}. A pure classifier; the
@@ -33,7 +33,7 @@ import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 ///         `escalation` (a longer delay) applies only to replacing the manifest; a construction-time
 ///         allowlist can additionally confine a caller to a fixed selector set.
 ///
-///         Per-selector policy (see {_classify} for the exhaustive dispatch):
+///         Per-selector policy (see {_authorizationDelay} for the exhaustive dispatch):
 ///         - Accounting/price writes, when `onchainAccounting` is set, are gated to the NAVManager /
 ///           SimplePriceManager and run instantly; `updateSharePrice` is further rate/cap-bounded by
 ///           {_checkSharePrice}.
@@ -45,7 +45,7 @@ import {ManagerAction} from "../vaults/interfaces/IBatchRequestManager.sol";
 ///         - `setManifest` and `setSpokeManifest` use `escalation` instead of `delay`.
 ///         - Cross-chain notifications and pool/share metadata updates are always in policy.
 ///         - Everything else (deny-by-default) falls through to `delay`.
-contract StdManifest is IStdManifest {
+contract StdHubManifest is IStdHubManifest {
     using BytesLib for bytes;
     using CastLib for bytes32;
 
@@ -122,17 +122,17 @@ contract StdManifest is IStdManifest {
     /// @dev The authorization ledger (storing/maturing/consuming) lives in {HubRegistry}; this only
     ///      classifies and, when out of policy, consumes a matured authorization there.
     function enforce(PoolId poolId, address caller, bytes calldata data) external {
-        require(msg.sender == address(hub), NotHub());
+        require(msg.sender == address(hub), NotEnforcer());
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
 
         // In onchainAccounting mode, share-price updates may only be executed by the SimplePriceManager.
-        // The check lives here (not in _classify) so pool managers can still pre-authorize out-of-policy
-        // price moves via hubRegistry.initiateAuthorization, which calls classify with the manager as caller.
+        // The check lives here (not in _authorizationDelay) so pool managers can still pre-authorize out-of-policy
+        // price moves via hubRegistry.initiateAuthorization, which calls authorizationDelay with the manager as caller.
         if (onchainAccounting && (_isSharePriceUpdate(selector))) {
             require(caller == simplePriceManager, OnchainAccountingOnly());
         }
 
-        if (_classify(poolId, caller, selector, payload) != 0) {
+        if (_authorizationDelay(poolId, caller, selector, payload) != 0) {
             hubRegistry.consumeAuthorization(poolId, caller, data, expiry);
         }
 
@@ -144,12 +144,12 @@ contract StdManifest is IStdManifest {
         }
     }
 
-    /// @inheritdoc IManifest
+    /// @inheritdoc IHubManifest
     /// @dev Called by {HubRegistry.initiateAuthorization} (to price the delay) and by {enforce}. Reverts to block
     ///      a forbidden call outright.
-    function classify(PoolId poolId, address caller, bytes calldata data) external view returns (uint48) {
+    function authorizationDelay(PoolId poolId, address caller, bytes calldata data) external view returns (uint48) {
         (bytes4 selector, bytes calldata payload) = data.decodeCall();
-        return _classify(poolId, caller, selector, payload);
+        return _authorizationDelay(poolId, caller, selector, payload);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ contract StdManifest is IStdManifest {
 
     /// @dev Classify the call: 0 if in policy, else the delay an authorization must age; reverts to
     ///      block outright. Deny-by-default, so an unlisted selector is out of policy, not unguarded.
-    function _classify(PoolId poolId, address caller, bytes4 selector, bytes calldata payload)
+    function _authorizationDelay(PoolId poolId, address caller, bytes4 selector, bytes calldata payload)
         internal
         view
         returns (uint48)
@@ -355,8 +355,8 @@ contract StdManifest is IStdManifest {
 }
 
 /// @title  Standard Manifest Factory
-/// @notice Deploys StdManifest instances which are not necessarily pool-scoped.
-contract StdManifestFactory is IStdManifestFactory {
+/// @notice Deploys StdHubManifest instances which are not necessarily pool-scoped.
+contract StdHubManifestFactory is IStdHubManifestFactory {
     IHub public immutable hub;
     IMultiAdapter public immutable multiAdapter;
     IShareClassManager public immutable shareClassManager;
@@ -367,27 +367,29 @@ contract StdManifestFactory is IStdManifestFactory {
         shareClassManager = shareClassManager_;
     }
 
-    /// @inheritdoc IStdManifestFactory
-    function newStdManifest(IStdManifest.Config memory config) external returns (IStdManifest) {
-        StdManifest manifest = new StdManifest{salt: _salt(config)}(hub, multiAdapter, shareClassManager, config);
+    /// @inheritdoc IStdHubManifestFactory
+    function newStdHubManifest(IStdHubManifest.Config memory config) external returns (IStdHubManifest) {
+        StdHubManifest manifest = new StdHubManifest{salt: _salt(config)}(hub, multiAdapter, shareClassManager, config);
 
-        emit DeployStdManifest(address(manifest));
-        return IStdManifest(address(manifest));
+        emit DeployStdHubManifest(address(manifest));
+        return IStdHubManifest(address(manifest));
     }
 
-    /// @inheritdoc IStdManifestFactory
-    function previewStdManifest(IStdManifest.Config memory config) external view returns (address) {
+    /// @inheritdoc IStdHubManifestFactory
+    function previewStdHubManifest(IStdHubManifest.Config memory config) external view returns (address) {
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), _salt(config), _initCodeHash(config)));
         return address(uint160(uint256(hash)));
     }
 
-    function _salt(IStdManifest.Config memory config) internal view returns (bytes32) {
+    function _salt(IStdHubManifest.Config memory config) internal view returns (bytes32) {
         return keccak256(abi.encode(hub, multiAdapter, shareClassManager, config));
     }
 
-    function _initCodeHash(IStdManifest.Config memory config) internal view returns (bytes32) {
+    function _initCodeHash(IStdHubManifest.Config memory config) internal view returns (bytes32) {
         return keccak256(
-            abi.encodePacked(type(StdManifest).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config))
+            abi.encodePacked(
+                type(StdHubManifest).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config)
+            )
         );
     }
 }

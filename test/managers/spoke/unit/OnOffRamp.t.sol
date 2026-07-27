@@ -63,7 +63,7 @@ contract OnOffRampTest is Test {
         // Mock spokeRegistry.idToAsset() to return asset address and tokenId
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), ASSET_ID),
             abi.encode(address(erc20), ERC20_TOKEN_ID)
         );
 
@@ -88,11 +88,11 @@ contract OnOffRampTest is Test {
     function _deployManager() internal {
         factory = new OnOffRampFactory(envoy, spoke, accountingToken);
 
-        // Mock spoke.spokeRegistry().shareToken() to prevent revert during deployment
+        // Mock spoke.spokeRegistry().hasShareClass() so the factory's existence check passes
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
-            abi.encode(address(new IsContract()))
+            abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector, POOL_A, SC_1),
+            abi.encode(true)
         );
 
         manager = factory.newManager(POOL_A, SC_1);
@@ -193,7 +193,7 @@ contract OnOffRampUpdateContractFailureTests is OnOffRampTest {
         // Mock spokeRegistry.idToAsset() to return non-zero tokenId
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), ASSET_ID),
             abi.encode(address(erc20), 1)
         );
 
@@ -206,7 +206,7 @@ contract OnOffRampUpdateContractFailureTests is OnOffRampTest {
         // Mock spokeRegistry.idToAsset() to return non-zero tokenId for offramp
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), ASSET_ID),
             abi.encode(address(erc20), 1)
         );
 

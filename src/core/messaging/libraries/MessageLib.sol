@@ -117,6 +117,12 @@ library MessageLib {
 
         length = uint16(uint8(bytes32(MESSAGE_LENGTHS_1)[31 - kind]));
 
+        // NotifyShareClass carries a fixed 16-byte extraGasLimit suffix but its base length (250) leaves no
+        // room for it within the single-byte table slot, so add it here. NotifyShareMetadata is kept uniform.
+        if (kind == uint8(MessageType.NotifyShareClass) || kind == uint8(MessageType.NotifyShareMetadata)) {
+            return length + 16;
+        }
+
         // Special treatment for messages with dynamic size:
         if (kind == uint8(MessageType.UpdateRestriction)) {
             length += 2 + message.toUint16(length); //payloadLength
@@ -221,7 +227,11 @@ library MessageLib {
     function messageExtraGasLimit(bytes memory message) internal pure returns (uint128) {
         uint8 kind = message.toUint8(0);
 
-        if (kind == uint8(MessageType.InitiateTransferShares)) {
+        if (kind == uint8(MessageType.NotifyShareClass)) {
+            return message.toUint128(250);
+        } else if (kind == uint8(MessageType.NotifyShareMetadata)) {
+            return message.toUint128(185);
+        } else if (kind == uint8(MessageType.InitiateTransferShares)) {
             return message.toUint128(91);
         } else if (kind == uint8(MessageType.ExecuteTransferShares)) {
             return message.toUint128(73);
@@ -366,6 +376,7 @@ library MessageLib {
         uint8 decimals;
         bytes32 salt;
         bytes32 registrar;
+        uint128 extraGasLimit;
     }
 
     function deserializeNotifyShareClass(bytes memory data) internal pure returns (NotifyShareClass memory) {
@@ -377,7 +388,8 @@ library MessageLib {
             symbol: data.toBytes32(153),
             decimals: data.toUint8(185),
             salt: data.toBytes32(186),
-            registrar: data.toBytes32(218)
+            registrar: data.toBytes32(218),
+            extraGasLimit: data.toUint128(250)
         });
     }
 
@@ -390,7 +402,8 @@ library MessageLib {
             t.symbol,
             t.decimals,
             t.salt,
-            t.registrar
+            t.registrar,
+            t.extraGasLimit
         );
     }
 
@@ -460,6 +473,7 @@ library MessageLib {
         bytes16 scId;
         string name; // Fixed to 128 bytes
         bytes32 symbol; // utf8
+        uint128 extraGasLimit;
     }
 
     function deserializeNotifyShareMetadata(bytes memory data) internal pure returns (NotifyShareMetadata memory) {
@@ -468,13 +482,19 @@ library MessageLib {
             poolId: data.toUint64(1),
             scId: data.toBytes16(9),
             name: data.slice(25, 128).bytes128ToString(),
-            symbol: data.toBytes32(153)
+            symbol: data.toBytes32(153),
+            extraGasLimit: data.toUint128(185)
         });
     }
 
     function serialize(NotifyShareMetadata memory t) internal pure returns (bytes memory) {
         return abi.encodePacked(
-            MessageType.NotifyShareMetadata, t.poolId, t.scId, bytes(t.name).sliceZeroPadded(0, 128), t.symbol
+            MessageType.NotifyShareMetadata,
+            t.poolId,
+            t.scId,
+            bytes(t.name).sliceZeroPadded(0, 128),
+            t.symbol,
+            t.extraGasLimit
         );
     }
 

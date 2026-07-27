@@ -14,6 +14,7 @@ import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  OnOffRamp
@@ -62,7 +63,7 @@ contract OnOffRamp is IOnOffRamp {
         TrustedCall kind = TrustedCall(kindValue);
         if (kind == TrustedCall.Onramp) {
             (, uint128 assetId, bool isEnabled) = abi.decode(payload, (uint8, uint128, bool));
-            (address asset, uint256 tokenId) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId), true);
             require(tokenId == 0, ERC6909NotSupported());
 
             onramp[asset] = isEnabled;
@@ -80,7 +81,7 @@ contract OnOffRamp is IOnOffRamp {
         } else if (kind == TrustedCall.Offramp) {
             (, uint128 assetId, bytes32 receiverAddress, bool isEnabled) =
                 abi.decode(payload, (uint8, uint128, bytes32, bool));
-            (address asset, uint256 tokenId) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId), true);
             require(tokenId == 0, ERC6909NotSupported());
             address receiver = receiverAddress.toAddress();
 
@@ -89,7 +90,7 @@ contract OnOffRamp is IOnOffRamp {
         } else if (kind == TrustedCall.Withdraw) {
             (, uint128 assetId, uint128 amount, bytes32 receiverAddress) =
                 abi.decode(payload, (uint8, uint128, uint128, bytes32));
-            (address asset,) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId));
+            (address asset,) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId), true);
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
@@ -174,7 +175,7 @@ contract OnOffRampFactory is IOnOffRampFactory {
 
     /// @inheritdoc IOnOffRampFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOffRamp) {
-        spoke.spokeRegistry().shareToken(poolId, scId); // Check for existence
+        require(spoke.spokeRegistry().hasShareClass(poolId, scId), ISpokeRegistry.ShareTokenDoesNotExist());
 
         OnOffRamp manager = new OnOffRamp{salt: _salt(poolId, scId)}(poolId, scId, envoy, spoke, accountingToken);
 

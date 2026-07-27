@@ -12,9 +12,9 @@ The vault enforces controller/owner validation for all operations and integrates
 
 ### `SyncDepositVault`
 
-`SyncDepositVault` provides a hybrid model with synchronous deposits (immediate share issuance) and asynchronous redemptions (epoch-based). It implements ERC-4626 for deposits and ERC-7540 for redemptions, offering the best of both models. Deposits execute immediately at the current share price via `SyncManager`, while redemptions follow the async request-fulfill-claim pattern via `AsyncRedeemManager`.
+`SyncDepositVault` provides a hybrid model with synchronous deposits (immediate share issuance) and asynchronous redemptions (epoch-based). It implements ERC-4626 for deposits and ERC-7540 for redemptions, offering the best of both models. Deposits execute immediately at the current share price via `SyncManager`, while redemptions follow the async request-fulfill-claim pattern via `AsyncRequestManager`.
 
-This vault type is ideal for pools that want to enable instant deposits while maintaining controlled, epoch-based redemptions for liquidity management. It integrates with both `SyncDepositManager` and `AsyncRedeemManager`, requiring separate manager configurations for each operation type.
+This vault type is ideal for pools that want to enable instant deposits while maintaining controlled, epoch-based redemptions for liquidity management. It integrates with both `SyncManager` (sync deposits) and `AsyncRequestManager` (async redemptions), requiring separate manager configurations for each operation type.
 
 ### `BatchRequestManager`
 
@@ -26,7 +26,7 @@ The contract implements `IHubRequestManager` and receives request callbacks from
 
 `AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `Spoke` for share issuance/burning and pool-specific `PoolEscrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
 
-The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It manages refund escrows per pool for subsidizing gas for cross-chain transactions. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
+The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It delegates gas subsidization for cross-chain requests to the `SubsidyManager`. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
 
 The following diagram shows how funds flow in and out of the pool escrow:
 
@@ -40,10 +40,10 @@ The contract supports trusted contract updates for configuring valuation contrac
 
 ### `VaultRouter`
 
-`VaultRouter` serves as a user-friendly entrypoint for EOA interactions with vaults, simplifying the multi-step processes required for deposits, redemptions, and claims. It provides convenience methods that handle token approvals, request submissions, and batch operations in single transactions. The router integrates with `Spoke`, `VaultRegistry`, and a router-specific escrow for temporary asset custody.
+`VaultRouter` serves as a user-friendly entrypoint for EOA interactions with vaults, simplifying the multi-step processes required for deposits, redemptions, and claims. It provides convenience methods that handle token approvals, request submissions, and batch operations in single transactions. The router integrates with `Spoke` and `SpokeRegistry`, holding assets transiently within itself during multi-step operations rather than in a dedicated escrow.
 
 The contract supports permit-based approvals (ERC-2612) to reduce transaction overhead, locked request tracking to prevent double-spending during multi-step operations, and multicall batching for complex workflows. It's critical that no funds remain in the router after transactions, as any leftover funds could be claimed by other users. The router manages operator endorsements, allowing users to authorize it to act on their behalf for vault operations.
 
-### `RefundEscrow`
+### Gas subsidies (`SubsidyManager` / `RefundEscrow`)
 
-`RefundEscrow` holds ETH subsidies per pool to pay the cost of cross-chain messages for users. Pools can deposit subsidies that are used to pay for requests requiring cross-chain communication. The escrow tracks balances per pool and provides withdrawal functions for pool managers.
+Cross-chain requests are paid for by the pool rather than the user. `AsyncRequestManager` draws on the `SubsidyManager`, which holds per-pool ETH subsidies in `RefundEscrow` contracts and funds the outbound message. Pools deposit subsidies that are consumed to pay for requests requiring cross-chain communication. Both `SubsidyManager` and `RefundEscrow` live in `src/utils/`, not in the vaults module.

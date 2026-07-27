@@ -73,32 +73,32 @@ contract GasService is IGasService {
             txLimitsPerCentrifugeId += value << (31 - i) * 8;
         }
 
-        scheduleUpgrade = _gasValue(161412);
-        cancelUpgrade = _gasValue(141905);
-        registerAsset = _gasValue(168408);
-        setPoolAdapters = _gasValue(790471); // using MAX_ADAPTER_COUNT
-        request = _gasValue(281719);
-        notifyPool = _gasValue(1368501);
-        notifyShareClass = _gasValue(1872681);
-        notifyPricePoolPerShare = _gasValue(176938);
-        notifyPricePoolPerAsset = _gasValue(183476);
-        notifyShareMetadata = _gasValue(198597);
-        initiateTransferShares = _gasValue(369445);
-        executeTransferShares = _gasValue(254245);
-        updateRestriction = _gasValue(193857);
-        managerCallFromHub = _gasValue(228442);
-        requestCallback = _gasValue(467843); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2923972);
-        updateVaultLink = _gasValue(233489);
-        updateVaultUnlink = _gasValue(198888);
-        setRequestManager = _gasValue(175921);
-        setManifest = _gasValue(177567);
-        authorizeSpokeCall = _gasValue(183982);
-        unauthorizeSpokeCall = _gasValue(161643);
-        updateManager = _gasValue(178076);
-        updateAssets = _gasValue(393243);
-        updateShares = _gasValue(264596);
-        managerCallFromSpoke = _gasValue(150722);
+        scheduleUpgrade = _gasValue(161542);
+        cancelUpgrade = _gasValue(142035);
+        registerAsset = _gasValue(168538);
+        setPoolAdapters = _gasValue(790601); // using MAX_ADAPTER_COUNT
+        request = _gasValue(281891);
+        notifyPool = _gasValue(1368653);
+        notifyShareClass = _gasValue(1873282);
+        notifyPricePoolPerShare = _gasValue(177252);
+        notifyPricePoolPerAsset = _gasValue(183787);
+        notifyShareMetadata = _gasValue(199122);
+        initiateTransferShares = _gasValue(369380);
+        executeTransferShares = _gasValue(254202);
+        updateRestriction = _gasValue(193832);
+        managerCallFromHub = _gasValue(228572);
+        requestCallback = _gasValue(467519); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2923237);
+        updateVaultLink = _gasValue(233391);
+        updateVaultUnlink = _gasValue(200914);
+        setRequestManager = _gasValue(176073);
+        setManifest = _gasValue(177741);
+        authorizeSpokeCall = _gasValue(184112);
+        unauthorizeSpokeCall = _gasValue(161773);
+        updateManager = _gasValue(178206);
+        updateAssets = _gasValue(393373);
+        updateShares = _gasValue(264726);
+        managerCallFromSpoke = _gasValue(150852);
     }
 
     /// @inheritdoc IMessageProperties

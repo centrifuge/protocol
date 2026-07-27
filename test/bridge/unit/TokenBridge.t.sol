@@ -54,12 +54,12 @@ contract TokenBridgeTest is Test {
 
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.shareTokenDetails.selector, shareToken1),
+            abi.encodeWithSelector(ISpokeRegistry.tokenDetails.selector, shareToken1),
             abi.encode(POOL_A, SC_1)
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.shareTokenDetails.selector, shareToken2),
+            abi.encodeWithSelector(ISpokeRegistry.tokenDetails.selector, shareToken2),
             abi.encode(POOL_B, SC_2)
         );
 
@@ -329,7 +329,7 @@ contract TokenBridgeSendTest is TokenBridgeTest {
         address shareToken3 = makeAddr("shareToken3");
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.shareTokenDetails.selector, shareToken3),
+            abi.encodeWithSelector(ISpokeRegistry.tokenDetails.selector, shareToken3),
             abi.encode(poolSameChain, SC_1)
         );
         vm.mockCall(shareToken3, abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
@@ -366,7 +366,7 @@ contract TokenBridgeSendTest is TokenBridgeTest {
         address shareToken3 = makeAddr("shareToken3");
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.shareTokenDetails.selector, shareToken3),
+            abi.encodeWithSelector(ISpokeRegistry.tokenDetails.selector, shareToken3),
             abi.encode(poolSourceHub, SC_1)
         );
         vm.mockCall(shareToken3, abi.encodeWithSelector(IERC20.transferFrom.selector), abi.encode(true));
@@ -412,13 +412,15 @@ contract TokenBridgeSendTest is TokenBridgeTest {
     function testSendInvalidToken() public {
         address invalidToken = makeAddr("invalidToken");
 
-        vm.mockCallRevert(
+        // The token backs no share class, so tokenDetails resolves to a null pool id and send fails closed
+        // before pulling any tokens.
+        vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.shareTokenDetails.selector, invalidToken),
-            abi.encodeWithSelector(ISpokeRegistry.ShareTokenDoesNotExist.selector)
+            abi.encodeWithSelector(ISpokeRegistry.tokenDetails.selector, invalidToken),
+            abi.encode(PoolId.wrap(0), ShareClassId.wrap(bytes16(0)))
         );
 
-        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        vm.expectRevert(ITokenBridge.ShareTokenDoesNotExist.selector);
         bridge.send(invalidToken, DEFAULT_AMOUNT, receiver.toBytes32(), EVM_CHAIN_ID_1, user);
     }
 }

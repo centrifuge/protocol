@@ -120,12 +120,12 @@ contract SpokeTest is Test {
         );
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, erc20, 0),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), erc20, 0),
             abi.encode(ASSET_ID_20)
         );
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, erc6909, TOKEN_1),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), erc6909, TOKEN_1),
             abi.encode(ASSET_ID_6909_1)
         );
         vm.mockCall(
@@ -183,10 +183,10 @@ contract SpokeTest is Test {
     }
 
     function _mockNewAssetRegistration(address asset, uint256 tokenId, AssetId assetId) internal {
-        // Mock assetToIdOrNull to return null (asset not yet registered)
+        // Mock assetToId to return null (asset not yet registered)
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.assetToIdOrNull.selector, asset, tokenId),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256)")), asset, tokenId),
             abi.encode(AssetId.wrap(0))
         );
         // Mock createAssetId
@@ -200,7 +200,7 @@ contract SpokeTest is Test {
     function _mockExistingAssetRegistration(address asset, uint256 tokenId, AssetId assetId) internal {
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.assetToIdOrNull.selector, asset, tokenId),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256)")), asset, tokenId),
             abi.encode(assetId)
         );
     }
@@ -304,8 +304,11 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 
     function setUp() public override {
         super.setUp();
-        // Default: caller is an authorized bridger; individual tests can override.
+        // Default: caller is an authorized bridger and the share class exists; individual tests can override.
         vm.mockCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.bridger.selector), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector), abi.encode(true)
+        );
     }
 
     function testErrNotBridger() public {
@@ -357,11 +360,11 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
     }
 
     function testErrShareTokenDoesNotExists() public {
-        // Mock the share token lookup to revert
-        vm.mockCallRevert(
+        // The share class does not exist, so the transfer is rejected up front.
+        vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
-            abi.encodeWithSelector(ISpokeRegistry.ShareTokenDoesNotExist.selector)
+            abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector, POOL_A, SC_1),
+            abi.encode(false)
         );
 
         vm.prank(ANY);
@@ -848,6 +851,17 @@ contract SpokeTestWithdrawShares is SpokeTest {
         assertEq(isPositive, false);
         assertEq(queuedAssetCounter, 0);
     }
+
+    function testErrShareTokenDoesNotExist() public {
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(address(0))
+        );
+        vm.prank(MANAGER);
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        spoke.withdrawShares(POOL_A, SC_1, TO, AMOUNT);
+    }
 }
 
 contract SpokeTestIssue is SpokeTest {
@@ -869,6 +883,17 @@ contract SpokeTestIssue is SpokeTest {
         assertEq(delta, AMOUNT);
         assertEq(isPositive, true);
     }
+
+    function testErrShareTokenDoesNotExist() public {
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
+            abi.encode(address(0), address(0))
+        );
+        vm.prank(MANAGER);
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        spoke.issue(POOL_A, SC_1, TO, AMOUNT);
+    }
 }
 
 contract SpokeTestRevoke is SpokeTest {
@@ -889,6 +914,17 @@ contract SpokeTestRevoke is SpokeTest {
         (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(POOL_A, SC_1);
         assertEq(delta, AMOUNT);
         assertEq(isPositive, false);
+    }
+
+    function testErrShareTokenDoesNotExist() public {
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
+            abi.encode(address(0), address(0))
+        );
+        vm.prank(MANAGER);
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
+        spoke.revoke(POOL_A, SC_1, AMOUNT);
     }
 }
 
@@ -1021,6 +1057,17 @@ contract SpokeTestTransferSharesFrom is SpokeTest {
         vm.prank(MANAGER);
         vm.expectEmit();
         emit ISpoke.TransferSharesFrom(POOL_A, SC_1, SENDER, FROM, TO, AMOUNT);
+        spoke.transferSharesFrom(POOL_A, SC_1, SENDER, FROM, TO, AMOUNT);
+    }
+
+    function testErrShareTokenDoesNotExist() public {
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
+            abi.encode(address(0), address(0))
+        );
+        vm.prank(MANAGER);
+        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
         spoke.transferSharesFrom(POOL_A, SC_1, SENDER, FROM, TO, AMOUNT);
     }
 }

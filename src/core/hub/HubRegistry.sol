@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IManifest} from "./interfaces/IManifest.sol";
+import {IHubManifest} from "./interfaces/IManifest.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
@@ -104,7 +104,7 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function setManifest(PoolId poolId_, IManifest manifest_) external auth {
+    function setManifest(PoolId poolId_, IHubManifest manifest_) external auth {
         require(exists(poolId_), NonExistingPool());
 
         _manifest[poolId_] = ManifestInfo(manifest_, _manifest[poolId_].nonce + 1);
@@ -139,7 +139,7 @@ contract HubRegistry is Auth, IHubRegistry {
         require(address(m.manifest) != address(0), NoManifest());
 
         // Only an out-of-policy call may be authorized: an in-policy call would mature instantly.
-        uint48 delaySeconds = m.manifest.classify(poolId_, caller, data);
+        uint48 delaySeconds = m.manifest.authorizationDelay(poolId_, caller, data);
         require(delaySeconds != 0, InPolicy());
 
         // Reject re-authorizing: it would silently reset the maturity clock, so cancel first.
@@ -201,7 +201,7 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function manifest(PoolId poolId_) external view returns (IManifest) {
+    function manifest(PoolId poolId_) external view returns (IHubManifest) {
         return _manifest[poolId_].manifest;
     }
 

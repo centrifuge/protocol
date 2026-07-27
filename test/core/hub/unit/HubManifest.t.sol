@@ -5,7 +5,7 @@ import {Hub} from "../../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
-import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
+import {IHubManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IAccounting} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
@@ -15,7 +15,7 @@ import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClas
 import "forge-std/Test.sol";
 
 /// @dev Records the last enforce() call and can be toggled to revert (out of policy / forbidden).
-contract MockManifest is IManifest {
+contract MockManifest is IHubManifest {
     error Unauthorized();
 
     PoolId public lastPoolId;
@@ -28,7 +28,7 @@ contract MockManifest is IManifest {
         shouldRevert = v;
     }
 
-    function classify(PoolId, address, bytes calldata) external pure returns (uint48) {
+    function authorizationDelay(PoolId, address, bytes calldata) external pure returns (uint48) {
         return 0;
     }
 
@@ -66,11 +66,11 @@ contract HubManifestTest is Test {
         vm.mockCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.setMetadata.selector), abi.encode());
         // Manifest storage now lives in the registry; the Hub reads/writes through it.
         vm.mockCall(address(hubRegistry), abi.encodeWithSelector(IHubRegistry.setManifest.selector), abi.encode());
-        _installManifest(IManifest(address(0))); // default: no manifest installed
+        _installManifest(IHubManifest(address(0))); // default: no manifest installed
     }
 
     /// @dev Mock the registry to report `m` as the pool's installed manifest (Hub reads through to it).
-    function _installManifest(IManifest m) internal {
+    function _installManifest(IHubManifest m) internal {
         vm.mockCall(address(hubRegistry), abi.encodeWithSelector(IHubRegistry.manifest.selector, POOL_A), abi.encode(m));
     }
 

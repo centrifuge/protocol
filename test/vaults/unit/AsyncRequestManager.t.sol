@@ -98,7 +98,7 @@ contract AsyncRequestManagerTest is Test {
         );
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(spokeRegistry.idToAsset.selector, ASSET_ID),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), ASSET_ID),
             abi.encode(asset, TOKEN_ID)
         );
         vm.mockCall(
@@ -1069,6 +1069,21 @@ contract AsyncRequestManagerTestPriceCalculations is AsyncRequestManagerTest {
 
         // Non-zero assets and shares
         assertGt(harness.calculatePriceAssetPerShare(asyncVault, 100, 50).raw(), 0);
+    }
+
+    function testPriceLastUpdatedErrUnknownVault() public {
+        address unknownVault = makeAddr("unknownVault");
+        vm.mockCall(unknownVault, abi.encodeWithSelector(IVault.poolId.selector), abi.encode(POOL_A));
+        vm.mockCall(unknownVault, abi.encodeWithSelector(IVault.scId.selector), abi.encode(SC_1));
+        // A vault with no registered details (zero asset) must be rejected, not silently read as 0.
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.vaultDetails.selector, unknownVault),
+            abi.encode(VaultDetails(POOL_A, SC_1, ASSET_ID, address(0), TOKEN_ID, false))
+        );
+
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        manager.priceLastUpdated(IBaseVault(unknownVault));
     }
 }
 

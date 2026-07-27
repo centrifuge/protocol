@@ -87,7 +87,7 @@ contract Supervisor is ISupervisor, IManagerCallFromHub {
         (bytes4 selector, bytes calldata args) = data.decodeCall();
         if (selector != IHub.managerCall.selector) return;
         // 224 = 7 x 32, the managerCall tuple's minimum ABI encoding; a shorter blob would revert the
-        // decode and freeze this veto. Shares shape and threshold with {StdManifest._checkManagerCall};
+        // decode and freeze this veto. Shares shape and threshold with {StdHubManifest._checkManagerCall};
         // if the managerCall tuple changes, update both together.
         if (args.length < 224) return;
         (,, bytes32 target, bytes memory payload,,,) =

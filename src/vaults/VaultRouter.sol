@@ -69,6 +69,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
+        require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());
         if (owner == address(this)) {
             _approveMax(vaultDetails.asset, address(vault));
         }
@@ -86,6 +87,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(vault);
+        require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
@@ -105,7 +107,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     ) external payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
 
-        spokeRegistry.vaultDetails(vault); // Ensure vault is valid
+        require(spokeRegistry.isVaultRegistered(vault), ISpokeRegistry.UnknownVault());
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
 
         _approveMax(vault.share(), address(spoke));
@@ -200,7 +202,9 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
 
     /// @inheritdoc IVaultRouter
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
-        return IShareToken(address(spokeRegistry.shareToken(poolId, scId))).vault(asset);
+        IShareToken share = IShareToken(address(spokeRegistry.shareToken(poolId, scId)));
+        require(address(share) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
+        return share.vault(asset);
     }
 
     /// @inheritdoc IVaultRouter

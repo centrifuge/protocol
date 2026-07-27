@@ -125,9 +125,10 @@ contract SpokeRegistryTestAddShareClass is SpokeRegistryTest {
         registry.addShareClass(POOL_A, SC_1, share, registrar);
 
         assertEq(address(registry.shareToken(POOL_A, SC_1)), share);
-        assertEq(address(registry.registrar(POOL_A, SC_1)), address(registrar));
+        (, IRegistrar registrar_) = registry.shareTokenAndRegistrar(POOL_A, SC_1);
+        assertEq(address(registrar_), address(registrar));
 
-        (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(share);
+        (PoolId poolId, ShareClassId scId) = registry.tokenDetails(share);
         assertEq(poolId.raw(), POOL_A.raw());
         assertEq(scId.raw(), SC_1.raw());
     }
@@ -190,9 +191,10 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
         registry.linkToken(POOL_A, SC_1, share, registrar);
 
         assertEq(address(registry.shareToken(POOL_A, SC_1)), share);
-        assertEq(address(registry.registrar(POOL_A, SC_1)), address(registrar));
+        (, IRegistrar registrar_) = registry.shareTokenAndRegistrar(POOL_A, SC_1);
+        assertEq(address(registrar_), address(registrar));
 
-        (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(share);
+        (PoolId poolId, ShareClassId scId) = registry.tokenDetails(share);
         assertEq(poolId.raw(), POOL_A.raw());
         assertEq(scId.raw(), SC_1.raw());
     }
@@ -206,12 +208,13 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
         registry.linkToken(POOL_A, SC_1, newShare, registrar);
 
         assertEq(address(registry.shareToken(POOL_A, SC_1)), newShare);
-        (PoolId poolId, ShareClassId scId) = registry.shareTokenDetails(newShare);
+        (PoolId poolId, ShareClassId scId) = registry.tokenDetails(newShare);
         assertEq(poolId.raw(), POOL_A.raw());
         assertEq(scId.raw(), SC_1.raw());
 
-        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
-        registry.shareTokenDetails(share);
+        // The retired token no longer resolves to any share class.
+        (PoolId retiredPoolId,) = registry.tokenDetails(share);
+        assertEq(retiredPoolId.raw(), 0);
 
         // The retired token's address is free again for another share class.
         vm.prank(AUTH);
@@ -219,10 +222,10 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
     }
 }
 
-contract SpokeRegistryTestShareTokenDetails is SpokeRegistryTest {
-    function testErrShareTokenDoesNotExist() public {
-        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
-        registry.shareTokenDetails(share);
+contract SpokeRegistryTestTokenDetails is SpokeRegistryTest {
+    function testUnregisteredReturnsZero() public view {
+        (PoolId poolId,) = registry.tokenDetails(share);
+        assertEq(poolId.raw(), 0);
     }
 }
 
@@ -328,6 +331,32 @@ contract SpokeRegistryTestCreateAssetId is SpokeRegistryTest {
         vm.expectRevert(ISpokeRegistry.AssetAlreadyRegistered.selector);
         registry.createAssetId(LOCAL_CENTRIFUGE_ID, erc6909, TOKEN_1);
     }
+
+    function testIdToAssetRevertOnNull() public {
+        AssetId unknown = newAssetId(LOCAL_CENTRIFUGE_ID, 99);
+
+        // The bare getter (and revertOnNull == false) is non-reverting and returns zero values on a miss.
+        (address asset, uint256 tokenId) = registry.idToAsset(unknown);
+        assertEq(asset, address(0));
+        assertEq(tokenId, 0);
+        (asset,) = registry.idToAsset(unknown, false);
+        assertEq(asset, address(0));
+
+        // revertOnNull == true fails closed, which is how resolve-callers reject a missing asset.
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        registry.idToAsset(unknown, true);
+    }
+
+    function testAssetToIdRevertOnNull() public {
+        // The bare getter (and revertOnNull == false) returns null on a miss; registerAsset relies on this to
+        // detect a not-yet-registered asset.
+        assertTrue(registry.assetToId(erc20, 0).isNull());
+        assertTrue(registry.assetToId(erc20, 0, false).isNull());
+
+        // revertOnNull == true fails closed.
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        registry.assetToId(erc20, 0, true);
+    }
 }
 
 contract SpokeRegistryTestUpdatePricePoolPerShare is SpokeRegistryTest {
@@ -415,9 +444,9 @@ contract SpokeRegistryTestUpdatePricePoolPerAsset is SpokeRegistryTest {
 }
 
 contract SpokeRegistryTestPricePoolPerShare is SpokeRegistryTest {
-    function testErrShareTokenDoesNotExist() public {
-        vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
-        registry.pricePoolPerShare(POOL_A, SC_1, false);
+    function testUnregisteredWithoutValidityReturnsZero() public view {
+        D18 price = registry.pricePoolPerShare(POOL_A, SC_1, false);
+        assertEq(price.raw(), 0);
     }
 
     function testErrInvalidPrice() public {

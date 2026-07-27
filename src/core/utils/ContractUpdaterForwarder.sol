@@ -18,7 +18,7 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 ///         existing immutable ContractUpdater anchor unchanged — nothing deployed is upgraded.
 /// @dev    Must be wired as a ward of the {ContractUpdater} (a `rely`, not an upgrade) so it may call
 ///         `trustedCall`. Reached only through the Envoy: `Hub.managerCall` addresses this contract for a
-///         contract update, and the manifest pins this address (see {StdManifest._checkManagerCall}). The
+///         contract update, and the manifest pins this address (see {StdHubManifest._checkManagerCall}). The
 ///         address is deterministic (CREATE3), so the same value is the target on every chain.
 contract ContractUpdaterForwarder is IManagerCallFromHub, IContractUpdaterForwarder {
     address public immutable envoy;

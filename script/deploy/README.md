@@ -49,7 +49,7 @@ ls env/*.json
 |------|-------------|
 | **deploy:protocol** | Deploy core protocol contracts (LaunchDeployer), then verify on Etherscan. Use `--resume` to continue after a partial run. |
 | **deploy:full** | Full deployment: deploy protocol (LaunchDeployer), verify on Etherscan, then auto-deploy test data on testnets. Use `--resume` to continue after a partial run. |
-| **deploy:adapters** | Deploy only adapter contracts (OnlyAdapters script), then verify and merge into network config. |
+| **deploy:adapters** | Deploy only adapter contracts (DeployAdapters script), then verify and merge into network config. |
 | **wire:adapters** | Wire adapters (WireAdapters script) for the given network. |
 | **deploy:test** | Deploy test data (TestData script) on testnets. |
 | **verify:protocol** | Verify core protocol contracts from the latest deployment (LaunchDeployer). |

@@ -184,7 +184,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
-            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), msg.sender
+            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), 0, msg.sender
         );
         hub.managerCall(
             poolId,
@@ -282,7 +282,7 @@ abstract contract BaseTestData is LaunchDeployer {
         // Notify
         hub.notifyPool(poolId, params.targetCentrifugeId, msg.sender);
         hub.notifyShareClass(
-            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), msg.sender
+            poolId, scId, params.targetCentrifugeId, address(shareTokenRegistrar).toBytes32(), 0, msg.sender
         );
         hub.managerCall(
             poolId,

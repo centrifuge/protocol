@@ -232,7 +232,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     }
 
     function approvedDeposits(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount) internal {
-        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
 
         // Release the request-time reservation: the assets enter the hub-accounted holding, valued
         // hub-side when the queue is submitted.
@@ -247,7 +247,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     function revokedShares(PoolId poolId, ShareClassId scId, AssetId assetId, uint128 assetAmount, uint128 shareAmount)
         internal
     {
-        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
 
         // Earmark the redemption payout: reserving removes the assets from the hub-accounted holding
         // atomically with the share burn, preventing NAV desync. The escrow update is deferred to claim.
@@ -590,6 +590,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     function convertToShares(IBaseVault vault_, uint256 assets) public view virtual returns (uint256 shares) {
         uint128 assets_ = assets.toUint128();
         VaultDetails memory vd = spokeRegistry.vaultDetails(vault_);
+        require(vd.asset != address(0), ISpokeRegistry.UnknownVault());
         D18 pricePoolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vd.assetId, false);
         D18 pricePoolPerShare = spokeRegistry.pricePoolPerShare(vault_.poolId(), vault_.scId(), false);
 
@@ -610,6 +611,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
     function convertToAssets(IBaseVault vault_, uint256 shares) public view virtual returns (uint256 assets) {
         uint128 shares_ = shares.toUint128();
         VaultDetails memory vd = spokeRegistry.vaultDetails(vault_);
+        require(vd.asset != address(0), ISpokeRegistry.UnknownVault());
         D18 pricePoolPerAsset = spokeRegistry.pricePoolPerAsset(vault_.poolId(), vault_.scId(), vd.assetId, false);
         D18 pricePoolPerShare = spokeRegistry.pricePoolPerShare(vault_.poolId(), vault_.scId(), false);
 
@@ -631,9 +633,11 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         PoolId poolId = vault_.poolId();
         ShareClassId scId = vault_.scId();
 
+        VaultDetails memory vd = spokeRegistry.vaultDetails(vault_);
+        require(vd.asset != address(0), ISpokeRegistry.UnknownVault());
+
         uint64 shareLastUpdated = spokeRegistry.pricePoolPerShareComputedAt(poolId, scId);
-        uint64 assetLastUpdated =
-            spokeRegistry.pricePoolPerAssetComputedAt(poolId, scId, spokeRegistry.vaultDetails(vault_).assetId);
+        uint64 assetLastUpdated = spokeRegistry.pricePoolPerAssetComputedAt(poolId, scId, vd.assetId);
 
         // Choose the latest update to be the marker
         lastUpdated = MathLib.max(shareLastUpdated, assetLastUpdated).toUint64();
@@ -719,7 +723,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
         view
         returns (IBaseVault vault_)
     {
-        (address asset,) = spokeRegistry.idToAsset(assetId);
+        (address asset,) = spokeRegistry.idToAsset(assetId, true);
         vault_ = IBaseVault(IShareToken(address(spokeRegistry.shareToken(poolId, scId))).vault(asset));
     }
 }

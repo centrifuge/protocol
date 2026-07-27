@@ -7,7 +7,12 @@ import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
 import {MessageLib, VaultUpdateKind, ManagerKind} from "./libraries/MessageLib.sol";
 import {ISpokeGatewayHandler, IHubGatewayHandler} from "./interfaces/IGatewayHandlers.sol";
-import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
+import {
+    ISpokeMessageSender,
+    IHubMessageSender,
+    IScheduleAuthMessageSender,
+    ShareClassMetadata
+} from "./interfaces/IGatewaySenders.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -85,15 +90,16 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals,
+        ShareClassMetadata memory metadata,
         bytes32 salt,
         bytes32 registrar,
+        uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spokeHandler.addShareClass(poolId, scId, name, symbol, decimals, salt, IRegistrar(registrar.toAddress()));
+            spokeHandler.addShareClass(
+                poolId, scId, metadata.name, metadata.symbol, metadata.decimals, salt, IRegistrar(registrar.toAddress())
+            );
             _refund(refund);
         } else {
             _send(
@@ -101,11 +107,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.NotifyShareClass({
                         poolId: poolId.raw(),
                         scId: scId.raw(),
-                        name: name,
-                        symbol: symbol.toBytes32(),
-                        decimals: decimals,
+                        name: metadata.name,
+                        symbol: metadata.symbol.toBytes32(),
+                        decimals: metadata.decimals,
                         salt: salt,
-                        registrar: registrar
+                        registrar: registrar,
+                        extraGasLimit: extraGasLimit
                     }).serialize(),
                 false,
                 refund
@@ -120,6 +127,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         string memory name,
         string memory symbol,
+        uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
@@ -129,7 +137,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.NotifyShareMetadata({
-                        poolId: poolId.raw(), scId: scId.raw(), name: name, symbol: symbol.toBytes32()
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        name: name,
+                        symbol: symbol.toBytes32(),
+                        extraGasLimit: extraGasLimit
                     }).serialize(),
                 false,
                 refund

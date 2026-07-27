@@ -122,6 +122,15 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
         spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc20, 0, vaultFactory, vault);
     }
 
+    function testErrUnknownAssetUnregistered() public {
+        _utilAddPoolAndShareClass();
+
+        // The assetId is not registered, so it resolves to a zeroed key and is rejected up front.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+    }
+
     function testErrReregisterLinkedVault() public {
         _utilRegisterERC6909();
         _utilAddPoolAndShareClass();
@@ -322,6 +331,21 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
         spokeRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
     }
 
+    function testErrAssetIdMismatch() public {
+        _utilRegisterERC6909();
+        _utilRegisterERC20();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+        _utilDeployVault(erc6909, TOKEN_1, ASSET_ID_6909_1);
+        vm.prank(AUTH);
+        spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, vault);
+
+        // Unlinking under a different assetId than the vault was registered with is rejected.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        spokeRegistry.unlinkVault(POOL_A, SC_1, ASSET_ID_20, vault);
+    }
+
     function testErrAlreadyUnlinkedVault() public {
         _utilRegisterERC6909();
         _utilAddPoolAndShareClass();
@@ -399,9 +423,8 @@ contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
 }
 
 contract VaultRegistryTestVaultDetails is VaultRegistryTest {
-    function testErrUnknownVault() public {
-        vm.prank(ANY);
-        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
-        spokeRegistry.vaultDetails(vault);
+    function testUnknownVaultReturnsZero() public view {
+        assertFalse(spokeRegistry.isVaultRegistered(vault));
+        assertEq(spokeRegistry.vaultDetails(vault).asset, address(0));
     }
 }

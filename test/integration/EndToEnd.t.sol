@@ -27,9 +27,9 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../src/core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
-import {IManifest} from "../../src/core/hub/interfaces/IManifest.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
+import {ISpokeManifest} from "../../src/core/hub/interfaces/IManifest.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
@@ -339,10 +339,11 @@ contract EndToEndDeployment is Test {
 
 contract IsContract {}
 
-/// @dev Minimal spoke-side manifest for end-to-end coverage of {Spoke.enforced}. A guarded selector is out
-///      of policy and must be pre-authorized via {Hub.authorizeSpokeCall}; `enforce` consumes the matured
-///      authorization from the {SpokeRegistry} and only runs when called by the enforcer (the Spoke).
-contract MockSpokeManifest is IManifest {
+/// @dev Minimal spoke-side manifest for end-to-end coverage of {Spoke.enforced}. A guarded selector is
+///      out of policy and must be pre-authorized (via {Hub.authorizeSpokeCall}); `enforce` consumes the
+///      matured authorization from the {SpokeRegistry}. `enforce` may only be called by the enforcer (the
+///      Spoke), mirroring {StdHubManifest}'s `msg.sender == hub` gate — this is what pins the caller identity.
+contract MockSpokeManifest is ISpokeManifest {
     ISpokeRegistry public immutable registry;
     address public immutable enforcer;
     bytes4 public immutable guardedSelector;
@@ -350,16 +351,15 @@ contract MockSpokeManifest is IManifest {
     address public lastCaller;
     uint256 public enforceCalls;
 
-    error NotEnforcer();
-
     constructor(ISpokeRegistry registry_, address enforcer_, bytes4 guardedSelector_) {
         registry = registry_;
         enforcer = enforcer_;
         guardedSelector = guardedSelector_;
     }
 
-    function classify(PoolId, address, bytes calldata data) external view returns (uint48) {
-        return (data.length >= 4 && bytes4(data[:4]) == guardedSelector) ? uint48(1 hours) : 0;
+    function authorizationRequired(PoolId, address, bytes calldata data) external view returns (bool required) {
+        // The guarded selector requires a pre-authorization; everything else runs synchronously.
+        return data.length >= 4 && bytes4(data[:4]) == guardedSelector;
     }
 
     function enforce(PoolId poolId, address caller, bytes calldata data) external {
@@ -549,7 +549,7 @@ contract EndToEndFlows is EndToEndUtils {
         vm.startPrank(FM);
         h.hub.notifyPool{value: GAS}(POOL_A, s_.centrifugeId, REFUND);
         h.hub.notifyShareClass{value: GAS}(
-            POOL_A, SC_1, s_.centrifugeId, address(s_.shareTokenRegistrar).toBytes32(), REFUND
+            POOL_A, SC_1, s_.centrifugeId, address(s_.shareTokenRegistrar).toBytes32(), 0, REFUND
         );
         _setHook(s_, address(s_.redemptionRestrictionsHook));
 
@@ -1087,7 +1087,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.startPrank(FM);
 
         h.hub.updateShareClassMetadata(POOL_A, SC_1, "Tokenized MMF 2", "MMF2");
-        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId, REFUND);
+        h.hub.notifyShareMetadata{value: GAS}(POOL_A, SC_1, s.centrifugeId, 0, REFUND);
         _setHook(s, address(s.fullRestrictionsHook));
 
         assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).name(), "Tokenized MMF 2");

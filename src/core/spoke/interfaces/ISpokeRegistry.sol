@@ -191,6 +191,8 @@ interface ISpokeRegistry {
     ///         Auth-gated: only the message layer calls it, in response to a Hub {Authorize} message sent
     ///         after the Hub's timelock and veto window elapsed. A subsequent guarded call whose calldata
     ///         byte-matches `data` consumes it via the pool's manifest.
+    /// @dev A counter, not a flag, so several authorizations of the same call can be outstanding; each
+    ///      matching call later consumes one.
     /// @param poolId The pool the authorized call targets
     /// @param data The exact calldata being authorized
     function authorize(PoolId poolId, bytes calldata data) external;
@@ -281,23 +283,22 @@ interface ISpokeRegistry {
     /// @return Whether the pool is active
     function isPoolActive(PoolId poolId) external view returns (bool);
 
+    /// @notice Returns whether a share class is registered (has a share token) for the pool
+    /// @param poolId The pool id
+    /// @param scId The share class id
+    /// @return Whether the share class exists
+    function hasShareClass(PoolId poolId, ShareClassId scId) external view returns (bool);
+
     /// @notice Returns the share class token for a given pool and share class id
-    /// @dev Reverts if share class does not exist
+    /// @dev Returns the zero address if the share class does not exist; use {hasShareClass} to probe existence
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @return The share token
     function shareToken(PoolId poolId, ShareClassId scId) external view returns (IERC20);
 
-    /// @notice Returns the registrar operating the share token of a given pool and share class id
-    /// @dev Reverts if share class does not exist
-    /// @param poolId The pool id
-    /// @param scId The share class id
-    /// @return The registrar of the share class
-    function registrar(PoolId poolId, ShareClassId scId) external view returns (IRegistrar);
-
     /// @notice Returns both the share token and its registrar in a single call
-    /// @dev Reverts if share class does not exist. Avoids re-reading the share class twice when a
-    ///      caller needs to operate the token through its registrar.
+    /// @dev Returns zero values if the share class does not exist. Avoids re-reading the share class twice when
+    ///      a caller needs to operate the token through its registrar.
     /// @param poolId The pool id
     /// @param scId The share class id
     /// @return token The share token
@@ -307,40 +308,46 @@ interface ISpokeRegistry {
         view
         returns (IERC20 token, IRegistrar registrar_);
 
-    /// @notice Returns the pool and share class a given share token backs
-    /// @dev Reverts if the token is not registered. A token backs at most one share class.
+    /// @notice Returns the pool and share class a given share token backs (zero values if unregistered)
+    /// @dev A token backs at most one share class. Backed by public storage, so it never reverts; callers that
+    ///      require the token to exist must check the returned poolId is not null.
     /// @param shareToken_ The share token address
     /// @return poolId The pool id the token backs
     /// @return scId The share class id the token backs
-    function shareTokenDetails(address shareToken_) external view returns (PoolId poolId, ShareClassId scId);
+    function tokenDetails(address shareToken_) external view returns (PoolId poolId, ShareClassId scId);
 
-    /// @notice Returns the asset address and tokenId associated with a given asset id.
-    /// @dev Reverts if asset id does not exist
+    /// @notice Returns the asset address and tokenId associated with a given asset id (zero values if unregistered)
+    /// @dev Non-reverting; use the `revertOnNull` overload (or {isRegistered}) to fail closed.
     /// @param assetId The underlying internal uint128 assetId.
     /// @return asset The address of the asset linked to the given asset id.
     /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     function idToAsset(AssetId assetId) external view returns (address asset, uint256 tokenId);
 
-    /// @notice Returns the asset address and tokenId for a given asset id, or zero values if not registered.
-    /// @dev Non-reverting variant of `idToAsset`, so callers can probe registration without a try/catch.
+    /// @notice Returns the asset address and tokenId associated with a given asset id.
     /// @param assetId The underlying internal uint128 assetId.
-    /// @return asset The address of the asset, or the zero address if the asset id is not registered.
+    /// @param revertOnNull If true, reverts {UnknownAsset} when the asset id is not registered.
+    /// @return asset The address of the asset linked to the given asset id.
     /// @return tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    function idToAssetOrNull(AssetId assetId) external view returns (address asset, uint256 tokenId);
+    function idToAsset(AssetId assetId, bool revertOnNull) external view returns (address asset, uint256 tokenId);
 
-    /// @notice Returns assetId given the asset address and tokenId.
-    /// @dev Reverts if asset id does not exist
+    /// @notice Returns the assetId for a given asset address and tokenId (null if unregistered)
+    /// @dev Non-reverting; use the `revertOnNull` overload (or {isRegistered}) to fail closed.
     /// @param asset The address of the asset linked to the given asset id.
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
     /// @return assetId The underlying internal uint128 assetId.
     function assetToId(address asset, uint256 tokenId) external view returns (AssetId assetId);
 
-    /// @notice Returns the asset id for a given asset, or the null asset id if it is not registered.
-    /// @dev Non-reverting variant of `assetToId`, so callers can probe registration without a try/catch.
+    /// @notice Returns the assetId for a given asset address and tokenId.
     /// @param asset The address of the asset linked to the given asset id.
     /// @param tokenId The token id corresponding to the asset, i.e. zero if ERC20 or non-zero if ERC6909.
-    /// @return assetId The underlying internal uint128 assetId, or null if the asset is not registered.
-    function assetToIdOrNull(address asset, uint256 tokenId) external view returns (AssetId assetId);
+    /// @param revertOnNull If true, reverts {UnknownAsset} when the asset is not registered.
+    /// @return assetId The underlying internal uint128 assetId.
+    function assetToId(address asset, uint256 tokenId, bool revertOnNull) external view returns (AssetId assetId);
+
+    /// @notice Returns whether an asset id is registered
+    /// @param assetId The underlying internal uint128 assetId.
+    /// @return Whether the asset id is registered
+    function isRegistered(AssetId assetId) external view returns (bool);
 
     /// @notice Returns the price per share for a given pool and share class
     /// @param poolId The pool id
@@ -385,8 +392,11 @@ interface ISpokeRegistry {
     /// @notice Returns whether an address holds the bridger role for a pool
     function bridger(PoolId poolId, address who) external view returns (bool);
 
+    /// @notice Returns whether a vault has been registered (regardless of its link state)
+    function isVaultRegistered(IVault vault) external view returns (bool);
+
     /// @notice Returns the details of a vault
-    /// @dev Reverts if vault does not exist
+    /// @dev Returns a zeroed struct if the vault is not registered; use {isVaultRegistered} to probe existence
     function vaultDetails(IVault vault) external view returns (VaultDetails memory details);
 
     /// @notice Checks whether a given vault is linked to a share class

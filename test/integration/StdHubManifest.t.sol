@@ -21,13 +21,13 @@ import {ISupervisor, TrustedCall} from "../../src/managers/hub/interfaces/ISuper
 
 import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
-import {IStdManifest} from "../../src/manifests/interfaces/IStdManifest.sol";
-import {StdManifest, StdManifestFactory} from "../../src/manifests/StdManifest.sol";
+import {IStdHubManifest} from "../../src/manifests/hub/interfaces/IStdHubManifest.sol";
+import {StdHubManifest, StdHubManifestFactory} from "../../src/manifests/hub/StdHubManifest.sol";
 
 /// @notice End-to-end test of the manifest circuit breaker on a full single-chain deployment:
-///         a pool with a real StdManifest installed and a Supervisor wired as a hub manager,
+///         a pool with a real StdHubManifest installed and a Supervisor wired as a hub manager,
 ///         exercising the in-policy / out-of-policy / authorize / sentinel-veto flows.
-contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
+contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     using CastLib for address;
 
     uint48 constant POLICY_DELAY = 1 days;
@@ -39,21 +39,21 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     address immutable sentinel = makeAddr("sentinel");
     address immutable newManager = makeAddr("newManager");
 
-    StdManifestFactory manifestFactory;
-    StdManifest manifest;
+    StdHubManifestFactory manifestFactory;
+    StdHubManifest manifest;
     ISupervisor supervisor;
 
     function setUp() public override {
         super.setUp();
         _createPool();
 
-        // Deploy the pool's Supervisor (sentinel registry) and StdManifest.
+        // Deploy the pool's Supervisor (sentinel registry) and StdHubManifest.
         supervisor = new SupervisorFactory(IHub(address(hub))).newSupervisor(POOL_A, mockUpdater);
-        manifestFactory = new StdManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager);
-        manifest = StdManifest(
+        manifestFactory = new StdHubManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager);
+        manifest = StdHubManifest(
             address(
-                manifestFactory.newStdManifest(
-                    IStdManifest.Config({
+                manifestFactory.newStdHubManifest(
+                    IStdHubManifest.Config({
                         delay: POLICY_DELAY,
                         expiry: POLICY_EXPIRY,
                         escalation: POLICY_ESCALATION,
@@ -67,7 +67,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         bridgingHook: address(0),
                         oracleValuation: address(0),
                         contractUpdaterForwarder: address(contractUpdaterForwarder),
-                        allowlist: new IStdManifest.Entry[](0)
+                        allowlist: new IStdHubManifest.Entry[](0)
                     })
                 )
             )
@@ -141,11 +141,11 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
     // ─── cancelAuthorization confinement ───────────────────────────────────────
 
-    function _manifestWith(IStdManifest.Entry[] memory allowlist) internal returns (StdManifest) {
-        return StdManifest(
+    function _manifestWith(IStdHubManifest.Entry[] memory allowlist) internal returns (StdHubManifest) {
+        return StdHubManifest(
             address(
-                manifestFactory.newStdManifest(
-                    IStdManifest.Config({
+                manifestFactory.newStdHubManifest(
+                    IStdHubManifest.Config({
                         delay: POLICY_DELAY,
                         expiry: POLICY_EXPIRY,
                         escalation: POLICY_ESCALATION,
@@ -166,29 +166,33 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         );
     }
 
-    function _confine(address caller, bytes4 selector) internal view returns (IStdManifest.Entry[] memory allowlist) {
+    function _confine(address caller, bytes4 selector)
+        internal
+        view
+        returns (IStdHubManifest.Entry[] memory allowlist)
+    {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = selector;
-        allowlist = new IStdManifest.Entry[](1);
-        allowlist[0] = IStdManifest.Entry({poolId: POOL_A, caller: caller, selectors: selectors});
+        allowlist = new IStdHubManifest.Entry[](1);
+        allowlist[0] = IStdHubManifest.Entry({poolId: POOL_A, caller: caller, selectors: selectors});
     }
 
     function testConfinedManagerCannotCancelArbitraryAuthorization() public {
         // Confine the operator to notifyPool only. cancelAuthorization now flows through the manifest, so a
         // manager restricted to a narrow selector set can no longer wield it as a pool-wide governance-DoS.
-        StdManifest confined = _manifestWith(_confine(operator, IHub.notifyPool.selector));
+        StdHubManifest confined = _manifestWith(_confine(operator, IHub.notifyPool.selector));
         vm.prank(address(root));
         hub.setManifest(POOL_A, confined);
 
         vm.prank(operator);
-        vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
+        vm.expectRevert(IStdHubManifest.CallerNotAllowed.selector);
         hub.cancelAuthorization(POOL_A, _grantManagerCall());
     }
 
     function testSentinelVetoSurvivesRestrictiveManifest() public {
         // A manifest that confines some manager must NOT break the Supervisor veto: the Supervisor is never
         // placed in an allowlist, so it stays unrestricted and its cancelAuthorization runs instantly.
-        StdManifest confined = _manifestWith(_confine(newManager, IHub.notifyPool.selector));
+        StdHubManifest confined = _manifestWith(_confine(newManager, IHub.notifyPool.selector));
         vm.prank(address(root));
         hub.setManifest(POOL_A, confined);
 
@@ -223,11 +227,11 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     }
 
     function testReplacingManifestUsesEscalation() public {
-        StdManifest next = StdManifest(
+        StdHubManifest next = StdHubManifest(
             address(
-                new StdManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
-                    .newStdManifest(
-                        IStdManifest.Config({
+                new StdHubManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
+                    .newStdHubManifest(
+                        IStdHubManifest.Config({
                             delay: POLICY_DELAY,
                             expiry: POLICY_EXPIRY,
                             escalation: POLICY_ESCALATION,
@@ -241,7 +245,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             bridgingHook: address(0),
                             oracleValuation: address(0),
                             contractUpdaterForwarder: address(contractUpdaterForwarder),
-                            allowlist: new IStdManifest.Entry[](0)
+                            allowlist: new IStdHubManifest.Entry[](0)
                         })
                     )
             )
@@ -272,11 +276,11 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.prank(operator);
         hub.initiateAuthorization(POOL_A, _grantManagerCall());
 
-        StdManifest next = StdManifest(
+        StdHubManifest next = StdHubManifest(
             address(
-                new StdManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
-                    .newStdManifest(
-                        IStdManifest.Config({
+                new StdHubManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
+                    .newStdHubManifest(
+                        IStdHubManifest.Config({
                             delay: POLICY_DELAY,
                             expiry: POLICY_EXPIRY,
                             escalation: POLICY_ESCALATION,
@@ -290,7 +294,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             bridgingHook: address(0),
                             oracleValuation: address(0),
                             contractUpdaterForwarder: address(contractUpdaterForwarder),
-                            allowlist: new IStdManifest.Entry[](0)
+                            allowlist: new IStdHubManifest.Entry[](0)
                         })
                     )
             )
@@ -313,7 +317,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
     /// @notice `managerCall` is in policy only when it targets the configured request manager (BRM). Any
     ///         other target (here a Supervisor) falls through to the deny-by-default branch
-    ///         (`StdManifest._classify` returns `delay`): out-of-policy, timelocked + sentinel-vetoable, NOT
+    ///         (`StdHubManifest._authorizationDelay` returns `delay`): out-of-policy, timelocked + sentinel-vetoable, NOT
     ///         synchronous. Pinning the target also defeats the ABI collision where another target's payload
     ///         shares a BRM action's leading kind byte.
     function testSupervisorManagerCallIsOutOfPolicyByDefault() public {
@@ -389,10 +393,10 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         assertEq(mainPrice.raw(), 1e18, "main share price committed");
 
         // Install a manifest with a 1% price-deviation bound (Anemoy-style).
-        StdManifest guarded = StdManifest(
+        StdHubManifest guarded = StdHubManifest(
             address(
-                manifestFactory.newStdManifest(
-                    IStdManifest.Config({
+                manifestFactory.newStdHubManifest(
+                    IStdHubManifest.Config({
                         delay: POLICY_DELAY,
                         expiry: POLICY_EXPIRY,
                         escalation: POLICY_ESCALATION,
@@ -406,7 +410,7 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         bridgingHook: address(0),
                         oracleValuation: address(0),
                         contractUpdaterForwarder: address(contractUpdaterForwarder),
-                        allowlist: new IStdManifest.Entry[](0)
+                        allowlist: new IStdHubManifest.Entry[](0)
                     })
                 )
             )
@@ -420,14 +424,14 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         // In-bound issue (within 1%): in policy. `enforce` runs synchronously, consumes no authorization.
         bytes memory okCall =
             abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, _brmIssueInner(1e18 + 5e15), 0, 0, address(0)));
-        assertEq(guarded.classify(POOL_A, FM, okCall), 0, "in-bound issue is in policy");
+        assertEq(guarded.authorizationDelay(POOL_A, FM, okCall), 0, "in-bound issue is in policy");
         vm.prank(address(hub));
         guarded.enforce(POOL_A, FM, okCall);
 
         // Over-deviating issue (>1%): out of policy.
         bytes memory badInner = _brmIssueInner(1e18 + 2e16);
         bytes memory badCall = abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, badInner, 0, 0, address(0)));
-        assertEq(guarded.classify(POOL_A, FM, badCall), POLICY_DELAY, "over-deviating issue is out of policy");
+        assertEq(guarded.authorizationDelay(POOL_A, FM, badCall), POLICY_DELAY, "over-deviating issue is out of policy");
 
         // Without an authorization the live managerCall reverts at the manifest gate, before the BRM body.
         vm.prank(FM);
@@ -513,7 +517,9 @@ contract StdManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.deal(FM, 1 ether);
         vm.startPrank(FM);
         hub.notifyPool{value: GAS}(POOL_A, localId, FUNDED);
-        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, bytes32(bytes20(address(shareTokenRegistrar))), FUNDED);
+        hub.notifyShareClass{value: GAS}(
+            POOL_A, SC_1, localId, bytes32(bytes20(address(shareTokenRegistrar))), 0, FUNDED
+        );
         vm.stopPrank();
 
         uint128 newMaxReserve = 123e6;

@@ -12,9 +12,9 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
-import {ISpokeMessageSender} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {IMessageDispatcher} from "../../src/core/messaging/interfaces/IMessageDispatcher.sol";
 import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {ISpokeMessageSender, ShareClassMetadata} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
 
@@ -50,10 +50,12 @@ contract TestAuthChecks is TestCommon {
         dispatcher.sendNotifyPool(REMOTE_CHAIN, POOL_A, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendNotifyShareClass(REMOTE_CHAIN, POOL_A, SC_A, "name", "SYM", 18, bytes32(0), bytes32(0), REFUND);
+        dispatcher.sendNotifyShareClass(
+            REMOTE_CHAIN, POOL_A, SC_A, ShareClassMetadata("name", "SYM", 18), bytes32(0), bytes32(0), 0, REFUND
+        );
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        dispatcher.sendNotifyShareMetadata(REMOTE_CHAIN, POOL_A, SC_A, "name", "SYM", REFUND);
+        dispatcher.sendNotifyShareMetadata(REMOTE_CHAIN, POOL_A, SC_A, "name", "SYM", 0, REFUND);
 
         vm.expectRevert(IAuth.NotAuthorized.selector);
         dispatcher.sendNotifyPricePoolPerShare(REMOTE_CHAIN, POOL_A, SC_A, D18.wrap(1e18), 0, REFUND);

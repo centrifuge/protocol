@@ -1831,6 +1831,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         ShareClassId scId = _getShareClassId();
 
         try spokeRegistry.shareToken(poolId, scId) returns (IERC20 shareTokenAddr) {
+            if (address(shareTokenAddr) == address(0)) return;
             IShareToken shareToken = IShareToken(address(shareTokenAddr));
             uint256 actualSupply = shareToken.totalSupply();
             // escrow holds tokens that have been redeemed
@@ -1865,13 +1866,8 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         if (!poolHasShareClass) return;
 
-        try spokeRegistry.shareToken(poolId, scId) returns (
-            IERC20 /* shareToken */
-        ) {}
-        catch Error(string memory reason) {
-            if (ghost_supplyOperationOccurred[key]) {
-                t(false, string.concat("Share token unexpectedly missing: ", reason));
-            }
+        if (ghost_supplyOperationOccurred[key]) {
+            t(address(spokeRegistry.shareToken(poolId, scId)) != address(0), "Share token unexpectedly missing");
         }
     }
 

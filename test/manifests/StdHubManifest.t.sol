@@ -26,10 +26,10 @@ import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.so
 
 import "forge-std/Test.sol";
 
-import {IStdManifest} from "../../src/manifests/interfaces/IStdManifest.sol";
-import {StdManifest, StdManifestFactory} from "../../src/manifests/StdManifest.sol";
+import {IStdHubManifest} from "../../src/manifests/hub/interfaces/IStdHubManifest.sol";
+import {StdHubManifest, StdHubManifestFactory} from "../../src/manifests/hub/StdHubManifest.sol";
 
-contract StdManifestTest is Test {
+contract StdHubManifestTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_A = ShareClassId.wrap(bytes16(uint128(2)));
 
@@ -58,9 +58,9 @@ contract StdManifestTest is Test {
     address immutable who = makeAddr("who");
 
     // The authorization ledger lives in a real HubRegistry, which the manifest classifies for.
-    StdManifest manifest;
+    StdHubManifest manifest;
     HubRegistry hubRegistry;
-    StdManifestFactory factory;
+    StdHubManifestFactory factory;
 
     function setUp() public {
         hubRegistry = new HubRegistry(address(this));
@@ -71,8 +71,8 @@ contract StdManifestTest is Test {
             abi.encodeWithSelector(ILocalCentrifugeId.localCentrifugeId.selector),
             abi.encode(LOCAL_CENTRIFUGE_ID)
         );
-        factory = new StdManifestFactory(hub, multiAdapter, scm);
-        manifest = StdManifest(address(factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0)))));
+        factory = new StdHubManifestFactory(hub, multiAdapter, scm);
+        manifest = StdHubManifest(address(factory.newStdHubManifest(_config(CAP, RATE, false, address(0), address(0)))));
 
         // Register the pool (manager becomes a manager; outsider is not) and install the manifest.
         hubRegistry.registerAsset(AssetId.wrap(1), 6);
@@ -90,9 +90,9 @@ contract StdManifestTest is Test {
     function _config(uint128 cap, uint128 rate, bool onchain, address nav, address price)
         internal
         view
-        returns (IStdManifest.Config memory)
+        returns (IStdHubManifest.Config memory)
     {
-        return _config(cap, rate, onchain, nav, price, type(uint128).max, new IStdManifest.Entry[](0));
+        return _config(cap, rate, onchain, nav, price, type(uint128).max, new IStdHubManifest.Entry[](0));
     }
 
     function _config(
@@ -101,17 +101,17 @@ contract StdManifestTest is Test {
         bool onchain,
         address nav,
         address price,
-        IStdManifest.Entry[] memory allowlist
-    ) internal view returns (IStdManifest.Config memory) {
+        IStdHubManifest.Entry[] memory allowlist
+    ) internal view returns (IStdHubManifest.Config memory) {
         return _config(cap, rate, onchain, nav, price, type(uint128).max, allowlist);
     }
 
     function _config(uint128 cap, uint128 rate, bool onchain, address nav, address price, uint128 maxDeviation)
         internal
         view
-        returns (IStdManifest.Config memory)
+        returns (IStdHubManifest.Config memory)
     {
-        return _config(cap, rate, onchain, nav, price, maxDeviation, new IStdManifest.Entry[](0));
+        return _config(cap, rate, onchain, nav, price, maxDeviation, new IStdHubManifest.Entry[](0));
     }
 
     function _config(
@@ -121,9 +121,9 @@ contract StdManifestTest is Test {
         address nav,
         address price,
         uint128 maxDeviation,
-        IStdManifest.Entry[] memory allowlist
-    ) internal view returns (IStdManifest.Config memory) {
-        return IStdManifest.Config({
+        IStdHubManifest.Entry[] memory allowlist
+    ) internal view returns (IStdHubManifest.Config memory) {
+        return IStdHubManifest.Config({
             delay: DELAY,
             expiry: EXPIRY,
             escalation: ESCALATION,
@@ -244,8 +244,8 @@ contract StdManifestTest is Test {
         hubRegistry.cancelAuthorization(POOL_A, manager, _setManifestCall(address(this)));
     }
 
-    function testEnforceNotHub() public {
-        vm.expectRevert(IManifest.NotHub.selector);
+    function testEnforceNotEnforcer() public {
+        vm.expectRevert(IManifest.NotEnforcer.selector);
         vm.prank(outsider);
         manifest.enforce(POOL_A, manager, _setManifestCall(address(this)));
     }
@@ -345,34 +345,34 @@ contract StdManifestTest is Test {
     function testFreezeRestrictionInPolicy() public view {
         // A canonical Freeze is strictly tightening, so it runs instantly (delay 0).
         bytes memory freeze = abi.encodePacked(uint8(UpdateRestrictionType.Freeze), bytes32(bytes20(who)));
-        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(freeze)), 0);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _restrictionCall(freeze)), 0);
     }
 
     function testUnfreezeRestrictionNeedsAuthorization() public view {
         bytes memory unfreeze = abi.encodePacked(uint8(UpdateRestrictionType.Unfreeze), bytes32(bytes20(who)));
-        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(unfreeze)), DELAY);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _restrictionCall(unfreeze)), DELAY);
     }
 
     function testMemberRestrictionNeedsAuthorization() public view {
         bytes memory member =
             abi.encodePacked(uint8(UpdateRestrictionType.Member), bytes32(bytes20(who)), uint64(1 days));
-        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(member)), DELAY);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _restrictionCall(member)), DELAY);
     }
 
     function testMalformedRestrictionNeedsAuthorization() public view {
         // Too short (only the type byte) fails closed to delay.
         bytes memory short = abi.encodePacked(uint8(UpdateRestrictionType.Freeze));
-        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(short)), DELAY);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _restrictionCall(short)), DELAY);
 
         // Canonical 33-byte length but an out-of-range type byte also fails closed to delay (no revert).
         bytes memory badType = abi.encodePacked(uint8(0xff), bytes32(bytes20(who)));
-        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(badType)), DELAY);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _restrictionCall(badType)), DELAY);
     }
 
     function testFreezeWithTrailingBytesNeedsAuthorization() public view {
         // A Freeze with one trailing byte is not the canonical 33-byte shape, so it stays out of policy.
         bytes memory freezePlus = abi.encodePacked(uint8(UpdateRestrictionType.Freeze), bytes32(bytes20(who)), uint8(0));
-        assertEq(manifest.classify(POOL_A, manager, _restrictionCall(freezePlus)), DELAY);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _restrictionCall(freezePlus)), DELAY);
     }
 
     // ─── constructor timelock validation ─────────────────────────────────
@@ -380,7 +380,7 @@ contract StdManifestTest is Test {
     function _timelockConfig(uint48 delay_, uint48 expiry_, uint48 escalation_)
         internal
         view
-        returns (IStdManifest.Config memory c)
+        returns (IStdHubManifest.Config memory c)
     {
         c = _config(CAP, RATE, false, address(0), address(0));
         c.delay = delay_;
@@ -389,23 +389,23 @@ contract StdManifestTest is Test {
     }
 
     function testConstructorRejectsZeroDelay() public {
-        vm.expectRevert(IStdManifest.InvalidConfig.selector);
-        new StdManifest(hub, multiAdapter, scm, _timelockConfig(0, EXPIRY, ESCALATION));
+        vm.expectRevert(IStdHubManifest.InvalidConfig.selector);
+        new StdHubManifest(hub, multiAdapter, scm, _timelockConfig(0, EXPIRY, ESCALATION));
     }
 
     function testConstructorRejectsZeroExpiry() public {
-        vm.expectRevert(IStdManifest.InvalidConfig.selector);
-        new StdManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, 0, ESCALATION));
+        vm.expectRevert(IStdHubManifest.InvalidConfig.selector);
+        new StdHubManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, 0, ESCALATION));
     }
 
     function testConstructorRejectsEscalationEqualToDelay() public {
-        vm.expectRevert(IStdManifest.InvalidConfig.selector);
-        new StdManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, EXPIRY, DELAY));
+        vm.expectRevert(IStdHubManifest.InvalidConfig.selector);
+        new StdHubManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, EXPIRY, DELAY));
     }
 
     function testConstructorRejectsEscalationBelowDelay() public {
-        vm.expectRevert(IStdManifest.InvalidConfig.selector);
-        new StdManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, EXPIRY, DELAY - 1));
+        vm.expectRevert(IStdHubManifest.InvalidConfig.selector);
+        new StdHubManifest(hub, multiAdapter, scm, _timelockConfig(DELAY, EXPIRY, DELAY - 1));
     }
 
     // ─── share-price guard ─────────────────────────────────────────────────────────
@@ -518,7 +518,7 @@ contract StdManifestTest is Test {
     }
 
     function testPriceGuardDisabled() public {
-        manifest = StdManifest(address(factory.newStdManifest(_config(0, 0, false, address(0), address(0)))));
+        manifest = StdHubManifest(address(factory.newStdHubManifest(_config(0, 0, false, address(0), address(0)))));
 
         // Establish a baseline, then a huge same-block jump: with both guards off everything is in policy.
         vm.prank(address(hub));
@@ -577,7 +577,7 @@ contract StdManifestTest is Test {
         // A managerCall payload shorter than 224 bytes (the static ABI encoding of its 7 parameters)
         // must not revert during classify/authorize — it fails closed as out-of-policy (delay).
         bytes memory shortPayload = abi.encodePacked(IHub.managerCall.selector, new bytes(100)); // 4 + 100 = 104 bytes, well under 224
-        assertEq(manifest.classify(POOL_A, manager, shortPayload), DELAY);
+        assertEq(manifest.authorizationDelay(POOL_A, manager, shortPayload), DELAY);
     }
 
     function testManagerCallTruncatedDynamicTailReverts() public {
@@ -597,7 +597,7 @@ contract StdManifestTest is Test {
     }
 
     function classifyExternal(bytes calldata data) external view {
-        manifest.classify(POOL_A, manager, data);
+        manifest.authorizationDelay(POOL_A, manager, data);
     }
 
     function testManagerCallToBridgingHookSetPausedInPolicy() public {
@@ -615,9 +615,9 @@ contract StdManifestTest is Test {
 
     function testManagerCallToBridgingHookNotConfiguredDelayed() public {
         // When bridgingHook is address(0), a SetPaused payload to any target is still delayed.
-        IStdManifest.Config memory cfg = _config(CAP, RATE, false, address(0), address(0));
+        IStdHubManifest.Config memory cfg = _config(CAP, RATE, false, address(0), address(0));
         cfg.bridgingHook = address(0);
-        StdManifest noHook = new StdManifest(hub, multiAdapter, scm, cfg);
+        StdHubManifest noHook = new StdHubManifest(hub, multiAdapter, scm, cfg);
         hubRegistry.setManifest(POOL_A, noHook);
         bytes memory inner = abi.encode(uint8(0), bytes16("sc1"), true);
         assertEq(_delayOf(_managerCall(bytes32(bytes20(hook)), inner)), DELAY);
@@ -645,9 +645,9 @@ contract StdManifestTest is Test {
     function _classifyBrm(uint128 maxDev, bytes memory inner) internal returns (uint48) {
         // Fresh factory per call: this helper classifies many throwaway manifests whose configs may
         // repeat, and a shared factory's deterministic CREATE2 address would collide on a repeat.
-        IStdManifest m = new StdManifestFactory(hub, multiAdapter, scm)
-            .newStdManifest(_config(CAP, RATE, false, address(0), address(0), maxDev));
-        return m.classify(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), inner));
+        IStdHubManifest m = new StdHubManifestFactory(hub, multiAdapter, scm)
+            .newStdHubManifest(_config(CAP, RATE, false, address(0), address(0), maxDev));
+        return m.authorizationDelay(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), inner));
     }
 
     function _mockAssetPrice(uint128 raw) internal {
@@ -733,13 +733,13 @@ contract StdManifestTest is Test {
 
     function testBrmApproveAssetPriceRevertBubblesUp() public {
         // A reverting oracle bubbles up: a manager must not approve against a broken price source.
-        IStdManifest m = factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0), DEVIATION));
+        IStdHubManifest m = factory.newStdHubManifest(_config(CAP, RATE, false, address(0), address(0), DEVIATION));
         vm.mockCallRevert(
             address(hub), abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET), "PriceNotSet"
         );
         bytes memory call = _managerCall(bytes32(bytes20(brm)), _brmApproveAction(ManagerAction.ApproveDeposits, 1e18));
         vm.expectRevert();
-        m.classify(POOL_A, manager, call);
+        m.authorizationDelay(POOL_A, manager, call);
     }
 
     function testBrmGuardDisabledAnyPriceInPolicy() public {
@@ -900,7 +900,7 @@ contract StdManifestTest is Test {
 
     function testSetAdaptersAlwaysOutOfPolicy() public {
         // setAdapters is always `delay`, regardless of which local/remote adapters are proposed: neither
-        // is validated on-chain (see {StdManifest._classify}), so a sentinel reviewing the pending
+        // is validated on-chain (see {StdHubManifest._authorizationDelay}), so a sentinel reviewing the pending
         // authorization is the only safeguard.
         IAdapter[] memory local = new IAdapter[](1);
         local[0] = IAdapter(makeAddr("adapter"));
@@ -923,49 +923,49 @@ contract StdManifestTest is Test {
     address constant NAV = address(0xA1);
     address constant PRICE = address(0xB2);
 
-    function _onchainManifest() internal returns (StdManifest) {
-        return StdManifest(address(factory.newStdManifest(_config(CAP, RATE, true, NAV, PRICE))));
+    function _onchainManifest() internal returns (StdHubManifest) {
+        return StdHubManifest(address(factory.newStdHubManifest(_config(CAP, RATE, true, NAV, PRICE))));
     }
 
     function testOnchainAccountingNavManagerInPolicy() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         // The NAVManager drives accounting synchronously (in policy, no revert).
         vm.prank(address(hub));
         m.enforce(POOL_A, NAV, abi.encodeWithSelector(IHub.updateJournal.selector, POOL_A));
     }
 
     function testOnchainAccountingBlocksOtherCallers() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         // Any other caller is blocked outright — can't touch accounting, can't even authorize it.
         vm.prank(address(hub));
-        vm.expectRevert(IStdManifest.OnchainAccountingOnly.selector);
+        vm.expectRevert(IStdHubManifest.OnchainAccountingOnly.selector);
         m.enforce(POOL_A, manager, abi.encodeWithSelector(IHub.updateJournal.selector, POOL_A));
     }
 
     function testOnchainAccountingSharePriceOnlyFromPriceManager() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         // Share price comes only from the SimplePriceManager.
         vm.prank(address(hub));
         m.enforce(POOL_A, PRICE, _priceCall(2e18));
 
         vm.prank(address(hub));
-        vm.expectRevert(IStdManifest.OnchainAccountingOnly.selector);
+        vm.expectRevert(IStdHubManifest.OnchainAccountingOnly.selector);
         m.enforce(POOL_A, manager, _priceCall(2e18));
     }
 
     function testOnchainAccountingSnapshotHookMustBeNavManager() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         // The snapshot hook may only point at the NAVManager.
         vm.prank(address(hub));
         m.enforce(POOL_A, manager, abi.encodeWithSelector(IHub.setSnapshotHook.selector, POOL_A, NAV));
 
         vm.prank(address(hub));
-        vm.expectRevert(IStdManifest.OnchainAccountingOnly.selector);
+        vm.expectRevert(IStdHubManifest.OnchainAccountingOnly.selector);
         m.enforce(POOL_A, manager, abi.encodeWithSelector(IHub.setSnapshotHook.selector, POOL_A, address(0xBAD)));
     }
 
     function testOnchainPriceManagerFirstUpdateInPolicy() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         // No baseline yet -> first update from SimplePriceManager is in policy regardless of the price.
         vm.prank(address(hub));
         m.enforce(POOL_A, PRICE, _priceCall(100e18));
@@ -973,7 +973,7 @@ contract StdManifestTest is Test {
     }
 
     function testOnchainPriceManagerSmallUpdateInPolicy() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         vm.prank(address(hub));
         m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline
         skip(100);
@@ -984,7 +984,7 @@ contract StdManifestTest is Test {
     }
 
     function testOnchainPriceManagerRateLimitedNeedsAuthorization() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
         vm.prank(address(hub));
         m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline at T0
@@ -997,7 +997,7 @@ contract StdManifestTest is Test {
     }
 
     function testOnchainPriceManagerCapExceededNeedsAuthorization() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
         vm.prank(address(hub));
         m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline
@@ -1010,7 +1010,7 @@ contract StdManifestTest is Test {
     }
 
     function testOnchainPriceManagerSameBlockNeedsAuthorization() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
         vm.prank(address(hub));
         m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline committed this block
@@ -1022,7 +1022,7 @@ contract StdManifestTest is Test {
     }
 
     function testOnchainPriceManagerOutOfPolicyCanBePreauthorized() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
         address spm = m.simplePriceManager();
         vm.prank(address(hub));
@@ -1040,7 +1040,7 @@ contract StdManifestTest is Test {
     }
 
     function testOnchainPriceManagerPreauthorizationBlocksNonPriceManager() public {
-        StdManifest m = _onchainManifest();
+        StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
         address spm = m.simplePriceManager();
         vm.prank(address(hub));
@@ -1052,13 +1052,13 @@ contract StdManifestTest is Test {
         skip(DELAY);
 
         // Even with a valid pre-authorization, a non-SimplePriceManager caller is blocked at enforce.
-        vm.expectRevert(IStdManifest.OnchainAccountingOnly.selector);
+        vm.expectRevert(IStdHubManifest.OnchainAccountingOnly.selector);
         vm.prank(address(hub));
         m.enforce(POOL_A, manager, d);
     }
 
     function testOnchainPriceManagerGuardDisabled() public {
-        StdManifest m = StdManifest(address(factory.newStdManifest(_config(0, 0, true, NAV, PRICE))));
+        StdHubManifest m = StdHubManifest(address(factory.newStdHubManifest(_config(0, 0, true, NAV, PRICE))));
 
         // With both guards off, SimplePriceManager can make any same-block jump.
         vm.prank(address(hub));
@@ -1077,11 +1077,11 @@ contract StdManifestTest is Test {
 
     address constant ORACLE = address(0xD4);
 
-    function _oracleManifest(bool onchain) internal returns (StdManifest) {
-        IStdManifest.Config memory cfg =
+    function _oracleManifest(bool onchain) internal returns (StdHubManifest) {
+        IStdHubManifest.Config memory cfg =
             _config(CAP, RATE, onchain, onchain ? NAV : address(0), onchain ? PRICE : address(0));
         cfg.oracleValuation = ORACLE;
-        return StdManifest(address(factory.newStdManifest(cfg)));
+        return StdHubManifest(address(factory.newStdHubManifest(cfg)));
     }
 
     function _updateHoldingValueCall() internal pure returns (bytes memory) {
@@ -1089,20 +1089,20 @@ contract StdManifestTest is Test {
     }
 
     function testOracleValuationUpdateHoldingValueInPolicy() public {
-        StdManifest m = _oracleManifest(false);
+        StdHubManifest m = _oracleManifest(false);
         vm.prank(address(hub));
         m.enforce(POOL_A, ORACLE, _updateHoldingValueCall());
     }
 
     function testOracleValuationUpdateHoldingValueInPolicyOnchainMode() public {
-        StdManifest m = _oracleManifest(true);
+        StdHubManifest m = _oracleManifest(true);
         hubRegistry.setManifest(POOL_A, m);
         vm.prank(address(hub));
         m.enforce(POOL_A, ORACLE, _updateHoldingValueCall());
     }
 
     function testOracleValuationOtherSelectorStillDelayed() public {
-        StdManifest m = _oracleManifest(false);
+        StdHubManifest m = _oracleManifest(false);
         hubRegistry.setManifest(POOL_A, m);
         hubRegistry.updateManager(POOL_A, ORACLE, true);
         assertEq(
@@ -1118,7 +1118,7 @@ contract StdManifestTest is Test {
     }
 
     function testOracleValuationStoredOnManifest() public {
-        StdManifest m = _oracleManifest(false);
+        StdHubManifest m = _oracleManifest(false);
         assertEq(m.oracleValuation(), ORACLE);
     }
 
@@ -1134,11 +1134,11 @@ contract StdManifestTest is Test {
     address constant KEEPER = address(0xC3);
 
     /// @dev Manifest confining KEEPER to the given selectors; KEEPER is also a registered manager.
-    function _allowlistManifest(bytes4[] memory selectors) internal returns (StdManifest) {
-        IStdManifest.Entry[] memory wl = new IStdManifest.Entry[](1);
-        wl[0] = IStdManifest.Entry({poolId: POOL_A, caller: KEEPER, selectors: selectors});
-        StdManifest m =
-            StdManifest(address(factory.newStdManifest(_config(CAP, RATE, false, address(0), address(0), wl))));
+    function _allowlistManifest(bytes4[] memory selectors) internal returns (StdHubManifest) {
+        IStdHubManifest.Entry[] memory wl = new IStdHubManifest.Entry[](1);
+        wl[0] = IStdHubManifest.Entry({poolId: POOL_A, caller: KEEPER, selectors: selectors});
+        StdHubManifest m =
+            StdHubManifest(address(factory.newStdHubManifest(_config(CAP, RATE, false, address(0), address(0), wl))));
         // KEEPER is a registered manager, and m is installed so the registry classifies/consumes through it.
         hubRegistry.updateManager(POOL_A, KEEPER, true);
         hubRegistry.setManifest(POOL_A, m);
@@ -1151,7 +1151,7 @@ contract StdManifestTest is Test {
     }
 
     function testAllowlistConfigStored() public {
-        StdManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
+        StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         assertTrue(m.restricted(POOL_A, KEEPER));
         assertTrue(m.allowed(POOL_A, KEEPER, UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         assertFalse(m.allowed(POOL_A, KEEPER, IHub.notifyPool.selector));
@@ -1160,29 +1160,29 @@ contract StdManifestTest is Test {
     }
 
     function testAllowlistedCallerCanCallAllowedSelector() public {
-        StdManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
+        StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         // First price update has no baseline -> in policy; the confinement check passes.
         vm.prank(address(hub));
         m.enforce(POOL_A, KEEPER, _priceCallWithTimestamp(1e18));
     }
 
     function testAllowlistedCallerBlockedFromOtherSelector() public {
-        StdManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
+        StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         // notifyPool is normally in policy for anyone, but KEEPER is confined to updateSharePrice.
         vm.prank(address(hub));
-        vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
+        vm.expectRevert(IStdHubManifest.CallerNotAllowed.selector);
         m.enforce(POOL_A, KEEPER, abi.encodeWithSelector(IHub.notifyPool.selector, POOL_A, uint16(1), address(0)));
     }
 
     function testAllowlistedCallerCannotAuthorizeOtherSelector() public {
         _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         // Confinement also blocks authorize: KEEPER can't even queue an out-of-policy call outside its set.
-        vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
+        vm.expectRevert(IStdHubManifest.CallerNotAllowed.selector);
         hubRegistry.initiateAuthorization(POOL_A, KEEPER, _setManifestCall(address(this)));
     }
 
     function testAllowlistComposesWithValueGuard() public {
-        StdManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
+        StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         // Allowed selector still flows through the price guard: establish a baseline...
         vm.prank(address(hub));
         m.enforce(POOL_A, KEEPER, _priceCallWithTimestamp(1e18));
@@ -1204,7 +1204,7 @@ contract StdManifestTest is Test {
         bytes4[] memory sels = new bytes4[](2);
         sels[0] = IHub.notifySharePrice.selector;
         sels[1] = IHub.notifyAssetPrice.selector;
-        StdManifest m = _allowlistManifest(sels);
+        StdHubManifest m = _allowlistManifest(sels);
 
         // Both listed notify selectors are allowed (and in policy by default).
         vm.prank(address(hub));
@@ -1214,12 +1214,12 @@ contract StdManifestTest is Test {
 
         // A third, unlisted selector is blocked.
         vm.prank(address(hub));
-        vm.expectRevert(IStdManifest.CallerNotAllowed.selector);
+        vm.expectRevert(IStdHubManifest.CallerNotAllowed.selector);
         m.enforce(POOL_A, KEEPER, _priceCallWithTimestamp(1e18));
     }
 
     function testUnrestrictedCallerUnaffectedByAllowlist() public {
-        StdManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
+        StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         // `manager` has no allowlist entry, so it follows normal policy: notifyPool stays in policy.
         vm.prank(address(hub));
         m.enforce(POOL_A, manager, abi.encodeWithSelector(IHub.notifyPool.selector, POOL_A, uint16(1), address(0)));
@@ -1227,7 +1227,7 @@ contract StdManifestTest is Test {
 
     function testAllowlistIsPerPool() public {
         // KEEPER is confined in POOL_A but has no entry for another pool, so it is unconfined there.
-        StdManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
+        StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         PoolId poolB = PoolId.wrap(2);
         assertFalse(m.restricted(poolB, KEEPER));
 

@@ -4,9 +4,9 @@ Spoke managers provide specialized interfaces for balance sheet operations on sp
 
 ![Spoke Managers architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/managers/spoke-managers.puml)
 
-### `OnOfframpManager`
+### `OnOffRamp`
 
-`OnOfframpManager` is a balance sheet manager for depositing and withdrawing ERC20 assets. Onramping (depositing assets into the pool) is permissionless once an asset is enabled—anyone can trigger the balance sheet deposit once ERC20 assets have been transferred to the manager. Offramping (withdrawing assets from the pool) is permissioned and requires predefined relayers to trigger withdrawals to predefined offramp accounts.
+`OnOffRamp` is a balance sheet manager for depositing and withdrawing ERC20 assets. Onramping (depositing assets into the pool) is permissionless once an asset is enabled—anyone can trigger the balance sheet deposit once ERC20 assets have been transferred to the manager. Offramping (withdrawing assets from the pool) is permissioned and requires predefined relayers to trigger withdrawals to predefined offramp accounts.
 
 ### `QueueManager`
 

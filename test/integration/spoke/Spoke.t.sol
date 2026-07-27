@@ -7,6 +7,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {VaultKind} from "../../../src/core/spoke/interfaces/IVault.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
@@ -43,7 +44,7 @@ contract SpokeRestrictionTest is CentrifugeIntegrationTest {
         // Push pool and share class to spoke
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), address(this)
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), 0, address(this)
         );
 
         // Token deploys hookless (v3.1+); set the restriction hook via the registrar's Envoy path
@@ -153,7 +154,7 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
         hub.notifyPool{value: 0}(POOL_A, LOCAL_CENTRIFUGE_ID, address(this));
         hub.notifyShareClass{value: 0}(
-            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), address(this)
+            POOL_A, SC_1, LOCAL_CENTRIFUGE_ID, bytes32(bytes20(address(shareTokenRegistrar))), 0, address(this)
         );
     }
 
@@ -251,5 +252,57 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
 
         _assertVaultSetup(vaultAddr, true);
         _assertShareSetup();
+    }
+
+    /// forge-config: default.isolate = true
+    function testDeployVaultForwardsPayload() public {
+        _setUpPoolAndShare();
+        _registerErc20Asset(6);
+
+        vm.prank(address(messageProcessor));
+        spokeHandler.setRequestManager(POOL_A, asyncRequestManager);
+
+        RecordingVaultFactory recordingFactory = new RecordingVaultFactory();
+
+        // A >256-byte payload so the exact bytes (not just a small prefix) must be forwarded verbatim.
+        bytes memory payload = new bytes(300);
+        for (uint256 i; i < payload.length; i++) {
+            payload[i] = bytes1(uint8(i));
+        }
+
+        vm.prank(address(messageProcessor));
+        spokeHandler.updateVault(
+            POOL_A, SC_1, assetId, address(recordingFactory), VaultUpdateKind.DeployAndLink, payload
+        );
+
+        assertEq(recordingFactory.lastPayload(), payload, "factory did not receive the forwarded payload");
+    }
+}
+
+/// @dev Minimal vault that satisfies the register/link checks (poolId/scId/vaultKind) for payload-forwarding tests.
+contract RecordingVault {
+    PoolId public immutable poolId;
+    ShareClassId public immutable scId;
+
+    constructor(PoolId poolId_, ShareClassId scId_) {
+        poolId = poolId_;
+        scId = scId_;
+    }
+
+    function vaultKind() external pure returns (VaultKind) {
+        return VaultKind.Async;
+    }
+}
+
+/// @dev Factory that records the deployment payload the spoke forwards to `newVault`.
+contract RecordingVaultFactory {
+    bytes public lastPayload;
+
+    function newVault(PoolId poolId, ShareClassId scId, address, uint256, address, bytes calldata payload)
+        external
+        returns (address)
+    {
+        lastPayload = payload;
+        return address(new RecordingVault(poolId, scId));
     }
 }

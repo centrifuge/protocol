@@ -14,6 +14,7 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../../../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
+import {ISpokeRegistry} from "../../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 
 import {IOnchainPMFactory} from "../interfaces/IOnchainPMFactory.sol";
@@ -60,6 +61,8 @@ contract SlippageGuard is ISlippageGuard {
 
         (bytes16 scId_, uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (bytes16, uint128, uint32));
         ShareClassId scId = ShareClassId.wrap(scId_);
+        require(spoke.spokeRegistry().hasShareClass(poolId, scId), ISpokeRegistry.ShareTokenDoesNotExist());
+
         config[poolId][scId] = SlippageConfig(maxPeriodLoss, periodDuration);
         emit SetConfig(poolId, scId, maxPeriodLoss, periodDuration);
     }
@@ -139,7 +142,7 @@ contract SlippageGuard is ISlippageGuard {
             uint128 post = spoke.availableBalanceOf(poolId, scId, asset, tokenId);
 
             D18 price = spoke.spokeRegistry()
-                .pricePoolPerAsset(poolId, scId, spoke.spokeRegistry().assetToId(asset, tokenId), true);
+                .pricePoolPerAsset(poolId, scId, spoke.spokeRegistry().assetToId(asset, tokenId, true), true);
             uint8 assetDecimals =
                 tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
 

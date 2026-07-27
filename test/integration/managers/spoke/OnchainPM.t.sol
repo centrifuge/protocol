@@ -267,12 +267,12 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
         vm.mockCall(assetB, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, assetA, uint256(0)),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetA, uint256(0)),
             abi.encode(ASSET_ID_1)
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.assetToId.selector, assetB, uint256(0)),
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetB, uint256(0)),
             abi.encode(ASSET_ID_2)
         );
         vm.mockCall(

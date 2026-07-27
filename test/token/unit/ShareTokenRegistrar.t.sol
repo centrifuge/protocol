@@ -237,7 +237,7 @@ contract ShareTokenRegistrarTest is Test {
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, assetId),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), assetId),
             abi.encode(asset, uint256(0))
         );
         vm.mockCall(
@@ -273,7 +273,7 @@ contract ShareTokenRegistrarTest is Test {
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, assetId),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), assetId),
             abi.encode(makeAddr("asset"), uint256(0))
         );
         // The requested vault is not linked in the registry
@@ -333,7 +333,7 @@ contract ShareTokenRegistrarTest is Test {
         );
         vm.mockCall(
             spokeRegistry,
-            abi.encodeWithSelector(ISpokeRegistry.idToAsset.selector, assetId),
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), assetId),
             abi.encode(makeAddr("asset"), uint256(1))
         );
 

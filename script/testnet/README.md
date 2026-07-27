@@ -184,7 +184,7 @@ Contract addresses are deterministic across all chains (CREATE3). Look up the la
 - **Hub (Base Sepolia)**: `env/base-sepolia.json` → `contracts` section
 - **Spoke (Arbitrum Sepolia)**: `env/arbitrum-sepolia.json` → `contracts` section
 
-Key contracts: `root`, `hub`, `hubRegistry`, `spoke`, `multiAdapter`, `vaultRegistry`, `axelarAdapter`, `layerZeroAdapter`, `chainlinkAdapter`, `hyperlaneAdapter`, `subsidyManager`.
+Key contracts: `root`, `hub`, `hubRegistry`, `spoke`, `multiAdapter`, `vaultRegistry`, `axelarAdapter`, `layerZeroAdapter`, `chainlinkAdapter`, `subsidyManager`.
 
 ---
 

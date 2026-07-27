@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "../../core/types/PoolId.sol";
-import {IHub} from "../../core/hub/interfaces/IHub.sol";
-import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IManifest} from "../../core/hub/interfaces/IManifest.sol";
-import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
-import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
-import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
+import {PoolId} from "../../../core/types/PoolId.sol";
+import {IHub} from "../../../core/hub/interfaces/IHub.sol";
+import {ShareClassId} from "../../../core/types/ShareClassId.sol";
+import {IHubManifest} from "../../../core/hub/interfaces/IManifest.sol";
+import {IHubRegistry} from "../../../core/hub/interfaces/IHubRegistry.sol";
+import {IMultiAdapter} from "../../../core/messaging/interfaces/IMultiAdapter.sol";
+import {IShareClassManager} from "../../../core/hub/interfaces/IShareClassManager.sol";
 
-interface IStdManifest is IManifest {
+interface IStdHubManifest is IHubManifest {
     error OnchainAccountingOnly();
     error CallerNotAllowed();
     error InvalidConfig();
@@ -66,13 +66,13 @@ interface IStdManifest is IManifest {
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);
 }
 
-interface IStdManifestFactory {
-    event DeployStdManifest(address indexed manifest);
+interface IStdHubManifestFactory {
+    event DeployStdHubManifest(address indexed manifest);
 
     function hub() external view returns (IHub);
     function multiAdapter() external view returns (IMultiAdapter);
     function shareClassManager() external view returns (IShareClassManager);
 
-    function newStdManifest(IStdManifest.Config memory config) external returns (IStdManifest);
-    function previewStdManifest(IStdManifest.Config memory config) external view returns (address);
+    function newStdHubManifest(IStdHubManifest.Config memory config) external returns (IStdHubManifest);
+    function previewStdHubManifest(IStdHubManifest.Config memory config) external view returns (address);
 }

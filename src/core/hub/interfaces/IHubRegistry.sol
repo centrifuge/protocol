@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IManifest} from "./IManifest.sol";
+import {IHubManifest} from "./IManifest.sol";
 import {IBridgingHook} from "./IBridgingHook.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 
@@ -24,7 +24,7 @@ interface IHubRegistry is IERC6909Decimals {
     /// @dev Packed into one slot so authorization-id computation reads the manifest and its install
     ///      nonce with a single SLOAD.
     struct ManifestInfo {
-        IManifest manifest;
+        IHubManifest manifest;
         uint64 nonce;
     }
 
@@ -39,7 +39,7 @@ interface IHubRegistry is IERC6909Decimals {
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
     event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
     event SetBridgingHook(PoolId indexed poolId, address hook);
-    event SetManifest(PoolId indexed poolId, IManifest manifest);
+    event SetManifest(PoolId indexed poolId, IHubManifest manifest);
 
     /// @notice Emitted when an out-of-policy Hub call is authorized: this starts the policy timelock.
     ///         The authorization matures at `validAfter` and may then run, unless cancelled first. `data`
@@ -137,7 +137,7 @@ interface IHubRegistry is IERC6909Decimals {
     /// @dev    Auth-gated: written through by the Hub, which enforces the policy on the change itself
     /// @param poolId The pool identifier
     /// @param manifest The manifest contract (address(0) to clear)
-    function setManifest(PoolId poolId, IManifest manifest) external;
+    function setManifest(PoolId poolId, IHubManifest manifest) external;
 
     //----------------------------------------------------------------------------------------------
     // Authorization ledger
@@ -212,7 +212,7 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice Returns the policy manifest installed for a pool (address(0) if none)
     /// @param poolId The pool identifier
     /// @return The manifest contract
-    function manifest(PoolId poolId) external view returns (IManifest);
+    function manifest(PoolId poolId) external view returns (IHubManifest);
 
     /// @notice Compute a pool ID given an ID postfix
     /// @param centrifugeId The network identifier

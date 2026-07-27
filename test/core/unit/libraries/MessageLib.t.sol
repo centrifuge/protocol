@@ -230,10 +230,18 @@ contract TestMessageLibIdentities is Test {
         bytes32 symbol,
         uint8 decimals,
         bytes32 salt,
-        bytes32 registrar
+        bytes32 registrar,
+        uint128 extraGasLimit
     ) public pure {
         MessageLib.NotifyShareClass memory a = MessageLib.NotifyShareClass({
-            poolId: poolId, scId: scId, name: name, symbol: symbol, decimals: decimals, salt: salt, registrar: registrar
+            poolId: poolId,
+            scId: scId,
+            name: name,
+            symbol: symbol,
+            decimals: decimals,
+            salt: salt,
+            registrar: registrar,
+            extraGasLimit: extraGasLimit
         });
         MessageLib.NotifyShareClass memory b = MessageLib.deserializeNotifyShareClass(a.serialize());
 
@@ -246,10 +254,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.decimals, b.decimals);
         assertEq(a.salt, b.salt);
         assertEq(a.registrar, b.registrar);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), extraGasLimit);
     }
 
     function testNotifyPricePoolPerShare(uint64 poolId, bytes16 scId, uint128 price, uint64 timestamp) public pure {
@@ -286,9 +295,16 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
-    function testNotifyShareMetadata(uint64 poolId, bytes16 scId, string calldata name, bytes32 symbol) public pure {
-        MessageLib.NotifyShareMetadata memory a =
-            MessageLib.NotifyShareMetadata({poolId: poolId, scId: scId, name: name, symbol: symbol});
+    function testNotifyShareMetadata(
+        uint64 poolId,
+        bytes16 scId,
+        string calldata name,
+        bytes32 symbol,
+        uint128 extraGasLimit
+    ) public pure {
+        MessageLib.NotifyShareMetadata memory a = MessageLib.NotifyShareMetadata({
+            poolId: poolId, scId: scId, name: name, symbol: symbol, extraGasLimit: extraGasLimit
+        });
         MessageLib.NotifyShareMetadata memory b = MessageLib.deserializeNotifyShareMetadata(a.serialize());
 
         string calldata slicedName = bytes(name).length > 128 ? name[0:128] : name;
@@ -297,10 +313,11 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.scId, b.scId);
         assertEq(slicedName, b.name);
         assertEq(a.symbol, b.symbol);
+        assertEq(a.extraGasLimit, b.extraGasLimit);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
-        assertEq(a.serialize().messageExtraGasLimit(), 0);
+        assertEq(a.serialize().messageExtraGasLimit(), extraGasLimit);
     }
 
     function testInitiateTransferShares(
@@ -380,8 +397,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
-        // Check the payload length is correctly encoded as little endian
-        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+        // Check the payload length is correctly encoded as a 2-byte big-endian prefix ahead of the payload
+        bytes memory serialized = a.serialize();
+        uint256 lengthIndex = serialized.messageLength() - a.payload.length - 2;
+        assertEq((uint256(uint8(serialized[lengthIndex])) << 8) | uint8(serialized[lengthIndex + 1]), a.payload.length);
     }
 
     function testManagerCall(uint64 poolId, bytes32 target, uint128 extraGasLimit, bytes memory payload) public pure {
@@ -399,8 +418,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
-        // Check the payload length is correctly encoded as little endian
-        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+        // Check the payload length is correctly encoded as a 2-byte big-endian prefix ahead of the payload
+        bytes memory serialized = a.serialize();
+        uint256 lengthIndex = serialized.messageLength() - a.payload.length - 2;
+        assertEq((uint256(uint8(serialized[lengthIndex])) << 8) | uint8(serialized[lengthIndex + 1]), a.payload.length);
     }
 
     function testRequest(uint64 poolId, bytes16 scId, uint128 assetId, uint128 extraGasLimit, bytes memory payload)
@@ -422,8 +443,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
-        // Check the payload length is correctly encoded as little endian
-        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+        // Check the payload length is correctly encoded as a 2-byte big-endian prefix ahead of the payload
+        bytes memory serialized = a.serialize();
+        uint256 lengthIndex = serialized.messageLength() - a.payload.length - 2;
+        assertEq((uint256(uint8(serialized[lengthIndex])) << 8) | uint8(serialized[lengthIndex + 1]), a.payload.length);
     }
 
     function testRequestCallback(
@@ -448,8 +471,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
-        // Check the payload length is correctly encoded as little endian
-        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+        // Check the payload length is correctly encoded as a 2-byte big-endian prefix ahead of the payload
+        bytes memory serialized = a.serialize();
+        uint256 lengthIndex = serialized.messageLength() - a.payload.length - 2;
+        assertEq((uint256(uint8(serialized[lengthIndex])) << 8) | uint8(serialized[lengthIndex + 1]), a.payload.length);
     }
 
     function testUpdateVault(
@@ -484,8 +509,10 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
         assertEq(a.serialize().messageExtraGasLimit(), a.extraGasLimit);
 
-        // Check the payload length is correctly encoded as little endian
-        assertEq(a.payload.length, uint8(a.serialize()[a.serialize().messageLength() - a.payload.length - 1]));
+        // Check the payload length is correctly encoded as a 2-byte big-endian prefix ahead of the payload
+        bytes memory serialized = a.serialize();
+        uint256 lengthIndex = serialized.messageLength() - a.payload.length - 2;
+        assertEq((uint256(uint8(serialized[lengthIndex])) << 8) | uint8(serialized[lengthIndex + 1]), a.payload.length);
     }
 
     function testSetRequestManager(uint64 poolId, bytes32 manager) public pure {

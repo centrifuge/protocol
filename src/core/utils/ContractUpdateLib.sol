@@ -9,7 +9,7 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 ///         {ContractUpdaterForwarder} address; the forwarder unwraps the payload via {unwrap} and forwards to
 ///         `ContractUpdater.trustedCall(poolId, scId, target, inner)`.
 /// @dev    `scId` rides the payload because {IManagerCallFromHub} is pool-scoped only. The wrap shape MUST
-///         stay in sync with `ContractUpdaterForwarder.fromHub` and `StdManifest._checkManagerCall`.
+///         stay in sync with `ContractUpdaterForwarder.fromHub` and `StdHubManifest._checkManagerCall`.
 library ContractUpdateLib {
     /// @notice Build the `managerCall` payload for a trusted contract update.
     function wrap(ShareClassId scId, address target, bytes memory inner) internal pure returns (bytes memory) {

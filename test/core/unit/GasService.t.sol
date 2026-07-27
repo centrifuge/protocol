@@ -40,7 +40,7 @@ contract GasServiceTest is Test {
     }
 
     function testGasLimit(uint256 len, bytes calldata seed) public view {
-        len = bound(len, 121, 4096); // ensuring we can deserialize extraGasLimit from any message
+        len = bound(len, 266, 4096); // ensuring we can deserialize extraGasLimit from any message (NotifyShareClass reads at offset 250)
 
         bytes memory message = new bytes(len);
         for (uint256 i; i < len && i < seed.length; ++i) {
@@ -68,10 +68,11 @@ contract GasServiceTest is Test {
     }
 
     function testAllMessageTypesHaveSufficientGasReserve() public view {
-        // 200 bytes covers the deepest offset read by messageExtraGasLimit across all types (offset 91 + 16 bytes).
-        // Extra-gas fields are zero-filled, giving the floor for messageProcessingGasLimit — if the floor
-        // satisfies the invariant, any message with non-zero extra gas also satisfies it.
-        bytes memory message = new bytes(200);
+        // 266 bytes covers the deepest offset read by messageExtraGasLimit across all types (NotifyShareClass
+        // reads its extraGasLimit at offset 250 + 16 bytes). Extra-gas fields are zero-filled, giving the floor
+        // for messageProcessingGasLimit — if the floor satisfies the invariant, any message with non-zero
+        // extra gas also satisfies it.
+        bytes memory message = new bytes(266);
         uint8 maxType = uint8(type(MessageType).max);
 
         for (uint8 i = 1; i <= maxType; i++) {

@@ -113,10 +113,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyPool(POOL_A, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), REFUND);
+        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0, REFUND);
+        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0, REFUND);
@@ -272,7 +272,7 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""), REFUND);
+        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""), 0, REFUND);
     }
 }
 

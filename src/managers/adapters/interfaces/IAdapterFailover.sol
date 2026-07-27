@@ -19,7 +19,7 @@ import {IAdapter} from "../../../core/messaging/interfaces/IAdapter.sol";
 ///         wins when it is actually needed.
 ///
 ///         The hub's veto (`CancelFailover` via `fromHub`) is dispatched through `Hub.managerCall`, which
-///         is manifest-classified like any other target not pinned in `StdManifest._checkManagerCall` —
+///         is manifest-classified like any other target not pinned in `StdHubManifest._checkManagerCall` —
 ///         i.e. it is itself `delay`-gated, not instant. For the veto to be exercisable at all, the
 ///         timelock here must be configured with enough margin over the manifest's `delay` (plus
 ///         dispatch/relay time) that a hub-initiated cancel can mature and execute before a malicious

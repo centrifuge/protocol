@@ -69,6 +69,7 @@ contract TokenBridge is Recoverable, ITokenBridge, IManagerCallFromHub {
             abi.decode(payload, (bytes16, uint128, uint128));
         ShareClassId scId = ShareClassId.wrap(scId_);
         require(address(spoke.spokeRegistry().shareToken(poolId, scId)) != address(0), ShareTokenDoesNotExist());
+
         gasLimits[poolId][scId] = GasLimits(extraGasLimit, remoteExtraGasLimit);
         emit UpdateGasLimits(poolId, scId, extraGasLimit, remoteExtraGasLimit);
     }
@@ -87,7 +88,8 @@ contract TokenBridge is Recoverable, ITokenBridge, IManagerCallFromHub {
         require(centrifugeId != 0, InvalidChainId());
         require(!gateway.isBatching(), NotBatchable());
 
-        (PoolId poolId, ShareClassId scId) = spoke.spokeRegistry().shareTokenDetails(token);
+        (PoolId poolId, ShareClassId scId) = spoke.spokeRegistry().tokenDetails(token);
+        require(!poolId.isNull(), ShareTokenDoesNotExist());
 
         SafeTransferLib.safeTransferFrom(token, msg.sender, address(this), amount);
         SafeTransferLib.safeApprove(token, address(spoke), amount);
@@ -109,6 +111,7 @@ contract TokenBridge is Recoverable, ITokenBridge, IManagerCallFromHub {
         address refundAddress
     ) internal {
         GasLimits memory limits = gasLimits[poolId][scId];
+
         // The relayer only funds a second leg for a spoke -> hub -> spoke transfer. When either the source or
         // the destination is the hub the transfer is a single leg, so (as when no relayer is set) the
         // overpayment is refunded directly to the user instead of the relayer.
