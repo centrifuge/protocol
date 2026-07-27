@@ -87,7 +87,7 @@ contract GasService is IGasService {
         executeTransferShares = _gasValue(254235);
         updateRestriction = _gasValue(193881);
         managerCallFromHub = _gasValue(228604);
-        requestCallback = _gasValue(467554); // approve deposit case
+        requestCallback = _gasValue(472346); // approve deposit case
         updateVaultDeployAndLink = _gasValue(2902564);
         updateVaultLink = _gasValue(231367);
         updateVaultUnlink = _gasValue(196749);
