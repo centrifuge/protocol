@@ -174,16 +174,28 @@ interface IHub is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Set adapters for a pool in another chain.
-    /// @dev    Changing adapters increments the session ID.
-    ///         All messages sent always use the latest session ID.
-    ///         The system can still receive message from old session IDs.
-    ///         If you want to block messages attached to some session ID from being processed,
-    ///         you need to call blockSession() in the receiver side.
+    /// @dev    Installing a new set does NOT invalidate the previous ones. Each call increments the pool's session
+    ///         ID on both endpoints: outgoing messages always travel over the newest session, but every earlier
+    ///         session stays valid for incoming messages, and any of their adapters can still reach quorum and
+    ///         deliver. That is deliberate: messages already in flight were wrapped with the session ID that was
+    ///         active when they were sent, so keeping old sessions alive is what lets pending traffic reach the
+    ///         destination instead of being dropped on every adapter rotation.
+    ///
+    ///         Retiring an old session is therefore a separate, receiver-side action: call
+    ///         `multiAdapter.blockSession(centrifugeId, poolId, sessionId)` on the chain that would receive those
+    ///         messages. This needs no protocol-level access — `updateManager()` with `ManagerKind.Adapter`
+    ///         appoints a per-pool adapter manager on any chain, and that manager can block (and later unblock)
+    ///         the pool's own sessions. NOTE: leaving retired sessions unblocked indefinitely is a security risk,
+    ///         since a rotation away from a compromised set does not by itself stop that set from delivering
+    ///         messages. Blocking is expected to lag a rotation only for as long as messages may still be in
+    ///         flight, not to be skipped.
+    ///
     ///         Recommended flow to retire an old adapter set/session without dropping messages:
     ///         1. Call setAdapters() with the new adapter set.
     ///         2. Wait until every message sent under the old session has been delivered.
-    ///         3. Only then call blockSession() on the spoke for the old session, since blocking a
-    ///            session that still has messages in flight would drop them.
+    ///         3. Only then call blockSession() for the old session on the receiving chain, since blocking a
+    ///            session that still has messages in flight would drop them. If it turns out to have been
+    ///            retired too early, `unblockSession()` restores it.
     /// @param poolId Pool associated to this configuration
     /// @param centrifugeId Chain where to perform the adapter configuration
     /// @param localAdapters Adapter addresses in this chain
