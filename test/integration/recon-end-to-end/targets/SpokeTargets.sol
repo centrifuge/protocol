@@ -29,9 +29,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     using MessageLib for *;
 
-    // NOTE: inbound/outbound share-transfer handlers are deliberately absent. They move supply across chains,
-    // and this harness only models one, so the compensating mint or burn is unobservable and every conservation
-    // property reports a false positive.
+    // NOTE: cross-chain share-transfer handlers are absent: a one-chain harness cannot observe the mint/burn leg
 
     // Step 1
     /// @dev internal (deploy-only), not a fuzz entry: an arbitrary `assetAddress` is almost never a token, so the
@@ -68,8 +66,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 3
-    // internal (deploy-only), not a fuzz entry: a second share class has no vault and would shift the
-    // "current" share class away from the deployed one, desyncing vault-tracking ghosts (false positives).
+    // Deploy-only, not a fuzz entry: a second share class has no vault and desyncs the vault-tracking ghosts
     function spoke_addShareClass(uint128 scIdAsUint, uint8 decimals)
         internal
         updateGhosts
@@ -81,9 +78,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         bytes16 scId = bytes16(scIdAsUint);
         address hook = address(fullRestrictions);
 
-        // Clamp to the protocol's supported range [0, 18]. Zero is allowed since share decimals must
-        // match pool decimals (enforced by HubRegistry.updateCurrency's CurrencyDecimalsMismatch check);
-        // unclamped, the fuzzer could pick decimals that overflow PricingLib's asset<->share conversion.
+        // Unclamped decimals overflow PricingLib's asset<->share conversion; zero is valid (matches pool decimals)
         decimals = uint8(between(decimals, 0, 18));
 
         spokeHandler.addShareClass(

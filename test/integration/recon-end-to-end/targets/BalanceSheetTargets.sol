@@ -242,8 +242,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         sumOfManagerWithdrawals[asset] += amount;
     }
 
-    /// @dev Not exposed directly: unbounded amounts can strand a notified deposit claim by pulling
-    ///      claim-backing shares out of escrow (accepted admin footgun). Use balanceSheet_withdrawShares_clamped.
+    /// @dev Internal only: unbounded amounts strand notified claims by pulling claim-backing shares from escrow
     /// @dev Property: withdrawShares moves shares out of the pool escrow with no change to queuedShares
     function balanceSheet_withdrawShares(uint128 amount) internal updateGhosts asActor {
         IBaseVault vault = IBaseVault(_getVault());
@@ -494,9 +493,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
     // QUEUE OPERATIONS
     // ===============================
 
-    /// @dev Not exposed directly: unbounded reserve amounts reopen the admin-mistake DOS surface. Driven
-    ///      via balanceSheet_reserve_clamped and balanceSheet_overReserve_clamped. Over-reserve is legal by
-    ///      design under the cumulative-counter Holdings, which floors at zero and reconciles through deficits.
+    /// @dev Internal only: unbounded reserve amounts reopen the admin-mistake DOS surface, so use the clamped variants
     function balanceSheet_reserve(uint256 tokenId, uint128 amount) internal updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
@@ -541,9 +538,7 @@ abstract contract BalanceSheetTargets is BaseTargetFunctions, Properties {
         balanceSheet_reserve(0, amount);
     }
 
-    /// @dev Bounds amount into [available + 1, 2 * available + 1] so the fuzzer deliberately enters
-    ///      bounded deficit excursions (reserved > total), exercising property_hubHoldingMatchesEscrowAccounted
-    ///      while keeping the admin-mistake DOS surface small.
+    /// @dev Deliberately over-reserves (reserved > total) to drive bounded escrow deficit excursions
     function balanceSheet_overReserve_clamped(uint128 amount) public {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();

@@ -12,7 +12,8 @@ lcov.info
 ## Recon
 /medusa
 /crytic-export
-/echidna
+/echidna*
+!/echidna-cov.txt
 recon.json
 **/*.log
 **/anvil/*.json

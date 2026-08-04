@@ -36,8 +36,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     // Constants for new API parameters
     uint128 internal constant SHARE_HOOK_GAS = 0;
 
-    // Realistic D18 price/nav band shared by every price/nav setter; keeping deposit and redeem legs
-    // in the same band avoids spurious cross-leg desync.
+    // Keeping deposit and redeem legs in the same band avoids spurious cross-leg desync.
     uint128 internal constant PRICE_BAND_MIN = 1e15; // 0.001 in D18
     uint128 internal constant PRICE_BAND_MAX = 2e18; // 2.0 in D18
 
@@ -465,8 +464,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     //     );
     // }
 
-    /// @dev Property: The sum of share-backed claims (async deposit maxMint + claimable cancel-redeem on both
-    ///      vault types) is always <= the share balance of the escrow
+    /// @dev Property: sum(async maxMint + claimable cancel-redeem shares) is always <= escrow share balance
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
         IBaseVault vault = _getVault();
         bool isAsync = Helpers.isAsyncVault(address(vault));
@@ -689,8 +687,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         gte(pendingDeposit, pendingAssetAmount, "pendingDeposit < pendingAssetAmount");
     }
 
-    /// @dev Property: issuance can never run ahead of deposit approval, nor revocation ahead of redeem
-    ///      approval. BatchRequestManager enforces this pointwise per claim but never as a standing invariant.
+    /// @dev Property: issueEpoch <= depositEpoch and revokeEpoch <= redeemEpoch
     function property_epoch_pointer_ordering() public {
         IBaseVault vault = _getVault();
         (uint32 depositEpoch, uint32 issueEpoch, uint32 redeemEpoch, uint32 revokeEpoch) =
@@ -843,10 +840,8 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
     }
 
-    /// @dev Property (double-entry books): per pool, sum of every account's cumulative debit equals sum
-    ///      of credit. Accounting.lock() requires `debited == credited` per journal, so this holds even
-    ///      through the free-form hub_updateJournal handler. createdAccountIds is global across pools;
-    ///      entries with lastUpdated == 0 were never touched in this pool and are skipped.
+    /// @dev Property (double-entry books): per pool, sum(totalDebit) == sum(totalCredit) across accounts
+    /// @dev createdAccountIds is global across pools, so accounts untouched in this pool are skipped
     function property_accounting_books_balance() public {
         PoolId[] memory pools = _getPools();
 
@@ -1572,13 +1567,8 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         eq(actualBalance, aggregatedTotal, "escrow raw balance != aggregated holding.total");
     }
 
-    /// @dev Property (holdings conservation): once the asset queue drains, the hub's derived holding amount
-    ///      must equal the escrow's accounted balance (total - reserved, floored at 0). Both ledgers net the
-    ///      same cumulative flows and floor at zero identically, so equality holds exactly, even through
-    ///      over-reserve deficit excursions (reserved > total). No price conversion crosses between the
-    ///      ledgers, so no dust tolerance is allowed.
-    /// @notice Same-chain recon applies queued updates synchronously, so once this asset's queue is empty
-    ///         the two sides must agree. Complements `property_escrowBalanceMatchesHoldingTotal` (escrow side only).
+    /// @dev Property: with the asset queue drained, holdings.amount == escrow total - reserved (floored at 0)
+    /// @dev Exact equality, no dust tolerance: both ledgers net the same flows without any price conversion
     function property_hubHoldingMatchesEscrowAccounted() public assetIsSet {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
@@ -1601,9 +1591,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         );
     }
 
-    /// @dev Property: a holding with zero derived amount must carry zero value. Holdings.decrease() strips
-    ///      value pro-rata as amount hits zero, and update() re-quotes zero amount to zero, so stranded
-    ///      value here means the realized-delta valuation regressed (phantom NAV with no backing amount).
+    /// @dev Property: a holding with zero amount must carry zero value, else it is phantom NAV
     function property_holdingZeroAmountHasZeroValue() public assetIsSet {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
@@ -1619,9 +1607,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         );
     }
 
-    /// @dev Property: the pool escrow's per-holding `reserved` total equals the sum of the keyed
-    ///      `reservedBy` ledger across reasons. AsyncRequestManager is the sole reserver in this harness and
-    ///      genuinely uses both REASON_DEPOSIT and REASON_REDEEM, so the sum is falsifiable, not tautological.
+    /// @dev Property: holding.reserved == sum of reservedBy over both reasons; ARM is the only reserver here
     function property_poolEscrowReservedSumConsistency() public assetIsSet {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();

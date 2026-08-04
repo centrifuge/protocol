@@ -284,12 +284,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    /// @dev Reproducer-only. Kept off the fuzzer surface on purpose: it writes the hub ledger directly, so it
-    ///      (a) desynchronises the hub snapshot nonce from `SnapshotQueue`'s, permanently reverting every later
-    ///      `submitQueued*` with `InvalidNonce`, and (b) moves `holdings.amount` with no matching escrow move,
-    ///      breaking `property_hubHoldingMatchesEscrowAccounted`. The fuzzer reaches the same deficit state
-    ///      through `balanceSheet_overReserve_clamped` + `balanceSheet_submitQueuedAssets`, which keeps both
-    ///      nonces and both ledgers in step.
+    /// @dev Reproducer-only: writing the hub ledger directly desyncs the snapshot nonce from `SnapshotQueue`
+    ///      (every later `submitQueued*` reverts `InvalidNonce`) and moves `holdings.amount` with no escrow move
     function hub_updateAssets(uint128 amount, bool isIncrease) internal updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
@@ -314,8 +310,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         return maxClaims == maxClaimsBound && maxClaims > 0;
     }
 
-    /// @dev The claim-completeness validation in `hub_notifyDeposit` gates on `maxClaims == bound`, so callers
-    ///      that want to reach it must pass the bound exactly rather than a constant like `MAX_CLAIMS`.
+    /// @dev `hub_notifyDeposit` gates its claim-completeness check on `maxClaims == bound`, so pass the exact bound
     function _maxDepositClaims() internal view returns (uint32) {
         IBaseVault vault = _getVault();
         return batchRequestManager.maxDepositClaims(

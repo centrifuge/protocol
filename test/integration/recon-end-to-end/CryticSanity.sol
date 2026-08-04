@@ -511,10 +511,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "deficit cleared after refill");
     }
 
-    /// @dev The fuzzer-reachable counterpart to the driver above: over-reserving queues more withdrawals than
-    ///      deposits, so the next flush decreases the hub ledger past its increased total. Pins the only path
-    ///      by which the fuzzer can make `property_deficitCountMatchesHoldings` non-vacuous, now that
-    ///      `hub_updateAssets` is reproducer-only.
+    /// @dev Over-reserve then flush is the only fuzzer path making `property_deficitCountMatchesHoldings` non-vacuous
     function test_deficitCountMatchesHoldings_queueDriver() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true, false);
 
@@ -593,8 +590,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         eq(uint256(_maxDepositClaims()), 0, "notify did not consume every claimable epoch");
     }
 
-    /// @dev Pins the notified-but-unclaimed state the fuzzer otherwise never holds: a non-zero maxDeposit is
-    ///      what makes vault_maxDeposit / vault_maxMint run their bodies instead of bailing at the guard.
+    /// @dev A non-zero maxDeposit is what makes vault_maxDeposit / vault_maxMint run their bodies, not bail
     function test_shortcut_deposit_and_notify_leavesClaimable() public {
         shortcut_deployNewTokenPoolAndShare(18, 12, false, false, true, false);
 

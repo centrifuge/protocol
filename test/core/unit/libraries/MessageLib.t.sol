@@ -785,7 +785,6 @@ contract TestMessageLibSourceCentrifugeId is Test {
     }
 }
 
-// Framing properties of Gateway.handle's batch walk over UpdateVault's variable-length payload.
 contract TestMessageLibUpdateVaultFraming is Test {
     using MessageLib for *;
     using BytesLib for bytes;
@@ -811,8 +810,7 @@ contract TestMessageLibUpdateVaultFraming is Test {
         }
     }
 
-    /// @dev Above 255 bytes the high byte of the length prefix stops being zero, so a walk that reads only the low
-    ///      byte desynchronizes and consumes the next message's type byte as payload.
+    /// @dev Above 255 bytes the length prefix's high byte is non-zero, so a low-byte-only walk desyncs the batch
     function testBatchWalkResynchronizesAfterLargePayload() public pure {
         bytes memory first = _updateVault(VaultUpdateKind.DeployAndLink, _payload(300));
         bytes memory second = _updateVault(VaultUpdateKind.Unlink, "");
@@ -838,8 +836,7 @@ contract TestMessageLibUpdateVaultFraming is Test {
         assertEq(remaining.length, 0);
     }
 
-    /// @dev Legacy spokes resume their walk at the length-prefix byte, misreading it as a message type; keeping
-    ///      MESSAGE_MAX_LENGTH below 256 * NotifyPool prevents a payload skew from forging a same-pool message.
+    /// @dev Legacy spokes resume at the length-prefix byte as a type; MESSAGE_MAX_LENGTH < 256 * NotifyPool blocks that
     function testMessageMaxLengthCannotReachPoolDependentTypes() public pure {
         uint256 header = _updateVault(VaultUpdateKind.Link, "").length;
         assertEq(header, 92, "fixed fields plus the 2-byte length prefix");

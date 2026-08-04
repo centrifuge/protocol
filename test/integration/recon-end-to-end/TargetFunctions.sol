@@ -153,8 +153,7 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            // Share token decimals must equal the pool currency decimals: the redeem path
-            // (BatchRequestManager.shareToAssetAmount) hard-assumes share==pool decimals.
+            // Share decimals must equal pool decimals: BatchRequestManager.shareToAssetAmount assumes it
             spoke_addShareClass(uint128(_scId), decimals);
             ShareToken(_getShareToken()).rely(address(spoke));
             ShareToken(_getShareToken()).rely(address(spoke));
@@ -255,7 +254,6 @@ abstract contract TargetFunctions is
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
         IBaseVault vault = _getVault();
 
-        // Clamp once so asset valuation and share price use the same bounded value.
         navPerShare = _clampToPriceBand(navPerShare);
 
         transientValuation_setPrice_clamped(navPerShare);
@@ -272,7 +270,6 @@ abstract contract TargetFunctions is
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
         IBaseVault vault = _getVault();
 
-        // Clamp once so asset valuation and share price use the same bounded value.
         navPerShare = _clampToPriceBand(navPerShare);
 
         transientValuation_setPrice_clamped(navPerShare);
@@ -309,11 +306,7 @@ abstract contract TargetFunctions is
         vault_deposit(amount);
     }
 
-    /// @dev Same chain as shortcut_deposit_and_claim but stops before the claim, so it leaves a notified,
-    ///      unclaimed position behind. That state is otherwise near-unreachable: vault_deposit drains a claim
-    ///      as soon as one exists, so maxDepositClaims is 0 at almost every sample, which keeps both the
-    ///      vault_max* liveness properties and the claim-completeness validation in hub_notifyDeposit dark.
-    ///      Notifies the exact claim bound, since that validation gates on equality with it.
+    /// @dev Stops before the claim to leave a notified, unclaimed position, else the vault_max* properties stay dark
     function shortcut_deposit_and_notify(
         uint64 pricePoolPerShare,
         uint128 priceValuation,
@@ -427,8 +420,7 @@ abstract contract TargetFunctions is
         shortcut_claim_withdrawal(shares, toEntropy);
     }
 
-    /// @dev Redeem-side twin of shortcut_deposit_and_notify: leaves a notified, unclaimed redemption so
-    ///      vault_maxWithdraw / vault_maxRedeem have a non-zero max to assert against.
+    /// @dev Redeem twin of shortcut_deposit_and_notify: leaves a non-zero max for vault_maxWithdraw/maxRedeem
     function shortcut_redeem_and_notify(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         shortcut_queue_redemption(shares, navPerShare, toEntropy);
         hub_notifyRedeem(_maxRedeemClaims());

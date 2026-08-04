@@ -1,0 +1,24 @@
+testMode: "assertion"
+coverage: true
+corpusDir: "echidna-messaging"
+filterFunctions: []
+deployer: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+contractAddr: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
+shrinkLimit: 100000
+## Rely on Foundry compilation; link the external libraries the messaging suite ACTUALLY uses
+## (Gateway/MultiAdapter closure). Only libraries in the CryticMessagingTester.sol import closure may
+## be listed: on Recon Cloud the target is that single file, so linking a lib it doesn't import (e.g.
+## MessageLib, EnvConnections) fails with `Given contract "X" not found in given file`. Run local
+## echidna with the SAME file target so it matches cloud, NOT `echidna .` (whole-project compile pulls
+## in extra libs and masks this): `echidna test/integration/recon-messaging/CryticMessagingTester.sol
+## --contract CryticMessagingTester --config echidna-messaging.yaml --test-limit 3000000`.
+## Run params (testLimit, workers, seqLen, timeout, symExec) are intentionally NOT set here — the Recon
+## Cloud UI / the local `--test-limit` CLI flag governs them, matching the sister echidna.yaml.
+cryticArgs: ["--foundry-compile-all", "--compile-libraries=(MathLib,0xf01),(CastLib,0xf02),(BytesLib,0xf03),(TransientStorageLib,0xf05)"]
+## Deploy them to these addresses
+deployContracts: [
+  ["0xf01", "MathLib"],
+  ["0xf02", "CastLib"],
+  ["0xf03", "BytesLib"],
+  ["0xf05", "TransientStorageLib"]
+]
