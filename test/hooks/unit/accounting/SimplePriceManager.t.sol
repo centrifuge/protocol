@@ -74,11 +74,6 @@ contract SimplePriceManagerTest is Test {
             abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_2),
             abi.encode(200)
         );
-        vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector),
-            abi.encode(uint128(0), uint64(0))
-        );
     }
 
     function _deployManager() internal {
@@ -196,25 +191,19 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     }
 
     function testOnUpdateZeroNAVNonzeroIssuanceCommitsPrice() public {
-        // hub must still be called because computedAt == 0 (not yet initialized)
         vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(0, 1)));
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 0);
     }
 
-    function testOnUpdateUnchangedPriceSkipsHubCall() public {
+    function testOnUpdateUnchangedPriceStillCommits() public {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
 
-        vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_1),
-            abi.encode(d18(10, 1), uint64(block.timestamp))
-        );
-
-        // Hub is not called when price is unchanged, but Update event is still emitted for the metrics change.
-        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE), 0);
+        // The Hub call is what refreshes the price age and ticks the fee accrual, so a recompute that
+        // lands on the already-committed price still commits.
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(10, 1)), 1);
         vm.expectEmit(true, true, true, true);
         emit ISimplePriceManager.Update(POOL_A, SC_1, 1000, 100, d18(10, 1));
 
@@ -222,20 +211,27 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
     }
 
-    function testOnUpdateChangedPriceStillCallsHub() public {
+    function testOnUpdateUnchangedPriceReportsMovedMetrics() public {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
 
-        vm.mockCall(
-            shareClassManager,
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_1),
-            abi.encode(d18(10, 1), uint64(block.timestamp))
-        );
+        // NAV and issuance both move by 20%, so the price is unchanged but the metrics are not.
         vm.mockCall(
             shareClassManager,
             abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
-            abi.encode(100)
+            abi.encode(120)
         );
+
+        vm.expectEmit(true, true, true, true);
+        emit ISimplePriceManager.Update(POOL_A, SC_1, 1200, 120, d18(10, 1));
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1200);
+    }
+
+    function testOnUpdateChangedPriceCallsHub() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(12, 1)));
 

@@ -57,12 +57,9 @@ contract SimplePriceManager is ISimplePriceManager {
         networkMetrics_.transferredOut = 0;
 
         D18 pricePoolPerShare_ = pricePoolPerShare(poolId);
-        (D18 currentPrice, uint64 computedAt_) = shareClassManager.pricePoolPerShare(poolId, scId);
+        hub.updateSharePrice(poolId, scId, pricePoolPerShare_);
 
         emit Update(poolId, scId, metrics_.netAssetValue, metrics_.issuance, pricePoolPerShare_);
-        if (pricePoolPerShare_ == currentPrice && computedAt_ != 0) return;
-
-        hub.updateSharePrice(poolId, scId, pricePoolPerShare_);
     }
 
     /// @inheritdoc INAVHook

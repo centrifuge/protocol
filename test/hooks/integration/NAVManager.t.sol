@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {d18} from "../../../src/misc/types/D18.sol";
+import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
+import {IFeeAccrual} from "../../../src/core/hub/interfaces/IFeeAccrual.sol";
+import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {ISnapshotHook} from "../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import {INAVManager} from "../../../src/hooks/accounting/interfaces/INAVManager.sol";
 
 import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
+import {IStdHubManifest} from "../../../src/manifests/hub/interfaces/IStdHubManifest.sol";
+import {StdHubManifest, StdHubManifestFactory} from "../../../src/manifests/hub/StdHubManifest.sol";
 
 contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     using CastLib for address;
@@ -117,6 +121,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
 
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
 
@@ -173,6 +178,35 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         assertEq(issuanceSpoke, 3300e18);
         assertEq(globalNAV, 3650e18); // (3300 * 1.1) + (500 * 0.5) = 3650
         assertEq(globalIssuance, 3800e18);
+    }
+
+    /// forge-config: default.isolate = true
+    function testPriceAgeRefreshesWhenPriceUnchanged() public {
+        _testInitializeAndUpdate();
+
+        (D18 priceBefore, uint64 computedAtBefore) = shareClassManager.pricePoolPerShare(POOL_A, scId);
+
+        skip(1 hours);
+        navManager.updateHoldingValue(POOL_A, scId, asset1);
+
+        (D18 priceAfter, uint64 computedAtAfter) = shareClassManager.pricePoolPerShare(POOL_A, scId);
+        assertEq(priceAfter.raw(), priceBefore.raw());
+        assertEq(computedAtAfter, computedAtBefore + 1 hours);
+        assertEq(computedAtAfter, block.timestamp);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFeeAccrualTicksWhenPriceUnchanged() public {
+        _testInitializeAndUpdate();
+
+        address feeAccrual = makeAddr("feeAccrual");
+        vm.mockCall(feeAccrual, abi.encodeWithSelector(IFeeAccrual.accrue.selector), abi.encode());
+        vm.prank(address(root));
+        hub.file("feeAccrual", feeAccrual);
+
+        skip(1 hours);
+        vm.expectCall(feeAccrual, abi.encodeWithSelector(IFeeAccrual.accrue.selector, POOL_A, scId), 1);
+        navManager.updateHoldingValue(POOL_A, scId, asset1);
     }
 
     /// forge-config: default.isolate = true
@@ -401,7 +435,6 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         assertEq(issuanceDuring, issuanceBefore);
 
         // Refill asset1 by 1500: holding positive again, deficit clears, trailing snapshot resumes pricing.
-        // Global NAV and issuance both return to 3800, so price remains d18(1,1) and Y8 skips the hub call.
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
 
@@ -409,5 +442,83 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         assertEq(navAfter, 3300e18); // 1000 - 1500 + 1500 = 1000 asset1 restored -> NAV back to 3300e18
         assertEq(issuanceAfter, issuanceBefore);
+    }
+}
+
+/// @dev End-to-end share-price rate guard under on-chain accounting: the recompute path is permissionless
+///      (anyone -> NAVManager.updateHoldingValue -> ... -> Hub.updateSharePrice), so re-commits of an
+///      unchanged price must leave the manifest's baseline where the last actual move put it.
+contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
+    uint128 constant RATE = 1e12; // per second
+    uint128 constant CAP = 5e17;
+
+    address attacker = makeAddr("attacker");
+
+    StdHubManifest manifest;
+
+    function _installManifest() internal {
+        StdHubManifestFactory manifestFactory = new StdHubManifestFactory(hub, multiAdapter, shareClassManager);
+        manifest = StdHubManifest(
+            address(
+                manifestFactory.newStdHubManifest(
+                    IStdHubManifest.Config({
+                        delay: 1 days,
+                        expiry: 7 days,
+                        escalation: 7 days,
+                        maxAbsolutePriceDelta: CAP,
+                        thresholdPerSecond: RATE,
+                        maxBrmPriceDeviation: type(uint128).max,
+                        onchainAccounting: true,
+                        navManager: address(navManager),
+                        simplePriceManager: address(simplePriceManager),
+                        requestManager: address(batchRequestManager),
+                        bridgingHook: address(0),
+                        oracleValuation: address(0),
+                        allowlist: new IStdHubManifest.Entry[](0)
+                    })
+                )
+            )
+        );
+
+        vm.prank(address(root));
+        hub.setManifest(POOL_A, manifest);
+    }
+
+    /// forge-config: default.isolate = true
+    function testNoOpRecomputesKeepTheGuardWindow() public {
+        _testInitializeAndUpdate();
+        _installManifest();
+
+        // First move under the manifest anchors the baseline: asset2 +1% -> NAV 3823e18.
+        valuation.setPrice(POOL_A, scId, asset2, d18(101, 100));
+        navManager.updateHoldingValue(POOL_A, scId, asset2);
+        uint64 baseline = manifest.lastPriceUpdate(POOL_A, scId);
+        assertEq(baseline, block.timestamp);
+
+        skip(1 hours);
+
+        // Anyone can drive a recompute; with no valuation change the price is re-committed unchanged.
+        for (uint256 i; i < 5; i++) {
+            vm.prank(attacker);
+            navManager.updateHoldingValue(POOL_A, scId, asset1);
+        }
+
+        (D18 price, uint64 computedAt) = shareClassManager.pricePoolPerShare(POOL_A, scId);
+        assertEq(price.raw(), (d18(3823e18) / d18(3800e18)).raw());
+        assertEq(computedAt, block.timestamp); // the age tracks the recompute
+        assertEq(manifest.lastPriceUpdate(POOL_A, scId), baseline); // the guard window does not
+
+        // asset3 -10e18 -> 2.63e15 over the full hour, under RATE: still runs synchronously.
+        valuation.setPrice(POOL_A, scId, asset3, d18(98, 100));
+        navManager.updateHoldingValue(POOL_A, scId, asset3);
+
+        (price,) = shareClassManager.pricePoolPerShare(POOL_A, scId);
+        assertEq(price.raw(), (d18(3813e18) / d18(3800e18)).raw());
+        assertEq(manifest.lastPriceUpdate(POOL_A, scId), block.timestamp);
+
+        // Guard is armed: the same-sized move again in this block has no elapsed time to bound it.
+        valuation.setPrice(POOL_A, scId, asset3, d18(96, 100));
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        navManager.updateHoldingValue(POOL_A, scId, asset3);
     }
 }

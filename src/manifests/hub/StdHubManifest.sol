@@ -134,11 +134,13 @@ contract StdHubManifest is IStdHubManifest {
             hubRegistry.consumeAuthorization(poolId, caller, data, expiry);
         }
 
-        // Anchor the share-price baseline to this executed update (never from authorize/cancel), so
-        // the rate guard measures from actual price changes.
+        // Anchor the share-price baseline to this executed update (never from authorize/cancel), so the
+        // rate guard measures from actual price changes. Re-committing the committed price is not a move:
+        // leaving the baseline alone stops no-op recomputes from tightening the guard.
         if (_isSharePriceUpdate(selector)) {
-            (, ShareClassId scId) = abi.decode(payload[:64], (PoolId, ShareClassId));
-            lastPriceUpdate[poolId][scId] = uint64(block.timestamp);
+            (, ShareClassId scId, D18 newPrice) = abi.decode(payload[:96], (PoolId, ShareClassId, D18));
+            (D18 lastPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
+            if (newPrice.raw() != lastPrice.raw()) lastPriceUpdate[poolId][scId] = uint64(block.timestamp);
         }
     }
 
@@ -327,7 +329,8 @@ contract StdHubManifest is IStdHubManifest {
 
     /// @dev Out of policy if the single move exceeds `maxAbsolutePriceDelta` or the move/second since the
     ///      last executed update exceeds `thresholdPerSecond` (same-block updates are forced out of policy
-    ///      to stop chunking). First update per share class is unguarded; `computedAt` is ignored.
+    ///      to stop chunking). First update per share class is unguarded, as is a re-commit of the
+    ///      committed price (no move to bound); `computedAt` is ignored.
     function _checkSharePrice(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
         if (thresholdPerSecond == 0 && maxAbsolutePriceDelta == 0) return 0;
 
@@ -336,13 +339,14 @@ contract StdHubManifest is IStdHubManifest {
         uint64 lastUpdate = lastPriceUpdate[poolId][scId];
         if (lastUpdate == 0) return 0; // no executed baseline yet, first update is in policy
 
+        (D18 lastPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
+        uint256 priceDelta = MathLib.absDiff(D18.unwrap(newPrice), D18.unwrap(lastPrice));
+        if (priceDelta == 0) return 0;
+
         // Zero elapsed (same block) can't be rate-bounded, so out of policy: stops chunking many
         // sub-threshold updates into one tx/block.
         uint256 elapsed = block.timestamp - lastUpdate;
         if (elapsed == 0) return delay;
-
-        (D18 lastPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
-        uint256 priceDelta = MathLib.absDiff(D18.unwrap(newPrice), D18.unwrap(lastPrice));
 
         if (maxAbsolutePriceDelta != 0 && priceDelta >= maxAbsolutePriceDelta) return delay;
         if (thresholdPerSecond != 0 && priceDelta / elapsed >= thresholdPerSecond) return delay;

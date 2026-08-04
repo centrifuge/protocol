@@ -160,6 +160,37 @@ contract StdHubManifestTest is Test {
         return abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_A, D18.wrap(raw));
     }
 
+    /// @dev Reflect the Hub's write, which lands right after enforce and is what the manifest reads back
+    ///      as the committed price on the next call.
+    function _mockCommittedPrice(uint128 raw) internal {
+        vm.mockCall(
+            address(scm),
+            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
+            abi.encode(D18.wrap(raw), uint64(block.timestamp))
+        );
+    }
+
+    /// @dev Establish an executed baseline at `raw`: enforce it against an unset committed price so the
+    ///      anchor lands, then commit it so later deltas measure from `raw`.
+    function _baseline(uint128 raw) internal {
+        _baseline(manifest, manager, raw);
+    }
+
+    function _baseline(StdHubManifest m, address caller_, uint128 raw) internal {
+        _mockCommittedPrice(0);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, caller_, _priceCallWithTimestamp(raw));
+        _mockCommittedPrice(raw);
+    }
+
+    /// @dev {_baseline} through the SimplePriceManager path on a specific manifest.
+    function _baselineOnchain(StdHubManifest m, uint128 raw) internal {
+        _mockCommittedPrice(0);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(raw));
+        _mockCommittedPrice(raw);
+    }
+
     // ─── authorize flow (out-of-policy driven by the setManifest selector) ───────
 
     function testAuthorizeStoresValidAfter() public {
@@ -407,14 +438,12 @@ contract StdHubManifestTest is Test {
 
     function testFirstPriceUpdateInPolicyAndCommits() public {
         // No baseline yet -> in policy; enforce commits the baseline timestamp.
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18));
+        _baseline(1e18);
         assertEq(manifest.lastPriceUpdate(POOL_A, SC_A), block.timestamp);
     }
 
     function testSmallPriceUpdateInPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline
+        _baseline(1e18);
         skip(100);
 
         // Tiny move, well under rate and cap.
@@ -423,8 +452,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testRateLimitedPriceUpdateNeedsAuthorization() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline at T0
+        _baseline(1e18); // baseline at T0
         skip(1); // 1 second later
 
         // delta 2e15 over 1s exceeds RATE (1e15/s); below CAP. Out of policy.
@@ -434,8 +462,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testAbsoluteCapHoldsAfterLongWait() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline
+        _baseline(1e18);
         skip(1e9); // huge elapsed -> rate would pass
 
         // delta 1e18 >= CAP (5e17): a single jump this large is out of policy regardless of time.
@@ -445,8 +472,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testAbsoluteCapBoundaryExactlyAtCapIsOutOfPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline
+        _baseline(1e18);
         skip(1000); // large enough that RATE alone would not trigger at this delta
 
         // delta == CAP exactly: the >= comparison must still classify this as out of policy.
@@ -456,8 +482,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testAbsoluteCapBoundaryJustUnderCapIsInPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline
+        _baseline(1e18);
         skip(1000); // keeps delta/elapsed well under RATE too
 
         // delta == CAP - 1: strictly below the cap, must stay in policy.
@@ -466,8 +491,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testRateBoundaryExactlyAtThresholdIsOutOfPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline
+        _baseline(1e18);
         skip(100);
 
         // delta / elapsed == RATE exactly, and delta stays well under CAP so only the rate branch
@@ -480,8 +504,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testRateBoundaryJustUnderThresholdIsInPolicy() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline
+        _baseline(1e18);
         skip(100);
 
         // delta / elapsed just under RATE: must stay in policy.
@@ -491,8 +514,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testAuthorizeDoesNotMoveBaseline() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline at T0
+        _baseline(1e18); // baseline at T0
         uint64 t0 = manifest.lastPriceUpdate(POOL_A, SC_A);
 
         skip(50);
@@ -502,14 +524,50 @@ contract StdHubManifestTest is Test {
     }
 
     function testSameBlockPriceUpdateNeedsAuthorization() public {
-        vm.prank(address(hub));
-        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18)); // baseline committed this block
+        _baseline(1e18); // baseline committed this block
 
         // A second update in the SAME block has zero elapsed time: out of policy even though the
         // move is tiny. This closes the chunk-many-sub-threshold-updates-in-one-tx bypass.
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         vm.prank(address(hub));
         manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18 + 1e10));
+    }
+
+    function testNoOpPriceUpdateDoesNotMoveBaseline() public {
+        _baseline(1e18);
+        uint64 t0 = manifest.lastPriceUpdate(POOL_A, SC_A);
+        skip(100);
+
+        // Re-committing the committed price is not a move, so the baseline stays where the last actual
+        // move put it: a permissionless no-op recompute cannot shrink the rate guard's window.
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18));
+        assertEq(manifest.lastPriceUpdate(POOL_A, SC_A), t0);
+    }
+
+    function testNoOpPriceUpdateInPolicySameBlock() public {
+        _baseline(1e18);
+
+        // Unlike a same-block *move*, a same-block re-commit has no delta to rate-bound and must stay in
+        // policy: otherwise a no-op sync landing in the block of a real move reverts the whole message.
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18));
+        assertEq(manifest.authorizationDelay(POOL_A, manager, _priceCallWithTimestamp(1e18)), 0);
+    }
+
+    function testRateGuardMeasuresFromLastActualMove() public {
+        _baseline(1e18);
+        skip(100);
+
+        // Spam no-op recomputes right before the real move lands.
+        for (uint256 i; i < 5; i++) {
+            vm.prank(address(hub));
+            manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18));
+        }
+
+        // The move is still measured over the full 100s since the last actual move, so it stays in policy.
+        vm.prank(address(hub));
+        manifest.enforce(POOL_A, manager, _priceCallWithTimestamp(uint128(1e18 + uint256(RATE) * 100 - 1)));
     }
 
     function testPriceGuardDisabled() public {
@@ -933,8 +991,7 @@ contract StdHubManifestTest is Test {
 
     function testOnchainPriceManagerSmallUpdateInPolicy() public {
         StdHubManifest m = _onchainManifest();
-        vm.prank(address(hub));
-        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline
+        _baselineOnchain(m, 1e18);
         skip(100);
 
         // Tiny move, well under rate and cap.
@@ -945,8 +1002,7 @@ contract StdHubManifestTest is Test {
     function testOnchainPriceManagerRateLimitedNeedsAuthorization() public {
         StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
-        vm.prank(address(hub));
-        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline at T0
+        _baselineOnchain(m, 1e18); // baseline at T0
         skip(1); // 1 second later
 
         // delta 2e15 over 1s exceeds RATE (1e15/s); below CAP. Out of policy.
@@ -958,8 +1014,7 @@ contract StdHubManifestTest is Test {
     function testOnchainPriceManagerCapExceededNeedsAuthorization() public {
         StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
-        vm.prank(address(hub));
-        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline
+        _baselineOnchain(m, 1e18);
         skip(1e9); // huge elapsed -> rate would pass
 
         // delta 1e18 >= CAP (5e17): out of policy regardless of elapsed time.
@@ -971,8 +1026,7 @@ contract StdHubManifestTest is Test {
     function testOnchainPriceManagerSameBlockNeedsAuthorization() public {
         StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
-        vm.prank(address(hub));
-        m.enforce(POOL_A, PRICE, _priceCall(1e18)); // baseline committed this block
+        _baselineOnchain(m, 1e18); // baseline committed this block
 
         // A second update in the same block has zero elapsed: out of policy.
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
@@ -980,12 +1034,30 @@ contract StdHubManifestTest is Test {
         m.enforce(POOL_A, PRICE, _priceCall(1e18 + 1e10));
     }
 
+    function testOnchainPriceManagerNoOpDoesNotMoveBaseline() public {
+        StdHubManifest m = _onchainManifest();
+        hubRegistry.setManifest(POOL_A, m);
+        _baselineOnchain(m, 1e18);
+        uint64 t0 = m.lastPriceUpdate(POOL_A, SC_A);
+        skip(100);
+
+        // The SimplePriceManager re-commits the same price on every sync where NAV and issuance moved
+        // proportionally, and anyone can drive those syncs: they must not touch the baseline.
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(1e18));
+        assertEq(m.lastPriceUpdate(POOL_A, SC_A), t0);
+
+        // A real move a second later is still bounded over the full 101s.
+        skip(1);
+        vm.prank(address(hub));
+        m.enforce(POOL_A, PRICE, _priceCall(uint128(1e18 + uint256(RATE) * 101 - 1)));
+    }
+
     function testOnchainPriceManagerOutOfPolicyCanBePreauthorized() public {
         StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
         address spm = m.simplePriceManager();
-        vm.prank(address(hub));
-        m.enforce(POOL_A, spm, _priceCall(1e18));
+        _baselineOnchain(m, 1e18);
         skip(1);
 
         // Pool manager pre-authorizes using the no-timestamp calldata. Since computedAt is absent,
@@ -1001,9 +1073,7 @@ contract StdHubManifestTest is Test {
     function testOnchainPriceManagerPreauthorizationBlocksNonPriceManager() public {
         StdHubManifest m = _onchainManifest();
         hubRegistry.setManifest(POOL_A, m);
-        address spm = m.simplePriceManager();
-        vm.prank(address(hub));
-        m.enforce(POOL_A, spm, _priceCall(1e18));
+        _baselineOnchain(m, 1e18);
         skip(1);
 
         bytes memory d = _priceCall(1e18 + 2e15);
@@ -1143,8 +1213,7 @@ contract StdHubManifestTest is Test {
     function testAllowlistComposesWithValueGuard() public {
         StdHubManifest m = _allowlistManifest(_selectors(UPDATE_SHARE_PRICE_WITH_TIMESTAMP));
         // Allowed selector still flows through the price guard: establish a baseline...
-        vm.prank(address(hub));
-        m.enforce(POOL_A, KEEPER, _priceCallWithTimestamp(1e18));
+        _baseline(m, KEEPER, 1e18);
         skip(1);
 
         // ...then a jump over the rate is out of policy (Unauthorized), not blocked by confinement.
