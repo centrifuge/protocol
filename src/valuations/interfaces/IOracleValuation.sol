@@ -29,6 +29,7 @@ interface IOracleValuation is IValuation, IManagerCallFromHub, IManagerCallFromS
     event UpdateFeeder(PoolId indexed poolId, uint16 indexed centrifugeId, bytes32 indexed feeder, bool canFeed);
 
     error NotEnvoy();
+    error NetworkMismatch();
     error UnexpectedValue();
     error NotFeeder();
     error PriceNotSet();

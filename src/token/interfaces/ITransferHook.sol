@@ -33,7 +33,7 @@ address constant ESCROW_HOOK_ID = address(uint160(0x1CF60));
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
 ///         poolEscrow: Pool-specific escrow contract identified via spoke.escrow(poolId)
 ///         spoke: Contract that fulfills redemptions and provides pool escrow lookups
-///         crosschainSource: Contract handling cross-chain message execution (spoke)
+///         crosschainSource: Contract handling cross-chain message execution (SpokeHandler)
 interface ITransferHook is IERC165 {
     //----------------------------------------------------------------------------------------------
     // Errors

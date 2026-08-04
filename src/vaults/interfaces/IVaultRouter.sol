@@ -115,8 +115,11 @@ interface IVaultRouter is IMulticall {
     // Cross-chain transfers
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Intended to be used in a batch with `deposit` or `claimRedeem`,
-    ///         with `receiver=address(this)`
+    /// @notice Intended to be used in a batch with `deposit` or `claimDeposit`.
+    ///         The preceding vault call's `receiver` must be set to `address(this)` (the router),
+    ///         not this function's `receiver` parameter (which is the destination bytes32 address on the
+    ///         remote chain). `owner` must be either `msg.sender` or `address(this)` (the router itself,
+    ///         for the batched case where the router holds the shares as an intermediate step).
     function crosschainTransferShares(
         BaseSyncDepositVault vault,
         uint128 shares,

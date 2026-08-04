@@ -9,8 +9,8 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {VaultDetails, ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -160,6 +160,13 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
         _addVault(vault);
 
+        (, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
+        if (tokenId == 0 && vault != address(0)) {
+            shareTokenRegistrar.fromHub(
+                poolId, abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId.raw(), assetId.raw(), vault)
+            );
+        }
+
         return vault;
     }
 
@@ -183,6 +190,13 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         AssetId assetId = _getAssetId();
 
         spokeRegistry.linkVault(poolId, scId, assetId, address(vault));
+
+        (, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
+        if (tokenId == 0) {
+            shareTokenRegistrar.fromHub(
+                poolId, abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId.raw(), assetId.raw(), vault)
+            );
+        }
     }
 
     function spoke_linkVault_clamped() public {
@@ -191,7 +205,19 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Extra 7 - remove the vault
     function spoke_unlinkVault() public updateGhosts asAdmin {
-        spokeRegistry.unlinkVault(_getPool(), _getShareClassId(), _getAssetId(), address(_getVault()));
+        address vault = address(_getVault());
+        VaultDetails memory vd = spokeRegistry.vaultDetails(vault);
+
+        spokeRegistry.unlinkVault(vd.poolId, vd.scId, vd.assetId, vault);
+
+        if (vd.tokenId == 0) {
+            shareTokenRegistrar.fromHub(
+                vd.poolId,
+                abi.encode(
+                    uint8(IShareTokenRegistrar.RegistrarCall.SetVault), vd.scId.raw(), vd.assetId.raw(), address(0)
+                )
+            );
+        }
     }
 
     /**

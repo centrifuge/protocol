@@ -435,6 +435,24 @@ contract NAVManagerFromSpokeTest is NAVManagerTest {
         navManager.fromSpoke(POOL_A, _initHoldingPayload(), CENTRIFUGE_ID_2, SPOKE_MANAGER);
     }
 
+    function testFromSpokeErrNetworkMismatchHolding() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        bytes memory payload = abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset2);
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NetworkMismatch.selector);
+        navManager.fromSpoke(POOL_A, payload, CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
+    function testFromSpokeErrNetworkMismatchLiability() public {
+        _allowManager(SPOKE_MANAGER, true);
+
+        bytes memory payload = abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), SC_1, asset2);
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NetworkMismatch.selector);
+        navManager.fromSpoke(POOL_A, payload, CENTRIFUGE_ID_1, SPOKE_MANAGER);
+    }
+
     function testFromSpokeErrRevokedManager() public {
         _allowManager(SPOKE_MANAGER, true);
         _allowManager(SPOKE_MANAGER, false);

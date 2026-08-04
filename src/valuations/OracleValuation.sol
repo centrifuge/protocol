@@ -83,12 +83,13 @@ contract OracleValuation is IOracleValuation {
     {
         require(feeder[poolId][centrifugeId][sender], NotFeeder());
 
-        (bytes16 scId, uint128 assetId, uint128 newPrice, uint64 priceAt) =
-            abi.decode(payload, (bytes16, uint128, uint128, uint64));
-        uint64 lastUpdatedAt = pricePoolPerAsset[poolId][ShareClassId.wrap(scId)][AssetId.wrap(assetId)].updatedAt;
+        (bytes16 scId, AssetId assetId, uint128 newPrice, uint64 priceAt) =
+            abi.decode(payload, (bytes16, AssetId, uint128, uint64));
+        require(assetId.centrifugeId() == centrifugeId, NetworkMismatch());
+        uint64 lastUpdatedAt = pricePoolPerAsset[poolId][ShareClassId.wrap(scId)][assetId].updatedAt;
         require(priceAt > lastUpdatedAt, StalePrice());
 
-        _setPrice(poolId, ShareClassId.wrap(scId), AssetId.wrap(assetId), D18.wrap(newPrice));
+        _setPrice(poolId, ShareClassId.wrap(scId), assetId, D18.wrap(newPrice));
     }
 
     function _setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 newPrice) internal {

@@ -106,11 +106,11 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         address refund
     ) external payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
-
         require(spokeRegistry.isVaultRegistered(address(vault)), ISpokeRegistry.UnknownVault());
-        if (owner != address(this)) SafeTransferLib.safeTransferFrom(vault.share(), owner, address(this), shares);
-        _approveMax(vault.share(), address(spoke));
 
+        address share_ = vault.share();
+        if (owner != address(this)) SafeTransferLib.safeTransferFrom(share_, owner, address(this), shares);
+        _approveMax(share_, address(spoke));
         _crosschainTransferShares(
             spokeRegistry.vaultDetails(address(vault)),
             shares,
@@ -123,9 +123,8 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         );
     }
 
-    /// @dev Split out of {crosschainTransferShares}: holding the vault details in the outer frame alongside
-    ///      its eight parameters exceeds the stack limit. The registry lookup doubles as the vault validity
-    ///      check, so ordering it after the share pull is safe, the whole call reverts either way.
+    /// @dev Split out of {crosschainTransferShares} to avoid a stack-too-deep: the outer frame holds
+    ///      eight parameters plus the vault-validity check, which together exceed the stack limit.
     function _crosschainTransferShares(
         VaultDetails memory vaultDetails,
         uint128 shares,

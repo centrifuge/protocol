@@ -90,6 +90,7 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     error InvalidStateOfAccounts();
     error InvalidNAVHook();
     error UnsupportedSpokeCall();
+    error NetworkMismatch();
     error NotManager();
     error ValuationNotSet();
 
@@ -131,7 +132,11 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     /// @notice Check whether an address may drive spoke-side holding/liability initialization for a pool
     ///         on a network, via the permissionless `spoke.managerCall` -> `fromSpoke` path
     /// @param poolId The pool ID
-    /// @param centrifugeId The Centrifuge ID of the network
+    /// @notice Check whether an address may drive spoke-side holding/liability initialization for a pool
+    ///         via the permissionless `spoke.managerCall` -> `fromSpoke` path
+    /// @param poolId The pool ID
+    /// @param centrifugeId The network the manager calls from; it may only initialize assets residing there,
+    ///        cross-network initialization is hub-only
     /// @param who The manager address, encoded as bytes32
     function manager(PoolId poolId, uint16 centrifugeId, bytes32 who) external view returns (bool);
 

@@ -150,7 +150,7 @@ contract Holdings is Auth, IHoldings {
 
         // Value only the realized increase (a preceding over-decrease is netted off first) at the hub-side
         // valuation. Uninitialized holdings track amount only; their value is established at initialization.
-        amountValue = address(holding_.valuation) != address(0)
+        amountValue = realized != 0 && address(holding_.valuation) != address(0)
             ? holding_.valuation.getQuote(poolId, scId, assetId, realized)
             : 0;
 

@@ -195,6 +195,14 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         priceManager.onUpdate(POOL_A, SC_2, CENTRIFUGE_ID_1, 1000);
     }
 
+    function testOnUpdateZeroNAVNonzeroIssuanceCommitsPrice() public {
+        // hub must still be called because computedAt == 0 (not yet initialized)
+        vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(0, 1)));
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 0);
+    }
+
     function testOnUpdateUnchangedPriceSkipsHubCall() public {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
@@ -205,7 +213,10 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
             abi.encode(d18(10, 1), uint64(block.timestamp))
         );
 
+        // Hub is not called when price is unchanged, but Update event is still emitted for the metrics change.
         vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE), 0);
+        vm.expectEmit(true, true, true, true);
+        emit ISimplePriceManager.Update(POOL_A, SC_1, 1000, 100, d18(10, 1));
 
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);

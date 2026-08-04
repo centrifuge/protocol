@@ -59,7 +59,7 @@ interface ITokenBridge is IRecoverable {
     /// @param receiver The target address that should receive the funds on the destination chain
     /// @param destinationChainId The Ethereum chain ID of the destination chain
     /// @param refundAddress The address that should receive any funds if the cross-chain gas value is too high
-    /// @return The response from the token's handler function (not standardized)
+    /// @return Always returns empty bytes
     function send(address token, uint256 amount, bytes32 receiver, uint256 destinationChainId, address refundAddress)
         external
         payable

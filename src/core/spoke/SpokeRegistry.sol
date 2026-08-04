@@ -18,7 +18,6 @@ import {
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 import {IERC20} from "../../misc/interfaces/IERC20.sol";
-import {IERC7575Share} from "../../misc/interfaces/IERC7575.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
@@ -244,7 +243,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(assetIdKey.asset != address(0), UnknownAsset());
         require(assetIdKey.asset == asset && assetIdKey.tokenId == tokenId, UnknownAsset());
 
-        require(!_vaultDetails[vault_].isLinked, AlreadyLinkedVault());
+        require(_vaultDetails[vault_].asset == address(0), AlreadyRegisteredVault());
+        require(vault_.code.length > 0, NotAContract());
 
         _vaultDetails[vault_] = VaultDetails(poolId, scId, assetId, asset, tokenId, false);
         emit DeployVault(poolId, scId, asset, tokenId, factory, vault_, payload);
@@ -262,7 +262,6 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(vaultDetails_.poolId == poolId && vaultDetails_.scId == scId, InvalidVault());
 
         vaultDetails_.isLinked = true;
-        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_, true);
 
         emit LinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_);
     }
@@ -278,26 +277,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(vaultDetails_.poolId == poolId && vaultDetails_.scId == scId, InvalidVault());
 
         vaultDetails_.isLinked = false;
-        _pointVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_, false);
 
         emit UnlinkVault(poolId, scId, assetIdKey.asset, assetIdKey.tokenId, vault_);
-    }
-
-    /// @dev Keeps the share token's ERC-7575 vault pointer in lockstep with links: aim it at `vault_` on link,
-    ///      and on unlink clear it only if it still targets `vault_` (so unlinking one of several vaults sharing
-    ///      a tuple never clobbers another's). Only for ERC20 assets (`tokenId == 0`), since ERC-7575 pointers
-    ///      are asset-address keyed; on link, multiple vaults per tuple is last-writer-wins.
-    function _pointVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address vault_, bool linked)
-        internal
-    {
-        if (tokenId != 0) return;
-        ShareClassDetails storage shareClass_ = shareClass[poolId][scId];
-        address token = address(shareClass_.shareToken);
-        if (linked) {
-            shareClass_.registrar.updateVault(token, asset, vault_);
-        } else if (IERC7575Share(token).vault(asset) == vault_) {
-            shareClass_.registrar.updateVault(token, asset, address(0));
-        }
     }
 
     /// @inheritdoc ISpokeRegistry

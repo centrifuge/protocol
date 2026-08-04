@@ -229,11 +229,23 @@ contract MockCentrifugeChainDirect is Test {
     function linkVault(uint64 poolId, bytes16 scId, address vault) public {
         VaultDetails memory vd = vaultRegistry.vaultDetails(address(vault));
         vaultRegistry.linkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.assetId, address(vault));
+
+        vm.prank(shareTokenRegistrar.envoy());
+        shareTokenRegistrar.fromHub(
+            PoolId.wrap(poolId),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId, vd.assetId.raw(), vault)
+        );
     }
 
     function unlinkVault(uint64 poolId, bytes16 scId, address vault) public {
         VaultDetails memory vd = vaultRegistry.vaultDetails(address(vault));
         vaultRegistry.unlinkVault(PoolId.wrap(poolId), ShareClassId.wrap(scId), vd.assetId, address(vault));
+
+        vm.prank(shareTokenRegistrar.envoy());
+        shareTokenRegistrar.fromHub(
+            PoolId.wrap(poolId),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId, vd.assetId.raw(), address(0))
+        );
     }
 
     function updateMaxReserve(uint64 poolId, bytes16 scId, address vault, uint128 maxReserve) public {
@@ -399,6 +411,13 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
 
         vaultAddress = _deployedVaultFromLogs();
         poolId = POOL_A.raw();
+
+        if (assetTokenId == 0) {
+            vm.prank(shareTokenRegistrar.envoy());
+            shareTokenRegistrar.fromHub(
+                POOL_A, abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId, assetId, vaultAddress)
+            );
+        }
     }
 
     function deployVault(IVaultFactory vaultFactory, uint8 decimals, bytes16 scId)

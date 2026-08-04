@@ -4,13 +4,17 @@ pragma solidity ^0.8.28;
 import {d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
+import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {VaultUpdateKind, ManagerKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 
+import {VmSafe} from "forge-std/Vm.sol";
+
 import {TokenBridge} from "../../../src/bridge/TokenBridge.sol";
 import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {ThreeChainEndToEndDeployment} from "../../integration/ThreeChainEndToEnd.t.sol";
+import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
     using CastLib for *;
@@ -49,10 +53,33 @@ abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
                 0,
                 FM
             );
+        vm.recordLogs();
         h.hub
             .updateVault(
                 POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, bytes(""), 0, FM
             );
+
+        address vaultAddr;
+        {
+            VmSafe.Log[] memory logs_ = vm.getRecordedLogs();
+            for (uint256 i; i < logs_.length; i++) {
+                if (logs_[i].topics[0] == ISpokeRegistry.LinkVault.selector) {
+                    (, vaultAddr) = abi.decode(logs_[i].data, (uint256, address));
+                }
+            }
+        }
+
+        h.hub
+            .managerCall(
+                POOL_A,
+                s.centrifugeId,
+                address(s.shareTokenRegistrar).toBytes32(),
+                abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), SC_1, s.usdcId.raw(), vaultAddr),
+                0,
+                0,
+                FM
+            );
+
         h.hub
             .updateManager(
                 POOL_A, s.centrifugeId, ManagerKind.Bridger, address(deployA.tokenBridge()).toBytes32(), true, FM

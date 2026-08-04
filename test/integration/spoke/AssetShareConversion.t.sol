@@ -108,6 +108,16 @@ contract AssetShareConversionTest is CentrifugeIntegrationTest {
         );
 
         vault = AsyncVault(_deployedVaultFromLogs());
+
+        hub.managerCall{value: 0}(
+            poolId,
+            LOCAL_CENTRIFUGE_ID,
+            address(shareTokenRegistrar).toBytes32(),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), SC_1, assetId.raw(), address(vault)),
+            0,
+            0,
+            address(this)
+        );
     }
 
     /// Simulates the hub sending back deposit fulfillment messages to the spoke.

@@ -77,6 +77,8 @@ contract NAVManager is INAVManager {
     /// @inheritdoc IManagerCallFromSpoke
     /// @dev Spoke-side holding/liability init, reached via the permissionless `spoke.managerCall`, so the
     ///      origin `sender` is checked against the per-pool `manager` allowlist (set hub-side via `fromHub`).
+    ///      The target asset must reside on the origin network, so a spoke manager only reaches its own
+    ///      network's accounts; cross-network init goes through `fromHub`.
     ///      The downstream `hub.initializeHolding` is still manifest-supervised. Other actions stay hub-only.
     function fromSpoke(PoolId poolId, bytes calldata payload, uint16 centrifugeId, bytes32 sender) external payable {
         require(msg.sender == envoy, NotEnvoy());
@@ -86,9 +88,11 @@ contract NAVManager is INAVManager {
         ManagerCall kind = ManagerCall(abi.decode(payload, (uint8)));
         if (kind == ManagerCall.InitializeHolding) {
             (, ShareClassId scId, AssetId assetId) = abi.decode(payload, (uint8, ShareClassId, AssetId));
+            require(assetId.centrifugeId() == centrifugeId, NetworkMismatch());
             _initializeHolding(poolId, scId, assetId);
         } else if (kind == ManagerCall.InitializeLiability) {
             (, ShareClassId scId, AssetId assetId) = abi.decode(payload, (uint8, ShareClassId, AssetId));
+            require(assetId.centrifugeId() == centrifugeId, NetworkMismatch());
             _initializeLiability(poolId, scId, assetId);
         } else {
             revert UnsupportedSpokeCall();

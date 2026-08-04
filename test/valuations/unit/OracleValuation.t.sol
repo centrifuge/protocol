@@ -5,9 +5,9 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
@@ -436,10 +436,13 @@ contract OracleValuationFromSpokeTests is OracleValuationTest {
 
     uint16 constant REMOTE_CENTRIFUGE_ID = 5;
     address remoteFeeder = makeAddr("remoteFeeder");
+    AssetId remoteAsset = newAssetId(REMOTE_CENTRIFUGE_ID, 1);
 
     function setUp() public override {
         super.setUp();
-        // Register remote feeder
+        vm.mockCall(
+            hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_A, SC_1, remoteAsset), abi.encode()
+        );
         _updateFeeder(POOL_A, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32(), true);
     }
 
@@ -473,15 +476,15 @@ contract OracleValuationFromSpokeTests is OracleValuationTest {
     function testFromSpokeSuccess() public {
         D18 price = d18(1.5e18);
         bytes memory payload =
-            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), price.raw(), uint64(block.timestamp));
+            abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), price.raw(), uint64(block.timestamp));
 
         vm.expectEmit(true, true, true, true);
-        emit IOracleValuation.UpdatePrice(POOL_A, SC_1, C6, price);
+        emit IOracleValuation.UpdatePrice(POOL_A, SC_1, remoteAsset, price);
 
         vm.prank(envoy);
         valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
 
-        (D18 storedValue, bool isValid,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid,) = valuation.pricePoolPerAsset(POOL_A, SC_1, remoteAsset);
         assertEq(storedValue.raw(), price.raw());
         assertTrue(isValid);
     }
@@ -516,12 +519,12 @@ contract OracleValuationFromSpokeTests is OracleValuationTest {
 
     function testFromSpokeStaleReplayRejected() public {
         uint64 t0 = uint64(block.timestamp);
-        bytes memory stalePayload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1.5e18), t0);
+        bytes memory stalePayload = abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(1.5e18), t0);
 
         // A newer message commits a price, advancing updatedAt past t0.
         skip(10);
         bytes memory newerPayload =
-            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(2e18), uint64(block.timestamp));
+            abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(2e18), uint64(block.timestamp));
         vm.prank(envoy);
         valuation.fromSpoke(POOL_A, newerPayload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
 
@@ -532,13 +535,13 @@ contract OracleValuationFromSpokeTests is OracleValuationTest {
 
     function testFromSpokeLocalSetPriceBlocksStaleReplay() public {
         uint64 t0 = uint64(block.timestamp);
-        bytes memory stalePayload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1.5e18), t0);
+        bytes memory stalePayload = abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(1.5e18), t0);
 
         // A local setPrice (hub-side feeder) advances updatedAt past t0.
         skip(10);
         _enableFeeder(POOL_A, feeder);
         vm.prank(feeder);
-        valuation.setPrice(POOL_A, SC_1, C6, d18(2e18));
+        valuation.setPrice(POOL_A, SC_1, remoteAsset, d18(2e18));
 
         vm.expectRevert(IOracleValuation.StalePrice.selector);
         vm.prank(envoy);
@@ -547,11 +550,21 @@ contract OracleValuationFromSpokeTests is OracleValuationTest {
 
     function testFromSpokeUpdatedAtStoredOnSuccess() public {
         uint64 t = uint64(block.timestamp);
-        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), t);
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(1e18), t);
         vm.prank(envoy);
         valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
 
-        (,, uint64 updatedAt) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (,, uint64 updatedAt) = valuation.pricePoolPerAsset(POOL_A, SC_1, remoteAsset);
         assertEq(updatedAt, t);
+    }
+
+    function testFromSpokeNetworkMismatch() public {
+        // C6 = AssetId.wrap(6) embeds centrifugeId 0, which doesn't match REMOTE_CENTRIFUGE_ID = 5.
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
+
+        vm.expectRevert(IOracleValuation.NetworkMismatch.selector);
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
     }
 }

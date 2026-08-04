@@ -246,6 +246,22 @@ abstract contract BaseTestData is LaunchDeployer {
         );
         _captureDeployedVault(poolId, scId, params.assetId);
 
+        // Point the ERC-7575 vault pointer so AsyncRequestManager._requestVault can route fulfillments.
+        hub.managerCall(
+            poolId,
+            params.targetCentrifugeId,
+            address(shareTokenRegistrar).toBytes32(),
+            abi.encode(
+                uint8(IShareTokenRegistrar.RegistrarCall.SetVault),
+                scId,
+                params.assetId.raw(),
+                _vaultFor(poolId, scId, params.token)
+            ),
+            0,
+            0,
+            msg.sender
+        );
+
         // Update and notify prices
         hub.updateSharePrice(poolId, scId, pricePoolPerShare, uint64(block.timestamp));
         hub.notifySharePrice(poolId, scId, params.targetCentrifugeId, msg.sender);

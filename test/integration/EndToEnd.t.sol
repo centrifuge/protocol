@@ -438,6 +438,17 @@ contract EndToEndUtils is EndToEndDeployment {
         }
         require(vaultAddr != address(0), "vault not linked");
         lastLinkedVault = vaultAddr;
+
+        bool local = s.centrifugeId == h.centrifugeId;
+        h.hub.managerCall{value: local ? 0 : GAS}(
+            POOL_A,
+            s.centrifugeId,
+            CastLib.toBytes32(address(s.shareTokenRegistrar)),
+            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), SC_1, s.usdcId.raw(), vaultAddr),
+            0,
+            0,
+            REFUND
+        );
     }
 }
 

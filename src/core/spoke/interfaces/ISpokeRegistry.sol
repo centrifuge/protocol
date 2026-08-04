@@ -128,6 +128,7 @@ interface ISpokeRegistry {
     error InvalidVault();
     error AlreadyLinkedVault();
     error AlreadyUnlinkedVault();
+    error AlreadyRegisteredVault();
     /// @notice Dispatched when {authorize} targets a pool with no manifest installed (nothing could consume it).
     error NoManifest();
     /// @notice Dispatched when {consumeAuthorization} finds no recorded authorization for the call.
@@ -232,7 +233,8 @@ interface ISpokeRegistry {
     // Vault management
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Register a vault (used for vault deployments and migrations)
+    /// @notice Records a vault in the registry. Each address may only be registered once with no
+    ///         unregister path.
     function registerVault(
         PoolId poolId,
         ShareClassId scId,

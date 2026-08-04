@@ -259,6 +259,48 @@ contract ShareTokenRegistrarTest is Test {
         registrar.fromHub(poolId, payload);
     }
 
+    function testFromHubSetVaultClearsWithAddressZero() public {
+        address token = _newToken();
+        address asset = makeAddr("asset");
+        address vault = makeAddr("vault");
+
+        registrar.file("spokeRegistry", spokeRegistry);
+
+        PoolId poolId = PoolId.wrap(1);
+        ShareClassId scId = ShareClassId.wrap(bytes16(uint128(2)));
+        AssetId assetId = AssetId.wrap(3);
+
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, poolId, scId),
+            abi.encode(token, address(registrar))
+        );
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(bytes4(keccak256("idToAsset(uint128,bool)")), assetId),
+            abi.encode(asset, uint256(0))
+        );
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, vault),
+            abi.encode(
+                VaultDetails({poolId: poolId, scId: scId, assetId: assetId, asset: asset, tokenId: 0, isLinked: true})
+            )
+        );
+
+        vm.prank(envoy);
+        registrar.fromHub(
+            poolId, abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, scId.raw(), assetId.raw(), vault)
+        );
+        assertEq(IShareToken(token).vault(asset), vault);
+
+        vm.prank(envoy);
+        registrar.fromHub(
+            poolId, abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, scId.raw(), assetId.raw(), address(0))
+        );
+        assertEq(IShareToken(token).vault(asset), address(0));
+    }
+
     function testFromHubRejectsVaultMismatch() public {
         address token = _newToken();
         registrar.file("spokeRegistry", spokeRegistry);

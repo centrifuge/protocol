@@ -121,8 +121,8 @@ interface IHoldings {
     /// @notice Increments the amount of a holding and updates the value for that increment
     /// @dev    The realized increment is valued at the hub-side valuation. Before initialization only the
     ///         amount is tracked (value 0); the value is established when the holding is initialized.
-    ///         An oracle-backed valuation that reverts on a stale or unset price will stall this call until
-    ///         the price is refreshed.
+    ///         An oracle-backed valuation that reverts on an unset price will stall this call until
+    ///         a price is set.
     ///         An increment first nets off any excess carried by a prior over-decrease (see `decrease`):
     ///         only the amount above that excess is realized and valued, so an over-decrease can never be
     ///         re-inflated into overstated value. Lifting a holding out of deficit decrements `deficitCount`.
@@ -140,10 +140,10 @@ interface IHoldings {
     /// @dev    A decrease beyond the current amount is not clamped away: it accrues against `decreasedAmount`
     ///         and nets off future increases, so the amount side never reverts on an over-decrease (which
     ///         would stall the ordered message stream) yet never permanently loses the excess.
-    ///         The realized decrease is valued at the hub-side valuation, symmetric with `increase`: an
-    ///         oracle-backed valuation that reverts on a stale or unset price stalls this call exactly as
-    ///         it would stall `increase`, instead of only ever blocking inflows. The quote is capped at the
-    ///         currently stored carrying value so the returned value can never over-journal the accounts.
+    ///         The realized decrease removes carrying value pro rata to the realized amount relative to the
+    ///         current holding: no valuation call is made, so a stale or unset oracle never stalls a decrease.
+    ///         The removed value is capped at the currently stored carrying value so the returned value can
+    ///         never over-journal the accounts.
     ///         Pushing a holding into deficit increments `deficitCount`.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier

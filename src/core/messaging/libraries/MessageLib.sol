@@ -517,7 +517,7 @@ library MessageLib {
         uint128 amount;
         uint128 remoteExtraGasLimit;
         uint128 extraGasLimit;
-        // The originator of the transfer (the real sender), forwarded to the destination-side bridging hook.
+        // The originator of the transfer (the real sender), forwarded to the Hub-side bridging hook.
         bytes32 sender;
     }
 

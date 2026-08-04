@@ -305,7 +305,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @param scId The share class id
     /// @param receiver A bytes32 representation of the receiver address
     /// @param sender The originator of the transfer; attributed in the event and forwarded to the
-    ///        destination-side bridging hook (e.g. the circuit breaker). A router/bridge passes the real user.
+    ///        Hub-side bridging hook (e.g. the circuit breaker). A router/bridge passes the real user.
     ///        NOT authenticated here: it is attribution supplied by the (trusted) bridger or ward, so
     ///        hook authorizations keyed on it rely on that trust, not on a cryptographic identity.
     /// @param owner The account whose shares are transferred and burned; must hold the bridger role and be

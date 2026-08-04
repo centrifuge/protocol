@@ -310,9 +310,9 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         require(msgSender() == owner || wards[msgSender()] == 1, NotAuthorized());
         require(spokeRegistry.bridger(poolId, owner), NotBridger());
         require(amount != 0, EmptyAmount());
-        require(spokeRegistry.hasShareClass(poolId, scId), ISpokeRegistry.ShareTokenDoesNotExist());
 
         (IERC20 share, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(poolId, scId);
+        require(address(share) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
         require(centrifugeId != sender.localCentrifugeId(), LocalTransferNotAllowed());
         require(registrar.canBridge(address(share), owner, centrifugeId, amount), BridgeNotAllowed());
 

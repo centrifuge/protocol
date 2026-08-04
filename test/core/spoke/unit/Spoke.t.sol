@@ -295,11 +295,8 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
 
     function setUp() public override {
         super.setUp();
-        // Default: caller is an authorized bridger and the share class exists; individual tests can override.
+        // Default: caller is an authorized bridger; individual tests can override.
         vm.mockCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.bridger.selector), abi.encode(true));
-        vm.mockCall(
-            address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector), abi.encode(true)
-        );
     }
 
     function testErrNotBridger() public {
@@ -354,14 +351,14 @@ contract SpokeTestCrosschainTransferShares is SpokeTest {
         // The share class does not exist, so the transfer is rejected up front.
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector, POOL_A, SC_1),
-            abi.encode(false)
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, POOL_A, SC_1),
+            abi.encode(address(0), address(0))
         );
 
         vm.prank(ANY);
         vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
         spoke.crosschainTransferShares{value: COST}(
-            LOCAL_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), ANY, ANY, AMOUNT, 0, 0, REFUND
+            REMOTE_CENTRIFUGE_ID, POOL_A, SC_1, RECEIVER.toBytes32(), ANY, ANY, AMOUNT, 0, 0, REFUND
         );
     }
 
