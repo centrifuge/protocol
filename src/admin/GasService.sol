@@ -25,11 +25,11 @@ contract GasService is IGasService {
     // NOTE: This value should be benchmarked via test/integration/GatewayFailGas.t.sol
     uint128 public constant DEFAULT_FAILURE_GAS_RESERVE = 35_000;
 
-    // NOTE: Monad reprices cold CALL (2600→10100) and cold SSTORE access (2100→8100),
-    // adding ~13500 gas to the failure path. This value is an estimate until Foundry's
-    // gas tooling supports Monad-specific opcode pricing.
+    // NOTE: Monad reprices cold account access (2600→10100) and cold storage access (2100→8100), so the
+    // failure path's 1 cold SSTORE (failedMessages) + 1 cold CALL (processor, charged to the frame the
+    // reserve protects) costs +13_500. Estimate until Foundry's gas tooling prices Monad opcodes.
     uint16 public constant MONAD_CENTRIFUGE_ID = 11;
-    uint128 public constant MONAD_FAILURE_GAS_RESERVE = 47_000;
+    uint128 public constant MONAD_FAILURE_GAS_RESERVE = DEFAULT_FAILURE_GAS_RESERVE + 13_500;
 
     /// @inheritdoc IMessageProperties
     uint128 public immutable messageFailureGasReserve;
