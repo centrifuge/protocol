@@ -42,7 +42,6 @@ import {GasService} from "../../src/admin/GasService.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
-import {MAX_MESSAGE_COST} from "../../src/admin/interfaces/IGasService.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
@@ -68,6 +67,7 @@ import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../
 
 import "forge-std/Test.sol";
 
+import {MAX_MESSAGE_COST} from "../utils/GasConstants.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
 import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";

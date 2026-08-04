@@ -13,13 +13,14 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
-import {MAX_MESSAGE_COST as GAS} from "../../src/admin/interfaces/IGasService.sol";
 
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
+
+import {MAX_MESSAGE_COST as GAS} from "../utils/GasConstants.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.
 /// It assumes a full deployment in one chain.

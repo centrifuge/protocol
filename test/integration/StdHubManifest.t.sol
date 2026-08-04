@@ -12,8 +12,6 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IManagerCallFromHub} from "../../src/core/utils/interfaces/IManagerCall.sol";
 
-import {MAX_MESSAGE_COST as GAS} from "../../src/admin/interfaces/IGasService.sol";
-
 import {INAVManager} from "../../src/hooks/accounting/interfaces/INAVManager.sol";
 
 import {SupervisorFactory} from "../../src/managers/hub/Supervisor.sol";
@@ -21,6 +19,7 @@ import {ISupervisor, TrustedCall} from "../../src/managers/hub/interfaces/ISuper
 
 import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
+import {MAX_MESSAGE_COST as GAS} from "../utils/GasConstants.sol";
 import {IStdHubManifest} from "../../src/manifests/hub/interfaces/IStdHubManifest.sol";
 import {StdHubManifest, StdHubManifestFactory} from "../../src/manifests/hub/StdHubManifest.sol";
 

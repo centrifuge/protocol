@@ -11,8 +11,6 @@ import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
-import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
-
 import {BatchRequestManagerCallLib} from "../../../vaults/utils/BatchRequestManagerCallLib.sol";
 
 import {BaseVault} from "../../../../src/vaults/BaseVaults.sol";
@@ -26,6 +24,7 @@ import {OpType} from "../BeforeAfter.sol";
 import {Helpers} from "../utils/Helpers.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {Properties} from "../properties/Properties.sol";
+import {MAX_MESSAGE_COST} from "../../../utils/GasConstants.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 

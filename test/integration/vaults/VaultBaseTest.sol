@@ -19,8 +19,6 @@ import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.
 import {IVaultFactory} from "../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {ISpokeRegistry, VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
-import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
-
 import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
@@ -30,6 +28,7 @@ import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCa
 
 import "forge-std/Test.sol";
 
+import {MAX_MESSAGE_COST} from "../../utils/GasConstants.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 import {ShareTokenRegistrar} from "../../../src/token/ShareTokenRegistrar.sol";
 import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";

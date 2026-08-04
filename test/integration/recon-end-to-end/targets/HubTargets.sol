@@ -13,8 +13,6 @@ import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol
 import {ManagerKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
-import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
-
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {BatchRequestManagerHarness} from "../mocks/BatchRequestManagerHarness.sol";
@@ -22,6 +20,7 @@ import {BatchRequestManagerHarness} from "../mocks/BatchRequestManagerHarness.so
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
+import {MAX_MESSAGE_COST} from "../../../utils/GasConstants.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 // Dependencies

@@ -5,8 +5,7 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
-import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
-
+import {MAX_MESSAGE_COST} from "../../utils/GasConstants.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 contract TestBatchingAndPayment is CentrifugeIntegrationTest {

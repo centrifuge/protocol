@@ -15,8 +15,6 @@ import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 
-import {MAX_MESSAGE_COST} from "../../../../src/admin/interfaces/IGasService.sol";
-
 import {BatchRequestManagerCallLib} from "../../../vaults/utils/BatchRequestManagerCallLib.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
@@ -24,6 +22,7 @@ import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 import {OpType} from "../BeforeAfter.sol";
 import {Helpers} from "../utils/Helpers.sol";
 import {Properties} from "../properties/Properties.sol";
+import {MAX_MESSAGE_COST} from "../../../utils/GasConstants.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 

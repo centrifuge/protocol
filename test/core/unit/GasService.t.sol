@@ -6,9 +6,10 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {GasService} from "../../../src/admin/GasService.sol";
-import {MAX_MESSAGE_COST} from "../../../src/admin/interfaces/IGasService.sol";
 
 import "forge-std/Test.sol";
+
+import {MAX_MESSAGE_COST} from "../../utils/GasConstants.sol";
 
 contract GasServiceTest is Test {
     using MessageLib for *;
@@ -39,6 +40,87 @@ contract GasServiceTest is Test {
         assertTrue(monadService.MONAD_FAILURE_GAS_RESERVE() != monadService.DEFAULT_FAILURE_GAS_RESERVE());
     }
 
+    function testDefaultChainHasNoColdAccessSurcharge() public view {
+        bytes memory message = new bytes(266);
+        message[0] = bytes1(uint8(MessageType.NotifyPool));
+
+        assertEq(
+            service.messageProcessingGasLimit(CENTRIFUGE_ID, message),
+            service.notifyPool() + service.DEFAULT_FAILURE_GAS_RESERVE()
+        );
+    }
+
+    /// @dev End-to-end check that the surcharge a message actually receives matches the counts benchmarked
+    ///      for it by name, covering every benchmarked entry rather than every message type, so the three
+    ///      VaultUpdateKind variants are checked apart. Catches a wrong count, a wrong index and a wrong shift.
+    function testMonadSurchargeMatchesBenchmarkSnapshot() public view {
+        string memory json = vm.readFile("snapshots/MessageColdAccesses.json");
+        string[25] memory names = [
+            "",
+            "scheduleUpgrade",
+            "cancelUpgrade",
+            "registerAsset",
+            "setPoolAdapters",
+            "notifyPool",
+            "notifyShareClass",
+            "notifyPricePoolPerShare",
+            "notifyPricePoolPerAsset",
+            "notifyShareMetadata",
+            "initiateTransferShares",
+            "executeTransferShares",
+            "updateRestriction",
+            "", // UpdateVault: three sub-kinds share this index, resolved below
+            "updateAssets",
+            "updateShares",
+            "request",
+            "requestCallback",
+            "setRequestManager",
+            "managerCallFromSpoke",
+            "managerCallFromHub",
+            "updateManager",
+            "setManifest",
+            "authorizeSpokeCall",
+            "unauthorizeSpokeCall"
+        ];
+
+        bytes memory message = new bytes(266);
+
+        for (uint256 i = 1; i < names.length; i++) {
+            message[0] = bytes1(uint8(i));
+
+            if (i == uint256(uint8(MessageType.UpdateVault))) {
+                // Each VaultUpdateKind is benchmarked separately and must get its own surcharge
+                string[3] memory kinds = ["updateVaultDeployAndLink", "updateVaultLink", "updateVaultUnlink"];
+                for (uint256 k; k < kinds.length; k++) {
+                    message[73] = bytes1(uint8(k)); // VaultUpdateKind is encoded at offset 73
+                    _assertSurchargeMatchesSnapshot(json, message, kinds[k]);
+                }
+                message[73] = 0;
+            } else {
+                _assertSurchargeMatchesSnapshot(json, message, names[i]);
+            }
+        }
+    }
+
+    function _assertSurchargeMatchesSnapshot(string memory json, bytes memory message, string memory name)
+        internal
+        view
+    {
+        uint256 slots = vm.parseJsonUint(json, string.concat("$.", name, "Slots"));
+        uint256 accounts = vm.parseJsonUint(json, string.concat("$.", name, "Accounts"));
+        uint128 expected = uint128(slots) * service.MONAD_COLD_SLOT_SURCHARGE() + uint128(accounts)
+            * service.MONAD_COLD_ACCOUNT_SURCHARGE();
+        uint128 reserveDelta = service.MONAD_FAILURE_GAS_RESERVE() - service.DEFAULT_FAILURE_GAS_RESERVE();
+
+        assertGt(expected, 0, string.concat(name, ": no cold-access counts recorded"));
+        assertEq(
+            service.messageProcessingGasLimit(service.MONAD_CENTRIFUGE_ID(), message)
+                - service.messageProcessingGasLimit(CENTRIFUGE_ID, message),
+            reserveDelta + expected,
+            string.concat(name, ": surcharge does not match benchmarked counts")
+        );
+    }
+
     function testGasLimit(uint256 len, bytes calldata seed) public view {
         len = bound(len, 266, 4096); // ensuring we can deserialize extraGasLimit from any message (NotifyShareClass reads at offset 250)
 
@@ -65,6 +147,39 @@ contract GasServiceTest is Test {
         uint256 messageGasLimit = service.messageOverallGasLimit(CENTRIFUGE_ID, message);
         assert(messageGasLimit > service.BASE_ADAPTER_COST());
         assertLt(messageGasLimit, MAX_MESSAGE_COST, "Higher than MAX_MESSAGE_COST");
+    }
+
+    /// @dev Covers Monad as a destination, which testGasLimit does not, so the chain carrying the largest
+    ///      cold-access surcharge is checked against the reference ceiling too.
+    function testOverallGasLimitStaysUnderMaxMessageCost() public view {
+        bytes memory message = new bytes(266);
+
+        for (uint8 i = 1; i <= uint8(type(MessageType).max); i++) {
+            message[0] = bytes1(i);
+
+            if (MessageType(i) == MessageType.UpdateVault) {
+                for (uint8 k = 0; k <= uint8(type(VaultUpdateKind).max); k++) {
+                    message[73] = bytes1(k); // VaultUpdateKind is encoded at offset 73
+                    _assertUnderMaxMessageCost(message, i);
+                }
+                message[73] = 0;
+            } else {
+                _assertUnderMaxMessageCost(message, i);
+            }
+        }
+    }
+
+    function _assertUnderMaxMessageCost(bytes memory message, uint8 kind) internal view {
+        assertLt(
+            service.messageOverallGasLimit(CENTRIFUGE_ID, message),
+            MAX_MESSAGE_COST,
+            string.concat("type ", vm.toString(kind), ": default chain over MAX_MESSAGE_COST")
+        );
+        assertLt(
+            service.messageOverallGasLimit(service.MONAD_CENTRIFUGE_ID(), message),
+            MAX_MESSAGE_COST,
+            string.concat("type ", vm.toString(kind), ": Monad over MAX_MESSAGE_COST")
+        );
     }
 
     function testAllMessageTypesHaveSufficientGasReserve() public view {
