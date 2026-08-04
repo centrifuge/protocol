@@ -150,7 +150,7 @@ interface IHub is IBatchedMulticall {
     function manifest(PoolId poolId) external view returns (IHubManifest);
 
     /// @notice Updates a contract parameter
-    /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'holdings', 'sender', 'multiAdapter', 'shareClassManager')
+    /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'sender', 'multiAdapter')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
 

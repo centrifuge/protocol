@@ -8,9 +8,9 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
-import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
 import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
+import {SpokeRegistry, ISpokeRegistry, VaultDetails} from "../../../../src/core/spoke/SpokeRegistry.sol";
 
 import "forge-std/Test.sol";
 
@@ -93,7 +93,7 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault, "");
     }
 
     function testErrShareTokenDoesNotExist() public {
@@ -102,7 +102,7 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
 
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.ShareTokenDoesNotExist.selector);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault, "");
     }
 
     function testErrUnknownAssetMismatch() public {
@@ -113,7 +113,7 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
         // The passed (asset, tokenId) must match what assetId resolves to.
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc20, 0, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc20, 0, vaultFactory, vault, "");
     }
 
     function testErrUnknownAssetUnregistered() public {
@@ -122,7 +122,7 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
         // The assetId is not registered, so it resolves to a zeroed key and is rejected up front.
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault, "");
     }
 
     function testErrReregisterLinkedVault() public {
@@ -131,20 +131,44 @@ contract VaultRegistryTestRegisterVault is VaultRegistryTest {
         _utilSetRequestManager();
 
         vm.startPrank(AUTH);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault, "");
         spokeRegistry.linkVault(POOL_A, SC_1, ASSET_ID_6909_1, address(vault));
 
         // Overwriting a linked vault's details would desynchronize them from the live forward mapping.
         vm.expectRevert(ISpokeRegistry.AlreadyLinkedVault.selector);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault, "");
         vm.stopPrank();
+    }
+
+    /// @dev The opaque factory `payload` is carried on the canonical DeployVault event verbatim, so offchain
+    ///      consumers can bootstrap from it. Asserted with a non-empty value: an empty payload would pass
+    ///      even if the field were dropped from the event.
+    function testRegisterVaultEmitsDeployVaultWithPayload() public {
+        _utilRegisterERC6909();
+        _utilAddPoolAndShareClass();
+        _utilSetRequestManager();
+
+        bytes memory payload = hex"deadbeefc0ffee";
+
+        vm.expectEmit();
+        emit ISpokeRegistry.DeployVault(POOL_A, SC_1, erc6909, TOKEN_1, vaultFactory, vault, payload);
+
+        vm.prank(AUTH);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault, payload);
+
+        // The payload is not retained in storage; the event is the only record of it.
+        VaultDetails memory details = spokeRegistry.vaultDetails(vault);
+        assertEq(details.poolId.raw(), POOL_A.raw());
+        assertEq(details.scId.raw(), SC_1.raw());
+        assertEq(details.asset, erc6909);
+        assertEq(details.tokenId, TOKEN_1);
     }
 }
 
 contract VaultRegistryTestLinkVault is VaultRegistryTest {
     function _utilDeployVault(address asset, uint256 tokenId, AssetId assetId) internal {
         vm.prank(AUTH);
-        spokeRegistry.registerVault(POOL_A, SC_1, assetId, asset, tokenId, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, assetId, asset, tokenId, vaultFactory, vault, "");
     }
 
     function testErrNotAuthorized() public {
@@ -253,7 +277,7 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
         // Register a second, distinct vault for the same (poolId, scId, assetId).
         address vault2 = makeAddr("vault2");
         vm.prank(AUTH);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault2);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_6909_1, erc6909, TOKEN_1, vaultFactory, vault2, "");
 
         // The registry is declarative (no tuple -> vault reverse lookup), so multiple vaults may be linked
         // to the same tuple; each carries its own `isLinked` bit.
@@ -276,7 +300,7 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
 
         address vault2 = makeAddr("vault2");
         vm.prank(AUTH);
-        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_20, erc20, 0, vaultFactory, vault2);
+        spokeRegistry.registerVault(POOL_A, SC_1, ASSET_ID_20, erc20, 0, vaultFactory, vault2, "");
 
         vm.expectCall(address(registrar), abi.encodeCall(IRegistrar.updateVault, (share, erc20, address(vault))));
         vm.prank(AUTH);
@@ -294,7 +318,7 @@ contract VaultRegistryTestLinkVault is VaultRegistryTest {
 contract VaultRegistryTestUnlinkVault is VaultRegistryTest {
     function _utilDeployVault(address asset, uint256 tokenId, AssetId assetId) internal {
         vm.prank(AUTH);
-        spokeRegistry.registerVault(POOL_A, SC_1, assetId, asset, tokenId, vaultFactory, vault);
+        spokeRegistry.registerVault(POOL_A, SC_1, assetId, asset, tokenId, vaultFactory, vault, "");
     }
 
     function testErrNotAuthorized() public {

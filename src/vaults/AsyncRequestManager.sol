@@ -31,7 +31,6 @@ import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
-import {ITrustedContractUpdate} from "../core/utils/interfaces/IContractUpdate.sol";
 import {ISpokeRequestManager} from "../core/spoke/interfaces/ISpokeRequestManager.sol";
 import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
@@ -42,7 +41,7 @@ import {ISubsidyManager} from "../utils/interfaces/ISubsidyManager.sol";
 /// @title  Async Request Manager
 /// @notice This is the main contract vaults interact with for
 ///         both incoming and outgoing investment transactions.
-contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpdate {
+contract AsyncRequestManager is Auth, IAsyncRequestManager {
     using CastLib for *;
     using BytesLib for bytes;
     using MathLib for uint256;
@@ -327,12 +326,6 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager, ITrustedContractUpda
 
         if (fulfilledShares > 0) vault_.onRedeemClaimable(user, fulfilledAssets, fulfilledShares);
         if (cancelledShares > 0) vault_.onCancelRedeemClaimable(user, cancelledShares);
-    }
-
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId, bytes calldata payload) external auth {
-        (bytes32 who, uint256 value) = abi.decode(payload, (bytes32, uint256));
-        subsidyManager.withdraw(poolId, who.toAddress(), value);
     }
 
     //----------------------------------------------------------------------------------------------

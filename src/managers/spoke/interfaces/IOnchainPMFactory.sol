@@ -12,7 +12,7 @@ interface IOnchainPMFactory {
 
     error InvalidPoolId();
 
-    function contractUpdater() external view returns (address);
+    function envoy() external view returns (address);
     function spoke() external view returns (ISpoke);
     function gateway() external view returns (IGateway);
 

@@ -41,7 +41,6 @@ contract PoolHooks is BaseDeployer {
     address public envoy;
     address public spokeHandler;
     address public spokeRegistry;
-    address public contractUpdater;
     address public fullRestrictionsHook;
     address public freelyTransferableHook;
     Root public root;
@@ -61,7 +60,6 @@ contract PoolHooks is BaseDeployer {
         poolEscrowFactory = IPoolEscrowProvider(config.contracts.poolEscrowFactory);
         freelyTransferableHook = config.contracts.freelyTransferableHook;
         fullRestrictionsHook = config.contracts.fullRestrictionsHook;
-        contractUpdater = config.contracts.contractUpdater;
 
         GraphQLQuery graphQL = new GraphQLQuery(config.network.graphQLApi());
 
@@ -229,7 +227,6 @@ contract PoolHooks is BaseDeployer {
 
         hook.rely(address(root));
         hook.rely(address(spoke));
-        hook.rely(address(contractUpdater));
         hook.deny(msg.sender);
     }
 

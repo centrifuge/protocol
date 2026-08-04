@@ -170,6 +170,13 @@ contract SubsidyManagerTestFromHub is SubsidyManagerTest {
         subsidyManager.fromHub(POOL_A, "");
     }
 
+    function testErrUnexpectedValue() public {
+        vm.deal(ENVOY, 1 ether);
+        vm.prank(ENVOY);
+        vm.expectRevert(ISubsidyManager.UnexpectedValue.selector);
+        subsidyManager.fromHub{value: 1}(POOL_A, abi.encode(RECEIVER.toBytes32(), SUBSIDY_AMOUNT));
+    }
+
     function testErrRefundEscrowNotDeployed() public {
         vm.mockCall(
             address(refundEscrowFactory),

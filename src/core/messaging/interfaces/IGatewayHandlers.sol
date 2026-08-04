@@ -170,13 +170,3 @@ interface ISpokeGatewayHandler {
         bytes calldata payload
     ) external;
 }
-
-/// @notice Interface for the update contract method, called by message
-interface IContractUpdateGatewayHandler {
-    /// @notice Updates the target address. Generic update function from Hub to Spoke
-    /// @param  poolId The centrifuge pool id
-    /// @param  scId The share class id
-    /// @param  target The target address to be called
-    /// @param  update The payload to be processed by the target address
-    function trustedCall(PoolId poolId, ShareClassId scId, address target, bytes memory update) external;
-}

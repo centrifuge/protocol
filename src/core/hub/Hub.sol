@@ -43,14 +43,14 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     using CastLib for bytes32;
     using RequestCallbackMessageLib for *;
 
-    IHoldings public holdings;
     IFeeAccrual public feeAccrual;
     IHubMessageSender public sender;
     IMultiAdapter public multiAdapter;
-    IShareClassManager public shareClassManager;
 
+    IHoldings public immutable holdings;
     IAccounting public immutable accounting;
     IHubRegistry public immutable hubRegistry;
+    IShareClassManager public immutable shareClassManager;
 
     constructor(
         IGateway gateway_,
@@ -88,10 +88,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
         else if (what == "feeAccrual") feeAccrual = IFeeAccrual(data);
-        else if (what == "holdings") holdings = IHoldings(data);
         else if (what == "sender") sender = IHubMessageSender(data);
         else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
-        else if (what == "shareClassManager") shareClassManager = IShareClassManager(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }

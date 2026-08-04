@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IV3_1_VaultRegistry} from "./interfaces/IV3_1_Interfaces.sol";
+
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IERC7575Share, IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 
@@ -8,8 +10,6 @@ import {Hub} from "../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
-import {ISpokeRequestManager} from "../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -107,9 +107,7 @@ contract ForkTestBase is Test {
         view
         returns (address vaultAddr)
     {
-        return address(
-            ISpokeV3_1_0(config.contracts.vaultRegistry)
-                .vault(poolId, shareClassId, assetId, ISpokeRequestManager(config.contracts.asyncRequestManager))
-        );
+        return IV3_1_VaultRegistry(config.contracts.vaultRegistry)
+            .vault(poolId, shareClassId, assetId, config.contracts.asyncRequestManager);
     }
 }

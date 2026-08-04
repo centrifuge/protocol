@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
+import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
@@ -219,6 +220,56 @@ contract SpokeRegistryTestLinkToken is SpokeRegistryTest {
         // The retired token's address is free again for another share class.
         vm.prank(AUTH);
         registry.linkToken(POOL_A, ShareClassId.wrap(bytes16("sc2")), share, registrar);
+    }
+
+    function testLinkTokenSwapRegistrarKeepsToken() public {
+        _addPoolAndShareClass();
+
+        // Swap the registrar while keeping the same token (e.g. a registrar bugfix redeploy). This used
+        // to revert with TokenAlreadyRegistered because the token's own reverse lookup tripped the check.
+        IRegistrar newRegistrar = IRegistrar(address(new IsContract()));
+        vm.prank(AUTH);
+        vm.expectEmit();
+        emit ISpokeRegistry.AddShareClass(POOL_A, SC_1, share, newRegistrar);
+        registry.linkToken(POOL_A, SC_1, share, newRegistrar);
+
+        (, IRegistrar registrar_) = registry.shareTokenAndRegistrar(POOL_A, SC_1);
+        assertEq(address(registrar_), address(newRegistrar));
+
+        // The token still resolves to the same share class.
+        (PoolId poolId, ShareClassId scId) = registry.tokenDetails(share);
+        assertEq(poolId.raw(), POOL_A.raw());
+        assertEq(scId.raw(), SC_1.raw());
+    }
+
+    /// @dev The reorder retires the outgoing token's reverse lookup before the uniqueness check, so the
+    ///      cross-link case has to stay closed: linking a token already bound to another share class must
+    ///      revert, and the revert must roll the retired lookup back rather than orphaning the outgoing token.
+    function testLinkTokenCrossLinkRevertsAndRollsBackOutgoingLookup() public {
+        _addPoolAndShareClass();
+
+        // A second share class in the same pool, with its own token.
+        ShareClassId scId2 = ShareClassId.wrap(bytes16("sc2"));
+        address share2 = address(new IsContract());
+        vm.prank(AUTH);
+        registry.addShareClass(POOL_A, scId2, share2, registrar);
+
+        // Point SC_1 at SC_2's token: `share2` is already registered, so this must revert.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.TokenAlreadyRegistered.selector);
+        registry.linkToken(POOL_A, SC_1, share2, registrar);
+
+        // SC_1 keeps its own token, and that token's reverse lookup survived the rollback.
+        (IERC20 token1,) = registry.shareTokenAndRegistrar(POOL_A, SC_1);
+        assertEq(address(token1), share);
+        (PoolId poolId1, ShareClassId scId1) = registry.tokenDetails(share);
+        assertEq(poolId1.raw(), POOL_A.raw());
+        assertEq(scId1.raw(), SC_1.raw());
+
+        // SC_2 is untouched.
+        (PoolId poolId2, ShareClassId scId2Lookup) = registry.tokenDetails(share2);
+        assertEq(poolId2.raw(), POOL_A.raw());
+        assertEq(scId2Lookup.raw(), scId2.raw());
     }
 }
 

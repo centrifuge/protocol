@@ -244,8 +244,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint256 value,
         address refund
     ) external payable auth {
-        // `target` is explicit: a `fromHub` manager, or the ContractUpdaterForwarder for a wrapped contract
-        // update. No origin args: already authorized at the Hub.
+        // `target` is explicit: the `fromHub` manager being addressed. No origin args: already authorized
+        // at the Hub.
         if (centrifugeId == localCentrifugeId) {
             envoy.callFromHub{value: value}(poolId, target, payload);
             // Refund any value not forwarded rather than assume `value == msgValue()`: if that Hub

@@ -61,7 +61,6 @@ contract StdHubManifest is IStdHubManifest {
     address public immutable bridgingHook;
     address public immutable requestManager;
     address public immutable oracleValuation;
-    address public immutable contractUpdaterForwarder;
     IHubRegistry public immutable hubRegistry;
     IMultiAdapter public immutable multiAdapter;
     address public immutable simplePriceManager;
@@ -90,7 +89,6 @@ contract StdHubManifest is IStdHubManifest {
         requestManager = config.requestManager;
         bridgingHook = config.bridgingHook;
         oracleValuation = config.oracleValuation;
-        contractUpdaterForwarder = config.contractUpdaterForwarder;
         hubRegistry = hub_.hubRegistry();
         multiAdapter = multiAdapter_;
         simplePriceManager = config.simplePriceManager;
@@ -285,7 +283,6 @@ contract StdHubManifest is IStdHubManifest {
         if (centrifugeId != hub.sender().localCentrifugeId()) return delay;
 
         address targetAddr = target.toAddress();
-        if (targetAddr == contractUpdaterForwarder) return delay;
         if (targetAddr == requestManager) return _checkRequestPrice(poolId, inner);
         if (
             bridgingHook != address(0) && targetAddr == bridgingHook && inner.length >= 32

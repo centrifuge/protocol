@@ -13,14 +13,11 @@ import {IManifest} from "../../src/core/hub/interfaces/IManifest.sol";
 import {IHub, ManagerKind} from "../../src/core/hub/interfaces/IHub.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
-import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../../src/core/hub/interfaces/IShareClassManager.sol";
 import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {UpdateRestrictionType} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
-
-import {IOnOffRamp} from "../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 
 import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
@@ -52,7 +49,6 @@ contract StdHubManifestTest is Test {
     address immutable supervisor = makeAddr("supervisor");
     address immutable brm = makeAddr("BRM");
     address immutable hook = makeAddr("bridgingHook");
-    address immutable contractUpdaterForwarder = makeAddr("contractUpdaterForwarder");
     address immutable manager = makeAddr("manager");
     address immutable outsider = makeAddr("outsider");
     address immutable who = makeAddr("who");
@@ -136,7 +132,6 @@ contract StdHubManifestTest is Test {
             requestManager: brm,
             bridgingHook: hook,
             oracleValuation: address(0),
-            contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: allowlist
         });
     }
@@ -569,7 +564,7 @@ contract StdHubManifestTest is Test {
     }
 
     function testManagerCallUnknownTargetDenyByDefault() public {
-        // An unpinned target (neither the contractUpdaterForwarder nor the BRM) is out of policy: deny-by-default.
+        // An unpinned target (anything other than the BRM or bridging hook) is out of policy: deny-by-default.
         assertEq(_delayOf(_managerCall(bytes32(bytes20(makeAddr("unknown"))), bytes(""))), DELAY);
     }
 
@@ -802,49 +797,13 @@ contract StdHubManifestTest is Test {
         assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 1)), 0);
     }
 
-    // ─── contract-update classification (managerCall to the forwarder) ────────────
+    // ─── managerCall payload robustness ───────────────────────────────────────────
 
-    function _updateContractCall(bytes32 target, bytes memory inner) internal view returns (bytes memory) {
-        // A contract update is a `managerCall` to the contractUpdaterForwarder, carrying the scId + real
-        // target + inner payload wrapped via {ContractUpdateLib.wrap}. The manifest sees the forwarder as
-        // the target and classifies it as `delay` in `_checkManagerCall`.
-        bytes memory payload = ContractUpdateLib.wrap(SC_A, address(bytes20(target)), inner);
-        return abi.encodeWithSelector(
-            IHub.managerCall.selector,
-            POOL_A,
-            uint16(1),
-            bytes32(bytes20(contractUpdaterForwarder)),
-            payload,
-            uint128(0),
-            uint256(0),
-            address(0)
-        );
-    }
-
-    function testUpdateContractDefaultDelayed() public {
-        // Anything that isn't an OnOffRamp Withdraw (here: Onramp config) is out of policy.
-        bytes memory inner = abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp));
-        assertEq(_delayOf(_updateContractCall(bytes32(bytes20(makeAddr("ramp"))), inner)), DELAY);
-    }
-
-    function testUpdateContractSentinelManagementDelayed() public {
-        // Sentinel add/remove flows through updateContract targeting the Supervisor: delayed.
-        bytes memory inner = abi.encode(uint8(1), makeAddr("attacker")); // RemoveSentinel
-        assertEq(_delayOf(_updateContractCall(bytes32(bytes20(supervisor)), inner)), DELAY);
-    }
-
-    function testUpdateContractWithdrawDelayed() public {
-        // No fast path: even an OnOffRamp Withdraw-tagged update is out of policy (timelocked + vetoable).
-        // The tag-only shortcut was removed because it ignored the target (Sherlock #15).
-        bytes memory inner = abi.encode(uint8(IOnOffRamp.TrustedCall.Withdraw));
-        assertEq(_delayOf(_updateContractCall(bytes32(bytes20(makeAddr("ramp"))), inner)), DELAY);
-    }
-
-    function testUpdateContractLargeFirstWordIsDelayedNotReverting() public {
+    function testManagerCallLargeFirstWordIsDelayedNotReverting() public {
         // An inner payload whose first word exceeds 255 (e.g. a target whose payload starts with a
-        // uint256/address) must NOT revert during classification; every contract update is timelocked.
+        // uint256/address) must NOT revert during classification; it falls to deny-by-default.
         bytes memory inner = abi.encode(uint256(type(uint256).max));
-        assertEq(_delayOf(_updateContractCall(bytes32(bytes20(makeAddr("target"))), inner)), DELAY);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(makeAddr("target"))), inner)), DELAY);
     }
 
     // ─── request manager / adapters manager / share hook ──────────────────────────

@@ -615,8 +615,7 @@ library MessageLib {
     //---------------------------------------
 
     /// @dev Generic hub->target manager call routed through the Envoy on the receiving chain. Pool-scoped;
-    ///      any `scId` is encoded inside `payload` by the caller. Legacy trusted-contract updates ride this
-    ///      message with `target` = the ContractUpdaterForwarder (which unwraps and forwards to `trustedCall`).
+    ///      any `scId` is encoded inside `payload` by the caller.
     struct ManagerCallFromHub {
         uint64 poolId;
         bytes32 target;

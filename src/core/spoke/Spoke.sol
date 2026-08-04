@@ -41,9 +41,10 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     uint8 internal constant MAX_DECIMALS = 18;
 
     ISpokeMessageSender public sender;
-    ISnapshotQueue public snapshotQueue;
-    ISpokeRegistry public spokeRegistry;
-    IPoolEscrowProvider public poolEscrowProvider;
+
+    ISnapshotQueue public immutable snapshotQueue;
+    ISpokeRegistry public immutable spokeRegistry;
+    IPoolEscrowProvider public immutable poolEscrowProvider;
 
     constructor(
         IGateway gateway_,
@@ -59,10 +60,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
 
     /// @dev Manager-only, and must satisfy the pool's manifest policy if one is installed.
     modifier enforced(PoolId poolId) {
-        require(spokeRegistry.manager(poolId, msgSender()), NotManager());
-
-        IManifest m = spokeRegistry.manifest(poolId);
-        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+        _enforce(poolId);
         _;
     }
 
@@ -73,10 +71,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     /// @inheritdoc ISpoke
     function file(bytes32 what, address data) external auth {
         if (what == "gateway") gateway = IGateway(data);
-        else if (what == "snapshotQueue") snapshotQueue = ISnapshotQueue(data);
         else if (what == "sender") sender = ISpokeMessageSender(data);
-        else if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
-        else if (what == "poolEscrowProvider") poolEscrowProvider = IPoolEscrowProvider(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -178,7 +173,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         address receiver,
         uint128 amount,
         address reserver,
-        uint32 reason
+        bytes32 reason
     ) external payable enforced(poolId) {
         IPoolEscrow escrow_ = escrow(poolId);
 
@@ -197,7 +192,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint256 tokenId,
         uint128 amount,
         address reserver,
-        uint32 reason
+        bytes32 reason
     ) external payable enforced(poolId) {
         escrow(poolId).reserve(scId, asset, tokenId, amount, reserver, reason);
         _queueAssets(poolId, scId, asset, tokenId, amount, false);
@@ -211,7 +206,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         uint256 tokenId,
         uint128 amount,
         address reserver,
-        uint32 reason
+        bytes32 reason
     ) external payable enforced(poolId) {
         escrow(poolId).unreserve(scId, asset, tokenId, amount, reserver, reason);
         _queueAssets(poolId, scId, asset, tokenId, amount, true);
@@ -413,6 +408,15 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
+
+    /// @dev Reverts unless the resolved sender is a manager for `poolId`, then applies the pool's
+    ///      manifest policy if one is installed.
+    function _enforce(PoolId poolId) internal {
+        require(spokeRegistry.manager(poolId, msgSender()), NotManager());
+
+        IManifest m = spokeRegistry.manifest(poolId);
+        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+    }
 
     /// @dev Accumulate the queued gross asset flow.
     function _queueAssets(

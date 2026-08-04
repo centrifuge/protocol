@@ -123,7 +123,9 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
 
             address vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken, payload);
 
-            spokeRegistry.registerVault(poolId, scId, assetId, asset, tokenId, IVaultFactory(vaultOrFactory), vault_);
+            spokeRegistry.registerVault(
+                poolId, scId, assetId, asset, tokenId, IVaultFactory(vaultOrFactory), vault_, payload
+            );
             spokeRegistry.linkVault(poolId, scId, assetId, vault_);
         } else if (kind == VaultUpdateKind.Link) {
             spokeRegistry.linkVault(poolId, scId, assetId, vaultOrFactory);

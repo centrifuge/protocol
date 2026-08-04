@@ -78,7 +78,7 @@ contract SpokeTest is Test {
     uint256 constant COST = 123;
     uint128 constant EXTRA = 456;
     uint128 constant EXTRA_GAS = 0;
-    uint32 constant RESERVE_REASON = 1;
+    bytes32 constant RESERVE_REASON = bytes32(uint256(1));
     bool constant IS_ISSUANCE = true;
     bool constant IS_DEPOSIT = true;
     bool constant IS_SNAPSHOT = true;
@@ -222,7 +222,7 @@ contract SpokeTest is Test {
         );
     }
 
-    function _mockEscrowReserve(address asset, uint256 tokenId, uint128 amount, address reserver, uint32 reason)
+    function _mockEscrowReserve(address asset, uint256 tokenId, uint128 amount, address reserver, bytes32 reason)
         internal
     {
         vm.mockCall(
@@ -232,7 +232,7 @@ contract SpokeTest is Test {
         );
     }
 
-    function _mockEscrowUnreserve(address asset, uint256 tokenId, uint128 amount, address reserver, uint32 reason)
+    function _mockEscrowUnreserve(address asset, uint256 tokenId, uint128 amount, address reserver, bytes32 reason)
         internal
     {
         vm.mockCall(
@@ -284,15 +284,6 @@ contract SpokeTestFile is SpokeTest {
         emit ISpoke.File("sender", address(42));
         spoke.file("sender", address(42));
         assertEq(address(spoke.sender()), address(42));
-
-        spoke.file("spokeRegistry", address(23));
-        assertEq(address(spoke.spokeRegistry()), address(23));
-
-        spoke.file("snapshotQueue", address(24));
-        assertEq(address(spoke.snapshotQueue()), address(24));
-
-        spoke.file("poolEscrowProvider", address(25));
-        assertEq(address(spoke.poolEscrowProvider()), address(25));
 
         spoke.file("gateway", address(26));
         assertEq(address(spoke.gateway()), address(26));
@@ -763,7 +754,7 @@ contract SpokeTestWithdraw is SpokeTest {
 }
 
 contract SpokeTestWithdrawReserved is SpokeTest {
-    function _mockEscrowWithdrawReserved(uint128 amount, address reserver, uint32 reason) internal {
+    function _mockEscrowWithdrawReserved(uint128 amount, address reserver, bytes32 reason) internal {
         vm.mockCall(
             escrow,
             abi.encodeWithSelector(IPoolEscrow.unreserve.selector, SC_1, erc20, 0, amount, reserver, reason),

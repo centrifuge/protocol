@@ -92,7 +92,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts "gateway", "sender", "snapshotQueue", "spokeRegistry", "poolEscrowProvider"
+    /// @param what Accepts "gateway" and "sender".
     /// @param data The new address
     function file(bytes32 what, address data) external;
 
@@ -175,7 +175,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
         address receiver,
         uint128 amount,
         address reserver,
-        uint32 reason
+        bytes32 reason
     ) external payable;
 
     /// @notice Reserve assets, removing them from the hub-accounted holding.
@@ -195,7 +195,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @param amount The amount to reserve
     /// @param reserver The address recorded as the reservation's owner in PoolEscrow (an accounting key, not an
     ///                 authenticated identity)
-    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM); an accounting key, not an authenticated identity
+    /// @param reason The reservation bucket; an accounting key, not an authenticated identity
     function reserve(
         PoolId poolId,
         ShareClassId scId,
@@ -203,7 +203,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
         uint256 tokenId,
         uint128 amount,
         address reserver,
-        uint32 reason
+        bytes32 reason
     ) external payable;
 
     /// @notice Unreserve assets, returning them to the hub-accounted holding.
@@ -225,7 +225,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
         uint256 tokenId,
         uint128 amount,
         address reserver,
-        uint32 reason
+        bytes32 reason
     ) external payable;
 
     /// @notice Sends the queued updated holding amount to the Hub, which values it at its own valuation

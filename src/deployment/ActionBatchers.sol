@@ -17,14 +17,12 @@ import {AssetId, newAssetId} from "../core/types/AssetId.sol";
 import {SnapshotQueue} from "../core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
-import {ContractUpdater} from "../core/utils/ContractUpdater.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../core/hub/ShareClassManager.sol";
 import {MessageProcessor} from "../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../core/spoke/factories/PoolEscrowFactory.sol";
 import {MAX_ADAPTER_COUNT} from "../core/messaging/interfaces/IMultiAdapter.sol";
-import {ContractUpdaterForwarder} from "../core/utils/ContractUpdaterForwarder.sol";
 
 import {Root} from "../admin/Root.sol";
 import {GasService} from "../admin/GasService.sol";
@@ -72,10 +70,8 @@ struct CoreReport {
     Spoke spoke;
     SnapshotQueue snapshotQueue;
     ShareTokenRegistrar shareTokenRegistrar;
-    ContractUpdater contractUpdater;
     SpokeHandler spokeHandler;
     SpokeRegistry spokeRegistry;
-    ContractUpdaterForwarder contractUpdaterForwarder;
     Envoy envoy;
     HubRegistry hubRegistry;
     Accounting accounting;
@@ -157,7 +153,6 @@ contract CoreActionBatcher is Constants {
         report.shareTokenRegistrar.rely(root);
         report.spoke.rely(root);
         report.snapshotQueue.rely(root);
-        report.contractUpdater.rely(root);
         report.spokeRegistry.rely(root);
         report.spokeHandler.rely(root);
         report.envoy.rely(root);
@@ -252,9 +247,6 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("envoy", address(report.envoy));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
 
-        // The forwarder must be a ward of the (unchanged) ContractUpdater to call `trustedCall`.
-        report.contractUpdater.rely(address(report.contractUpdaterForwarder));
-
         report.poolEscrowFactory.file("spoke", address(report.spoke));
 
         // Hook/vault/ward updates arrive via Hub.managerCall -> Envoy -> registrar.fromHub, resolving the token
@@ -291,7 +283,6 @@ contract CoreActionBatcher is Constants {
         report.spoke.deny(address(this));
         report.snapshotQueue.deny(address(this));
         report.shareTokenRegistrar.deny(address(this));
-        report.contractUpdater.deny(address(this));
         report.poolEscrowFactory.deny(address(this));
         report.spokeRegistry.deny(address(this));
         report.spokeHandler.deny(address(this));
@@ -343,10 +334,6 @@ contract NonCoreActionBatcher {
         report.redemptionRestrictionsHook.rely(address(report.core.shareTokenRegistrar));
         report.asyncVaultFactory.rely(address(report.core.spokeHandler));
         report.syncDepositVaultFactory.rely(address(report.core.spokeHandler));
-
-        // Rely contractUpdater (AsyncRequestManager/BatchRequestManager remain on the trustedCall path)
-        report.asyncRequestManager.rely(address(report.core.contractUpdater));
-        report.batchRequestManager.rely(address(report.core.contractUpdater));
 
         // Rely hub
         report.batchRequestManager.rely(address(report.core.hub));

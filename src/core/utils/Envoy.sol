@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
 import {IEnvoy} from "./interfaces/IEnvoy.sol";
@@ -10,7 +10,7 @@ import {PoolId} from "../types/PoolId.sol";
 
 /// @title  Envoy
 /// @notice Payable, stateless dispatcher for ManagerCall targets. The stable `msg.sender` anchor
-///         targets bind to — the Hub redeploys every release and must never be the anchor.
+///         targets bind to: the Hub redeploys every release and must never be the anchor.
 contract Envoy is Auth, IEnvoy {
     constructor(address deployer) Auth(deployer) {}
 

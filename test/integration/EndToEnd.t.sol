@@ -30,7 +30,6 @@ import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {ISpokeManifest} from "../../src/core/hub/interfaces/IManifest.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
-import {ContractUpdateLib} from "../../src/core/utils/ContractUpdateLib.sol";
 import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromSpoke} from "../../src/core/utils/interfaces/IManagerCall.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
@@ -125,7 +124,6 @@ contract EndToEndDeployment is Test {
         // Core
         Gateway gateway;
         MultiAdapter multiAdapter;
-        bytes32 contractUpdaterForwarder;
         // Admin
         Root root;
         ProtocolGuardian protocolGuardian;
@@ -302,7 +300,6 @@ contract EndToEndDeployment is Test {
         s_.opsGuardian = deploy.opsGuardian();
         s_.gateway = deploy.gateway();
         s_.multiAdapter = deploy.multiAdapter();
-        s_.contractUpdaterForwarder = address(deploy.contractUpdaterForwarder()).toBytes32();
         s_.spoke = deploy.spoke();
         s_.spokeRegistry = deploy.spokeRegistry();
         s_.spokeHandler = deploy.spokeHandler();
@@ -842,12 +839,12 @@ contract EndToEndFlows is EndToEndUtils {
         );
     }
 
-    /// @dev A trusted contract update reaches a legacy spoke target (SyncManager) via the unified
-    ///      `managerCall` transport (sentinel target + wrapped payload). Fuzzing `sameChain` covers both the
-    ///      local (direct `trustedCall`) and cross-chain (serialized message) branches. The hub lives on
-    ///      CENTRIFUGE_ID_A, so the call is local iff `sameChain`: the `value` arg must equal `msg.value`
-    ///      locally and be 0 remotely, while `{value: GAS}` still funds the cross-chain message.
-    function testUpdateContractReachesLegacySpokeTarget(bool sameChain) public {
+    /// @dev A configuration update reaches a spoke target (SyncManager) via the `managerCall` transport,
+    ///      addressing the target directly. Fuzzing `sameChain` covers both the local (direct `fromHub`) and
+    ///      cross-chain (serialized message) branches. The hub lives on CENTRIFUGE_ID_A, so the call is local
+    ///      iff `sameChain`: the `value` arg must equal `msg.value` locally and be 0 remotely, while
+    ///      `{value: GAS}` still funds the cross-chain message.
+    function testManagerCallReachesSpokeTarget(bool sameChain) public {
         _configurePool(sameChain);
 
         uint128 newMaxReserve = 123e6;
@@ -1420,8 +1417,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         h.hub.managerCall{value: sameChain ? 0 : GAS}(
             POOL_A,
             s.centrifugeId,
-            s.contractUpdaterForwarder,
-            ContractUpdateLib.wrap(SC_1, address(s.asyncRequestManager), abi.encode(RECEIVER.toBytes32(), VALUE)),
+            address(s.subsidyManager).toBytes32(),
+            abi.encode(RECEIVER.toBytes32(), VALUE),
             EXTRA_GAS,
             0,
             REFUND

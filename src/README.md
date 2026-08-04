@@ -9,7 +9,7 @@ src/
 │   ├── messaging/     Cross-chain message dispatch and processing
 │   ├── types/         Shared value types (PoolId, ShareClassId, AssetId, ...)
 │   ├── libraries/     Shared libraries (e.g. PricingLib)
-│   └── utils/         Core utilities (BatchedMulticall, Envoy, ContractUpdater)
+│   └── utils/         Core utilities (BatchedMulticall, Envoy)
 ├── token/             Share token and transfer hooks
 │   └── hooks/         Transfer restriction hooks
 ├── adapters/          Cross-chain messaging adapters

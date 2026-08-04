@@ -125,10 +125,10 @@ abstract contract OnchainPMTestBase is Test {
 
     // ─── Policy/hash helpers ─────────────────────────────────────────────
 
-    function _setPolicy(IOnchainPM onchainPM, address who, bytes32 root, address contractUpdater) internal {
+    function _setPolicy(IOnchainPM onchainPM, address who, bytes32 root, address envoy) internal {
         bytes memory payload = abi.encode(who.toBytes32(), root);
-        vm.prank(contractUpdater);
-        onchainPM.trustedCall(POOL_A, SC_1, payload);
+        vm.prank(envoy);
+        onchainPM.fromHub(POOL_A, payload);
     }
 
     function _computeScriptHash(

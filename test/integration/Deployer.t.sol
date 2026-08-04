@@ -259,16 +259,6 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(shareTokenRegistrar.spokeRegistry()), address(spokeRegistry));
     }
 
-    function testContractUpdater(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(contractUpdaterForwarder));
-
-        assertEq(contractUpdater.wards(address(root)), 1);
-        assertEq(contractUpdater.wards(address(contractUpdaterForwarder)), 1);
-        assertEq(contractUpdater.wards(nonWard), 0);
-    }
-
     function testEnvoy(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
@@ -428,13 +418,11 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(spokeHandler));
         vm.assume(nonWard != address(syncDepositVaultFactory));
         vm.assume(nonWard != address(asyncVaultFactory));
-        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(asyncRequestManager.wards(address(root)), 1);
         assertEq(asyncRequestManager.wards(address(spokeHandler)), 1);
         assertEq(asyncRequestManager.wards(address(syncDepositVaultFactory)), 1);
         assertEq(asyncRequestManager.wards(address(asyncVaultFactory)), 1);
-        assertEq(asyncRequestManager.wards(address(contractUpdater)), 1);
         assertEq(asyncRequestManager.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -619,12 +607,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
-        vm.assume(nonWard != address(contractUpdater));
 
         assertEq(batchRequestManager.wards(address(root)), 1);
         assertEq(batchRequestManager.wards(address(hub)), 1);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
-        assertEq(batchRequestManager.wards(address(contractUpdater)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -633,7 +619,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
 
     function testOnchainPMFactory() public view {
         // dependencies set correctly
-        assertEq(onchainPMFactory.contractUpdater(), address(contractUpdater));
+        assertEq(onchainPMFactory.envoy(), address(envoy));
         assertEq(address(onchainPMFactory.spoke()), address(spoke));
         assertEq(address(onchainPMFactory.gateway()), address(gateway));
     }

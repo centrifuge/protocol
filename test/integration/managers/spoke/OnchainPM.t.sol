@@ -51,7 +51,7 @@ contract MockGateway {
 contract OnchainPMMulticallTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     MockGateway mockGateway;
     IOnchainPM executor;
@@ -60,7 +60,7 @@ contract OnchainPMMulticallTest is OnchainPMTestBase {
     function setUp() public virtual {
         mockGateway = new MockGateway();
         executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(mockGateway)))
         );
         target = new WeirollTarget();
     }
@@ -68,7 +68,7 @@ contract OnchainPMMulticallTest is OnchainPMTestBase {
     // ─── Convenience wrappers ─────────────────────────────────────────────
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     /// @dev Build a script, set its policy, and return the calldata for executor.execute().
@@ -224,7 +224,7 @@ contract OnchainPMMulticallBatchTest is OnchainPMMulticallTest {
 contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     MockGateway mockGateway;
     IOnchainPM executor;
@@ -245,10 +245,10 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     function setUp() public {
         mockGateway = new MockGateway();
         executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(mockGateway)))
         );
         target = new WeirollTarget();
-        guard = new SlippageGuard(ISpoke(spoke), contractUpdater, IOnchainPMFactory(onchainPMFactory));
+        guard = new SlippageGuard(ISpoke(spoke), envoy, IOnchainPMFactory(onchainPMFactory));
         vm.mockCall(
             onchainPMFactory,
             abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
@@ -288,7 +288,7 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     }
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     /// @dev Build a FLAG_DATA weiroll command — raw calldata from state[stateIdx].
@@ -439,7 +439,7 @@ contract SimpleAavePool {
 contract OnchainPMFlashLoanTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     MockGateway mockGateway;
@@ -452,7 +452,7 @@ contract OnchainPMFlashLoanTest is OnchainPMTestBase {
     function setUp() public {
         mockGateway = new MockGateway();
         executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(mockGateway)))
         );
         target = new WeirollTarget();
         flashReceiver = new FlashLoanHelper(IOnchainPMFactory(onchainPMFactory));
@@ -471,7 +471,7 @@ contract OnchainPMFlashLoanTest is OnchainPMTestBase {
     }
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     function testFlashLoanCallback() public {

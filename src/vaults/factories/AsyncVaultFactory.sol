@@ -43,4 +43,21 @@ contract AsyncVaultFactory is Auth, IVaultFactory {
         vault.deny(address(this));
         return address(vault);
     }
+
+    /// @inheritdoc IVaultFactory
+    /// @dev The trailing payload is unused: the deployed address does not depend on it.
+    function getVault(PoolId poolId, ShareClassId scId, address asset, uint256, address token, bytes calldata)
+        external
+        view
+        returns (address)
+    {
+        bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
+        bytes32 initCodeHash = keccak256(
+            abi.encodePacked(
+                type(AsyncVault).creationCode,
+                abi.encode(poolId, scId, asset, IShareToken(token), root, asyncRequestManager)
+            )
+        );
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
+    }
 }

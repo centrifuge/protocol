@@ -2,10 +2,10 @@
 pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../core/types/PoolId.sol";
+import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 import {IBatchedMulticall} from "../../../core/utils/interfaces/IBatchedMulticall.sol";
-import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
 
-interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
+interface IOnchainPM is IBatchedMulticall, IManagerCallFromHub {
     /// @notice A pre-committed callback: the script hash the outer script expects, and the address
     ///         that must call executeCallback() to satisfy it.
     struct Callback {
@@ -25,7 +25,8 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
     error UnconsumedCallbacks();
     error SelfCallForbidden();
     error InvalidPoolId();
-    error NotAuthorized();
+    error NotEnvoy();
+    error UnexpectedValue();
     error StateLengthOverflow();
     error InvalidBitmap();
     error NotInExecution();
@@ -33,7 +34,10 @@ interface IOnchainPM is IBatchedMulticall, ITrustedContractUpdate {
     error ETHRefundFailed();
 
     function poolId() external view returns (PoolId);
-    function contractUpdater() external view returns (address);
+
+    /// @notice The Envoy that routes manifest-supervised policy updates
+    function envoy() external view returns (address);
+
     function policy(address strategist) external view returns (bytes32);
     function activeStrategist() external view returns (address);
     function callbackIdx() external view returns (uint256);

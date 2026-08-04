@@ -13,12 +13,10 @@ import {SpokeHandler} from "../../../../../src/core/spoke/SpokeHandler.sol";
 import {SnapshotQueue} from "../../../../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../../../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../../../../src/core/messaging/MultiAdapter.sol";
-import {ContractUpdater} from "../../../../../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../../../../../src/core/hub/ShareClassManager.sol";
 import {MessageProcessor} from "../../../../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../../../../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
-import {ContractUpdaterForwarder} from "../../../../../src/core/utils/ContractUpdaterForwarder.sol";
 
 import {Root} from "../../../../../src/admin/Root.sol";
 import {GasService} from "../../../../../src/admin/GasService.sol";
@@ -85,10 +83,8 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         Spoke(c.spoke),
         SnapshotQueue(c.snapshotQueue),
         ShareTokenRegistrar(c.shareTokenRegistrar),
-        ContractUpdater(c.contractUpdater),
         SpokeHandler(c.spokeHandler),
         SpokeRegistry(c.spokeRegistry),
-        ContractUpdaterForwarder(c.contractUpdaterForwarder),
         Envoy(c.envoy),
         HubRegistry(c.hubRegistry),
         Accounting(c.accounting),

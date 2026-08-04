@@ -235,14 +235,14 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCa
     );
     event File(bytes32 indexed what, address data);
 
+    error NotEnvoy();
+    error UnexpectedValue();
     error ExceedsMaxDeposit();
     error FileUnrecognizedParam();
     error ExceedsMaxMint();
     error ShareTokenDoesNotExist();
     error SecondaryManagerDoesNotExist();
     error UnknownTrustedCall();
-    error NotEnvoy();
-    error UnexpectedValue();
 
     enum TrustedCall {
         Valuation,
@@ -331,9 +331,9 @@ struct AsyncInvestmentState {
 //----------------------------------------------------------------------------------------------
 
 /// @dev Reservation reason for deposit flows
-uint32 constant REASON_DEPOSIT = 1;
+bytes32 constant REASON_DEPOSIT = bytes32(uint256(1));
 /// @dev Reservation reason for redeem flows
-uint32 constant REASON_REDEEM = 2;
+bytes32 constant REASON_REDEEM = bytes32(uint256(2));
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ExceedsMaxDeposit();

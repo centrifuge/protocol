@@ -66,7 +66,6 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
                         oracleValuation: address(0),
-                        contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdHubManifest.Entry[](0)
                     })
                 )
@@ -158,7 +157,6 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
                         oracleValuation: address(0),
-                        contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: allowlist
                     })
                 )
@@ -244,7 +242,6 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
                             oracleValuation: address(0),
-                            contractUpdaterForwarder: address(contractUpdaterForwarder),
                             allowlist: new IStdHubManifest.Entry[](0)
                         })
                     )
@@ -293,7 +290,6 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
                             oracleValuation: address(0),
-                            contractUpdaterForwarder: address(contractUpdaterForwarder),
                             allowlist: new IStdHubManifest.Entry[](0)
                         })
                     )
@@ -409,7 +405,6 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
                         oracleValuation: address(0),
-                        contractUpdaterForwarder: address(contractUpdaterForwarder),
                         allowlist: new IStdHubManifest.Entry[](0)
                     })
                 )

@@ -41,7 +41,6 @@ interface IStdHubManifest is IHubManifest {
         address requestManager;
         address bridgingHook;
         address oracleValuation;
-        address contractUpdaterForwarder;
     }
 
     function hub() external view returns (IHub);
@@ -60,7 +59,6 @@ interface IStdHubManifest is IHubManifest {
     function requestManager() external view returns (address);
     function bridgingHook() external view returns (address);
     function oracleValuation() external view returns (address);
-    function contractUpdaterForwarder() external view returns (address);
     function lastPriceUpdate(PoolId poolId, ShareClassId scId) external view returns (uint64);
     function restricted(PoolId poolId, address caller) external view returns (bool);
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);

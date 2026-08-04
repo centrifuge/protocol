@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {ForkTestBase} from "./ForkTestBase.sol";
+import {IV3_1_VaultRegistry} from "./interfaces/IV3_1_Interfaces.sol";
 import {IV3_0_1_AsyncRequestManager, IV3_0_1_Spoke, IV3_0_1_ShareToken} from "./interfaces/IV3_0_1_Interfaces.sol";
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -19,8 +20,6 @@ import {MessageProcessor} from "../../../src/core/messaging/MessageProcessor.sol
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
-import {ISpokeV3_1_0} from "../../../src/core/spoke/legacy/interfaces/ISpokeV3_1_0.sol";
-import {ISpokeRequestManager} from "../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 
 import {Root} from "../../../src/admin/Root.sol";
 import {OpsGuardian} from "../../../src/admin/OpsGuardian.sol";
@@ -275,7 +274,6 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         config.contracts.spokeHandler = address(report.core.spokeHandler);
         config.contracts.spokeRegistry = address(report.core.spokeRegistry);
         config.contracts.envoy = address(report.core.envoy);
-        config.contracts.contractUpdater = address(report.core.contractUpdater);
         config.contracts.poolEscrowFactory = address(report.core.poolEscrowFactory);
 
         // Vault system
@@ -325,7 +323,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         vm.label(config.contracts.shareTokenRegistrar, "ShareTokenRegistrar");
         vm.label(config.contracts.snapshotQueue, "SnapshotQueue");
         vm.label(config.contracts.spoke, "Spoke");
-        vm.label(config.contracts.contractUpdater, "ContractUpdater");
+        if (config.contracts.contractUpdater != address(0)) {
+            vm.label(config.contracts.contractUpdater, "ContractUpdater");
+        }
         vm.label(config.contracts.poolEscrowFactory, "PoolEscrowFactory");
         vm.label(config.contracts.vaultRouter, "VaultRouter");
         vm.label(config.contracts.asyncRequestManager, "AsyncRequestManager");
@@ -398,7 +398,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         _validateRootWard(config.contracts.shareTokenRegistrar);
         _validateRootWard(config.contracts.spoke);
         _validateRootWard(config.contracts.snapshotQueue);
-        _validateRootWard(config.contracts.contractUpdater);
+        if (config.contracts.contractUpdater != address(0)) _validateRootWard(config.contracts.contractUpdater);
         if (config.contracts.vaultRegistry != address(0)) _validateRootWard(config.contracts.vaultRegistry);
 
         // From CoreDeployer - Hub contracts
@@ -532,7 +532,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         _validateWard(config.contracts.multiAdapter, config.contracts.hub);
 
         _validateWard(config.contracts.spoke, config.contracts.messageDispatcher);
-        _validateWard(config.contracts.contractUpdater, config.contracts.messageDispatcher);
+        if (config.contracts.contractUpdater != address(0)) {
+            _validateWard(config.contracts.contractUpdater, config.contracts.messageDispatcher);
+        }
         if (config.contracts.vaultRegistry != address(0)) {
             _validateWard(config.contracts.vaultRegistry, config.contracts.messageDispatcher);
         }
@@ -550,7 +552,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
             _validateWard(config.contracts.gateway, config.contracts.messageProcessor);
         }
         _validateWard(config.contracts.spoke, config.contracts.messageProcessor);
-        _validateWard(config.contracts.contractUpdater, config.contracts.messageProcessor);
+        if (config.contracts.contractUpdater != address(0)) {
+            _validateWard(config.contracts.contractUpdater, config.contracts.messageProcessor);
+        }
         if (config.contracts.vaultRegistry != address(0)) {
             _validateWard(config.contracts.vaultRegistry, config.contracts.messageProcessor);
         }
@@ -589,11 +593,15 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         // ==================== VAULT SIDE (FullDeployer) ====================
 
         _validateWard(config.contracts.asyncRequestManager, config.contracts.spoke);
-        _validateWard(config.contracts.asyncRequestManager, config.contracts.contractUpdater);
+        if (config.contracts.contractUpdater != address(0)) {
+            _validateWard(config.contracts.asyncRequestManager, config.contracts.contractUpdater);
+        }
         _validateWard(config.contracts.asyncRequestManager, config.contracts.asyncVaultFactory);
         _validateWard(config.contracts.asyncRequestManager, config.contracts.syncDepositVaultFactory);
 
-        _validateWard(config.contracts.syncManager, config.contracts.contractUpdater);
+        if (config.contracts.contractUpdater != address(0)) {
+            _validateWard(config.contracts.syncManager, config.contracts.contractUpdater);
+        }
         _validateWard(config.contracts.syncManager, config.contracts.syncDepositVaultFactory);
 
         if (config.contracts.vaultRegistry != address(0)) {
@@ -1134,7 +1142,9 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         string memory tokenName
     ) internal view virtual {
         if (isV3_1()) {
-            IShareToken linkedShareToken = ISpokeV3_1_0(config.contracts.spoke).shareToken(poolId, shareClassId);
+            IShareToken linkedShareToken = IShareToken(
+                address(ISpokeRegistry(config.contracts.spoke).shareToken(poolId, shareClassId))
+            );
             assertEq(
                 address(linkedShareToken),
                 address(shareToken),
@@ -1151,7 +1161,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             assertTrue(
-                ISpokeV3_1_0(config.contracts.spoke).isPoolActive(poolId),
+                ISpokeRegistry(config.contracts.spoke).isPoolActive(poolId),
                 string(abi.encodePacked(tokenName, " pool should be active on spoke"))
             );
         } else {
@@ -1163,7 +1173,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             assertTrue(
-                ISpokeV3_1_0(config.contracts.vaultRegistry).isLinked(address(vaultAddress)),
+                ISpokeRegistry(config.contracts.vaultRegistry).isLinked(address(vaultAddress)),
                 string(
                     abi.encodePacked("Deployed V3 ", tokenName, " vault should be marked as linked in VaultRegistry")
                 )
@@ -1188,8 +1198,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         if (isV3_1()) {
             actualVault = address(
-                ISpokeV3_1_0(config.contracts.vaultRegistry)
-                    .vault(poolId, shareClassId, assetId, ISpokeRequestManager(config.contracts.asyncRequestManager))
+                IV3_1_VaultRegistry(config.contracts.vaultRegistry)
+                    .vault(poolId, shareClassId, assetId, config.contracts.asyncRequestManager)
             );
         } else {
             actualVault =
@@ -1219,7 +1229,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address assetAddress;
 
         if (isV3_1()) {
-            (assetAddress,) = ISpokeV3_1_0(config.contracts.spoke).idToAsset(assetId);
+            (assetAddress,) = ISpokeRegistry(config.contracts.spoke).idToAsset(assetId);
         } else {
             (assetAddress,) = IV3_0_1_Spoke(config.contracts.spoke).idToAsset(assetId);
         }
@@ -1254,7 +1264,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         address assetAddress;
 
         if (isV3_1()) {
-            (assetAddress,) = ISpokeV3_1_0(config.contracts.spoke).idToAsset(assetId);
+            (assetAddress,) = ISpokeRegistry(config.contracts.spoke).idToAsset(assetId);
         } else {
             (assetAddress,) = IV3_0_1_Spoke(config.contracts.spoke).idToAsset(assetId);
         }
@@ -1333,9 +1343,10 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         AssetId jtrsyAssetId;
         AssetId jaaaAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
-            jtrsyAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
-            jaaaAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
+            usdcAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
+            jtrsyAssetId =
+                ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JTRSY_SHARE_TOKEN, 0);
+            jaaaAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.ETH_JAAA_SHARE_TOKEN, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.ETH_USDC, 0);
             jtrsyAssetId =
@@ -1436,7 +1447,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateBaseVaults() internal view {
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
+            usdcAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.BASE_USDC, 0);
         }
@@ -1481,7 +1492,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
     function _validateAvalancheVaults() internal view {
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
+            usdcAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.AVAX_USDC, 0);
         }
@@ -1543,7 +1554,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
+            usdcAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.ARBITRUM_USDC, 0);
         }
@@ -1571,7 +1582,7 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
 
         AssetId usdcAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
+            usdcAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.BNB_USDC, 0);
         }
@@ -1593,8 +1604,8 @@ contract ForkTestLiveValidation is ForkTestBase, VMLabeling {
         AssetId usdcAssetId;
         AssetId pusdAssetId;
         if (isV3_1()) {
-            usdcAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
-            pusdAssetId = ISpokeV3_1_0(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);
+            usdcAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
+            pusdAssetId = ISpokeRegistry(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);
         } else {
             usdcAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_USDC, 0);
             pusdAssetId = IV3_0_1_Spoke(config.contracts.spoke).assetToId(IntegrationConstants.PLUME_PUSD, 0);

@@ -20,7 +20,6 @@ contract StdHubManifestFactoryTest is Test {
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable hubRegistry = makeAddr("HubRegistry");
     address immutable brm = makeAddr("BRM");
-    address immutable contractUpdaterForwarder = makeAddr("contractUpdaterForwarder");
 
     StdHubManifestFactory factory;
 
@@ -43,7 +42,6 @@ contract StdHubManifestFactoryTest is Test {
             requestManager: brm,
             bridgingHook: address(0),
             oracleValuation: address(0),
-            contractUpdaterForwarder: contractUpdaterForwarder,
             allowlist: new IStdHubManifest.Entry[](0)
         });
     }

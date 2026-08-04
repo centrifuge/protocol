@@ -19,7 +19,6 @@ import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IHubRequestManager} from "../../src/core/hub/interfaces/IHubRequestManager.sol";
-import {ContractUpdaterForwarder} from "../../src/core/utils/ContractUpdaterForwarder.sol";
 import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
@@ -144,7 +143,6 @@ abstract contract BaseTestData is LaunchDeployer {
         asyncRequestManager = AsyncRequestManager(payable(config.contracts.asyncRequestManager));
         batchRequestManager = BatchRequestManager(config.contracts.batchRequestManager);
         syncManager = SyncManager(config.contracts.syncManager);
-        contractUpdaterForwarder = ContractUpdaterForwarder(config.contracts.contractUpdaterForwarder);
         protocolGuardian = ProtocolGuardian(config.contracts.protocolGuardian);
         opsGuardian = OpsGuardian(config.contracts.opsGuardian);
         subsidyManager = SubsidyManager(config.contracts.subsidyManager);

@@ -50,7 +50,6 @@ src/
 │   │   ├── SnapshotQueue.sol      # Queued share/asset deltas pending submission to the Hub (Spoke → SnapshotQueue, mirrors Hub → Holdings)
 │   │   ├── PoolEscrow.sol  # Pool-specific escrow
 │   │   ├── factories/      # Escrow & vault factories
-│   │   ├── legacy/         # SpokeV3_1_0 compatibility facade
 │   │   └── interfaces/
 │   ├── messaging/          # Message infrastructure
 │   │   ├── Gateway.sol     # Cross-chain message routing
@@ -63,8 +62,7 @@ src/
 │   │   └── PricingLib.sol  # Pricing calculations
 │   └── utils/
 │       ├── Envoy.sol       # Stable msg.sender anchor for manager calls (never redeployed)
-│       ├── BatchedMulticall.sol
-│       └── ContractUpdater.sol # Legacy contract update handler (+ ContractUpdaterForwarder bridge)
+│       └── BatchedMulticall.sol
 ├── admin/                  # Admin & governance
 │   ├── Root.sol           # Root authority
 │   ├── OpsGuardian.sol    # Operational guardian

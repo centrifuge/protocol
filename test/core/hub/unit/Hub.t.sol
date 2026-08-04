@@ -16,7 +16,6 @@ import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IFeeAccrual} from "../../../../src/core/hub/interfaces/IFeeAccrual.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {ContractUpdateLib} from "../../../../src/core/utils/ContractUpdateLib.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IMultiAdapter} from "../../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
@@ -584,42 +583,11 @@ contract TestManagerCall is TestCommon {
         hub.managerCall(POOL_A, CHAIN_B, makeAddr("t").toBytes32(), hex"1234", EXTRA_GAS, VALUE, REFUND);
     }
 
-    /// @dev A trusted contract update now rides the unified `managerCall` transport: `target` is the
-    ///      {ContractUpdateLib.SENTINEL} (`address(0)`) and the `scId` + real target + inner are encoded in the
-    ///      wrapped payload. Local branch (`CHAIN_A` == `localCentrifugeId`): `value` must equal `msg.value`.
-    function testContractUpdateLocalRoute() public {
-        address target = makeAddr("localSpokeTarget");
-        bytes memory inner = hex"1234";
-        bytes memory payload = ContractUpdateLib.wrap(SC_A, target, inner);
-
-        vm.mockCall(
-            address(sender),
-            abi.encodeWithSelector(
-                IHubMessageSender.sendManagerCallFromHub.selector,
-                CHAIN_A,
-                POOL_A,
-                address(0),
-                payload,
-                EXTRA_GAS,
-                VALUE,
-                REFUND
-            ),
-            abi.encode()
-        );
-
-        vm.expectEmit();
-        emit IHub.ManagerCall(CHAIN_A, POOL_A, bytes32(0), payload);
-
-        vm.deal(ADMIN, VALUE);
-        vm.prank(ADMIN);
-        hub.managerCall{value: VALUE}(POOL_A, CHAIN_A, bytes32(0), payload, EXTRA_GAS, VALUE, REFUND);
-    }
-
-    /// @dev Remote branch (`CHAIN_B` != `localCentrifugeId`): `value` must be 0.
-    function testContractUpdateRemoteRoute() public {
+    /// @dev Remote branch (`CHAIN_B` != `localCentrifugeId`) success route: `value` must be 0 and the payload
+    ///      is forwarded opaquely.
+    function testManagerCallRemoteRoute() public {
         address target = makeAddr("remoteSpokeTarget");
-        bytes memory inner = hex"1234";
-        bytes memory payload = ContractUpdateLib.wrap(SC_A, target, inner);
+        bytes memory payload = hex"1234";
 
         vm.mockCall(
             address(sender),
@@ -627,7 +595,7 @@ contract TestManagerCall is TestCommon {
                 IHubMessageSender.sendManagerCallFromHub.selector,
                 CHAIN_B,
                 POOL_A,
-                address(0),
+                target,
                 payload,
                 EXTRA_GAS,
                 uint256(0),
@@ -637,10 +605,10 @@ contract TestManagerCall is TestCommon {
         );
 
         vm.expectEmit();
-        emit IHub.ManagerCall(CHAIN_B, POOL_A, bytes32(0), payload);
+        emit IHub.ManagerCall(CHAIN_B, POOL_A, target.toBytes32(), payload);
 
         vm.prank(ADMIN);
-        hub.managerCall(POOL_A, CHAIN_B, bytes32(0), payload, EXTRA_GAS, 0, REFUND);
+        hub.managerCall(POOL_A, CHAIN_B, target.toBytes32(), payload, EXTRA_GAS, 0, REFUND);
     }
 
     function testManagerCallOnlyManager() public {
@@ -678,16 +646,6 @@ contract TestHubFile is TestCommon {
         assertEq(address(hub.feeAccrual()), address(newFeeAccrual));
     }
 
-    function testFileHoldings() public {
-        IHoldings newHoldings = IHoldings(makeAddr("NewHoldings"));
-
-        vm.expectEmit(true, true, true, true);
-        emit IHub.File("holdings", address(newHoldings));
-
-        hub.file("holdings", address(newHoldings));
-        assertEq(address(hub.holdings()), address(newHoldings));
-    }
-
     function testFileSender() public {
         IHubMessageSender newSender = IHubMessageSender(makeAddr("NewSender"));
 
@@ -696,16 +654,6 @@ contract TestHubFile is TestCommon {
 
         hub.file("sender", address(newSender));
         assertEq(address(hub.sender()), address(newSender));
-    }
-
-    function testFileShareClassManager() public {
-        IShareClassManager newScm = IShareClassManager(makeAddr("NewScm"));
-
-        vm.expectEmit(true, true, true, true);
-        emit IHub.File("shareClassManager", address(newScm));
-
-        hub.file("shareClassManager", address(newScm));
-        assertEq(address(hub.shareClassManager()), address(newScm));
     }
 
     function testFileMultiAdapter() public {

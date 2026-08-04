@@ -58,5 +58,5 @@ Both `hub` and `spoke` expose a set of pool-scoped extension points that periphe
 ### Supporting code
 
 - **[`types`](./types)** - Custom value types (`PoolId`, `ShareClassId`, `AssetId`, `AccountId`, `RequestId`) used throughout `core` instead of raw `uint`/`bytes` to prevent cross-pool or cross-asset mix-ups.
-- **[`utils`](./utils)** - Shared primitives used by both `hub` and `spoke`: `BatchedMulticall` for batching calls into a single transaction, `Envoy` as the stable `msg.sender` anchor for manager calls, and the `ContractUpdater`/`ContractUpdaterForwarder` pair for the legacy contract-update message path.
+- **[`utils`](./utils)** - Shared primitives used by both `hub` and `spoke`: `BatchedMulticall` for batching calls into a single transaction, and `Envoy` as the stable `msg.sender` anchor for manager calls.
 - **[`libraries`](./libraries)** - `PricingLib`, shared pricing conversion math used across `hub` and `spoke`.

@@ -97,7 +97,7 @@ abstract contract OnOffRampBaseTest is BaseTest {
             abi.encode()
         );
 
-        factory = new OnOffRampFactory(address(contractUpdater), spoke, mockAccountingToken);
+        factory = new OnOffRampFactory(address(envoy), spoke, mockAccountingToken);
         manager = factory.newManager(POOL_A, defaultTypedShareClassId);
     }
 
@@ -119,15 +119,15 @@ contract OnOffRampIntegrationTest is OnOffRampBaseTest {
         uint128 amount = 100;
 
         // Enable onramp
-        vm.prank(address(contractUpdater));
+        vm.prank(address(envoy));
         manager.fromHub(POOL_A, abi.encode(uint8(IOnOffRamp.TrustedCall.Onramp), defaultAssetId, true));
 
         // Enable relayer
-        vm.prank(address(contractUpdater));
+        vm.prank(address(envoy));
         manager.fromHub(POOL_A, abi.encode(uint8(IOnOffRamp.TrustedCall.Relayer), relayer.toBytes32(), true));
 
         // Enable offramp destination
-        vm.prank(address(contractUpdater));
+        vm.prank(address(envoy));
         manager.fromHub(
             POOL_A, abi.encode(uint8(IOnOffRamp.TrustedCall.Offramp), defaultAssetId, receiver.toBytes32(), true)
         );

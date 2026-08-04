@@ -15,12 +15,10 @@ import {SpokeHandler} from "../src/core/spoke/SpokeHandler.sol";
 import {SnapshotQueue} from "../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../src/core/messaging/MultiAdapter.sol";
-import {ContractUpdater} from "../src/core/utils/ContractUpdater.sol";
 import {ShareClassManager} from "../src/core/hub/ShareClassManager.sol";
 import {MessageProcessor} from "../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../src/core/messaging/MessageDispatcher.sol";
 import {PoolEscrowFactory} from "../src/core/spoke/factories/PoolEscrowFactory.sol";
-import {ContractUpdaterForwarder} from "../src/core/utils/ContractUpdaterForwarder.sol";
 
 import {Root} from "../src/admin/Root.sol";
 import {GasService} from "../src/admin/GasService.sol";
@@ -145,10 +143,8 @@ contract FullDeployer is BaseDeployer, Constants {
     Spoke public spoke;
     SnapshotQueue public snapshotQueue;
     ShareTokenRegistrar public shareTokenRegistrar;
-    ContractUpdater public contractUpdater;
     SpokeRegistry public spokeRegistry;
     SpokeHandler public spokeHandler;
-    ContractUpdaterForwarder public contractUpdaterForwarder;
     Envoy public envoy;
     PoolEscrowFactory public poolEscrowFactory;
 
@@ -275,14 +271,6 @@ contract FullDeployer is BaseDeployer, Constants {
             )
         );
 
-        // Utils
-        contractUpdater = ContractUpdater(
-            create3(
-                createSalt("contractUpdater", V3_3),
-                abi.encodePacked(type(ContractUpdater).creationCode, abi.encode(batcher))
-            )
-        );
-
         // Messaging
         gateway = Gateway(
             create3(
@@ -300,15 +288,6 @@ contract FullDeployer is BaseDeployer, Constants {
 
         envoy =
             Envoy(create3(createSalt("envoy", V3_3), abi.encodePacked(type(Envoy).creationCode, abi.encode(batcher))));
-
-        contractUpdaterForwarder = ContractUpdaterForwarder(
-            create3(
-                createSalt("contractUpdaterForwarder", V3_3),
-                abi.encodePacked(
-                    type(ContractUpdaterForwarder).creationCode, abi.encode(address(envoy), contractUpdater)
-                )
-            )
-        );
 
         messageProcessor = MessageProcessor(
             create3(
@@ -601,8 +580,7 @@ contract FullDeployer is BaseDeployer, Constants {
             create3(
                 createSalt("onchainPMFactory", V3_3),
                 abi.encodePacked(
-                    vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"),
-                    abi.encode(contractUpdater, spoke, gateway)
+                    vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"), abi.encode(envoy, spoke, gateway)
                 )
             )
         );
@@ -772,10 +750,8 @@ contract FullDeployer is BaseDeployer, Constants {
             spoke,
             snapshotQueue,
             shareTokenRegistrar,
-            contractUpdater,
             spokeHandler,
             spokeRegistry,
-            contractUpdaterForwarder,
             envoy,
             hubRegistry,
             accounting,

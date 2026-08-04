@@ -43,7 +43,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         PoolId indexed poolId,
         ShareClassId scId,
         address caller,
-        uint32 reason,
+        bytes32 reason,
         uint128 delta,
         uint128 value
     );
@@ -63,7 +63,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
         PoolId indexed poolId,
         ShareClassId scId,
         address caller,
-        uint32 reason,
+        bytes32 reason,
         uint128 delta,
         uint128 value
     );
@@ -127,8 +127,8 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param value The amount to reserve
     /// @param caller The bucket owner recorded for the reservation (an accounting key supplied by the Spoke, not an
     ///               authenticated identity)
-    /// @param reason The reason code (1=DEPOSIT, 2=REDEEM); an accounting key, not an authenticated identity
-    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+    /// @param reason The reservation bucket; an accounting key, not an authenticated identity
+    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, bytes32 reason)
         external;
 
     /// @notice Decreases the reserved amount of `value` for `asset` in underlying `poolId` and given `scId`
@@ -141,7 +141,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param value The amount to decrease
     /// @param caller The bucket owner recorded for the reservation (an accounting key, not an authenticated identity)
     /// @param reason The reason code that was used when reserving; an accounting key, not an authenticated identity
-    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, bytes32 reason)
         external;
 
     /// @notice Provides the available balance of `asset` in underlying `poolId` and given `scId`
@@ -174,7 +174,7 @@ interface IPoolEscrow is IEscrow, IRecoverable {
     /// @param asset The address of the asset
     /// @param tokenId The id of the asset - 0 for ERC20
     /// @return The reserved amount
-    function reservedBy(ShareClassId scId, address reserver, uint32 reason, address asset, uint256 tokenId)
+    function reservedBy(ShareClassId scId, address reserver, bytes32 reason, address asset, uint256 tokenId)
         external
         view
         returns (uint128);

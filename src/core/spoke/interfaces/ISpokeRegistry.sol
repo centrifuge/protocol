@@ -100,7 +100,8 @@ interface ISpokeRegistry {
         address indexed asset,
         uint256 tokenId,
         IVaultFactory factory,
-        address vault
+        address vault,
+        bytes payload
     );
     event LinkVault(
         PoolId indexed poolId, ShareClassId indexed scId, address indexed asset, uint256 tokenId, address vault
@@ -239,7 +240,8 @@ interface ISpokeRegistry {
         address asset,
         uint256 tokenId,
         IVaultFactory factory,
-        address vault
+        address vault,
+        bytes calldata payload
     ) external;
 
     /// @notice Links a registered vault to the given pool, share class and asset

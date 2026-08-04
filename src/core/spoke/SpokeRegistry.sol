@@ -87,10 +87,14 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         // Must already be deployed, so a registrar cannot reserve another pool's future token address
         require(shareToken_.code.length > 0, NotAContract());
         require(address(registrar_) != address(0), EmptyRegistrar());
-        require(tokenDetails[shareToken_].poolId.isNull(), TokenAlreadyRegistered());
 
         ShareClassDetails storage shareClass_ = shareClass[poolId][scId];
+        // Retire the outgoing token's reverse lookup before the uniqueness check, so relinking the same
+        // token with a new registrar is allowed (swap the registrar, keep the token address). Reordered
+        // relative to the check so the same-token case does not trip TokenAlreadyRegistered on itself.
         if (address(shareClass_.shareToken) != address(0)) delete tokenDetails[address(shareClass_.shareToken)];
+
+        require(tokenDetails[shareToken_].poolId.isNull(), TokenAlreadyRegistered());
 
         shareClass_.shareToken = IERC20(shareToken_);
         shareClass_.registrar = registrar_;
@@ -231,7 +235,8 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         address asset,
         uint256 tokenId,
         IVaultFactory factory,
-        address vault_
+        address vault_,
+        bytes calldata payload
     ) external auth {
         require(hasShareClass(poolId, scId), ShareTokenDoesNotExist());
 
@@ -242,7 +247,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(!_vaultDetails[vault_].isLinked, AlreadyLinkedVault());
 
         _vaultDetails[vault_] = VaultDetails(poolId, scId, assetId, asset, tokenId, false);
-        emit DeployVault(poolId, scId, asset, tokenId, factory, vault_);
+        emit DeployVault(poolId, scId, asset, tokenId, factory, vault_, payload);
     }
 
     /// @inheritdoc ISpokeRegistry

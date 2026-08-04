@@ -13,7 +13,6 @@ package spoke {
     class Spoke
     class SnapshotQueue
     interface ISpokeRequestManager
-    interface ITrustedContractUpdate
 }
 
 interface IBaseRequestManager
@@ -23,7 +22,6 @@ interface ISyncManager
 IBaseRequestManager -up-|> ISpokeRequestManager
 
 IAsyncRequestManager -up-|> IBaseRequestManager
-ISyncManager -up-|> ITrustedContractUpdate
 
 AsyncRequestManager -up-> Spoke
 AsyncRequestManager -up-|> IAsyncRequestManager
