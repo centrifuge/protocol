@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IHubManifest} from "./interfaces/IManifest.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
@@ -12,6 +11,7 @@ import {IERC6909Decimals} from "../../misc/interfaces/IERC6909.sol";
 
 import {AssetId} from "../types/AssetId.sol";
 import {PoolId, newPoolId} from "../types/PoolId.sol";
+import {IHubPolicy} from "../utils/interfaces/IPolicy.sol";
 
 /// @title  Hub Registry
 /// @notice Registry of all known pools, currencies, and assets.
@@ -29,8 +29,8 @@ contract HubRegistry is Auth, IHubRegistry {
     mapping(PoolId => AssetId) public currency;
     mapping(PoolId => mapping(address => bool)) public manager;
 
-    // Policy
-    mapping(PoolId => ManifestInfo) internal _manifest;
+    // Policy & authorization ledger
+    mapping(PoolId => PolicyInfo) internal _policy;
     mapping(bytes32 authId => uint48 validAfter) public authorizedAfter;
 
     // Dependencies
@@ -104,12 +104,12 @@ contract HubRegistry is Auth, IHubRegistry {
     }
 
     /// @inheritdoc IHubRegistry
-    function setManifest(PoolId poolId_, IHubManifest manifest_) external auth {
+    function setPolicy(PoolId poolId_, IHubPolicy policy_) external auth {
         require(exists(poolId_), NonExistingPool());
 
-        _manifest[poolId_] = ManifestInfo(manifest_, _manifest[poolId_].nonce + 1);
+        _policy[poolId_] = PolicyInfo(policy_, _policy[poolId_].nonce + 1);
 
-        emit SetManifest(poolId_, manifest_);
+        emit SetPolicy(poolId_, policy_);
     }
 
     /// @inheritdoc IHubRegistry
@@ -135,15 +135,15 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function initiateAuthorization(PoolId poolId_, address caller, bytes calldata data) external auth {
-        ManifestInfo memory m = _manifest[poolId_];
-        require(address(m.manifest) != address(0), NoManifest());
+        PolicyInfo memory info = _policy[poolId_];
+        require(address(info.policy) != address(0), PolicyNotInstalled());
 
         // Only an out-of-policy call may be authorized: an in-policy call would mature instantly.
-        uint48 delaySeconds = m.manifest.authorizationDelay(poolId_, caller, data);
+        uint48 delaySeconds = info.policy.authorizationDelay(poolId_, caller, data);
         require(delaySeconds != 0, InPolicy());
 
         // Reject re-authorizing: it would silently reset the maturity clock, so cancel first.
-        bytes32 id = _authId(poolId_, address(m.manifest), m.nonce, data);
+        bytes32 id = _authId(poolId_, address(info.policy), info.nonce, data);
         require(authorizedAfter[id] == 0, AlreadyAuthorized());
 
         uint48 validAfter = uint48(block.timestamp) + delaySeconds;
@@ -162,10 +162,10 @@ contract HubRegistry is Auth, IHubRegistry {
 
     /// @inheritdoc IHubRegistry
     function consumeAuthorization(PoolId poolId_, address caller, bytes calldata data, uint48 expiry) external {
-        ManifestInfo memory m = _manifest[poolId_];
-        require(msg.sender == address(m.manifest), NotManifest());
+        PolicyInfo memory info = _policy[poolId_];
+        require(msg.sender == address(info.policy), CallerNotPolicy());
 
-        bytes32 id = _authId(poolId_, address(m.manifest), m.nonce, data);
+        bytes32 id = _authId(poolId_, address(info.policy), info.nonce, data);
         uint48 validAfter = authorizedAfter[id];
         // Matured and not yet expired: a stale auth fails closed, so it can't be fired much later (once
         // the baseline has drifted) with no fresh veto window.
@@ -182,32 +182,32 @@ contract HubRegistry is Auth, IHubRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IHubRegistry
-    /// @dev `authId` is namespaced by the pool's current manifest and its install nonce, so any
-    ///      manifest change makes every pending authorization unreachable without needing to enumerate
-    ///      and clear them — including re-installing a previously used manifest address, which must not
+    /// @dev `authId` is namespaced by the pool's current policy and its install nonce, so any
+    ///      policy change makes every pending authorization unreachable without needing to enumerate
+    ///      and clear them — including re-installing a previously used policy address, which must not
     ///      resurrect authorizations matured under its earlier tenure.
     function authId(PoolId poolId_, bytes calldata data) public view returns (bytes32) {
-        ManifestInfo memory m = _manifest[poolId_];
-        return _authId(poolId_, address(m.manifest), m.nonce, data);
+        PolicyInfo memory info = _policy[poolId_];
+        return _authId(poolId_, address(info.policy), info.nonce, data);
     }
 
-    /// @dev Computes the id from an already-loaded manifest slot, so callers holding it avoid re-reading it.
-    function _authId(PoolId poolId_, address manifest_, uint64 nonce_, bytes calldata data)
+    /// @dev Computes the id from an already-loaded policy slot, so callers holding it avoid re-reading it.
+    function _authId(PoolId poolId_, address policy_, uint64 nonce_, bytes calldata data)
         internal
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(poolId_.raw(), manifest_, nonce_, data));
+        return keccak256(abi.encodePacked(poolId_.raw(), policy_, nonce_, data));
     }
 
     /// @inheritdoc IHubRegistry
-    function manifest(PoolId poolId_) external view returns (IHubManifest) {
-        return _manifest[poolId_].manifest;
+    function policy(PoolId poolId_) external view returns (IHubPolicy) {
+        return _policy[poolId_].policy;
     }
 
     /// @inheritdoc IHubRegistry
-    function manifestNonce(PoolId poolId_) external view returns (uint64) {
-        return _manifest[poolId_].nonce;
+    function policyNonce(PoolId poolId_) external view returns (uint64) {
+        return _policy[poolId_].nonce;
     }
 
     /// @inheritdoc IHubRegistry

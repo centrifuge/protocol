@@ -17,7 +17,7 @@ interface ISubsidyManager is IManagerCallFromHub {
     error NotEnvoy();
     error UnexpectedValue();
 
-    /// @notice The Envoy that routes manifest-supervised subsidy withdrawals
+    /// @notice The Envoy that routes policy-supervised subsidy withdrawals
     function envoy() external view returns (address);
 
     /// @notice Factory that deploys per-pool refund escrows for holding subsidy deposits

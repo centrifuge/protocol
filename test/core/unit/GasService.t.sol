@@ -78,7 +78,7 @@ contract GasServiceTest is Test {
             "managerCallFromSpoke",
             "managerCallFromHub",
             "updateManager",
-            "setManifest",
+            "setPolicy",
             "authorizeSpokeCall",
             "unauthorizeSpokeCall"
         ];

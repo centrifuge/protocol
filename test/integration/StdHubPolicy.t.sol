@@ -20,13 +20,13 @@ import {ISupervisor, TrustedCall} from "../../src/managers/hub/interfaces/ISuper
 import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MAX_MESSAGE_COST as GAS} from "../utils/GasConstants.sol";
-import {IStdHubManifest} from "../../src/manifests/hub/interfaces/IStdHubManifest.sol";
-import {StdHubManifest, StdHubManifestFactory} from "../../src/manifests/hub/StdHubManifest.sol";
+import {IStdHubPolicy} from "../../src/policies/hub/interfaces/IStdHubPolicy.sol";
+import {StdHubPolicy, StdHubPolicyFactory} from "../../src/policies/hub/StdHubPolicy.sol";
 
-/// @notice End-to-end test of the manifest circuit breaker on a full single-chain deployment:
-///         a pool with a real StdHubManifest installed and a Supervisor wired as a hub manager,
+/// @notice End-to-end test of the policy circuit breaker on a full single-chain deployment:
+///         a pool with a real StdHubPolicy installed and a Supervisor wired as a hub manager,
 ///         exercising the in-policy / out-of-policy / authorize / sentinel-veto flows.
-contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
+contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
     using CastLib for address;
 
     uint48 constant POLICY_DELAY = 1 days;
@@ -38,21 +38,21 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     address immutable sentinel = makeAddr("sentinel");
     address immutable newManager = makeAddr("newManager");
 
-    StdHubManifestFactory manifestFactory;
-    StdHubManifest manifest;
+    StdHubPolicyFactory policyFactory;
+    StdHubPolicy policy;
     ISupervisor supervisor;
 
     function setUp() public override {
         super.setUp();
         _createPool();
 
-        // Deploy the pool's Supervisor (sentinel registry) and StdHubManifest.
+        // Deploy the pool's Supervisor (sentinel registry) and StdHubPolicy.
         supervisor = new SupervisorFactory(IHub(address(hub))).newSupervisor(POOL_A, mockUpdater);
-        manifestFactory = new StdHubManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager);
-        manifest = StdHubManifest(
+        policyFactory = new StdHubPolicyFactory(IHub(address(hub)), multiAdapter, shareClassManager);
+        policy = StdHubPolicy(
             address(
-                manifestFactory.newStdHubManifest(
-                    IStdHubManifest.Config({
+                policyFactory.newHubPolicy(
+                    IStdHubPolicy.Config({
                         delay: POLICY_DELAY,
                         expiry: POLICY_EXPIRY,
                         escalation: POLICY_ESCALATION,
@@ -65,14 +65,14 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
                         oracleValuation: address(0),
-                        allowlist: new IStdHubManifest.Entry[](0)
+                        allowlist: new IStdHubPolicy.Entry[](0)
                     })
                 )
             )
         );
 
-        // Register the operator and the Supervisor as hub managers BEFORE installing the manifest
-        // (no manifest yet, so these grants are unguarded). The operator authorizes out-of-policy
+        // Register the operator and the Supervisor as hub managers BEFORE installing the policy
+        // (no policy yet, so these grants are unguarded). The operator authorizes out-of-policy
         // calls on the HubRegistry ledger; the Supervisor must be a manager so it can reach the
         // registry's cancelAuthorization on behalf of sentinels.
         vm.startPrank(FM);
@@ -80,9 +80,9 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         hub.updateHubManager(POOL_A, address(supervisor), true);
         vm.stopPrank();
 
-        // Install the manifest via the ward (Root) break-glass path.
+        // Install the policy via the ward (Root) break-glass path.
         vm.prank(address(root));
-        hub.setManifest(POOL_A, manifest);
+        hub.setPolicy(POOL_A, policy);
     }
 
     function _grantManagerCall() internal view returns (bytes memory) {
@@ -139,11 +139,11 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
     // ─── cancelAuthorization confinement ───────────────────────────────────────
 
-    function _manifestWith(IStdHubManifest.Entry[] memory allowlist) internal returns (StdHubManifest) {
-        return StdHubManifest(
+    function _policyWith(IStdHubPolicy.Entry[] memory allowlist) internal returns (StdHubPolicy) {
+        return StdHubPolicy(
             address(
-                manifestFactory.newStdHubManifest(
-                    IStdHubManifest.Config({
+                policyFactory.newHubPolicy(
+                    IStdHubPolicy.Config({
                         delay: POLICY_DELAY,
                         expiry: POLICY_EXPIRY,
                         escalation: POLICY_ESCALATION,
@@ -163,35 +163,31 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         );
     }
 
-    function _confine(address caller, bytes4 selector)
-        internal
-        view
-        returns (IStdHubManifest.Entry[] memory allowlist)
-    {
+    function _confine(address caller, bytes4 selector) internal view returns (IStdHubPolicy.Entry[] memory allowlist) {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = selector;
-        allowlist = new IStdHubManifest.Entry[](1);
-        allowlist[0] = IStdHubManifest.Entry({poolId: POOL_A, caller: caller, selectors: selectors});
+        allowlist = new IStdHubPolicy.Entry[](1);
+        allowlist[0] = IStdHubPolicy.Entry({poolId: POOL_A, caller: caller, selectors: selectors});
     }
 
     function testConfinedManagerCannotCancelArbitraryAuthorization() public {
-        // Confine the operator to notifyPool only. cancelAuthorization now flows through the manifest, so a
+        // Confine the operator to notifyPool only. cancelAuthorization now flows through the policy, so a
         // manager restricted to a narrow selector set can no longer wield it as a pool-wide governance-DoS.
-        StdHubManifest confined = _manifestWith(_confine(operator, IHub.notifyPool.selector));
+        StdHubPolicy confined = _policyWith(_confine(operator, IHub.notifyPool.selector));
         vm.prank(address(root));
-        hub.setManifest(POOL_A, confined);
+        hub.setPolicy(POOL_A, confined);
 
         vm.prank(operator);
-        vm.expectRevert(IStdHubManifest.CallerNotAllowed.selector);
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
         hub.cancelAuthorization(POOL_A, _grantManagerCall());
     }
 
-    function testSentinelVetoSurvivesRestrictiveManifest() public {
-        // A manifest that confines some manager must NOT break the Supervisor veto: the Supervisor is never
+    function testSentinelVetoSurvivesRestrictivePolicy() public {
+        // A policy that confines some manager must NOT break the Supervisor veto: the Supervisor is never
         // placed in an allowlist, so it stays unrestricted and its cancelAuthorization runs instantly.
-        StdHubManifest confined = _manifestWith(_confine(newManager, IHub.notifyPool.selector));
+        StdHubPolicy confined = _policyWith(_confine(newManager, IHub.notifyPool.selector));
         vm.prank(address(root));
-        hub.setManifest(POOL_A, confined);
+        hub.setPolicy(POOL_A, confined);
 
         vm.prank(mockUpdater);
         IManagerCallFromHub(address(supervisor)).fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinel));
@@ -202,7 +198,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.prank(sentinel);
         supervisor.cancelAuthorization(_grantManagerCall());
 
-        // Vetoed under the restrictive manifest: even after the delay the call reverts.
+        // Vetoed under the restrictive policy: even after the delay the call reverts.
         skip(POLICY_DELAY);
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
@@ -210,7 +206,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     }
 
     function testUnrestrictedManagerCancelIsInstant() public {
-        // The operator is unrestricted under the setUp manifest, so it can cancel a pending authorization
+        // The operator is unrestricted under the setUp policy, so it can cancel a pending authorization
         // instantly (delay 0), with no timelock of its own.
         vm.prank(operator);
         hub.initiateAuthorization(POOL_A, _grantManagerCall());
@@ -223,12 +219,12 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         );
     }
 
-    function testReplacingManifestUsesEscalation() public {
-        StdHubManifest next = StdHubManifest(
+    function testReplacingPolicyUsesEscalation() public {
+        StdHubPolicy next = StdHubPolicy(
             address(
-                new StdHubManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
-                    .newStdHubManifest(
-                        IStdHubManifest.Config({
+                new StdHubPolicyFactory(IHub(address(hub)), multiAdapter, shareClassManager)
+                    .newHubPolicy(
+                        IStdHubPolicy.Config({
                             delay: POLICY_DELAY,
                             expiry: POLICY_EXPIRY,
                             escalation: POLICY_ESCALATION,
@@ -241,42 +237,42 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
                             oracleValuation: address(0),
-                            allowlist: new IStdHubManifest.Entry[](0)
+                            allowlist: new IStdHubPolicy.Entry[](0)
                         })
                     )
             )
         );
-        bytes memory call = abi.encodeCall(IHub.setManifest, (POOL_A, next));
+        bytes memory call = abi.encodeCall(IHub.setPolicy, (POOL_A, next));
 
-        // A manager replacing the manifest is out of policy and waits the longer escalation delay.
+        // A manager replacing the policy is out of policy and waits the longer escalation delay.
         vm.prank(operator);
         hub.initiateAuthorization(POOL_A, call);
 
         skip(POLICY_DELAY); // past the standard delay but not escalation
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
-        hub.setManifest(POOL_A, next);
+        hub.setPolicy(POOL_A, next);
 
         skip(POLICY_ESCALATION - POLICY_DELAY);
         vm.prank(FM);
-        hub.setManifest(POOL_A, next);
-        assertEq(address(hub.manifest(POOL_A)), address(next));
+        hub.setPolicy(POOL_A, next);
+        assertEq(address(hub.policy(POOL_A)), address(next));
     }
 
-    /// @notice A manifest swap orphans authorizations the OLD manifest had pending: `consumeAuthorization`
-    ///         checks the caller against whichever manifest is CURRENTLY installed, and the authId embeds
-    ///         the manifest's own address, so neither the old nor the new manifest can finalize the old
+    /// @notice A policy swap orphans authorizations the OLD policy had pending: `consumeAuthorization`
+    ///         checks the caller against whichever policy is CURRENTLY installed, and the authId embeds
+    ///         the policy's own address, so neither the old nor the new policy can finalize the old
     ///         one's pending call after the swap.
-    function testManifestSwapOrphansPendingAuthorization() public {
-        // Authorize a call under the original manifest, but don't let it mature yet.
+    function testPolicySwapOrphansPendingAuthorization() public {
+        // Authorize a call under the original policy, but don't let it mature yet.
         vm.prank(operator);
         hub.initiateAuthorization(POOL_A, _grantManagerCall());
 
-        StdHubManifest next = StdHubManifest(
+        StdHubPolicy next = StdHubPolicy(
             address(
-                new StdHubManifestFactory(IHub(address(hub)), multiAdapter, shareClassManager)
-                    .newStdHubManifest(
-                        IStdHubManifest.Config({
+                new StdHubPolicyFactory(IHub(address(hub)), multiAdapter, shareClassManager)
+                    .newHubPolicy(
+                        IStdHubPolicy.Config({
                             delay: POLICY_DELAY,
                             expiry: POLICY_EXPIRY,
                             escalation: POLICY_ESCALATION,
@@ -289,19 +285,19 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
                             oracleValuation: address(0),
-                            allowlist: new IStdHubManifest.Entry[](0)
+                            allowlist: new IStdHubPolicy.Entry[](0)
                         })
                     )
             )
         );
 
-        // Swap the manifest via the ward break-glass path (skips needing a second authorization cycle).
+        // Swap the policy via the ward break-glass path (skips needing a second authorization cycle).
         vm.prank(address(root));
-        hub.setManifest(POOL_A, next);
-        assertEq(address(hub.manifest(POOL_A)), address(next));
+        hub.setPolicy(POOL_A, next);
+        assertEq(address(hub.policy(POOL_A)), address(next));
 
         // The original authorization's delay has now elapsed, but it can never be consumed: HubRegistry
-        // checks msg.sender against the manifest CURRENTLY installed (`next`), not the one (`manifest`)
+        // checks msg.sender against the policy CURRENTLY installed (`next`), not the one (`policy`)
         // that created the authId.
         skip(POLICY_DELAY);
         vm.prank(FM);
@@ -312,7 +308,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
     /// @notice `managerCall` is in policy only when it targets the configured request manager (BRM). Any
     ///         other target (here a Supervisor) falls through to the deny-by-default branch
-    ///         (`StdHubManifest._authorizationDelay` returns `delay`): out-of-policy, timelocked + sentinel-vetoable, NOT
+    ///         (`StdHubPolicy._authorizationDelay` returns `delay`): out-of-policy, timelocked + sentinel-vetoable, NOT
     ///         synchronous. Pinning the target also defeats the ABI collision where another target's payload
     ///         shares a BRM action's leading kind byte.
     function testSupervisorManagerCallIsOutOfPolicyByDefault() public {
@@ -348,7 +344,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
     /// @notice `managerCall` targeting the configured request manager (BRM) is in policy: routine keeper ops
     ///         (approve/issue/revoke/forceCancel) run synchronously, no authorization needed. Verified at the
-    ///         manifest seam: `enforce` of a BRM-targeted call neither reverts nor consumes an authorization.
+    ///         policy seam: `enforce` of a BRM-targeted call neither reverts nor consumes an authorization.
     function testBrmManagerCallIsInPolicy() public {
         uint16 localId = messageDispatcher.localCentrifugeId();
         bytes32 target = address(batchRequestManager).toBytes32();
@@ -358,7 +354,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         // In policy: enforce succeeds with no prior authorize() (deny-by-default would revert Unauthorized).
         vm.prank(address(hub));
-        manifest.enforce(POOL_A, FM, call);
+        policy.enforce(POOL_A, FM, call);
     }
 
     /// @dev BRM issue inner payload carrying `pricePoolPerShare` for SC_1.
@@ -377,21 +373,21 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     /// @notice A BRM issue within `maxBrmPriceDeviation` is in policy; one beyond is out-of-policy and requires
     ///         the standard authorize -> delay -> consume flow. Reads the real ShareClassManager price.
     ///
-    /// @dev The matured path consumes at the manifest seam (`enforce`) rather than through a full
+    /// @dev The matured path consumes at the policy seam (`enforce`) rather than through a full
     ///      `hub.managerCall`: the BRM `IssueShares` body needs live epoch/approval state and would revert
     ///      inside the BRM, which is orthogonal to the price guard.
     function testBrmManagerCallPriceDeviationGuard() public {
-        // Commit a main share price (setUp manifest has share-price guard disabled, so this runs synchronously).
+        // Commit a main share price (setUp policy has share-price guard disabled, so this runs synchronously).
         vm.prank(FM);
         hub.updateSharePrice(POOL_A, SC_1, D18.wrap(1e18), uint64(block.timestamp));
         (D18 mainPrice,) = shareClassManager.pricePoolPerShare(POOL_A, SC_1);
         assertEq(mainPrice.raw(), 1e18, "main share price committed");
 
-        // Install a manifest with a 1% price-deviation bound (Anemoy-style).
-        StdHubManifest guarded = StdHubManifest(
+        // Install a policy with a 1% price-deviation bound (Anemoy-style).
+        StdHubPolicy guarded = StdHubPolicy(
             address(
-                manifestFactory.newStdHubManifest(
-                    IStdHubManifest.Config({
+                policyFactory.newHubPolicy(
+                    IStdHubPolicy.Config({
                         delay: POLICY_DELAY,
                         expiry: POLICY_EXPIRY,
                         escalation: POLICY_ESCALATION,
@@ -404,13 +400,13 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
                         oracleValuation: address(0),
-                        allowlist: new IStdHubManifest.Entry[](0)
+                        allowlist: new IStdHubPolicy.Entry[](0)
                     })
                 )
             )
         );
         vm.prank(address(root));
-        hub.setManifest(POOL_A, guarded);
+        hub.setPolicy(POOL_A, guarded);
 
         uint16 localId = messageDispatcher.localCentrifugeId();
         bytes32 target = address(batchRequestManager).toBytes32();
@@ -427,7 +423,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         bytes memory badCall = abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, badInner, 0, 0, address(0)));
         assertEq(guarded.authorizationDelay(POOL_A, FM, badCall), POLICY_DELAY, "over-deviating issue is out of policy");
 
-        // Without an authorization the live managerCall reverts at the manifest gate, before the BRM body.
+        // Without an authorization the live managerCall reverts at the policy gate, before the BRM body.
         vm.prank(FM);
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
@@ -439,7 +435,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
 
-        // After the delay the matured authorization is consumed at the manifest seam.
+        // After the delay the matured authorization is consumed at the policy seam.
         skip(POLICY_DELAY);
         vm.prank(address(hub));
         guarded.enforce(POOL_A, FM, badCall);
@@ -447,7 +443,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     }
 
     /// @notice A NAVManager admin action (`setNAVHook`) routed through `hub.managerCall` is out of policy
-    ///         by default, so a manifest pool timelocks + sentinel-vetoes it. This is the coverage that the
+    ///         by default, so a policy pool timelocks + sentinel-vetoes it. This is the coverage that the
     ///         NAVManager admin surface previously bypassed entirely
     function testNavManagerSetNavHookIsOutOfPolicyByDefault() public {
         uint16 localId = messageDispatcher.localCentrifugeId();
@@ -474,7 +470,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
     /// @notice OracleValuation feeder management (`updateFeeder`) routed through `hub.managerCall` is out of
     ///         policy by default, same as the NAVManager case: a malicious feeder can no longer be added
-    ///         without the manifest's timelock + sentinel veto.
+    ///         without the policy's timelock + sentinel veto.
     function testOracleUpdateFeederIsOutOfPolicyByDefault() public {
         uint16 localId = messageDispatcher.localCentrifugeId();
         bytes32 target = address(oracleValuation).toBytes32();
@@ -499,7 +495,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
     }
 
     /// @notice A non-withdrawal contract update is classified out of policy by `_checkManagerCall`: spoke
-    ///         config actions are timelocked + sentinel-vetoable for manifest pools. The update now rides
+    ///         config actions are timelocked + sentinel-vetoable for policy pools. The update now rides
     ///         the unified `managerCall` transport (sentinel target + wrapped payload).
     function testUpdateContractIsOutOfPolicyByDefault() public {
         _registerUSDC();
@@ -507,7 +503,7 @@ contract StdHubManifestIntegrationTest is CentrifugeIntegrationTestWithUtils {
         uint16 localId = messageDispatcher.localCentrifugeId();
 
         // The spoke-side share token must exist for SyncManager.setMaxReserve. The notify calls are
-        // in policy, so they run synchronously despite the installed manifest.
+        // in policy, so they run synchronously despite the installed policy.
         vm.deal(FM, 1 ether);
         vm.startPrank(FM);
         hub.notifyPool{value: GAS}(POOL_A, localId, FUNDED);

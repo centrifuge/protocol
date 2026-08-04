@@ -294,7 +294,6 @@ library Env {
         config.holdings = _parseContractAddress(json, "holdings");
         config.shareClassManager = _parseContractAddress(json, "shareClassManager");
         config.hub = _parseContractAddress(json, "hub");
-        // Not deployed yet: introduced with the IRegistrar share token refactor
         config.shareTokenRegistrar = _tryParseContractAddress(json, "shareTokenRegistrar");
         config.spoke = _parseContractAddress(json, "spoke");
         config.spokeHandler = _tryParseContractAddress(json, "spokeHandler");
@@ -302,7 +301,6 @@ library Env {
         config.snapshotQueue = _tryParseContractAddress(json, "snapshotQueue");
         config.balanceSheet = _parseContractAddress(json, "balanceSheet");
         config.contractUpdater = _tryParseContractAddress(json, "contractUpdater");
-        // Optional: new in v3.3, absent from earlier deployment manifests.
         config.envoy = _tryParseContractAddress(json, "envoy");
         config.vaultRegistry = _parseContractAddress(json, "vaultRegistry");
         config.hubHandler = _parseContractAddress(json, "hubHandler");
@@ -336,7 +334,6 @@ library Env {
         // Hub managers
         config.navManager = _parseContractAddress(json, "navManager");
         config.simplePriceManager = _parseContractAddress(json, "simplePriceManager");
-        // Not deployed yet
         config.bridgeCircuitBreaker = _tryParseContractAddress(json, "bridgeCircuitBreaker");
 
         // Bridge

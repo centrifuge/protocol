@@ -20,8 +20,8 @@ src/
 ├── managers/          Extension managers
 │   ├── hub/           Hub managers (Supervisor)
 │   └── spoke/         Spoke managers (on/off-ramp, queue, guards)
-├── manifests/         Policy & timelock manifests
-│   └── hub/           StdHubManifest
+├── policies/          Policy & timelock enforcement
+│   └── hub/           StdHubPolicy
 ├── valuations/        Asset valuation implementations
 ├── vaults/            ERC-4626/ERC-7540 vault implementations
 ├── bridge/            TokenBridge for cross-chain token transfers
@@ -40,7 +40,7 @@ src/
 - **[`hooks`](./hooks)** - Accounting hooks (`NAVManager`, `SimplePriceManager`) and the bridge circuit breaker
 - **[`managers/hub`](./managers/hub)** - `Supervisor`, the pool-scoped sentinel/veto layer for the authorize flow
 - **[`managers/spoke`](./managers/spoke)** - `OnOffRamp` for asset custody, `QueueManager` for batched syncing, and balance-sheet guards
-- **[`manifests`](./manifests)** - Policy and timelock enforcement layer, bounding what any manager call can do and delaying out-of-policy actions behind a sentinel veto window (`StdHubManifest` under `manifests/hub`)
+- **[`policies`](./policies)** - Policy and timelock enforcement layer, bounding what any manager call can do and delaying out-of-policy actions behind a sentinel veto window (`StdHubPolicy` under `policies/hub`)
 - **[`valuations`](./valuations)** - Asset valuation implementations (IdentityValuation for 1:1 pricing, OracleValuation for oracle-based pricing)
 - **[`vaults`](./vaults)** - ERC-4626/ERC-7540 vault implementations (AsyncVault, SyncDepositVault), request managers, and router
 - **[`bridge`](./bridge)** - `TokenBridge` wrapper for cross-chain share-token transfers

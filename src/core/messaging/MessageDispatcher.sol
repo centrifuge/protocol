@@ -25,7 +25,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IManifest} from "../hub/interfaces/IManifest.sol";
+import {IPolicy} from "../utils/interfaces/IPolicy.sol";
 import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
 import {ISpokeRequestManager} from "../spoke/interfaces/ISpokeRequestManager.sol";
 
@@ -355,21 +355,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendSetManifest(uint16 centrifugeId, PoolId poolId, bytes32 manifest, address refund)
-        external
-        payable
-        auth
-    {
+    function sendSetPolicy(uint16 centrifugeId, PoolId poolId, bytes32 policy, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spokeHandler.setManifest(poolId, IManifest(manifest.toAddress()));
+            spokeHandler.setPolicy(poolId, IPolicy(policy.toAddress()));
             _refund(refund);
         } else {
-            _send(
-                centrifugeId,
-                MessageLib.SetManifest({poolId: poolId.raw(), manifest: manifest}).serialize(),
-                false,
-                refund
-            );
+            _send(centrifugeId, MessageLib.SetPolicy({poolId: poolId.raw(), policy: policy}).serialize(), false, refund);
         }
     }
 

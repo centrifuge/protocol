@@ -21,7 +21,7 @@ interface IAccountingToken is IERC6909ExclOperator, IERC6909MetadataExt, IManage
     error UnexpectedValue();
     error ZeroAddress();
 
-    /// @notice The Envoy that routes manifest-supervised manager calls (minter permissions).
+    /// @notice The Envoy that routes policy-supervised manager calls (minter permissions).
     function envoy() external view returns (address);
 
     /// @notice Whether an address is an authorized minter for a pool.

@@ -121,8 +121,8 @@ contract TestMessageLibIds is Test {
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
-    function testDeserializeSetManifest() public {
-        MessageLib.deserializeSetManifest(_prepareFor());
+    function testDeserializeSetPolicy() public {
+        MessageLib.deserializeSetPolicy(_prepareFor());
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -538,12 +538,12 @@ contract TestMessageLibIdentities is Test {
         assertEq(a.serialize().messageExtraGasLimit(), 0);
     }
 
-    function testSetManifest(uint64 poolId, bytes32 manifest) public pure {
-        MessageLib.SetManifest memory a = MessageLib.SetManifest({poolId: poolId, manifest: manifest});
-        MessageLib.SetManifest memory b = MessageLib.deserializeSetManifest(a.serialize());
+    function testSetPolicy(uint64 poolId, bytes32 policy) public pure {
+        MessageLib.SetPolicy memory a = MessageLib.SetPolicy({poolId: poolId, policy: policy});
+        MessageLib.SetPolicy memory b = MessageLib.deserializeSetPolicy(a.serialize());
 
         assertEq(a.poolId, b.poolId);
-        assertEq(a.manifest, b.manifest);
+        assertEq(a.policy, b.policy);
 
         assertEq(a.serialize().messageLength(), a.serialize().length);
         assertEq(a.serialize().messagePoolId().raw(), a.poolId);
@@ -723,7 +723,7 @@ contract TestMessageLibSourceCentrifugeId is Test {
         expected[uint256(MessageType.SetRequestManager)] = 1;
         expected[uint256(MessageType.UpdateManager)] = 1;
         expected[uint256(MessageType.ManagerCallFromHub)] = 1;
-        expected[uint256(MessageType.SetManifest)] = 1;
+        expected[uint256(MessageType.SetPolicy)] = 1;
         expected[uint256(MessageType.AuthorizeSpokeCall)] = 1;
         expected[uint256(MessageType.UnauthorizeSpokeCall)] = 1;
 

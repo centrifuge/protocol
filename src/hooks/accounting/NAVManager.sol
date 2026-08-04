@@ -79,7 +79,7 @@ contract NAVManager is INAVManager {
     ///      origin `sender` is checked against the per-pool `manager` allowlist (set hub-side via `fromHub`).
     ///      The target asset must reside on the origin network, so a spoke manager only reaches its own
     ///      network's accounts; cross-network init goes through `fromHub`.
-    ///      The downstream `hub.initializeHolding` is still manifest-supervised. Other actions stay hub-only.
+    ///      The downstream `hub.initializeHolding` is still policy-supervised. Other actions stay hub-only.
     function fromSpoke(PoolId poolId, bytes calldata payload, uint16 centrifugeId, bytes32 sender) external payable {
         require(msg.sender == envoy, NotEnvoy());
         require(msg.value == 0, UnexpectedValue());

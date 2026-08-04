@@ -3,7 +3,6 @@ pragma solidity >=0.5.0;
 
 import {IHoldings} from "./IHoldings.sol";
 import {IValuation} from "./IValuation.sol";
-import {IHubManifest} from "./IManifest.sol";
 import {IFeeAccrual} from "./IFeeAccrual.sol";
 import {IHubRegistry} from "./IHubRegistry.sol";
 import {ISnapshotHook} from "./ISnapshotHook.sol";
@@ -22,6 +21,7 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {AccountId} from "../../types/AccountId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
+import {IHubPolicy} from "../../utils/interfaces/IPolicy.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 
 /// @notice Account slots a settlement event posts against. The pool assigns an AccountId to each slot
@@ -58,7 +58,7 @@ interface IHub is IBatchedMulticall {
     );
     event UpdateRestriction(uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId scId, bytes payload);
     event SetSpokeRequestManager(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manager);
-    event SetSpokeManifest(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed manifest);
+    event SetSpokePolicy(uint16 indexed centrifugeId, PoolId indexed poolId, bytes32 indexed policy);
     event AuthorizeSpokeCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes data);
     event UnauthorizeSpokeCall(uint16 indexed centrifugeId, PoolId indexed poolId, bytes data);
     event UpdateManager(
@@ -145,19 +145,19 @@ interface IHub is IBatchedMulticall {
     /// @notice Handles multi-protocol message verification and routing for cross-chain communication
     function multiAdapter() external view returns (IMultiAdapter);
 
-    /// @notice Returns the policy manifest installed for a pool (address(0) if none),
+    /// @notice Returns the policy installed for a pool (address(0) if none),
     ///         consulted on every manager call. Storage lives in the {IHubRegistry}; this reads through.
-    function manifest(PoolId poolId) external view returns (IHubManifest);
+    function policy(PoolId poolId) external view returns (IHubPolicy);
 
     /// @notice Updates a contract parameter
     /// @param what Name of the parameter to update (accepts 'gateway', 'feeAccrual', 'sender', 'multiAdapter')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
 
-    /// @notice Install or replace the policy manifest for a pool.
-    /// @dev    Wards may call directly (break-glass). For managers the current manifest is enforced,
+    /// @notice Install or replace the policy for a pool.
+    /// @dev    Wards may call directly (break-glass). For managers the current policy is enforced,
     ///         which typically requires an authorization for its own replacement.
-    function setManifest(PoolId poolId, IHubManifest manifest_) external;
+    function setPolicy(PoolId poolId, IHubPolicy policy_) external;
 
     /// @notice Pre-authorize a future, out-of-policy call against the Hub's timelock ledger. Manager only.
     /// @param poolId The pool the call targets
@@ -289,15 +289,15 @@ interface IHub is IBatchedMulticall {
         address refund
     ) external payable;
 
-    /// @notice Install or replace the policy manifest enforced on a spoke pool's balance-sheet manager methods
+    /// @notice Install or replace the policy enforced on a spoke pool's balance-sheet manager methods
     /// @param poolId The pool identifier
-    /// @param centrifugeId Chain of the spoke whose manifest is set
-    /// @param manifest_ The spoke-chain manifest address (address(0) to remove policy enforcement)
+    /// @param centrifugeId Chain of the spoke whose policy is set
+    /// @param policy_ The spoke-chain policy contract (address(0) to remove policy enforcement)
     /// @param refund Address to receive excess gas refund
-    function setSpokeManifest(PoolId poolId, uint16 centrifugeId, bytes32 manifest_, address refund) external payable;
+    function setSpokePolicy(PoolId poolId, uint16 centrifugeId, bytes32 policy_, address refund) external payable;
 
     /// @notice Authorize an out-of-policy call on a spoke pool. Manager-gated and classified as a std delay
-    ///         by the Hub manifest, so it matures through the Hub timelock and sentinel veto before pushing
+    ///         by the Hub-side policy, so it matures through the Hub timelock and sentinel veto before pushing
     ///         the authorization to the spoke for a manager to consume. Only the Hub chain needs a cold wallet.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain of the spoke the authorized call targets
@@ -511,7 +511,7 @@ interface IHub is IBatchedMulticall {
 
     /// @notice Route a payable, supervised manager call to an `IManagerCallFromHub` target via the `Envoy`.
     ///         Pool-scoped: any `scId` is encoded in `payload`. No origin args reach the target: the call
-    ///         is already authorized here via `_enforce` + manifest.
+    ///         is already authorized here via `_enforce` + policy.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain where the target lives (only the local chain is currently supported)
     /// @param target Contract to call (as bytes32; converted to address for local dispatch)

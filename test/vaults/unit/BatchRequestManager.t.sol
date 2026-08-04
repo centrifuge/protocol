@@ -2360,7 +2360,7 @@ contract BatchRequestManagerAuthTest is BatchRequestManagerBaseTest {
     ///      ONLY, never `IManagerCallFromSpoke.fromSpoke`. So the untrusted spoke path
     ///      (`Envoy.callFromSpoke` -> `target.fromSpoke`) can never reach it: the `fromSpoke` selector does
     ///      not exist and the call reverts. This freezes that guarantee on the real contract, so any future
-    ///      change that adds `fromSpoke` (re-opening the manifest-bypass) trips this test.
+    ///      change that adds `fromSpoke` (re-opening the policy-bypass) trips this test.
     function testFromSpokeUnreachable() public {
         bytes memory payload = BatchRequestManagerCallLib.approveDeposits(
             scId, USDC, 1, MIN_REQUEST_AMOUNT_USDC, _pricePoolPerAsset(USDC), REFUND

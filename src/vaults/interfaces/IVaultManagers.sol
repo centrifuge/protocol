@@ -249,7 +249,7 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCa
         MaxReserve
     }
 
-    /// @notice The Envoy that routes manifest-supervised valuation/max-reserve updates
+    /// @notice The Envoy that routes policy-supervised valuation/max-reserve updates
     function envoy() external view returns (address);
 
     /// @notice Updates contract parameters of type address.

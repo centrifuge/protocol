@@ -106,7 +106,7 @@ contract SpokeTest is Test {
         vm.mockCall(
             address(sender), abi.encodeWithSelector(sender.localCentrifugeId.selector), abi.encode(LOCAL_CENTRIFUGE_ID)
         );
-        // Default: only MANAGER is a balance-sheet manager, no manifest installed.
+        // Default: only MANAGER is a balance-sheet manager, no policy installed.
         vm.mockCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.manager.selector), abi.encode(false));
         vm.mockCall(
             address(spokeRegistry),
@@ -115,7 +115,7 @@ contract SpokeTest is Test {
         );
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.manifest.selector, POOL_A),
+            abi.encodeWithSelector(ISpokeRegistry.policy.selector, POOL_A),
             abi.encode(address(0))
         );
         vm.mockCall(

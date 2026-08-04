@@ -14,7 +14,7 @@ The central orchestration layer for pool management. `Hub` aggregates pool admin
 
 `Holdings` is the canonical ledger of everything a pool owns or owes, wiring each holding to a pluggable valuation and to the accounts that back it. `Accounting` is the double-entry engine underneath, recording every value change as a balanced journal entry (debits and credits scoped per pool, per account) and reverting the whole transaction rather than ever letting the books go unbalanced.
 
-`ShareClassManager` handles share class creation, metadata, pricing, and per-chain issuance tracking. `HubRegistry` is the canonical source of truth for pools, assets, currencies, and pool-level dependencies such as request managers, including the pool's manifest: an onchain policy a pool installs to bound what its managers may do, which `HubRegistry` holds as the pool's authoritative reference and `Hub` checks before executing any guarded manager action.
+`ShareClassManager` handles share class creation, metadata, pricing, and per-chain issuance tracking. `HubRegistry` is the canonical source of truth for pools, assets, currencies, and pool-level dependencies such as request managers, including the pool's policy: an onchain contract a pool installs to bound what its managers may do, which `HubRegistry` holds as the pool's authoritative reference and `Hub` checks before executing any guarded manager action.
 
 Because `Hub` consolidates all of this in one place, a manager acting on any pool reasons about a single, always-balanced set of books rather than reconciling state scattered across chains. See [`hub/README.md`](./hub/README.md).
 
@@ -26,7 +26,7 @@ The local counterpart to `hub`, deployed on every chain a pool operates on. `Spo
 
 Because a spoke is a complete local deployment, everything it does executes synchronously and atomically: issuing a share, moving an asset, and a call into another protocol can happen in one transaction that either wholly succeeds or wholly reverts. This is what lets share tokens compose with the rest of onchain finance without a settlement gap.
 
-`Spoke` extends the same manifest-bound guard to its own manager actions, checking `SpokeRegistry`'s copy of the pool's manifest before letting a manager through, so a manager's rights stay policy-bound on every chain a pool touches rather than only at the hub. See [`spoke/README.md`](./spoke/README.md).
+`Spoke` extends the same policy-bound guard to its own manager actions, checking `SpokeRegistry`'s copy of the pool's policy before letting a manager through, so a manager's rights stay policy-bound on every chain a pool touches rather than only at the hub. See [`spoke/README.md`](./spoke/README.md).
 
 ### [`messaging`](./messaging)
 
@@ -40,16 +40,16 @@ Both `hub` and `spoke` expose a set of pool-scoped extension points that periphe
 
 `hub`:
 - **Hub manager** - the per-pool role allowed to call guarded `Hub` actions.
-- **Manifest** (`IManifest`) - onchain policy a pool installs to bound and timelock what its managers may do.
+- **Policy** (`IPolicy`) - onchain contract a pool installs to bound and timelock what its managers may do.
 - **Snapshot hook** (`ISnapshotHook`) - optional callback on `Holdings` when a chain's snapshot state changes.
 - **Bridging hook** (`IBridgingHook`) - optional per-pool hook `HubHandler` invokes around cross-chain share transfers.
 - **Valuation** (`IValuation`) - pluggable per-holding pricing model.
 - **Request manager** (`IHubRequestManager`) - pluggable per-pool-per-chain settlement contract for deposit/redeem requests.
-- **`managerCall` / Envoy** (`IManagerCallFromHub`) - generic, manifest-gated escape hatch to call any contract implementing `fromHub`.
+- **`managerCall` / Envoy** (`IManagerCallFromHub`) - generic, policy-gated escape hatch to call any contract implementing `fromHub`.
 
 `spoke`:
 - **Spoke manager** - the per-pool role allowed to call guarded balance-sheet actions.
-- **Manifest** (`IManifest`) - the same policy contract, enforced locally by `Spoke` on every chain a pool touches.
+- **Policy** (`IPolicy`) - the same contract, enforced locally by `Spoke` on every chain a pool touches.
 - **Registrar** (`IRegistrar`) - pluggable per-share-class contract that deploys and operates the share token.
 - **Bridger** - the per-pool role allowed to initiate cross-chain share transfers.
 - **Request manager** (`ISpokeRequestManager`) - the spoke-side counterpart to the hub's request manager; the only caller allowed to dispatch outbound requests.

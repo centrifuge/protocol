@@ -45,7 +45,7 @@ src/
 │   │   └── interfaces/
 │   ├── spoke/              # Spoke-side contracts
 │   │   ├── Spoke.sol       # User-facing spoke ops + balance-sheet mgmt (deposit/withdraw/issue/revoke); BatchedMulticall
-│   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices + manifest + manager roles
+│   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices + policy + manager roles
 │   │   ├── SpokeHandler.sol # Inbound cross-chain message handling
 │   │   ├── SnapshotQueue.sol      # Queued share/asset deltas pending submission to the Hub (Spoke → SnapshotQueue, mirrors Hub → Holdings)
 │   │   ├── PoolEscrow.sol  # Pool-specific escrow

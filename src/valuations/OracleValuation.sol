@@ -19,7 +19,7 @@ import {IManagerCallFromHub, IManagerCallFromSpoke} from "../core/utils/interfac
 /// @notice Provides an implementation for valuation of assets by trusted price feeders.
 ///         Prices should be denominated in the pool currency.
 ///         Quorum is always 1, i.e. there is no aggregation of prices across multiple feeders.
-/// @dev    Setup: add feeders via `fromHub` (`hub.managerCall` -> `Envoy`, manifest-supervised), set this
+/// @dev    Setup: add feeders via `fromHub` (`hub.managerCall` -> `Envoy`, policy-supervised), set this
 ///         contract as the valuation for one or more assets, and rely it as a hub manager to call
 ///         `hub.updateHoldingValue()`. Price updates: local via `setPrice()`, remote via `fromSpoke()`
 ///         (`spoke.managerCall` -> `Envoy`); both validate the caller against the `feeder` mapping.

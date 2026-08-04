@@ -11,7 +11,7 @@ import {ISpokeMessageSender} from "../../messaging/interfaces/IGatewaySenders.so
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IManifest} from "../../hub/interfaces/IManifest.sol";
+import {IPolicy} from "../../utils/interfaces/IPolicy.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
 import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
@@ -187,7 +187,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     ///      (including another manager's, e.g. the request manager's pending deposits) and withdraw the freed funds,
     ///      so grant the role only to parties trusted with the pool's full balance sheet. Core stays permissive on
     ///      purpose: requiring `reserver == msg.sender` would strand a reserving manager's funds if it broke. A pool
-    ///      can restrict this in its manifest instead, delaying `reserver != msg.sender` calls.
+    ///      can restrict this in its policy instead, delaying `reserver != msg.sender` calls.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
@@ -373,8 +373,8 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @notice Returns the pool escrow provider
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
-    /// @notice Returns the policy manifest installed for a pool (address(0) if none)
-    function manifest(PoolId poolId) external view returns (IManifest);
+    /// @notice Returns the policy installed for a pool (address(0) if none)
+    function policy(PoolId poolId) external view returns (IPolicy);
 
     /// @notice Returns the pool escrow.
     /// @dev    Assets for pending deposit requests are not held by the pool escrow.

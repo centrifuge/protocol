@@ -5,7 +5,7 @@ import {Hub} from "../../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {IHub} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
-import {IHubManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
+import {IHubPolicy} from "../../../../src/core/utils/interfaces/IPolicy.sol";
 import {IAccounting} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
@@ -15,7 +15,7 @@ import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClas
 import "forge-std/Test.sol";
 
 /// @dev Records the last enforce() call and can be toggled to revert (out of policy / forbidden).
-contract MockManifest is IHubManifest {
+contract MockPolicy is IHubPolicy {
     error Unauthorized();
 
     PoolId public lastPoolId;
@@ -41,7 +41,7 @@ contract MockManifest is IHubManifest {
     }
 }
 
-contract HubManifestTest is Test {
+contract HubPolicyTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
     address immutable manager = makeAddr("manager");
 
@@ -53,7 +53,7 @@ contract HubManifestTest is Test {
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
 
     Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
-    MockManifest manifest = new MockManifest();
+    MockPolicy policy = new MockPolicy();
 
     bytes metadata = "meta";
 
@@ -64,29 +64,31 @@ contract HubManifestTest is Test {
             abi.encode(true)
         );
         vm.mockCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.setMetadata.selector), abi.encode());
-        // Manifest storage now lives in the registry; the Hub reads/writes through it.
-        vm.mockCall(address(hubRegistry), abi.encodeWithSelector(IHubRegistry.setManifest.selector), abi.encode());
-        _installManifest(IHubManifest(address(0))); // default: no manifest installed
+        // Policy storage now lives in the registry; the Hub reads/writes through it.
+        vm.mockCall(address(hubRegistry), abi.encodeWithSelector(IHubRegistry.setPolicy.selector), abi.encode());
+        _installPolicy(IHubPolicy(address(0))); // default: no policy installed
     }
 
-    /// @dev Mock the registry to report `m` as the pool's installed manifest (Hub reads through to it).
-    function _installManifest(IHubManifest m) internal {
-        vm.mockCall(address(hubRegistry), abi.encodeWithSelector(IHubRegistry.manifest.selector, POOL_A), abi.encode(m));
+    /// @dev Mock the registry to report `policy_` as the pool's installed policy (Hub reads through to it).
+    function _installPolicy(IHubPolicy policy_) internal {
+        vm.mockCall(
+            address(hubRegistry), abi.encodeWithSelector(IHubRegistry.policy.selector, POOL_A), abi.encode(policy_)
+        );
     }
 
-    // ─── setManifest ──────────────────────────────────────────────────────────
+    // ─── setPolicy ──────────────────────────────────────────────────────────
 
-    function testSetManifestByWardWritesThroughToRegistry() public {
-        // Ward (this) installs directly; the Hub persists the manifest in the registry.
-        vm.expectCall(address(hubRegistry), abi.encodeCall(IHubRegistry.setManifest, (POOL_A, manifest)));
-        hub.setManifest(POOL_A, manifest);
+    function testSetPolicyByWardWritesThroughToRegistry() public {
+        // Ward (this) installs directly; the Hub persists the policy in the registry.
+        vm.expectCall(address(hubRegistry), abi.encodeCall(IHubRegistry.setPolicy, (POOL_A, policy)));
+        hub.setPolicy(POOL_A, policy);
 
         // The Hub's view reads back through the registry.
-        _installManifest(manifest);
-        assertEq(address(hub.manifest(POOL_A)), address(manifest));
+        _installPolicy(policy);
+        assertEq(address(hub.policy(POOL_A)), address(policy));
     }
 
-    function testSetManifestByNonManagerNonWardReverts() public {
+    function testSetPolicyByNonManagerNonWardReverts() public {
         vm.mockCall(
             address(hubRegistry),
             abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, address(0xBAD)),
@@ -94,68 +96,68 @@ contract HubManifestTest is Test {
         );
         vm.expectRevert(IHub.NotManager.selector);
         vm.prank(address(0xBAD));
-        hub.setManifest(POOL_A, manifest);
+        hub.setPolicy(POOL_A, policy);
     }
 
-    function testSetManifestByManagerEnforcesCurrentManifest() public {
-        _installManifest(manifest); // current manifest installed
+    function testSetPolicyByManagerEnforcesCurrentPolicy() public {
+        _installPolicy(policy); // current policy installed
 
-        // A manager replacing the manifest is enforced by the current manifest.
-        manifest.setShouldRevert(true);
-        vm.expectRevert(MockManifest.Unauthorized.selector);
+        // A manager replacing the policy is enforced by the current policy.
+        policy.setShouldRevert(true);
+        vm.expectRevert(MockPolicy.Unauthorized.selector);
         vm.prank(manager);
-        hub.setManifest(POOL_A, manifest);
+        hub.setPolicy(POOL_A, policy);
 
-        // When the current manifest allows it, the replacement is written through to the registry.
-        manifest.setShouldRevert(false);
-        MockManifest next = new MockManifest();
-        vm.expectCall(address(hubRegistry), abi.encodeCall(IHubRegistry.setManifest, (POOL_A, next)));
+        // When the current policy allows it, the replacement is written through to the registry.
+        policy.setShouldRevert(false);
+        MockPolicy next = new MockPolicy();
+        vm.expectCall(address(hubRegistry), abi.encodeCall(IHubRegistry.setPolicy, (POOL_A, next)));
         vm.prank(manager);
-        hub.setManifest(POOL_A, next);
+        hub.setPolicy(POOL_A, next);
     }
 
     // ─── enforcement on manager methods ─────────────────────────────────────────
 
-    function testNoManifestSkipsEnforcement() public {
-        // No manifest installed: only the manager check applies.
+    function testNoPolicySkipsEnforcement() public {
+        // No policy installed: only the manager check applies.
         vm.prank(manager);
         hub.setPoolMetadata(POOL_A, metadata);
-        assertEq(manifest.enforceCalls(), 0);
+        assertEq(policy.enforceCalls(), 0);
     }
 
-    function testManifestEnforcedOnManagerMethod() public {
-        _installManifest(manifest);
+    function testPolicyEnforcedOnManagerMethod() public {
+        _installPolicy(policy);
 
         vm.prank(manager);
         hub.setPoolMetadata(POOL_A, metadata);
 
-        assertEq(manifest.enforceCalls(), 1);
-        assertEq(manifest.lastCaller(), manager);
-        // The manifest receives the exact call's calldata (selector + args).
-        assertEq(manifest.lastData(), abi.encodeWithSelector(IHub.setPoolMetadata.selector, POOL_A, metadata));
+        assertEq(policy.enforceCalls(), 1);
+        assertEq(policy.lastCaller(), manager);
+        // The policy receives the exact call's calldata (selector + args).
+        assertEq(policy.lastData(), abi.encodeWithSelector(IHub.setPoolMetadata.selector, POOL_A, metadata));
     }
 
-    function testManagerMethodRevertsWhenManifestReverts() public {
-        _installManifest(manifest);
-        manifest.setShouldRevert(true);
+    function testManagerMethodRevertsWhenPolicyReverts() public {
+        _installPolicy(policy);
+        policy.setShouldRevert(true);
 
-        vm.expectRevert(MockManifest.Unauthorized.selector);
+        vm.expectRevert(MockPolicy.Unauthorized.selector);
         vm.prank(manager);
         hub.setPoolMetadata(POOL_A, metadata);
     }
 
-    function testManagerCheckPrecedesManifest() public {
-        _installManifest(manifest);
+    function testManagerCheckPrecedesPolicy() public {
+        _installPolicy(policy);
         vm.mockCall(
             address(hubRegistry),
             abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, address(0xBAD)),
             abi.encode(false)
         );
 
-        // Non-manager is rejected before the manifest is consulted.
+        // Non-manager is rejected before the policy is consulted.
         vm.expectRevert(IHub.NotManager.selector);
         vm.prank(address(0xBAD));
         hub.setPoolMetadata(POOL_A, metadata);
-        assertEq(manifest.enforceCalls(), 0);
+        assertEq(policy.enforceCalls(), 0);
     }
 }

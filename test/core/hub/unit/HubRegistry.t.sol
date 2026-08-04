@@ -8,7 +8,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {HubRegistry} from "../../../../src/core/hub/HubRegistry.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IHubManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
+import {IHubPolicy} from "../../../../src/core/utils/interfaces/IPolicy.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "../../../../src/core/hub/interfaces/IBridgingHook.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
@@ -130,26 +130,26 @@ contract HubRegistryTest is Test {
         assertEq(registry.metadata(poolId), metadata);
     }
 
-    function testSetManifest() public {
+    function testSetPolicy() public {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
 
-        IHubManifest manifest = IHubManifest(makeAddr("manifest"));
+        IHubPolicy policy = IHubPolicy(makeAddr("policy"));
 
         vm.prank(makeAddr("unauthorizedAddress"));
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.setManifest(poolId, manifest);
+        registry.setPolicy(poolId, policy);
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         vm.expectRevert(IHubRegistry.NonExistingPool.selector);
-        registry.setManifest(nonExistingPool, manifest);
+        registry.setPolicy(nonExistingPool, policy);
 
         vm.expectEmit();
-        emit IHubRegistry.SetManifest(poolId, manifest);
-        registry.setManifest(poolId, manifest);
-        assertEq(address(registry.manifest(poolId)), address(manifest));
+        emit IHubRegistry.SetPolicy(poolId, policy);
+        registry.setPolicy(poolId, policy);
+        assertEq(address(registry.policy(poolId)), address(policy));
     }
 
     function testSetBridgingHook() public {
@@ -172,49 +172,47 @@ contract HubRegistryTest is Test {
         assertEq(address(registry.bridgingHook(poolId)), address(hook));
     }
 
-    function testManifestReinstallChangesAuthId(bytes calldata data) public {
-        IHubManifest manifest = IHubManifest(makeAddr("manifest"));
+    function testPolicyReinstallChangesAuthId(bytes calldata data) public {
+        IHubPolicy policy = IHubPolicy(makeAddr("policy"));
 
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, makeAddr("fundAdmin"), USD);
-        registry.setManifest(poolId, manifest);
-        assertEq(registry.manifestNonce(poolId), 1);
+        registry.setPolicy(poolId, policy);
+        assertEq(registry.policyNonce(poolId), 1);
 
         bytes32 id = registry.authId(poolId, data);
 
-        // Re-installing the same manifest address bumps the nonce, re-namespacing every id.
-        registry.setManifest(poolId, manifest);
-        assertEq(registry.manifestNonce(poolId), 2);
+        // Re-installing the same policy address bumps the nonce, re-namespacing every id.
+        registry.setPolicy(poolId, policy);
+        assertEq(registry.policyNonce(poolId), 2);
         assertNotEq(registry.authId(poolId, data), id);
     }
 
-    function testManifestSwapBackDoesNotResurrectAuthorization() public {
+    function testPolicySwapBackDoesNotResurrectAuthorization() public {
         address fundAdmin = makeAddr("fundAdmin");
-        IHubManifest manifest = IHubManifest(makeAddr("manifest"));
+        IHubPolicy policy = IHubPolicy(makeAddr("policy"));
         bytes memory data = "authorized calldata";
 
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
-        registry.setManifest(poolId, manifest);
+        registry.setPolicy(poolId, policy);
 
         vm.mockCall(
-            address(manifest),
-            abi.encodeWithSelector(IHubManifest.authorizationDelay.selector),
-            abi.encode(uint48(1 days))
+            address(policy), abi.encodeWithSelector(IHubPolicy.authorizationDelay.selector), abi.encode(uint48(1 days))
         );
         registry.initiateAuthorization(poolId, fundAdmin, data);
         vm.warp(block.timestamp + 1 days);
 
-        // Swap the manifest away and back: the matured authorization must not be resurrected.
-        registry.setManifest(poolId, IHubManifest(makeAddr("otherManifest")));
-        registry.setManifest(poolId, manifest);
+        // Swap the policy away and back: the matured authorization must not be resurrected.
+        registry.setPolicy(poolId, IHubPolicy(makeAddr("otherPolicy")));
+        registry.setPolicy(poolId, policy);
 
-        vm.prank(address(manifest));
+        vm.prank(address(policy));
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         registry.consumeAuthorization(poolId, fundAdmin, data, 1 days);
     }
 
-    function testAuthorizeRevertsWithoutManifest(bytes calldata data) public {
+    function testAuthorizeRevertsWithoutPolicy(bytes calldata data) public {
         address fundAdmin = makeAddr("fundAdmin");
 
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
@@ -225,21 +223,21 @@ contract HubRegistryTest is Test {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         registry.initiateAuthorization(poolId, fundAdmin, data);
 
-        // No manifest set for the pool, so authorize cannot classify the call.
-        vm.expectRevert(IHubRegistry.NoManifest.selector);
+        // No policy set for the pool, so authorize cannot classify the call.
+        vm.expectRevert(IHubRegistry.PolicyNotInstalled.selector);
         registry.initiateAuthorization(poolId, fundAdmin, data);
     }
 
-    function testConsumeAuthorizationOnlyCallableByManifest(address caller, bytes calldata data, uint48 expiry) public {
+    function testConsumeAuthorizationOnlyCallableByPolicy(address caller, bytes calldata data, uint48 expiry) public {
         address fundAdmin = makeAddr("fundAdmin");
-        IHubManifest manifest = IHubManifest(makeAddr("manifest"));
+        IHubPolicy policy = IHubPolicy(makeAddr("policy"));
 
         PoolId poolId = registry.poolId(CENTRIFUGE_ID, 1);
         registry.registerPool(poolId, fundAdmin, USD);
-        registry.setManifest(poolId, manifest);
+        registry.setPolicy(poolId, policy);
 
-        // Caller is address(this), not the pool's manifest.
-        vm.expectRevert(IHubRegistry.NotManifest.selector);
+        // Caller is address(this), not the pool's policy.
+        vm.expectRevert(IHubRegistry.CallerNotPolicy.selector);
         registry.consumeAuthorization(poolId, caller, data, expiry);
     }
 

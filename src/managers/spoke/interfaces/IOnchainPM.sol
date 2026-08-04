@@ -35,7 +35,7 @@ interface IOnchainPM is IBatchedMulticall, IManagerCallFromHub {
 
     function poolId() external view returns (PoolId);
 
-    /// @notice The Envoy that routes manifest-supervised policy updates
+    /// @notice The Envoy that routes policy-supervised strategist updates
     function envoy() external view returns (address);
 
     function policy(address strategist) external view returns (bytes32);

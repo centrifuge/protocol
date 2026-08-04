@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IStdHubManifest, IStdHubManifestFactory} from "./interfaces/IStdHubManifest.sol";
+import {IStdHubPolicy, IStdHubPolicyFactory} from "./interfaces/IStdHubPolicy.sol";
 
 import {D18} from "../../misc/types/D18.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
@@ -13,7 +13,7 @@ import {AssetId} from "../../core/types/AssetId.sol";
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
-import {IManifest, IHubManifest} from "../../core/hub/interfaces/IManifest.sol";
+import {IPolicy, IHubPolicy} from "../../core/utils/interfaces/IPolicy.sol";
 import {IMultiAdapter} from "../../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.sol";
 
@@ -22,15 +22,15 @@ import {UpdateRestrictionType} from "../../token/hooks/libraries/UpdateRestricti
 
 import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 
-/// @title  Standard Manifest
-/// @notice Default pool policy installed on the Hub via {IHub.setManifest}. A pure classifier; the
-///         authorization ledger lives in {HubRegistry}, shared by every manifest.
+/// @title  Standard Hub Policy
+/// @notice Default pool policy installed on the Hub via {IHub.setPolicy}. A pure classifier; the
+///         authorization ledger lives in {HubRegistry}, shared by every policy.
 ///
 ///         The Hub calls {enforce} on every guarded manager method. In-policy calls (delay 0) run
 ///         synchronously; out-of-policy calls must be pre-authorized via {IHubRegistry.initiateAuthorization}, mature
 ///         past `delay`, and are consumed by {enforce} within `expiry` (else they fail closed). Sentinels
 ///         get a veto window via {Supervisor.cancelAuthorization}. One instance can serve many pools.
-///         `escalation` (a longer delay) applies only to replacing the manifest; a construction-time
+///         `escalation` (a longer delay) applies only to replacing the policy; a construction-time
 ///         allowlist can additionally confine a caller to a fixed selector set.
 ///
 ///         Per-selector policy (see {_authorizationDelay} for the exhaustive dispatch):
@@ -42,10 +42,10 @@ import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 ///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
 ///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
 ///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
-///         - `setManifest` and `setSpokeManifest` use `escalation` instead of `delay`.
+///         - `setPolicy` and `setSpokePolicy` use `escalation` instead of `delay`.
 ///         - Cross-chain notifications and pool/share metadata updates are always in policy.
 ///         - Everything else (deny-by-default) falls through to `delay`.
-contract StdHubManifest is IStdHubManifest {
+contract StdHubPolicy is IStdHubPolicy {
     using BytesLib for bytes;
     using CastLib for bytes32;
 
@@ -66,7 +66,7 @@ contract StdHubManifest is IStdHubManifest {
     address public immutable simplePriceManager;
     IShareClassManager public immutable shareClassManager;
 
-    // Policy.
+    // Parameters
     uint48 public immutable delay;
     uint48 public immutable expiry;
     uint48 public immutable escalation;
@@ -94,7 +94,7 @@ contract StdHubManifest is IStdHubManifest {
         simplePriceManager = config.simplePriceManager;
         shareClassManager = shareClassManager_;
 
-        // Policy
+        // Parameters
         delay = config.delay;
         expiry = config.expiry;
         escalation = config.escalation;
@@ -116,7 +116,7 @@ contract StdHubManifest is IStdHubManifest {
     // Authorize flow
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc IManifest
+    /// @inheritdoc IPolicy
     /// @dev The authorization ledger (storing/maturing/consuming) lives in {HubRegistry}; this only
     ///      classifies and, when out of policy, consumes a matured authorization there.
     function enforce(PoolId poolId, address caller, bytes calldata data) external {
@@ -144,7 +144,7 @@ contract StdHubManifest is IStdHubManifest {
         }
     }
 
-    /// @inheritdoc IHubManifest
+    /// @inheritdoc IHubPolicy
     /// @dev Called by {HubRegistry.initiateAuthorization} (to price the delay) and by {enforce}. Reverts to block
     ///      a forbidden call outright.
     function authorizationDelay(PoolId poolId, address caller, bytes calldata data) external view returns (uint48) {
@@ -219,9 +219,9 @@ contract StdHubManifest is IStdHubManifest {
         // above, so a restricted manager can't wield it as a pool-wide governance-DoS primitive.
         if (selector == IHub.cancelAuthorization.selector) return 0;
 
-        // Replacing a manifest (local hub policy, or a spoke's pushed policy) disables all future policy on
+        // Replacing a policy (the local hub one, or a spoke's pushed one) disables all future policy on
         // that side, so it uses the longer `escalation`.
-        if (selector == IHub.setManifest.selector || selector == IHub.setSpokeManifest.selector) return escalation;
+        if (selector == IHub.setPolicy.selector || selector == IHub.setSpokePolicy.selector) return escalation;
 
         // In policy: cross-chain notifications (keeper-driven pushes of committed state) and metadata.
         // Everything else (accounting, holdings, config) falls through to the timelocked default.
@@ -355,9 +355,9 @@ contract StdHubManifest is IStdHubManifest {
     }
 }
 
-/// @title  Standard Manifest Factory
-/// @notice Deploys StdHubManifest instances which are not necessarily pool-scoped.
-contract StdHubManifestFactory is IStdHubManifestFactory {
+/// @title  Standard Policy Factory
+/// @notice Deploys StdHubPolicy instances which are not necessarily pool-scoped.
+contract StdHubPolicyFactory is IStdHubPolicyFactory {
     IHub public immutable hub;
     IMultiAdapter public immutable multiAdapter;
     IShareClassManager public immutable shareClassManager;
@@ -368,29 +368,27 @@ contract StdHubManifestFactory is IStdHubManifestFactory {
         shareClassManager = shareClassManager_;
     }
 
-    /// @inheritdoc IStdHubManifestFactory
-    function newStdHubManifest(IStdHubManifest.Config memory config) external returns (IStdHubManifest) {
-        StdHubManifest manifest = new StdHubManifest{salt: _salt(config)}(hub, multiAdapter, shareClassManager, config);
+    /// @inheritdoc IStdHubPolicyFactory
+    function newHubPolicy(IStdHubPolicy.Config memory config) external returns (IStdHubPolicy) {
+        StdHubPolicy policy = new StdHubPolicy{salt: _salt(config)}(hub, multiAdapter, shareClassManager, config);
 
-        emit DeployStdHubManifest(address(manifest));
-        return IStdHubManifest(address(manifest));
+        emit DeployHubPolicy(address(policy));
+        return IStdHubPolicy(address(policy));
     }
 
-    /// @inheritdoc IStdHubManifestFactory
-    function previewStdHubManifest(IStdHubManifest.Config memory config) external view returns (address) {
+    /// @inheritdoc IStdHubPolicyFactory
+    function previewHubPolicy(IStdHubPolicy.Config memory config) external view returns (address) {
         bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), address(this), _salt(config), _initCodeHash(config)));
         return address(uint160(uint256(hash)));
     }
 
-    function _salt(IStdHubManifest.Config memory config) internal view returns (bytes32) {
+    function _salt(IStdHubPolicy.Config memory config) internal view returns (bytes32) {
         return keccak256(abi.encode(hub, multiAdapter, shareClassManager, config));
     }
 
-    function _initCodeHash(IStdHubManifest.Config memory config) internal view returns (bytes32) {
+    function _initCodeHash(IStdHubPolicy.Config memory config) internal view returns (bytes32) {
         return keccak256(
-            abi.encodePacked(
-                type(StdHubManifest).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config)
-            )
+            abi.encodePacked(type(StdHubPolicy).creationCode, abi.encode(hub, multiAdapter, shareClassManager, config))
         );
     }
 }

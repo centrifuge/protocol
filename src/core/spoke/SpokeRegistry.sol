@@ -11,7 +11,7 @@ import {
     ShareClassDetails,
     TokenDetails,
     VaultDetails,
-    ManifestInfo,
+    PolicyInfo,
     ISpokeRegistry
 } from "./interfaces/ISpokeRegistry.sol";
 
@@ -21,12 +21,12 @@ import {IERC20} from "../../misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IPolicy} from "../utils/interfaces/IPolicy.sol";
 import {newAssetId, AssetId} from "../types/AssetId.sol";
-import {IManifest} from "../hub/interfaces/IManifest.sol";
 
 /// @title  SpokeRegistry
 /// @notice This contract stores pool, share class, asset, and price state for the spoke side. It also holds
-///         the spoke pool-policy state: the installed manifest and a consume-only authorization ledger. The
+///         the spoke pool-policy state: the installed policy contract and a consume-only authorization ledger. The
 ///         spoke keeps no local timelock; authorizations arrive already matured from the Hub (see {authorize}).
 contract SpokeRegistry is Auth, ISpokeRegistry {
     // Pools & share classes
@@ -40,7 +40,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     mapping(PoolId => mapping(address => bool)) public bridger;
 
     // Policy
-    mapping(PoolId => ManifestInfo) internal _manifest;
+    mapping(PoolId => PolicyInfo) internal _policy;
     mapping(bytes32 authId => uint256 count) public authorizations;
 
     // Assets & prices
@@ -156,26 +156,26 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeRegistry
-    function setManifest(PoolId poolId, IManifest manifest_) external auth {
+    function setPolicy(PoolId poolId, IPolicy policy_) external auth {
         require(isPoolActive(poolId), InvalidPool());
-        _manifest[poolId] = ManifestInfo(manifest_, _manifest[poolId].nonce + 1);
-        emit SetManifest(poolId, manifest_);
+        _policy[poolId] = PolicyInfo(policy_, _policy[poolId].nonce + 1);
+        emit SetPolicy(poolId, policy_);
     }
 
     /// @inheritdoc ISpokeRegistry
     function authorize(PoolId poolId, bytes calldata data) external auth {
-        ManifestInfo memory m = _manifest[poolId];
-        require(address(m.manifest) != address(0), NoManifest());
+        PolicyInfo memory info = _policy[poolId];
+        require(address(info.policy) != address(0), PolicyNotInstalled());
 
-        bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
+        bytes32 id = _authId(poolId, address(info.policy), info.nonce, data);
         authorizations[id]++;
         emit AuthorizationGranted(poolId, id, data);
     }
 
     /// @inheritdoc ISpokeRegistry
     function unauthorize(PoolId poolId, bytes calldata data) external auth {
-        ManifestInfo memory m = _manifest[poolId];
-        bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
+        PolicyInfo memory info = _policy[poolId];
+        bytes32 id = _authId(poolId, address(info.policy), info.nonce, data);
         uint256 count = authorizations[id];
         require(count != 0, NoOutstandingAuthorization());
 
@@ -185,10 +185,10 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
 
     /// @inheritdoc ISpokeRegistry
     function consumeAuthorization(PoolId poolId, address caller, bytes calldata data) external {
-        ManifestInfo memory m = _manifest[poolId];
-        require(msg.sender == address(m.manifest), NotManifest());
+        PolicyInfo memory info = _policy[poolId];
+        require(msg.sender == address(info.policy), CallerNotPolicy());
 
-        bytes32 id = _authId(poolId, address(m.manifest), m.nonce, data);
+        bytes32 id = _authId(poolId, address(info.policy), info.nonce, data);
         uint256 count = authorizations[id];
         require(count != 0, NoOutstandingAuthorization());
 
@@ -197,29 +197,29 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     }
 
     /// @inheritdoc ISpokeRegistry
-    /// @dev Namespaced by the pool's current manifest and its install nonce, so any manifest change (even
-    ///      swapping back to a previously used manifest) makes every outstanding authorization unreachable.
+    /// @dev Namespaced by the pool's current policy and its install nonce, so any policy change (even
+    ///      swapping back to a previously used policy) makes every outstanding authorization unreachable.
     function authId(PoolId poolId, bytes calldata data) external view returns (bytes32) {
-        ManifestInfo memory m = _manifest[poolId];
-        return _authId(poolId, address(m.manifest), m.nonce, data);
+        PolicyInfo memory info = _policy[poolId];
+        return _authId(poolId, address(info.policy), info.nonce, data);
     }
 
-    function _authId(PoolId poolId, address manifest_, uint64 nonce_, bytes calldata data)
+    function _authId(PoolId poolId, address policy_, uint64 nonce_, bytes calldata data)
         internal
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(poolId.raw(), manifest_, nonce_, data));
+        return keccak256(abi.encodePacked(poolId.raw(), policy_, nonce_, data));
     }
 
     /// @inheritdoc ISpokeRegistry
-    function manifest(PoolId poolId) external view returns (IManifest) {
-        return _manifest[poolId].manifest;
+    function policy(PoolId poolId) external view returns (IPolicy) {
+        return _policy[poolId].policy;
     }
 
     /// @inheritdoc ISpokeRegistry
-    function manifestNonce(PoolId poolId) external view returns (uint64) {
-        return _manifest[poolId].nonce;
+    function policyNonce(PoolId poolId) external view returns (uint64) {
+        return _policy[poolId].nonce;
     }
 
     //----------------------------------------------------------------------------------------------

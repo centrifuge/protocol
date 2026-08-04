@@ -7,10 +7,10 @@ import {IShareClassManager} from "../../src/core/hub/interfaces/IShareClassManag
 
 import "forge-std/Test.sol";
 
-import {StdHubManifestFactory} from "../../src/manifests/hub/StdHubManifest.sol";
-import {IStdHubManifest, IStdHubManifestFactory} from "../../src/manifests/hub/interfaces/IStdHubManifest.sol";
+import {StdHubPolicyFactory} from "../../src/policies/hub/StdHubPolicy.sol";
+import {IStdHubPolicy, IStdHubPolicyFactory} from "../../src/policies/hub/interfaces/IStdHubPolicy.sol";
 
-contract StdHubManifestFactoryTest is Test {
+contract StdHubPolicyFactoryTest is Test {
     uint48 constant DELAY = 1 days;
     uint48 constant EXPIRY = 7 days;
     uint48 constant ESCALATION = 7 days;
@@ -21,15 +21,15 @@ contract StdHubManifestFactoryTest is Test {
     address immutable hubRegistry = makeAddr("HubRegistry");
     address immutable brm = makeAddr("BRM");
 
-    StdHubManifestFactory factory;
+    StdHubPolicyFactory factory;
 
     function setUp() public {
         vm.mockCall(address(hub), abi.encodeWithSelector(IHub.hubRegistry.selector), abi.encode(hubRegistry));
-        factory = new StdHubManifestFactory(hub, multiAdapter, scm);
+        factory = new StdHubPolicyFactory(hub, multiAdapter, scm);
     }
 
-    function _config(uint128 maxDeviation) internal view returns (IStdHubManifest.Config memory) {
-        return IStdHubManifest.Config({
+    function _config(uint128 maxDeviation) internal view returns (IStdHubPolicy.Config memory) {
+        return IStdHubPolicy.Config({
             delay: DELAY,
             expiry: EXPIRY,
             escalation: ESCALATION,
@@ -42,7 +42,7 @@ contract StdHubManifestFactoryTest is Test {
             requestManager: brm,
             bridgingHook: address(0),
             oracleValuation: address(0),
-            allowlist: new IStdHubManifest.Entry[](0)
+            allowlist: new IStdHubPolicy.Entry[](0)
         });
     }
 
@@ -53,41 +53,39 @@ contract StdHubManifestFactoryTest is Test {
     }
 
     function testFactoryDeploys() public {
-        address predicted = factory.previewStdHubManifest(_config(type(uint128).max));
+        address predicted = factory.previewHubPolicy(_config(type(uint128).max));
 
         vm.expectEmit();
-        emit IStdHubManifestFactory.DeployStdHubManifest(predicted);
-        IStdHubManifest manifest = factory.newStdHubManifest(_config(type(uint128).max));
+        emit IStdHubPolicyFactory.DeployHubPolicy(predicted);
+        IStdHubPolicy policy = factory.newHubPolicy(_config(type(uint128).max));
 
-        assertEq(address(manifest.hub()), address(hub));
-        assertEq(address(manifest.multiAdapter()), address(multiAdapter));
-        assertEq(address(manifest.shareClassManager()), address(scm));
-        assertEq(address(manifest.hubRegistry()), hubRegistry);
+        assertEq(address(policy.hub()), address(hub));
+        assertEq(address(policy.multiAdapter()), address(multiAdapter));
+        assertEq(address(policy.shareClassManager()), address(scm));
+        assertEq(address(policy.hubRegistry()), hubRegistry);
 
-        assertEq(manifest.delay(), DELAY);
-        assertEq(manifest.expiry(), EXPIRY);
-        assertEq(manifest.escalation(), ESCALATION);
-        assertEq(manifest.maxBrmPriceDeviation(), type(uint128).max);
-        assertEq(manifest.requestManager(), brm);
+        assertEq(policy.delay(), DELAY);
+        assertEq(policy.expiry(), EXPIRY);
+        assertEq(policy.escalation(), ESCALATION);
+        assertEq(policy.maxBrmPriceDeviation(), type(uint128).max);
+        assertEq(policy.requestManager(), brm);
     }
 
     function testFactoryPreviewMatchesDeploy() public {
-        IStdHubManifest.Config memory config = _config(type(uint128).max);
-        address predicted = factory.previewStdHubManifest(config);
-        IStdHubManifest manifest = factory.newStdHubManifest(config);
-        assertEq(address(manifest), predicted);
+        IStdHubPolicy.Config memory config = _config(type(uint128).max);
+        address predicted = factory.previewHubPolicy(config);
+        IStdHubPolicy policy = factory.newHubPolicy(config);
+        assertEq(address(policy), predicted);
     }
 
     function testFactoryPreviewDiffersByConfig() public view {
         // Distinct policies map to distinct deterministic addresses.
-        assertTrue(
-            factory.previewStdHubManifest(_config(type(uint128).max)) != factory.previewStdHubManifest(_config(1e16))
-        );
+        assertTrue(factory.previewHubPolicy(_config(type(uint128).max)) != factory.previewHubPolicy(_config(1e16)));
     }
 
     function testFactoryRedeployIdenticalConfigReverts() public {
-        factory.newStdHubManifest(_config(type(uint128).max));
+        factory.newHubPolicy(_config(type(uint128).max));
         vm.expectRevert();
-        factory.newStdHubManifest(_config(type(uint128).max));
+        factory.newHubPolicy(_config(type(uint128).max));
     }
 }

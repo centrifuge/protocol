@@ -268,7 +268,7 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
 
     /// @dev Entry point: `IManagerCallFromHub.fromHub`. Payload: `abi.encode(uint8 kind, bytes16 scId, ...args)`
     ///      (see `ManagerAction`). `poolId` comes from the call; `scId` is decoded from `payload`.
-    ///      Only callable through the `Envoy`; manifest enforcement happens at the Hub beforehand.
+    ///      Only callable through the `Envoy`; policy enforcement happens at the Hub beforehand.
 
     //----------------------------------------------------------------------------------------------
     // Storage getters

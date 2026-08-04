@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IHoldings} from "./interfaces/IHoldings.sol";
 import {IValuation} from "./interfaces/IValuation.sol";
-import {IHubManifest} from "./interfaces/IManifest.sol";
 import {IFeeAccrual} from "./interfaces/IFeeAccrual.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IBridgingHook} from "./interfaces/IBridgingHook.sol";
@@ -33,6 +32,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {AccountId} from "../types/AccountId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
+import {IHubPolicy} from "../utils/interfaces/IPolicy.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 
 /// @title  Hub
@@ -68,13 +68,13 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
         shareClassManager = shareClassManager_;
     }
 
-    /// @dev Manager-only, and enforces the pool's manifest policy if one is installed.
+    /// @dev Manager-only, and enforces the pool's policy if one is installed.
     modifier enforced(PoolId poolId) {
         _enforce(poolId);
         _;
     }
 
-    /// @dev Sender must be a registered manager for the pool (no manifest policy applied).
+    /// @dev Sender must be a registered manager for the pool (no policy applied).
     modifier onlyManager(PoolId poolId) {
         _requireManager(poolId);
         _;
@@ -101,15 +101,15 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function setManifest(PoolId poolId, IHubManifest manifest_) external {
+    function setPolicy(PoolId poolId, IHubPolicy policy_) external {
         if (wards[msgSender()] != 1) _enforce(poolId);
 
-        hubRegistry.setManifest(poolId, manifest_);
+        hubRegistry.setPolicy(poolId, policy_);
     }
 
     /// @inheritdoc IHub
-    function manifest(PoolId poolId) external view returns (IHubManifest) {
-        return hubRegistry.manifest(poolId);
+    function policy(PoolId poolId) external view returns (IHubPolicy) {
+        return hubRegistry.policy(poolId);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -219,11 +219,11 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function setSpokeManifest(PoolId poolId, uint16 centrifugeId, bytes32 manifest_, address refund) external payable {
+    function setSpokePolicy(PoolId poolId, uint16 centrifugeId, bytes32 policy_, address refund) external payable {
         _enforce(poolId);
 
-        emit SetSpokeManifest(centrifugeId, poolId, manifest_);
-        sender.sendSetManifest{value: msgValue()}(centrifugeId, poolId, manifest_, refund);
+        emit SetSpokePolicy(centrifugeId, poolId, policy_);
+        sender.sendSetPolicy{value: msgValue()}(centrifugeId, poolId, policy_, refund);
     }
 
     /// @inheritdoc IHub
@@ -603,8 +603,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function _enforce(PoolId poolId) internal {
         _requireManager(poolId);
 
-        IHubManifest m = hubRegistry.manifest(poolId);
-        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+        IHubPolicy policy_ = hubRegistry.policy(poolId);
+        if (address(policy_) != address(0)) policy_.enforce(poolId, msgSender(), msg.data);
     }
 
     /// @dev Reverts unless the resolved sender is a registered manager for `poolId`.

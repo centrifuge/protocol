@@ -26,9 +26,9 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../src/core/spoke/SpokeHandler.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
 import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
+import {ISpokePolicy} from "../../src/core/utils/interfaces/IPolicy.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
 import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
-import {ISpokeManifest} from "../../src/core/hub/interfaces/IManifest.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
 import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromSpoke} from "../../src/core/utils/interfaces/IManagerCall.sol";
@@ -335,11 +335,11 @@ contract EndToEndDeployment is Test {
 
 contract IsContract {}
 
-/// @dev Minimal spoke-side manifest for end-to-end coverage of {Spoke.enforced}. A guarded selector is
+/// @dev Minimal spoke-side policy for end-to-end coverage of {Spoke.enforced}. A guarded selector is
 ///      out of policy and must be pre-authorized (via {Hub.authorizeSpokeCall}); `enforce` consumes the
 ///      matured authorization from the {SpokeRegistry}. `enforce` may only be called by the enforcer (the
-///      Spoke), mirroring {StdHubManifest}'s `msg.sender == hub` gate — this is what pins the caller identity.
-contract MockSpokeManifest is ISpokeManifest {
+///      Spoke), mirroring {StdHubPolicy}'s `msg.sender == hub` gate — this is what pins the caller identity.
+contract MockSpokePolicy is ISpokePolicy {
     ISpokeRegistry public immutable registry;
     address public immutable enforcer;
     bytes4 public immutable guardedSelector;
@@ -468,7 +468,7 @@ contract EndToEndFlows is EndToEndUtils {
         return abi.encode(SC_1.raw(), uint8(ISyncManager.TrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
     }
 
-    /// @dev Run a BRM manager action through the real hub.managerCall chain, so the Hub's manifest and
+    /// @dev Run a BRM manager action through the real hub.managerCall chain, so the Hub's policy and
     ///      manager checks run too (FM is the pool manager). FM pays and the remainder refunds to REFUND.
     function _brmManagerCall(bytes memory payload) internal {
         _brmManagerCall(payload, GAS);
@@ -589,7 +589,7 @@ contract EndToEndFlows is EndToEndUtils {
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
-        // Feeder management is manifest-supervised: route through hub.managerCall -> oracleValuation.fromHub.
+        // Feeder management is policy-supervised: route through hub.managerCall -> oracleValuation.fromHub.
         h.hub
             .managerCall(
                 POOL_A,
@@ -1102,29 +1102,29 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).hook(), address(s.fullRestrictionsHook));
     }
 
-    /// @dev Hub pushes a spoke pool's policy manifest end-to-end: Hub.setSpokeManifest -> SetManifest
-    ///      message -> SpokeHandler.setManifest -> SpokeRegistry.manifest.
+    /// @dev Hub pushes a spoke pool's policy end-to-end: Hub.setSpokePolicy -> SetPolicy
+    ///      message -> SpokeHandler.setPolicy -> SpokeRegistry.policy.
     /// forge-config: default.isolate = true
-    function testSetSpokeManifest(bool sameChain) public {
+    function testSetSpokePolicy(bool sameChain) public {
         _configurePool(sameChain);
 
-        address manifest = makeAddr("spokeManifest");
+        address policy = makeAddr("spokePolicy");
 
         vm.prank(FM);
-        h.hub.setSpokeManifest{value: GAS}(POOL_A, s.centrifugeId, manifest.toBytes32(), REFUND);
+        h.hub.setSpokePolicy{value: GAS}(POOL_A, s.centrifugeId, policy.toBytes32(), REFUND);
 
-        assertEq(address(s.spokeRegistry.manifest(POOL_A)), manifest);
+        assertEq(address(s.spokeRegistry.policy(POOL_A)), policy);
     }
 
     /// @dev Hub authorizes an out-of-policy spoke call end-to-end: Hub.authorizeSpokeCall -> Authorize
-    ///      message -> SpokeHandler.authorize -> SpokeRegistry records it, consumed later by the manifest.
+    ///      message -> SpokeHandler.authorize -> SpokeRegistry records it, consumed later by the policy.
     /// forge-config: default.isolate = true
     function testAuthorizeSpokeCall(bool sameChain) public {
         _configurePool(sameChain);
 
-        address manifest = makeAddr("spokeManifest");
+        address policy = makeAddr("spokePolicy");
         vm.prank(FM);
-        h.hub.setSpokeManifest{value: GAS}(POOL_A, s.centrifugeId, manifest.toBytes32(), REFUND);
+        h.hub.setSpokePolicy{value: GAS}(POOL_A, s.centrifugeId, policy.toBytes32(), REFUND);
 
         bytes memory data = hex"1234"; // arbitrary; matched by exact bytes
 
@@ -1134,8 +1134,8 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         bytes32 id = s.spokeRegistry.authId(POOL_A, data);
         assertEq(s.spokeRegistry.authorizations(id), 1);
 
-        // Manifest consumes the authorization directly.
-        vm.prank(manifest);
+        // Policy consumes the authorization directly.
+        vm.prank(policy);
         s.spokeRegistry.consumeAuthorization(POOL_A, FM, data);
         assertEq(s.spokeRegistry.authorizations(id), 0);
     }
@@ -1146,9 +1146,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
     function testUnauthorizeSpokeCall(bool sameChain) public {
         _configurePool(sameChain);
 
-        address manifest = makeAddr("spokeManifest");
+        address policy = makeAddr("spokePolicy");
         vm.prank(FM);
-        h.hub.setSpokeManifest{value: GAS}(POOL_A, s.centrifugeId, manifest.toBytes32(), REFUND);
+        h.hub.setSpokePolicy{value: GAS}(POOL_A, s.centrifugeId, policy.toBytes32(), REFUND);
 
         bytes memory data = hex"1234"; // arbitrary; matched by exact bytes
 
@@ -1164,17 +1164,17 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(s.spokeRegistry.authorizations(id), 0);
     }
 
-    /// @dev Routes a guarded spoke call through {Spoke.enforced} into a real manifest's {enforce}: blocked
-    ///      until the Hub authorizes it, with the manifest seeing the Spoke as caller and the acting manager
+    /// @dev Routes a guarded spoke call through {Spoke.enforced} into a real policy's {enforce}: blocked
+    ///      until the Hub authorizes it, with the policy seeing the Spoke as caller and the acting manager
     ///      as `caller`. Covers the wiring the authorize/unauthorize tests skip (they consume directly).
     /// forge-config: default.isolate = true
     function testEnforceSpokeCall(bool sameChain) public {
         _configurePool(sameChain);
 
         // Guard `deposit`: out of policy, so it must be pre-authorized via the Hub before it can run.
-        MockSpokeManifest manifest = new MockSpokeManifest(s.spokeRegistry, address(s.spoke), Spoke.deposit.selector);
+        MockSpokePolicy policy = new MockSpokePolicy(s.spokeRegistry, address(s.spoke), Spoke.deposit.selector);
         vm.prank(FM);
-        h.hub.setSpokeManifest{value: GAS}(POOL_A, s.centrifugeId, address(manifest).toBytes32(), REFUND);
+        h.hub.setSpokePolicy{value: GAS}(POOL_A, s.centrifugeId, address(policy).toBytes32(), REFUND);
 
         vm.prank(ERC20_DEPLOYER);
         s.usdc.mint(BSM, USDC_AMOUNT_1);
@@ -1183,7 +1183,7 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
 
         bytes memory data = abi.encodeCall(Spoke.deposit, (POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1));
 
-        // Not yet authorized: Spoke.enforced -> manifest.enforce -> consumeAuthorization reverts.
+        // Not yet authorized: Spoke.enforced -> policy.enforce -> consumeAuthorization reverts.
         vm.prank(BSM);
         vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
@@ -1198,9 +1198,9 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         vm.prank(BSM);
         s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
 
-        // The manifest was invoked by the Spoke (its `msg.sender == enforcer` gate held) with BSM as caller.
-        assertEq(manifest.lastCaller(), BSM);
-        assertEq(manifest.enforceCalls(), 1); // the reverted attempt rolled back its increment
+        // The policy was invoked by the Spoke (its `msg.sender == enforcer` gate held) with BSM as caller.
+        assertEq(policy.lastCaller(), BSM);
+        assertEq(policy.enforceCalls(), 1); // the reverted attempt rolled back its increment
         assertEq(s.spokeRegistry.authorizations(id), 0); // consumed
         assertEq(s.spoke.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0), USDC_AMOUNT_1);
     }

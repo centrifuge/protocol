@@ -6,8 +6,8 @@ import {D18} from "../../../misc/types/D18.sol";
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
+import {IPolicy} from "../../utils/interfaces/IPolicy.sol";
 import {VaultUpdateKind} from "../libraries/MessageLib.sol";
-import {IManifest} from "../../hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../spoke/interfaces/IRegistrar.sol";
 import {ISpokeRequestManager} from "../../spoke/interfaces/ISpokeRequestManager.sol";
 
@@ -94,10 +94,10 @@ interface ISpokeGatewayHandler {
     /// @param  manager The new request manager address
     function setRequestManager(PoolId poolId, ISpokeRequestManager manager) external;
 
-    /// @notice Install or replace the policy manifest enforced on this pool's balance-sheet manager methods
+    /// @notice Install or replace the policy enforced on this pool's balance-sheet manager methods
     /// @param  poolId The pool id
-    /// @param  manifest The manifest to install (address(0) to remove policy enforcement)
-    function setManifest(PoolId poolId, IManifest manifest) external;
+    /// @param  policy The policy contract to install (address(0) to remove policy enforcement)
+    function setPolicy(PoolId poolId, IPolicy policy) external;
 
     /// @notice Record a Hub-authorized, out-of-policy call in the local ledger (from a Hub {Authorize} message)
     /// @param  poolId The pool the authorized call targets

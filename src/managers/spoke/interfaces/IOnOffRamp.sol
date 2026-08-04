@@ -43,7 +43,7 @@ interface IOnOffRamp is IDepositManager, IWithdrawManager, IManagerCallFromHub {
     /// @notice Get the accounting token used for minting receipts
     function accountingToken() external view returns (IAccountingToken);
 
-    /// @notice The Envoy that routes manifest-supervised on/offramp configuration updates
+    /// @notice The Envoy that routes policy-supervised on/offramp configuration updates
     function envoy() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers

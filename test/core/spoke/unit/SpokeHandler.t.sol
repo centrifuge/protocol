@@ -8,8 +8,8 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IPolicy} from "../../../../src/core/utils/interfaces/IPolicy.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
@@ -198,27 +198,25 @@ contract SpokeHandlerTestSetRequestManager is SpokeHandlerTest {
     }
 }
 
-contract SpokeHandlerTestSetManifest is SpokeHandlerTest {
-    IManifest immutable MANIFEST = IManifest(makeAddr("Manifest"));
+contract SpokeHandlerTestSetPolicy is SpokeHandlerTest {
+    IPolicy immutable POLICY = IPolicy(makeAddr("Policy"));
 
     function testErrNotAuthorized() public {
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        handler.setManifest(POOL_A, MANIFEST);
+        handler.setPolicy(POOL_A, POLICY);
     }
 
-    function testSetManifest() public {
+    function testSetPolicy() public {
         vm.mockCall(
             address(spokeRegistry),
-            abi.encodeWithSelector(ISpokeRegistry.setManifest.selector, POOL_A, MANIFEST),
+            abi.encodeWithSelector(ISpokeRegistry.setPolicy.selector, POOL_A, POLICY),
             abi.encode()
         );
 
-        vm.expectCall(
-            address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.setManifest.selector, POOL_A, MANIFEST)
-        );
+        vm.expectCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.setPolicy.selector, POOL_A, POLICY));
         vm.prank(AUTH);
-        handler.setManifest(POOL_A, MANIFEST);
+        handler.setPolicy(POOL_A, POLICY);
     }
 
     function testAuthorizeErrNotAuthorized() public {

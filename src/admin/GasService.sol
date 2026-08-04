@@ -74,7 +74,7 @@ contract GasService is IGasService {
     uint128 public immutable updateVaultLink;
     uint128 public immutable updateVaultUnlink;
     uint128 public immutable setRequestManager;
-    uint128 public immutable setManifest;
+    uint128 public immutable setPolicy;
     uint128 public immutable authorizeSpokeCall;
     uint128 public immutable unauthorizeSpokeCall;
     uint128 public immutable updateManager;
@@ -102,25 +102,25 @@ contract GasService is IGasService {
         cancelUpgrade = _gasValue(142612);
         registerAsset = _gasValue(169115);
         setPoolAdapters = _gasValue(791178); // using MAX_ADAPTER_COUNT
-        request = _gasValue(282819);
+        request = _gasValue(282863);
         notifyPool = _gasValue(1357031);
-        notifyShareClass = _gasValue(1876002);
+        notifyShareClass = _gasValue(1876046);
         notifyPricePoolPerShare = _gasValue(177813);
         notifyPricePoolPerAsset = _gasValue(184348);
-        notifyShareMetadata = _gasValue(199958);
-        initiateTransferShares = _gasValue(369958);
-        executeTransferShares = _gasValue(254780);
+        notifyShareMetadata = _gasValue(199980);
+        initiateTransferShares = _gasValue(369980);
+        executeTransferShares = _gasValue(254802);
         updateRestriction = _gasValue(194426);
         managerCallFromHub = _gasValue(215779);
-        requestCallback = _gasValue(465135); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2869969);
+        requestCallback = _gasValue(465157); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2870035);
         updateVaultLink = _gasValue(192281);
         updateVaultUnlink = _gasValue(173041);
         setRequestManager = _gasValue(176628);
-        setManifest = _gasValue(178318);
+        setPolicy = _gasValue(177680);
         authorizeSpokeCall = _gasValue(184741);
         unauthorizeSpokeCall = _gasValue(162402);
-        updateManager = _gasValue(178783);
+        updateManager = _gasValue(178827);
         updateAssets = _gasValue(391814);
         updateShares = _gasValue(265303);
         managerCallFromSpoke = _gasValue(151429);
@@ -199,7 +199,7 @@ contract GasService is IGasService {
             return 100_000; // Some high value just to compute the call and fail inside the Gateway try/catch
         }
         if (kind == MessageType.SetRequestManager) return setRequestManager;
-        if (kind == MessageType.SetManifest) return setManifest;
+        if (kind == MessageType.SetPolicy) return setPolicy;
         if (kind == MessageType.AuthorizeSpokeCall) return authorizeSpokeCall;
         if (kind == MessageType.UnauthorizeSpokeCall) return unauthorizeSpokeCall;
         if (kind == MessageType.UpdateManager) return updateManager;

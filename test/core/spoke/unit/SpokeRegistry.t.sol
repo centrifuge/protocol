@@ -7,8 +7,8 @@ import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IPolicy} from "../../../../src/core/utils/interfaces/IPolicy.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
-import {IManifest} from "../../../../src/core/hub/interfaces/IManifest.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {SpokeRegistry, ISpokeRegistry} from "../../../../src/core/spoke/SpokeRegistry.sol";
 import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
@@ -549,36 +549,36 @@ contract SpokeRegistryTestPricePoolPerAsset is SpokeRegistryTest {
 }
 
 contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
-    IManifest manifest = IManifest(makeAddr("manifest"));
+    IPolicy policy = IPolicy(makeAddr("policy"));
     bytes data = hex"1234";
 
-    function _installManifest() internal {
+    function _installPolicy() internal {
         _addPool();
         vm.prank(AUTH);
-        registry.setManifest(POOL_A, manifest);
+        registry.setPolicy(POOL_A, policy);
     }
 
-    function testSetManifestErrNotAuthorized() public {
+    function testSetPolicyErrNotAuthorized() public {
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        registry.setManifest(POOL_A, manifest);
+        registry.setPolicy(POOL_A, policy);
     }
 
-    function testSetManifestErrInvalidPool() public {
+    function testSetPolicyErrInvalidPool() public {
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.InvalidPool.selector);
-        registry.setManifest(POOL_A, manifest);
+        registry.setPolicy(POOL_A, policy);
     }
 
-    function testSetManifest() public {
+    function testSetPolicy() public {
         _addPool();
 
         vm.expectEmit();
-        emit ISpokeRegistry.SetManifest(POOL_A, manifest);
+        emit ISpokeRegistry.SetPolicy(POOL_A, policy);
         vm.prank(AUTH);
-        registry.setManifest(POOL_A, manifest);
+        registry.setPolicy(POOL_A, policy);
 
-        assertEq(address(registry.manifest(POOL_A)), address(manifest));
-        assertEq(registry.manifestNonce(POOL_A), 1);
+        assertEq(address(registry.policy(POOL_A)), address(policy));
+        assertEq(registry.policyNonce(POOL_A), 1);
     }
 
     function testAuthorizeErrNotAuthorized() public {
@@ -587,15 +587,15 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
         registry.authorize(POOL_A, data);
     }
 
-    function testAuthorizeErrNoManifest() public {
-        // Recording an authorization for a pool with no manifest would be unconsumable, so it reverts.
+    function testAuthorizeErrPolicyNotInstalled() public {
+        // Recording an authorization for a pool with no policy would be unconsumable, so it reverts.
         vm.prank(AUTH);
-        vm.expectRevert(ISpokeRegistry.NoManifest.selector);
+        vm.expectRevert(ISpokeRegistry.PolicyNotInstalled.selector);
         registry.authorize(POOL_A, data);
     }
 
     function testAuthorizeAndConsume() public {
-        _installManifest();
+        _installPolicy();
         bytes32 id = registry.authId(POOL_A, data);
 
         // Several authorizations of the same call can be outstanding at once (a counter, not a flag).
@@ -607,26 +607,26 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
         registry.authorize(POOL_A, data);
         assertEq(registry.authorizations(id), 2);
 
-        // The pool's manifest consumes one at a time.
-        vm.prank(address(manifest));
+        // The pool's policy consumes one at a time.
+        vm.prank(address(policy));
         registry.consumeAuthorization(POOL_A, address(this), data);
         assertEq(registry.authorizations(id), 1);
 
-        vm.prank(address(manifest));
+        vm.prank(address(policy));
         registry.consumeAuthorization(POOL_A, address(this), data);
         assertEq(registry.authorizations(id), 0);
 
         // Nothing left to consume.
-        vm.prank(address(manifest));
+        vm.prank(address(policy));
         vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         registry.consumeAuthorization(POOL_A, address(this), data);
     }
 
-    function testConsumeAuthorizationOnlyCallableByManifest() public {
-        _installManifest();
+    function testConsumeAuthorizationOnlyCallableByPolicy() public {
+        _installPolicy();
 
-        // Caller is address(this), not the pool's manifest.
-        vm.expectRevert(ISpokeRegistry.NotManifest.selector);
+        // Caller is address(this), not the pool's policy.
+        vm.expectRevert(ISpokeRegistry.CallerNotPolicy.selector);
         registry.consumeAuthorization(POOL_A, address(this), data);
     }
 
@@ -636,7 +636,7 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
     }
 
     function testUnauthorize() public {
-        _installManifest();
+        _installPolicy();
         bytes32 id = registry.authId(POOL_A, data);
 
         vm.startPrank(AUTH);
@@ -656,30 +656,30 @@ contract SpokeRegistryTestAuthorization is SpokeRegistryTest {
         vm.stopPrank();
     }
 
-    function testManifestReinstallChangesAuthId() public {
-        _installManifest();
+    function testPolicyReinstallChangesAuthId() public {
+        _installPolicy();
         bytes32 id = registry.authId(POOL_A, data);
 
-        // Re-installing the same manifest address bumps the nonce, re-namespacing every id.
+        // Re-installing the same policy address bumps the nonce, re-namespacing every id.
         vm.prank(AUTH);
-        registry.setManifest(POOL_A, manifest);
-        assertEq(registry.manifestNonce(POOL_A), 2);
+        registry.setPolicy(POOL_A, policy);
+        assertEq(registry.policyNonce(POOL_A), 2);
         assertNotEq(registry.authId(POOL_A, data), id);
     }
 
-    function testManifestSwapBackDoesNotResurrectAuthorization() public {
-        _installManifest();
+    function testPolicySwapBackDoesNotResurrectAuthorization() public {
+        _installPolicy();
 
         vm.prank(AUTH);
         registry.authorize(POOL_A, data);
 
-        // Swap the manifest away and back: the outstanding authorization must not be resurrected.
+        // Swap the policy away and back: the outstanding authorization must not be resurrected.
         vm.startPrank(AUTH);
-        registry.setManifest(POOL_A, IManifest(makeAddr("otherManifest")));
-        registry.setManifest(POOL_A, manifest);
+        registry.setPolicy(POOL_A, IPolicy(makeAddr("otherPolicy")));
+        registry.setPolicy(POOL_A, policy);
         vm.stopPrank();
 
-        vm.prank(address(manifest));
+        vm.prank(address(policy));
         vm.expectRevert(ISpokeRegistry.NoOutstandingAuthorization.selector);
         registry.consumeAuthorization(POOL_A, address(this), data);
     }

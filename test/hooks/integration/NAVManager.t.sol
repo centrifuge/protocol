@@ -15,8 +15,8 @@ import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassMa
 import {INAVManager} from "../../../src/hooks/accounting/interfaces/INAVManager.sol";
 
 import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
-import {IStdHubManifest} from "../../../src/manifests/hub/interfaces/IStdHubManifest.sol";
-import {StdHubManifest, StdHubManifestFactory} from "../../../src/manifests/hub/StdHubManifest.sol";
+import {IStdHubPolicy} from "../../../src/policies/hub/interfaces/IStdHubPolicy.sol";
+import {StdHubPolicy, StdHubPolicyFactory} from "../../../src/policies/hub/StdHubPolicy.sol";
 
 contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     using CastLib for address;
@@ -91,7 +91,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         valuation.setPrice(POOL_A, scId, liabilityAsset, d18(1, 1));
     }
 
-    /// @dev Drives a NAVManager privileged action through the manifest-supervised path
+    /// @dev Drives a NAVManager privileged action through the policy-supervised path
     ///      (`hub.managerCall` -> `Envoy.callFromHub` -> `navManager.fromHub`), as FM.
     function _navManagerCall(bytes memory payload) internal {
         uint16 localId = messageDispatcher.localCentrifugeId();
@@ -447,21 +447,21 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
 
 /// @dev End-to-end share-price rate guard under on-chain accounting: the recompute path is permissionless
 ///      (anyone -> NAVManager.updateHoldingValue -> ... -> Hub.updateSharePrice), so re-commits of an
-///      unchanged price must leave the manifest's baseline where the last actual move put it.
+///      unchanged price must leave the policy's baseline where the last actual move put it.
 contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
     uint128 constant RATE = 1e12; // per second
     uint128 constant CAP = 5e17;
 
     address attacker = makeAddr("attacker");
 
-    StdHubManifest manifest;
+    StdHubPolicy policy;
 
-    function _installManifest() internal {
-        StdHubManifestFactory manifestFactory = new StdHubManifestFactory(hub, multiAdapter, shareClassManager);
-        manifest = StdHubManifest(
+    function _installPolicy() internal {
+        StdHubPolicyFactory policyFactory = new StdHubPolicyFactory(hub, multiAdapter, shareClassManager);
+        policy = StdHubPolicy(
             address(
-                manifestFactory.newStdHubManifest(
-                    IStdHubManifest.Config({
+                policyFactory.newHubPolicy(
+                    IStdHubPolicy.Config({
                         delay: 1 days,
                         expiry: 7 days,
                         escalation: 7 days,
@@ -474,25 +474,25 @@ contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
                         requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
                         oracleValuation: address(0),
-                        allowlist: new IStdHubManifest.Entry[](0)
+                        allowlist: new IStdHubPolicy.Entry[](0)
                     })
                 )
             )
         );
 
         vm.prank(address(root));
-        hub.setManifest(POOL_A, manifest);
+        hub.setPolicy(POOL_A, policy);
     }
 
     /// forge-config: default.isolate = true
     function testNoOpRecomputesKeepTheGuardWindow() public {
         _testInitializeAndUpdate();
-        _installManifest();
+        _installPolicy();
 
-        // First move under the manifest anchors the baseline: asset2 +1% -> NAV 3823e18.
+        // First move under the policy anchors the baseline: asset2 +1% -> NAV 3823e18.
         valuation.setPrice(POOL_A, scId, asset2, d18(101, 100));
         navManager.updateHoldingValue(POOL_A, scId, asset2);
-        uint64 baseline = manifest.lastPriceUpdate(POOL_A, scId);
+        uint64 baseline = policy.lastPriceUpdate(POOL_A, scId);
         assertEq(baseline, block.timestamp);
 
         skip(1 hours);
@@ -506,7 +506,7 @@ contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
         (D18 price, uint64 computedAt) = shareClassManager.pricePoolPerShare(POOL_A, scId);
         assertEq(price.raw(), (d18(3823e18) / d18(3800e18)).raw());
         assertEq(computedAt, block.timestamp); // the age tracks the recompute
-        assertEq(manifest.lastPriceUpdate(POOL_A, scId), baseline); // the guard window does not
+        assertEq(policy.lastPriceUpdate(POOL_A, scId), baseline); // the guard window does not
 
         // asset3 -10e18 -> 2.63e15 over the full hour, under RATE: still runs synchronously.
         valuation.setPrice(POOL_A, scId, asset3, d18(98, 100));
@@ -514,7 +514,7 @@ contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
 
         (price,) = shareClassManager.pricePoolPerShare(POOL_A, scId);
         assertEq(price.raw(), (d18(3813e18) / d18(3800e18)).raw());
-        assertEq(manifest.lastPriceUpdate(POOL_A, scId), block.timestamp);
+        assertEq(policy.lastPriceUpdate(POOL_A, scId), block.timestamp);
 
         // Guard is armed: the same-sized move again in this block has no elapsed time to bound it.
         valuation.setPrice(POOL_A, scId, asset3, d18(96, 100));

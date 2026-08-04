@@ -22,7 +22,7 @@ MESSAGE_TYPES = [
     None,  # UpdateVault, resolved to 25..27
     "updateAssets", "updateShares",
     "request", "requestCallback", "setRequestManager",
-    "managerCallFromSpoke", "managerCallFromHub", "updateManager", "setManifest",
+    "managerCallFromSpoke", "managerCallFromHub", "updateManager", "setPolicy",
     "authorizeSpokeCall", "unauthorizeSpokeCall",
     "updateVaultDeployAndLink", "updateVaultLink", "updateVaultUnlink",
 ]

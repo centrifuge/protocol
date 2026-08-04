@@ -13,7 +13,7 @@ import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol"
 /// @title  Supervisor
 /// @notice Pool-scoped sentinel registry and veto layer for the authorize flow. It holds no positive
 ///         power of its own; its sole job is to let the sentinels held here veto a pending
-///         authorization during the manifest delay window.
+///         authorization during the policy delay window.
 ///
 ///         The Supervisor is a registered Hub manager for the pool only so that it can reach
 ///         {IHub.cancelAuthorization} on behalf of sentinels (which are not Hub managers). The hub,
@@ -87,7 +87,7 @@ contract Supervisor is ISupervisor, IManagerCallFromHub {
         (bytes4 selector, bytes calldata args) = data.decodeCall();
         if (selector != IHub.managerCall.selector) return;
         // 224 = 7 x 32, the managerCall tuple's minimum ABI encoding; a shorter blob would revert the
-        // decode and freeze this veto. Shares shape and threshold with {StdHubManifest._checkManagerCall};
+        // decode and freeze this veto. Shares shape and threshold with {StdHubPolicy._checkManagerCall};
         // if the managerCall tuple changes, update both together.
         if (args.length < 224) return;
         (,, bytes32 target, bytes memory payload,,,) =

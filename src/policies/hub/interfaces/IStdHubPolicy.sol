@@ -4,12 +4,12 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {IHub} from "../../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {IHubManifest} from "../../../core/hub/interfaces/IManifest.sol";
+import {IHubPolicy} from "../../../core/utils/interfaces/IPolicy.sol";
 import {IHubRegistry} from "../../../core/hub/interfaces/IHubRegistry.sol";
 import {IMultiAdapter} from "../../../core/messaging/interfaces/IMultiAdapter.sol";
 import {IShareClassManager} from "../../../core/hub/interfaces/IShareClassManager.sol";
 
-interface IStdHubManifest is IHubManifest {
+interface IStdHubPolicy is IHubPolicy {
     error OnchainAccountingOnly();
     error CallerNotAllowed();
     error InvalidConfig();
@@ -64,13 +64,13 @@ interface IStdHubManifest is IHubManifest {
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);
 }
 
-interface IStdHubManifestFactory {
-    event DeployStdHubManifest(address indexed manifest);
+interface IStdHubPolicyFactory {
+    event DeployHubPolicy(address indexed policy);
 
     function hub() external view returns (IHub);
     function multiAdapter() external view returns (IMultiAdapter);
     function shareClassManager() external view returns (IShareClassManager);
 
-    function newStdHubManifest(IStdHubManifest.Config memory config) external returns (IStdHubManifest);
-    function previewStdHubManifest(IStdHubManifest.Config memory config) external view returns (address);
+    function newHubPolicy(IStdHubPolicy.Config memory config) external returns (IStdHubPolicy);
+    function previewHubPolicy(IStdHubPolicy.Config memory config) external view returns (address);
 }

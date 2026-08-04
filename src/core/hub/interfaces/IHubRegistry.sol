@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IHubManifest} from "./IManifest.sol";
 import {IBridgingHook} from "./IBridgingHook.sol";
 import {IHubRequestManager} from "./IHubRequestManager.sol";
 
@@ -9,6 +8,7 @@ import {IERC6909Decimals} from "../../../misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
+import {IHubPolicy} from "../../utils/interfaces/IPolicy.sol";
 
 interface IHubRegistry is IERC6909Decimals {
     //----------------------------------------------------------------------------------------------
@@ -21,10 +21,10 @@ interface IHubRegistry is IERC6909Decimals {
         uint8 decimals;
     }
 
-    /// @dev Packed into one slot so authorization-id computation reads the manifest and its install
+    /// @dev Packed into one slot so authorization-id computation reads the policy and its install
     ///      nonce with a single SLOAD.
-    struct ManifestInfo {
-        IHubManifest manifest;
+    struct PolicyInfo {
+        IHubPolicy policy;
         uint64 nonce;
     }
 
@@ -39,7 +39,7 @@ interface IHubRegistry is IERC6909Decimals {
     event UpdateCurrency(PoolId indexed poolId, AssetId currency);
     event SetHubRequestManager(PoolId indexed poolId, uint16 indexed centrifugeId, IHubRequestManager manager);
     event SetBridgingHook(PoolId indexed poolId, address hook);
-    event SetManifest(PoolId indexed poolId, IHubManifest manifest);
+    event SetPolicy(PoolId indexed poolId, IHubPolicy policy);
 
     /// @notice Emitted when an out-of-policy Hub call is authorized: this starts the policy timelock.
     ///         The authorization matures at `validAfter` and may then run, unless cancelled first. `data`
@@ -75,8 +75,8 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice Dispatched when {updateCurrency} targets a currency whose decimals differ from the pool's current
     ///         currency; pool decimals must stay fixed to match already-deployed share tokens.
     error CurrencyDecimalsMismatch();
-    /// @notice Dispatched when {initiateAuthorization} targets a pool with no manifest installed (nothing to classify).
-    error NoManifest();
+    /// @notice Dispatched when {initiateAuthorization} targets a pool with no policy installed (nothing to classify).
+    error PolicyNotInstalled();
     /// @notice Dispatched when {initiateAuthorization} targets a call that is currently in policy (nothing to authorize).
     error InPolicy();
     /// @notice Dispatched when {initiateAuthorization} targets a call that already has an authorization (cancel first).
@@ -84,8 +84,8 @@ interface IHubRegistry is IERC6909Decimals {
     /// @notice Dispatched when {consumeAuthorization} finds no matured, unexpired authorization, or when
     ///         {cancelAuthorization} finds no authorization to cancel.
     error Unauthorized();
-    /// @notice Dispatched when {consumeAuthorization} is called by anyone other than the pool's manifest.
-    error NotManifest();
+    /// @notice Dispatched when {consumeAuthorization} is called by anyone other than the pool's policy.
+    error CallerNotPolicy();
 
     //----------------------------------------------------------------------------------------------
     // Registration methods
@@ -133,18 +133,18 @@ interface IHubRegistry is IERC6909Decimals {
     /// @param currency The new currency asset
     function updateCurrency(PoolId poolId, AssetId currency) external;
 
-    /// @notice Install or replace the policy manifest for a pool
+    /// @notice Install or replace the policy for a pool
     /// @dev    Auth-gated: written through by the Hub, which enforces the policy on the change itself
     /// @param poolId The pool identifier
-    /// @param manifest The manifest contract (address(0) to clear)
-    function setManifest(PoolId poolId, IHubManifest manifest) external;
+    /// @param policy The policy contract (address(0) to clear)
+    function setPolicy(PoolId poolId, IHubPolicy policy) external;
 
     //----------------------------------------------------------------------------------------------
     // Authorization ledger
     //----------------------------------------------------------------------------------------------
 
     /// @notice Pre-authorize a future, out-of-policy Hub call. Callable only by the Hub (the manager check
-    ///         lives in {IHub.initiateAuthorization}). The pool's manifest classifies the call, using `caller` as the
+    ///         lives in {IHub.initiateAuthorization}). The pool's policy classifies the call, using `caller` as the
     ///         authorizing manager; an in-policy call can't be authorized. Matures after the classified
     ///         delay, after which a guarded Hub call whose calldata byte-matches `data` consumes it.
     /// @param poolId The pool the call targets
@@ -161,7 +161,7 @@ interface IHubRegistry is IERC6909Decimals {
     function cancelAuthorization(PoolId poolId, address caller, bytes calldata data) external;
 
     /// @notice Consume a matured authorization for an executing out-of-policy call. Callable only by the
-    ///         pool's installed manifest (from its {IManifest.enforce}). Reverts unless an authorization
+    ///         pool's installed policy (from its {IPolicy.enforce}). Reverts unless an authorization
     ///         exists, has matured, and is still within `expiry` of maturing.
     /// @param poolId The pool the call targets
     /// @param caller The manager whose Hub call is executing (for the audit event)
@@ -178,14 +178,14 @@ interface IHubRegistry is IERC6909Decimals {
     function authorizedAfter(bytes32 authId) external view returns (uint48 validAfter);
 
     /// @notice The identifier of an authorization for `data` on `poolId`, namespaced by the pool's
-    ///         current manifest and its install nonce, so any manifest change (including re-installing
-    ///         a previous manifest address) invalidates all pending authorizations.
+    ///         current policy and its install nonce, so any policy change (including re-installing
+    ///         a previous policy address) invalidates all pending authorizations.
     function authId(PoolId poolId, bytes calldata data) external view returns (bytes32);
 
-    /// @notice Incremented on every {setManifest}. Part of the {authId} namespace, so re-installing a
-    ///         previously used manifest address cannot resurrect authorizations from its earlier tenure.
+    /// @notice Incremented on every {setPolicy}. Part of the {authId} namespace, so re-installing a
+    ///         previously used policy address cannot resurrect authorizations from its earlier tenure.
     /// @param poolId The pool identifier
-    function manifestNonce(PoolId poolId) external view returns (uint64);
+    function policyNonce(PoolId poolId) external view returns (uint64);
 
     /// @notice Returns the metadata attached to the pool, if any
     /// @param poolId The pool identifier
@@ -209,10 +209,10 @@ interface IHubRegistry is IERC6909Decimals {
     /// @return The hub request manager contract
     function hubRequestManager(PoolId poolId, uint16 centrifugeId) external view returns (IHubRequestManager);
 
-    /// @notice Returns the policy manifest installed for a pool (address(0) if none)
+    /// @notice Returns the policy installed for a pool (address(0) if none)
     /// @param poolId The pool identifier
-    /// @return The manifest contract
-    function manifest(PoolId poolId) external view returns (IHubManifest);
+    /// @return The policy contract
+    function policy(PoolId poolId) external view returns (IHubPolicy);
 
     /// @notice Compute a pool ID given an ID postfix
     /// @param centrifugeId The network identifier

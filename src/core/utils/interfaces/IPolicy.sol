@@ -4,17 +4,17 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../types/PoolId.sol";
 
 /// @notice A pool's policy hook. Its enforcer calls {enforce} on every guarded call: the Hub on guarded
-///         manager methods, the Spoke on guarded spoke calls. The manifest itself holds no authorization
+///         manager methods, the Spoke on guarded spoke calls. The policy itself holds no authorization
 ///         state. The ledger that stores, matures, vetoes and consumes authorizations lives in the enforcer's
-///         registry ({IHubRegistry} on the Hub, {ISpokeRegistry} on the Spoke), so every manifest shares one
+///         registry ({IHubRegistry} on the Hub, {ISpokeRegistry} on the Spoke), so every policy shares one
 ///         audited, observable ledger.
 /// @dev    How a call is classified is role-specific and lives in the subtypes: the Hub prices a delay
-///         ({IHubManifest}), the Spoke answers yes/no ({ISpokeManifest}). Zero and `false` both mean "in
+///         ({IHubPolicy}), the Spoke answers yes/no ({ISpokePolicy}). Zero and `false` both mean "in
 ///         policy". The two are intentionally distinct method names, so their selectors and interface ids
 ///         differ and neither can be read through the other's ABI; do not collapse them.
-interface IManifest {
+interface IPolicy {
     /// @notice Dispatched when {enforce} is called by anyone other than the enforcer (the Hub or Spoke this
-    ///         manifest is installed on).
+    ///         policy is installed on).
     error NotEnforcer();
 
     /// @notice Enforce the pool's policy on a call. Callable only by the enforcer (the Hub or Spoke). No-op
@@ -28,7 +28,7 @@ interface IManifest {
 
 /// @notice Hub-side policy. The Hub times a delay before an out-of-policy authorization can execute, so
 ///         classification returns that delay.
-interface IHubManifest is IManifest {
+interface IHubPolicy is IPolicy {
     /// @notice Classify a call against the policy, returning the delay an authorization must age.
     /// @return delay 0 if the call is in policy (runs synchronously); otherwise the duration an
     ///         authorization for this call must age before it can execute. Reverts outright to block a
@@ -41,13 +41,13 @@ interface IHubManifest is IManifest {
 
 /// @notice Spoke-side policy. The Spoke has no local timelock — authorizations arrive already matured from the
 ///         Hub and are consumed from a counter ledger — so its policy decision is binary.
-/// @dev    Unlike {IHubManifest.authorizationDelay} (which the Hub calls to price the delay), the Spoke
+/// @dev    Unlike {IHubPolicy.authorizationDelay} (which the Hub calls to price the delay), the Spoke
 ///         enforcer never calls {authorizationRequired}: the in/out-of-policy decision lives inside {enforce}.
 ///         It is exposed purely for external consumers — off-chain tooling, monitoring, and UIs — to preview a
-///         call's policy without sending it. It is therefore optional: a spoke manifest need only implement
-///         {IManifest.enforce}, and implementing this interface is a convenience for exposing that preview in a
+///         call's policy without sending it. It is therefore optional: a spoke policy need only implement
+///         {IPolicy.enforce}, and implementing this interface is a convenience for exposing that preview in a
 ///         typed form.
-interface ISpokeManifest is IManifest {
+interface ISpokePolicy is IPolicy {
     /// @notice Preview whether a call requires a matured authorization. Not called by the Spoke enforcer;
     ///         provided for off-chain and other external consumers.
     /// @return required true if the call requires a matured authorization consumed from the spoke ledger;

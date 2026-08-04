@@ -23,7 +23,7 @@ import {ISpokeMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IManifest} from "../hub/interfaces/IManifest.sol";
+import {IPolicy} from "../utils/interfaces/IPolicy.sol";
 import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 
 /// @title  Spoke
@@ -58,7 +58,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         poolEscrowProvider = poolEscrowProvider_;
     }
 
-    /// @dev Manager-only, and must satisfy the pool's manifest policy if one is installed.
+    /// @dev Manager-only, and must satisfy the pool's policy if one is installed.
     modifier enforced(PoolId poolId) {
         _enforce(poolId);
         _;
@@ -387,8 +387,8 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpoke
-    function manifest(PoolId poolId) external view returns (IManifest) {
-        return spokeRegistry.manifest(poolId);
+    function policy(PoolId poolId) external view returns (IPolicy) {
+        return spokeRegistry.policy(poolId);
     }
 
     /// @inheritdoc ISpoke
@@ -410,12 +410,12 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     //----------------------------------------------------------------------------------------------
 
     /// @dev Reverts unless the resolved sender is a manager for `poolId`, then applies the pool's
-    ///      manifest policy if one is installed.
+    ///      policy if one is installed.
     function _enforce(PoolId poolId) internal {
         require(spokeRegistry.manager(poolId, msgSender()), NotManager());
 
-        IManifest m = spokeRegistry.manifest(poolId);
-        if (address(m) != address(0)) m.enforce(poolId, msgSender(), msg.data);
+        IPolicy policy_ = spokeRegistry.policy(poolId);
+        if (address(policy_) != address(0)) policy_.enforce(poolId, msgSender(), msg.data);
     }
 
     /// @dev Accumulate the queued gross asset flow.

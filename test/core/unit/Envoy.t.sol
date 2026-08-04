@@ -112,7 +112,7 @@ contract EnvoyTest is Test {
     /// @dev The direction boundary: a hub-only target (implements `fromHub` only) is physically unreachable
     ///      from the spoke direction because `callFromSpoke` invokes the nonexistent `fromSpoke` selector and
     ///      reverts. Distinct method names = distinct selectors is the structural guard that keeps the
-    ///      spoke path off hub-only targets that never consult the manifest.
+    ///      spoke path off hub-only targets that never consult the policy.
     function testCallFromSpokeToHubOnlyTargetReverts() public {
         MockHubOnlyTarget hubOnly = new MockHubOnlyTarget();
         bytes memory payload = hex"abcd";

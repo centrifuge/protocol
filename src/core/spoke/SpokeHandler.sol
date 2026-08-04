@@ -20,7 +20,7 @@ import {ISpokeGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IManifest} from "../hub/interfaces/IManifest.sol";
+import {IPolicy} from "../utils/interfaces/IPolicy.sol";
 
 /// @title  SpokeHandler
 /// @notice This contract handles incoming cross-chain messages from the hub,
@@ -155,8 +155,8 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc ISpokeGatewayHandler
-    function setManifest(PoolId poolId, IManifest manifest) external auth {
-        spokeRegistry.setManifest(poolId, manifest);
+    function setPolicy(PoolId poolId, IPolicy policy) external auth {
+        spokeRegistry.setPolicy(poolId, policy);
     }
 
     /// @inheritdoc ISpokeGatewayHandler

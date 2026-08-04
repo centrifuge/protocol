@@ -19,7 +19,7 @@ import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IManifest} from "../hub/interfaces/IManifest.sol";
+import {IPolicy} from "../utils/interfaces/IPolicy.sol";
 import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
 import {ISpokeRequestManager} from "../spoke/interfaces/ISpokeRequestManager.sol";
 
@@ -198,9 +198,9 @@ contract MessageProcessor is Auth, IMessageProcessor {
         } else if (kind == MessageType.ManagerCallFromHub) {
             MessageLib.ManagerCallFromHub memory m = MessageLib.deserializeManagerCallFromHub(message);
             envoy.callFromHub(PoolId.wrap(m.poolId), m.target.toAddress(), m.payload);
-        } else if (kind == MessageType.SetManifest) {
-            MessageLib.SetManifest memory m = MessageLib.deserializeSetManifest(message);
-            spokeHandler.setManifest(PoolId.wrap(m.poolId), IManifest(m.manifest.toAddress()));
+        } else if (kind == MessageType.SetPolicy) {
+            MessageLib.SetPolicy memory m = MessageLib.deserializeSetPolicy(message);
+            spokeHandler.setPolicy(PoolId.wrap(m.poolId), IPolicy(m.policy.toAddress()));
         } else if (kind == MessageType.AuthorizeSpokeCall) {
             MessageLib.AuthorizeSpokeCall memory m = MessageLib.deserializeAuthorizeSpokeCall(message);
             spokeHandler.authorize(PoolId.wrap(m.poolId), m.payload);

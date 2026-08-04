@@ -31,7 +31,7 @@ interface IQueueManager {
     /// @notice Routes and batches cross-chain messages between hub and spoke
     function gateway() external view returns (IGateway);
 
-    /// @notice The Envoy that routes manifest-supervised queue configuration updates
+    /// @notice The Envoy that routes policy-supervised queue configuration updates
     function envoy() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers

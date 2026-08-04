@@ -41,7 +41,7 @@ enum MessageType {
     ManagerCallFromSpoke,
     ManagerCallFromHub,
     UpdateManager,
-    SetManifest,
+    SetPolicy,
     AuthorizeSpokeCall,
     UnauthorizeSpokeCall
 }
@@ -99,7 +99,7 @@ library MessageLib {
         (89  << uint8(MessageType.ManagerCallFromSpoke) * 8) +
         (43  << uint8(MessageType.UpdateManager) * 8) +
         (57  << uint8(MessageType.ManagerCallFromHub) * 8) +
-        (41  << uint8(MessageType.SetManifest) * 8) +
+        (41  << uint8(MessageType.SetPolicy) * 8) +
         (9   << uint8(MessageType.AuthorizeSpokeCall) * 8) +
         (9   << uint8(MessageType.UnauthorizeSpokeCall) * 8);
 
@@ -916,21 +916,21 @@ library MessageLib {
     }
 
     //---------------------------------------
-    //   SetManifest
+    //   SetPolicy
     //---------------------------------------
 
-    struct SetManifest {
+    struct SetPolicy {
         uint64 poolId;
-        bytes32 manifest;
+        bytes32 policy;
     }
 
-    function deserializeSetManifest(bytes memory data) internal pure returns (SetManifest memory) {
-        require(messageType(data) == MessageType.SetManifest, UnknownMessageType());
-        return SetManifest({poolId: data.toUint64(1), manifest: data.toBytes32(9)});
+    function deserializeSetPolicy(bytes memory data) internal pure returns (SetPolicy memory) {
+        require(messageType(data) == MessageType.SetPolicy, UnknownMessageType());
+        return SetPolicy({poolId: data.toUint64(1), policy: data.toBytes32(9)});
     }
 
-    function serialize(SetManifest memory t) internal pure returns (bytes memory) {
-        return abi.encodePacked(MessageType.SetManifest, t.poolId, t.manifest);
+    function serialize(SetPolicy memory t) internal pure returns (bytes memory) {
+        return abi.encodePacked(MessageType.SetPolicy, t.poolId, t.policy);
     }
 
     //---------------------------------------

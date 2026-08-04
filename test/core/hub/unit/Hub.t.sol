@@ -63,9 +63,9 @@ contract TestCommon is Test {
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, ADMIN), abi.encode(true)
         );
 
-        // `_enforce` (supervisor work) reads the pool manifest; default it to none so manifest
+        // `_enforce` (supervisor work) reads the pool policy; default it to none so policy
         // enforcement is a no-op in these unit tests (they exercise the manager check + business logic).
-        vm.mockCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.manifest.selector), abi.encode(address(0)));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.policy.selector), abi.encode(address(0)));
 
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 

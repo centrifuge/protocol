@@ -85,8 +85,8 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
     ///      `gateway.withBatch`, and the gateway's callback into `executeMulticall` carries none of it back
     ///      (payment for calls like `notifyPool` is accounted separately via `msgValue()`). So every call
     ///      inside the batch sees CALLVALUE == 0 regardless of what the caller attached, and a non-payable
-    ///      call can be freely mixed with a paid payable one. This reverts with `NoManifest` only because
-    ///      the test pool has no manifest installed, not because of the payable/non-payable mix: proof is
+    ///      call can be freely mixed with a paid payable one. This reverts with `PolicyNotInstalled` only because
+    ///      the test pool has no policy installed, not because of the payable/non-payable mix: proof is
     ///      that execution reaches `authorize`'s own business logic (HubRegistry.initiateAuthorization) rather than
     ///      failing on entry.
     function testCanBatchNonPayableWithPaidPayableCall() public {
@@ -101,7 +101,7 @@ contract TestBatchingAndPayment is CentrifugeIntegrationTest {
         cs[0] = abi.encodeWithSelector(hub.initiateAuthorization.selector, poolA, bytes(""));
         cs[1] = abi.encodeWithSelector(hub.notifyPool.selector, poolA, TARGET_CHAIN, REFUND);
 
-        vm.expectRevert(IHubRegistry.NoManifest.selector);
+        vm.expectRevert(IHubRegistry.PolicyNotInstalled.selector);
         hub.multicall{value: GAS}(cs);
         vm.stopPrank();
     }
