@@ -388,3 +388,15 @@ contract TestHandleUpdateManager is TestCommon {
         processor.handle(HUB_ID, _message(ManagerKind.Bridger));
     }
 }
+
+contract TestHandleInvalidMessage is TestCommon {
+    uint16 constant HUB_ID = 1;
+
+    function testRevertsOnUnhandledMessageType() public {
+        bytes memory message = abi.encodePacked(uint8(0));
+
+        vm.prank(AUTH);
+        vm.expectRevert(abi.encodeWithSelector(IMessageProcessor.InvalidMessage.selector, uint8(0)));
+        processor.handle(HUB_ID, message);
+    }
+}

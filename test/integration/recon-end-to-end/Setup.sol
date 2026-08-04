@@ -134,7 +134,6 @@ abstract contract Setup is
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     AccountId[] internal createdAccountIds;
-    AssetId[] internal createdAssetIds;
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's
 
     // shortcut to avoid stack too deep errors
@@ -149,6 +148,12 @@ abstract contract Setup is
 
     int256 maxSharesMintNoAssets;
     int256 maxSharesDepositNoAssets;
+
+    /// @dev The controller a request was actually recorded under. `requestDeposit`/`requestRedeem` take
+    /// `(amount, controller, owner)`, and the handlers pass a random actor as controller while running as
+    /// `_getActor()`, so properties inspecting request state must follow the controller and not the caller.
+    address ghost_lastDepositRequestController;
+    address ghost_lastRedeemRequestController;
 
     modifier asAdmin() {
         vm.prank(address(this));
@@ -389,8 +394,6 @@ abstract contract Setup is
         syncVaultFactory.rely(address(spoke));
         syncVaultFactory.rely(address(spokeHandler));
         shareTokenRegistrar.rely(address(spoke));
-        shareTokenRegistrar.rely(address(spoke));
-        shareTokenRegistrar.rely(address(spokeRegistry));
         syncManager.rely(address(spoke));
         gateway.rely(address(spoke));
 
@@ -589,7 +592,7 @@ abstract contract Setup is
         }
     }
 
-    /// @notice Hook override to maintain invariant: _getShareToken() == spoke.shareToken(_getPool(), _getShareClassId())
+    /// @notice Hook override to maintain invariant: _getShareToken() == spokeRegistry.shareToken(_getPool(), _getShareClassId())
     /// @dev Called automatically when share class changes via _switchShareClassId() or _addShareClassId()
     /// @dev This ensures ghost variables keyed by share token address remain synchronized with protocol state
     /// @param newShareClassId The new share class that was just set as active

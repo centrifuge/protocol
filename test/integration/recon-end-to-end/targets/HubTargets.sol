@@ -21,7 +21,6 @@ import {BatchRequestManagerHarness} from "../mocks/BatchRequestManagerHarness.so
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
-import {Helpers} from "../utils/Helpers.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
@@ -84,8 +83,15 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // ═══════════════════════════════════════════════════════════════
     // PERMISSIONLESS FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    function hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint)
-        public
+    function hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint) public returns (PoolId poolId) {
+        require(poolCount < RECON_MAX_POOLS, "pool deploy cap");
+
+        return _hub_createPool(poolIdAsUint, admin, assetIdAsUint);
+    }
+
+    /// @dev Uncapped, so the one-shot deploy shortcut can never be locked out by the cap
+    function _hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint)
+        internal
         updateGhosts
         asActor
         returns (PoolId poolId)
@@ -96,14 +102,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         hub.createPool(_poolId, admin, _assetId);
 
         _addPool(_poolId.raw());
+        poolCount++;
 
         return _poolId;
-    }
-
-    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor {
-        AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy);
-
-        hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier
@@ -116,7 +117,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
     /// - Tracks maxMint changes for symmetry with redeem flow
     /// - Validates PoolEscrow state changes
-    /// - Uses hubHandler.notifyDeposit() return values for reliable state tracking
+    /// - Uses BatchRequestManagerHarness.notifyDepositWithReturn() return values for reliable state tracking
     /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         address actor = _getActor();
@@ -203,7 +204,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @notice Redeem Flow Tracking:
     /// - Tracks claimable withdrawal deltas (investorClaimableAfter - investorClaimableBefore)
     /// - Tracks share balance changes (investorSharesBefore vs investorSharesAfter)
-    /// - Uses hubHandler.notifyRedeem() return values for reliable state tracking
+    /// - Uses BatchRequestManagerHarness.notifyRedeemWithReturn() return values for reliable state tracking
     /// - Updates ghost variables: sumOfWithdrawable, userRedemptionsProcessed, userCancelledRedeems
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         _executeNotifyRedeem(maxClaims);
@@ -284,11 +285,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    /// @dev Only driver of `Holdings.increase`/`decrease` here: the spoke->hub gateway is mocked as a no-op,
-    ///      so the queued-asset path never reaches the hub. Letting the fuzzer decrease past the current
-    ///      amount drives the deficit state `property_deficitCountMatchesHoldings` guards; `isSnapshot=true`
-    ///      keeps the hub snapshot nonce self-consistent since nothing else drives it here.
-    function hub_updateAssets(uint128 amount, bool isIncrease) public updateGhosts asAdmin {
+    /// @dev Reproducer-only. Kept off the fuzzer surface on purpose: it writes the hub ledger directly, so it
+    ///      (a) desynchronises the hub snapshot nonce from `SnapshotQueue`'s, permanently reverting every later
+    ///      `submitQueued*` with `InvalidNonce`, and (b) moves `holdings.amount` with no matching escrow move,
+    ///      breaking `property_hubHoldingMatchesEscrowAccounted`. The fuzzer reaches the same deficit state
+    ///      through `balanceSheet_overReserve_clamped` + `balanceSheet_submitQueuedAssets`, which keeps both
+    ///      nonces and both ledgers in step.
+    function hub_updateAssets(uint128 amount, bool isIncrease) internal updateGhosts asAdmin {
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -298,17 +301,6 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         (, uint64 nonce) = holdings.snapshot(poolId, scId, centrifugeId);
 
         hubHandler.updateAssets(centrifugeId, poolId, scId, assetId, amount, isIncrease, true, nonce);
-    }
-
-    /// @dev Clamped to twice the current increased total (plus a seed), so a decrease can cross into
-    ///      deficit without overflowing the cumulative counters.
-    function hub_updateAssets_clamped(uint128 amount, bool isIncrease) public {
-        IBaseVault vault = IBaseVault(_getVault());
-        (uint128 increased,) =
-            holdings.holdingAmounts(vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId);
-
-        amount = uint128(uint256(amount) % (uint256(increased) * 2 + 1e18 + 1));
-        hub_updateAssets(amount, isIncrease);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -321,6 +313,28 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @return True if all epochs have been claimed
     function _hasClaimedAllEpochs(uint32 maxClaims, uint32 maxClaimsBound) private pure returns (bool) {
         return maxClaims == maxClaimsBound && maxClaims > 0;
+    }
+
+    /// @dev The claim-completeness validation in `hub_notifyDeposit` gates on `maxClaims == bound`, so callers
+    ///      that want to reach it must pass the bound exactly rather than a constant like `MAX_CLAIMS`.
+    function _maxDepositClaims() internal view returns (uint32) {
+        IBaseVault vault = _getVault();
+        return batchRequestManager.maxDepositClaims(
+            vault.poolId(),
+            vault.scId(),
+            CastLib.toBytes32(_getActor()),
+            spokeRegistry.vaultDetails(address(vault)).assetId
+        );
+    }
+
+    function _maxRedeemClaims() internal view returns (uint32) {
+        IBaseVault vault = _getVault();
+        return batchRequestManager.maxRedeemClaims(
+            vault.poolId(),
+            vault.scId(),
+            CastLib.toBytes32(_getActor()),
+            spokeRegistry.vaultDetails(address(vault)).assetId
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════

@@ -50,10 +50,20 @@ abstract contract SharedStorage {
     uint16 DEFAULT_DESTINATION_CHAIN = 1;
     uint128 ASSET_ID = uint128(bytes16(abi.encodePacked(DEFAULT_DESTINATION_CHAIN, uint32(1))));
 
+    /// === DEPLOYMENT CAPS === ///
+    // Every deployment mints a fresh runtime codehash, since the EIP-712 domain separator immutable
+    // embeds address(this). The fuzzer scores an unseen codehash as new coverage and saves the sequence,
+    // so an uncapped deployer keeps enlarging the corpus and the coverage map for the whole campaign.
+    uint256 constant RECON_MAX_NEW_ASSETS = 4;
+    uint256 constant RECON_MAX_POOLS = 4;
+
+    uint256 newAssetCount;
+    uint256 poolCount;
+
     /**
      * @notice Bidirectional mapping between asset addresses and AssetId
      * @dev Used for asset ID resolution during deployment and handler operations.
-     *      Duplicates spoke.assetToId() but provides faster lookups for handlers.
+     *      Duplicates spokeRegistry.assetToId() but provides faster lookups for handlers.
      */
     mapping(address => uint128) assetAddressToAssetId;
     mapping(uint128 => address) assetIdToAssetAddress;
@@ -155,13 +165,6 @@ abstract contract SharedStorage {
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * @notice Tracks net share balance sent via spoke transfers
-     * @dev Decremented when shares are transferred out via spoke
-     *      Used by: Properties._decreaseTotalShareSent
-     */
-    mapping(address => uint256) totalShareSent;
-
-    /**
      * @notice Tracks executed investment operations (share minting from deposits)
      * @dev Incremented when deposits/mints result in share issuance:
      *        - vault_deposit_sync
@@ -223,8 +226,6 @@ abstract contract SharedStorage {
     mapping(bytes32 => uint256) internal ghost_flipCount; // Count of position flips between issuance and revocation
     mapping(bytes32 => uint256) internal ghost_totalIssued; // Total shares issued cumulatively
     mapping(bytes32 => uint256) internal ghost_totalRevoked; // Total shares revoked cumulatively
-    mapping(bytes32 => uint256) internal ghost_assetQueueDeposits; // Cumulative deposits in asset queue
-    mapping(bytes32 => uint256) internal ghost_assetQueueWithdrawals; // Cumulative withdrawals in asset queue
     mapping(bytes32 => uint256) internal ghost_shareQueueNonce; // Track nonce progression for share queue
     mapping(bytes32 => uint256) internal ghost_previousNonce; // To verify monotonicity
 
@@ -236,10 +237,7 @@ abstract contract SharedStorage {
     // ===============================
     // RESERVE GHOST VARIABLES
     // ===============================
-    mapping(bytes32 => uint256) internal ghost_totalReserveOperations;
-    mapping(bytes32 => uint256) internal ghost_totalUnreserveOperations;
     mapping(bytes32 => uint256) internal ghost_netReserved;
-    mapping(bytes32 => uint256) internal ghost_reserveIntegrityViolations;
 
     // ===============================
     // AUTHORIZATION GHOST VARIABLES

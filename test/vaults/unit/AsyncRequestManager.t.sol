@@ -15,14 +15,18 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {ISpokeRequestManager} from "../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
-import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 import {IAsyncRequestManager, REASON_DEPOSIT, REASON_REDEEM} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+import {
+    RequestCallbackMessageLib,
+    RequestCallbackType
+} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -1109,5 +1113,15 @@ contract AsyncRequestManagerTestPoolEscrow is AsyncRequestManagerTest {
         vm.prank(ANY);
         vm.expectRevert(IAsyncRequestManager.NotAVault.selector);
         manager.globalEscrow();
+    }
+}
+
+contract AsyncRequestManagerTestCallback is AsyncRequestManagerTest {
+    function testErrUnknownRequestCallbackType() public {
+        bytes memory payload = abi.encodePacked(uint8(RequestCallbackType.Invalid));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRequestManager.UnknownRequestCallbackType.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, payload);
     }
 }

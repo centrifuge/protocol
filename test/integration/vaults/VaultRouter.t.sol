@@ -504,7 +504,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
-        // The ERC-7575 vault pointer is set explicitly via the registrar, not implicitly on link.
+        // Linking already points the ERC-7575 slot.
         PoolId poolId = vault.poolId();
         bytes memory payload =
             abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, vault.scId().raw(), assetId, vault_);
@@ -512,6 +512,13 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         shareTokenRegistrar.fromHub(poolId, payload);
 
         assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), address(erc20)), vault_);
+    }
+
+    function testGetVaultReturnsZeroForUnpointedAsset() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+
+        assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), makeAddr("otherAsset")), address(0));
     }
 
     function testRequestDeposit() public {
@@ -651,6 +658,48 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
             address(0)
         );
         vaultRouter.multicall{value: GAS * 2}(calls);
+    }
+
+    function testRequestDepositRouterCustody() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+
+        // The router is endorsed (exempt from membership); only the controller needs to be a member.
+        erc20.mint(address(vaultRouter), amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+
+        vaultRouter.requestDeposit(vault, amount, self, address(vaultRouter));
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
+    }
+
+    function testCrosschainTransferSharesFromOwner() public {
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+
+        erc20.mint(self, assets);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        erc20.approve(vault_, assets);
+        uint256 shares = vault.deposit(assets, self);
+
+        uint16 centrifugeId = 2;
+        centrifugeChain.updateMember(
+            vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
+        );
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
+
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        shareToken.approve(address(vaultRouter), shares);
+        uint256 supplyBefore = shareToken.totalSupply();
+
+        vaultRouter.crosschainTransferShares{value: GAS}(
+            vault, uint128(shares), centrifugeId, bytes32("receiver"), self, uint128(0), uint128(0), address(0)
+        );
+
+        assertEq(shareToken.balanceOf(self), 0, "owner shares moved out");
+        assertEq(shareToken.balanceOf(address(vaultRouter)), 0, "router retains no shares");
+        assertEq(shareToken.totalSupply(), supplyBefore - shares, "source shares burned");
     }
 
     function testCancelDepositRequest() public {

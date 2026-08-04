@@ -108,6 +108,15 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         hub.addShareClass(poolId, name, symbol, prefixedSalt);
     }
 
+    /// @dev Async approve epoch price must use the same source as the sync deposit path (live spoke pricePoolPerAsset)
+    function _livePricePoolPerAsset(PoolId poolId, ShareClassId scId, AssetId assetId) internal view returns (D18) {
+        try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 price) {
+            return price.isZero() ? D18.wrap(1e18) : price;
+        } catch {
+            return D18.wrap(1e18);
+        }
+    }
+
     function hub_approveDeposits(uint32 nowDepositEpochId, uint128 maxApproval) public updateGhosts {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
@@ -117,7 +126,12 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         batchRequestManager.fromHub{value: MAX_MESSAGE_COST}(
             poolId,
             BatchRequestManagerCallLib.approveDeposits(
-                scId, paymentAssetId, nowDepositEpochId, maxApproval, D18.wrap(1e18), address(this)
+                scId,
+                paymentAssetId,
+                nowDepositEpochId,
+                maxApproval,
+                _livePricePoolPerAsset(poolId, scId, paymentAssetId),
+                address(this)
             )
         );
 
@@ -137,7 +151,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         batchRequestManager.fromHub(
             poolId,
             BatchRequestManagerCallLib.approveRedeems(
-                scId, payoutAssetId, nowRedeemEpochId, maxApproval, D18.wrap(1e18)
+                scId, payoutAssetId, nowRedeemEpochId, maxApproval, _livePricePoolPerAsset(poolId, scId, payoutAssetId)
             )
         );
 
@@ -201,9 +215,10 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             ? IValuation(address(identityValuation))
             : IValuation(address(transientValuation));
         AccountId assetAccount = Helpers.getRandomAccountId(createdAccountIds, assetAccountEntropy);
-        AccountId equityAccount = Helpers.getRandomAccountId(createdAccountIds, equityAccountEntropy);
-        AccountId lossAccount = Helpers.getRandomAccountId(createdAccountIds, lossAccountEntropy);
-        AccountId gainAccount = Helpers.getRandomAccountId(createdAccountIds, gainAccountEntropy);
+        AccountId equityAccount =
+            Helpers.getDistinctAccountId(createdAccountIds, assetAccountEntropy, equityAccountEntropy);
+        AccountId lossAccount = Helpers.getDistinctAccountId(createdAccountIds, assetAccountEntropy, lossAccountEntropy);
+        AccountId gainAccount = Helpers.getDistinctAccountId(createdAccountIds, assetAccountEntropy, gainAccountEntropy);
 
         hub_initializeHolding(
             valuation,
@@ -241,7 +256,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
             ? IValuation(address(identityValuation))
             : IValuation(address(transientValuation));
         AccountId expenseAccount = Helpers.getRandomAccountId(createdAccountIds, expenseAccountEntropy);
-        AccountId liabilityAccount = Helpers.getRandomAccountId(createdAccountIds, liabilityAccountEntropy);
+        AccountId liabilityAccount =
+            Helpers.getDistinctAccountId(createdAccountIds, expenseAccountEntropy, liabilityAccountEntropy);
 
         hub_initializeLiability(valuation, uint32(expenseAccount.raw()), uint32(liabilityAccount.raw()));
     }
@@ -303,8 +319,7 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
 
         // Clamp epochId to current issue epoch
         nowIssueEpochId = batchRequestManager.nowIssueEpoch(poolId, scId, assetId);
-        // Clamp navPerShare to realistic range (1e15 to 2e18 — 0.001 to 2.0 in D18)
-        navPerShare = uint128(between(navPerShare, 1e15, 2e18));
+        navPerShare = _clampToPriceBand(navPerShare);
 
         hub_issueShares(nowIssueEpochId, navPerShare);
     }
@@ -351,6 +366,8 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
     /// totalIssuance[..] is decreased
     // TODO: Refactor this property to work with new issuance update logic
     function hub_revokeShares(uint32 nowRevokeEpochId, uint128 navPerShare) public updateGhostsWithType(OpType.REMOVE) {
+        navPerShare = _clampToPriceBand(navPerShare);
+
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -516,6 +533,15 @@ abstract contract AdminTargets is BaseTargetFunctions, Properties {
         AssetId assetId = _getAssetId();
 
         hub.updateHoldingValue(poolId, scId, assetId);
+
+        eq(
+            uint256(holdings.value(poolId, scId, assetId)),
+            uint256(
+                holdings.valuation(poolId, scId, assetId)
+                    .getQuote(poolId, scId, assetId, holdings.amount(poolId, scId, assetId))
+            ),
+            "post-update() holding value != getQuote(amount)"
+        );
     }
 
     function hub_updateJournal(uint64 poolId, uint8 accountToUpdate, uint128 debitAmount, uint128 creditAmount)

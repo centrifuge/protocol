@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MessageType, MessageLib} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {BytesLib} from "../../../../src/misc/libraries/BytesLib.sol";
+
+import {MESSAGE_MAX_LENGTH} from "../../../../src/core/messaging/interfaces/IGateway.sol";
+import {MessageType, MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import "forge-std/Test.sol";
 
@@ -779,5 +782,68 @@ contract TestMessageLibSourceCentrifugeId is Test {
             vm.expectRevert(MessageLib.InvalidAssetHome.selector);
             MessageLib.messageSourceCentrifugeId(buf);
         }
+    }
+}
+
+// Framing properties of Gateway.handle's batch walk over UpdateVault's variable-length payload.
+contract TestMessageLibUpdateVaultFraming is Test {
+    using MessageLib for *;
+    using BytesLib for bytes;
+
+    uint64 constant POOL_ID = (uint64(1) << 48) | 7;
+
+    function _updateVault(VaultUpdateKind kind, bytes memory payload) internal pure returns (bytes memory) {
+        return MessageLib.UpdateVault({
+                poolId: POOL_ID,
+                scId: bytes16(uint128(2)),
+                assetId: 3,
+                vaultOrFactory: bytes32(uint256(4)),
+                kind: uint8(kind),
+                extraGasLimit: 5,
+                payload: payload
+            }).serialize();
+    }
+
+    function _payload(uint256 len) internal pure returns (bytes memory payload) {
+        payload = new bytes(len);
+        for (uint256 i; i < len; i++) {
+            payload[i] = bytes1(uint8(i));
+        }
+    }
+
+    /// @dev Above 255 bytes the high byte of the length prefix stops being zero, so a walk that reads only the low
+    ///      byte desynchronizes and consumes the next message's type byte as payload.
+    function testBatchWalkResynchronizesAfterLargePayload() public pure {
+        bytes memory first = _updateVault(VaultUpdateKind.DeployAndLink, _payload(300));
+        bytes memory second = _updateVault(VaultUpdateKind.Unlink, "");
+
+        // Gateway rejects a batch whose messages disagree on the pool, so the walk is only reachable if they match.
+        assertEq(first.messagePoolId().raw(), second.messagePoolId().raw());
+
+        bytes memory remaining = abi.encodePacked(first, second);
+
+        uint256 firstLength = remaining.messageLength();
+        assertEq(firstLength, first.length);
+        bytes memory walkedFirst = remaining.slice(0, firstLength);
+        assertEq(walkedFirst, first);
+        assertEq(MessageLib.deserializeUpdateVault(walkedFirst).payload, _payload(300));
+
+        remaining = remaining.slice(firstLength, remaining.length - firstLength);
+
+        uint256 secondLength = remaining.messageLength();
+        assertEq(secondLength, second.length);
+        assertEq(remaining.slice(0, secondLength), second);
+
+        remaining = remaining.slice(secondLength, remaining.length - secondLength);
+        assertEq(remaining.length, 0);
+    }
+
+    /// @dev Legacy spokes resume their walk at the length-prefix byte, misreading it as a message type; keeping
+    ///      MESSAGE_MAX_LENGTH below 256 * NotifyPool prevents a payload skew from forging a same-pool message.
+    function testMessageMaxLengthCannotReachPoolDependentTypes() public pure {
+        uint256 header = _updateVault(VaultUpdateKind.Link, "").length;
+        assertEq(header, 92, "fixed fields plus the 2-byte length prefix");
+
+        assertLt(MESSAGE_MAX_LENGTH, header + 256 * uint256(uint8(MessageType.NotifyPool)));
     }
 }

@@ -13,6 +13,7 @@ import {IGateway} from "../../src/core/messaging/interfaces/IGateway.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
 import {IScheduleAuth} from "../../src/core/messaging/interfaces/IScheduleAuth.sol";
 import {IMessageDispatcher} from "../../src/core/messaging/interfaces/IMessageDispatcher.sol";
+import {ISpokeGatewayHandler} from "../../src/core/messaging/interfaces/IGatewayHandlers.sol";
 import {VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 import {ISpokeMessageSender, ShareClassMetadata} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
@@ -241,5 +242,31 @@ contract TestFile is TestCommon {
         emit IMessageDispatcher.File("envoy", address(23));
         dispatcher.file("envoy", address(23));
         assertEq(address(dispatcher.envoy()), address(23));
+    }
+}
+
+contract TestSendUpdateManagerLocal is TestCommon {
+    address immutable spokeHandler = makeAddr("spokeHandler");
+    address immutable who = makeAddr("who");
+
+    function testLocalGatewayBranch() public {
+        vm.mockCall(address(gateway), abi.encodeWithSelector(IGateway.updateManager.selector), "");
+        vm.expectCall(address(gateway), abi.encodeWithSelector(IGateway.updateManager.selector, POOL_A, who, true));
+
+        vm.prank(AUTH);
+        dispatcher.sendUpdateManager(LOCAL_CHAIN, POOL_A, ManagerKind.Gateway, bytes32(bytes20(who)), true, REFUND);
+    }
+
+    function testLocalBridgerBranch() public {
+        vm.prank(AUTH);
+        dispatcher.file("spokeHandler", spokeHandler);
+
+        vm.mockCall(spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateBridger.selector), "");
+        vm.expectCall(
+            spokeHandler, abi.encodeWithSelector(ISpokeGatewayHandler.updateBridger.selector, POOL_A, who, true)
+        );
+
+        vm.prank(AUTH);
+        dispatcher.sendUpdateManager(LOCAL_CHAIN, POOL_A, ManagerKind.Bridger, bytes32(bytes20(who)), true, REFUND);
     }
 }

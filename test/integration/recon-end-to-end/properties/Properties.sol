@@ -17,6 +17,7 @@ import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
+import {REASON_DEPOSIT, REASON_REDEEM} from "../../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {console2} from "forge-std/console2.sol";
 
@@ -34,6 +35,15 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
     // Constants for new API parameters
     uint128 internal constant SHARE_HOOK_GAS = 0;
+
+    // Realistic D18 price/nav band shared by every price/nav setter; keeping deposit and redeem legs
+    // in the same band avoids spurious cross-leg desync.
+    uint128 internal constant PRICE_BAND_MIN = 1e15; // 0.001 in D18
+    uint128 internal constant PRICE_BAND_MAX = 2e18; // 2.0 in D18
+
+    function _clampToPriceBand(uint128 value) internal returns (uint128) {
+        return uint128(between(value, PRICE_BAND_MIN, PRICE_BAND_MAX));
+    }
 
     event DebugWithString(string, uint256);
     event DebugNumber(uint256);
@@ -198,7 +208,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 _getVault().poolId(),
                 _getVault().scId(),
                 spokeRegistry.vaultDetails(address(_getVault())).assetId,
-                _getActor().toBytes32()
+                ghost_lastDepositRequestController.toBytes32()
             );
             (uint32 depositEpochId,,,) = batchRequestManager.epochId(
                 _getVault().poolId(), _getVault().scId(), spokeRegistry.vaultDetails(address(_getVault())).assetId
@@ -224,7 +234,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                 _getVault().poolId(),
                 _getVault().scId(),
                 spokeRegistry.vaultDetails(address(_getVault())).assetId,
-                _getActor().toBytes32()
+                ghost_lastRedeemRequestController.toBytes32()
             );
             (,, uint32 redeemEpochId,) = batchRequestManager.epochId(
                 _getVault().poolId(), _getVault().scId(), spokeRegistry.vaultDetails(address(_getVault())).assetId
@@ -455,21 +465,28 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     //     );
     // }
 
-    /// @dev Property: The sum of max claimable shares is always <= the share balance of the escrow
+    /// @dev Property: The sum of share-backed claims (async deposit maxMint + claimable cancel-redeem on both
+    ///      vault types) is always <= the share balance of the escrow
     function property_sum_of_possible_account_balances_leq_escrow() public vaultIsSet {
-        // only check for async vaults because sync vaults claim minted shares immediately
-        if (!Helpers.isAsyncVault(address(_getVault()))) {
-            return;
-        }
-
         IBaseVault vault = _getVault();
+        bool isAsync = Helpers.isAsyncVault(address(vault));
+
+        // withdrawShares is clamped to the escrow's free float (balanceSheet_withdrawShares_clamped), so a
+        // shortfall here is genuine insolvency rather than a manager withdrawal, but only for one vault per
+        // tuple: the clamp budgets from _getVault() while the escrow is per-poolId. maxMint is async-only
+        // (sync deposits claim immediately); cancel-redeem backing applies to both (redeem side is always async).
         uint256 max = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
         address[] memory actors = _getActors();
 
-        uint256 acc; // Use acc to get maxMint for each actor
+        uint256 acc;
         for (uint256 i; i < actors.length; i++) {
             // NOTE: Accounts for scenario in which we didn't deploy the demo share class
-            try vault.maxMint(actors[i]) returns (uint256 shareAmt) {
+            if (isAsync) {
+                try vault.maxMint(actors[i]) returns (uint256 shareAmt) {
+                    acc += shareAmt;
+                } catch {}
+            }
+            try asyncRequestManager.claimableCancelRedeemRequest(vault, actors[i]) returns (uint256 shareAmt) {
                 acc += shareAmt;
             } catch {}
         }
@@ -672,6 +689,17 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         gte(pendingDeposit, pendingAssetAmount, "pendingDeposit < pendingAssetAmount");
     }
 
+    /// @dev Property: issuance can never run ahead of deposit approval, nor revocation ahead of redeem
+    ///      approval. BatchRequestManager enforces this pointwise per claim but never as a standing invariant.
+    function property_epoch_pointer_ordering() public {
+        IBaseVault vault = _getVault();
+        (uint32 depositEpoch, uint32 issueEpoch, uint32 redeemEpoch, uint32 revokeEpoch) =
+            batchRequestManager.epochId(vault.poolId(), vault.scId(), _getAssetId());
+
+        lte(issueEpoch, depositEpoch, "issueEpoch > depositEpoch");
+        lte(revokeEpoch, redeemEpoch, "revokeEpoch > redeemEpoch");
+    }
+
     /// @dev Property: The sum of pending user deposit amounts depositRequest[..] is always >= total pending deposit
     /// amount pendingDeposit[..]
     /// @dev Property: The total pending deposit amount pendingDeposit[..] is always >= the approved deposit amount
@@ -699,8 +727,11 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             totalPendingUserDeposit += pendingUserDeposit;
         }
 
-        // check that the pending deposit is >= the total pending user deposit
-        gte(totalPendingUserDeposit, pendingDeposit, "total pending user deposits is < pending deposit");
+        // Each user's pending is floored independently of the aggregate, so the sum can trail it by up to one wei
+        // per actor. A drift beyond that is not dust and means this rounding model is wrong.
+        gte(
+            totalPendingUserDeposit + _actors.length, pendingDeposit, "total pending user deposits is < pending deposit"
+        );
         // check that the pending deposit is >= the approved deposit
         gte(pendingDeposit, approvedAssetAmount, "pending deposit is < approved deposit");
     }
@@ -810,6 +841,31 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
         gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
+    }
+
+    /// @dev Property (double-entry books): per pool, sum of every account's cumulative debit equals sum
+    ///      of credit. Accounting.lock() requires `debited == credited` per journal, so this holds even
+    ///      through the free-form hub_updateJournal handler. createdAccountIds is global across pools;
+    ///      entries with lastUpdated == 0 were never touched in this pool and are skipped.
+    function property_accounting_books_balance() public {
+        PoolId[] memory pools = _getPools();
+
+        for (uint256 i; i < pools.length; i++) {
+            PoolId poolId = pools[i];
+            uint256 sumDebit;
+            uint256 sumCredit;
+
+            for (uint256 j; j < createdAccountIds.length; j++) {
+                (uint128 totalDebit, uint128 totalCredit,, uint64 lastUpdated,) =
+                    accounting.accounts(poolId, createdAccountIds[j]);
+                if (lastUpdated == 0) continue;
+
+                sumDebit += totalDebit;
+                sumCredit += totalCredit;
+            }
+
+            eq(sumDebit, sumCredit, "per-pool sum(totalDebit) != sum(totalCredit) (double-entry broken)");
+        }
     }
 
     /// @dev `deficitCount(poolId, centrifugeId)` must equal the number of holdings on that pool-network with
@@ -1136,6 +1192,12 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
             return false;
         }
 
+        // hub_createPool moves the pool cursor off the vault's pool, so the escrow the balance ghosts read
+        // has to be excluded independently of the cursor.
+        if (address(_getVault()) != address(0) && to == _getPoolEscrowForVault(_getVault())) {
+            return false;
+        }
+
         return true;
     }
 
@@ -1147,29 +1209,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
 
         return false;
-    }
-
-    /// @dev utility to ensure the target is not in the system addresses
-    function _isInSystemAddress(address x) internal view returns (bool) {
-        address[] memory systemAddresses = _getSystemAddresses();
-        uint256 SYSTEM_ADDRESSES_LENGTH = systemAddresses.length;
-
-        for (uint256 i; i < SYSTEM_ADDRESSES_LENGTH; i++) {
-            if (systemAddresses[i] == x) return true;
-        }
-
-        return false;
-    }
-
-    /// NOTE: Example of checked overflow, unused as we have changed tracking of Tranche tokens to be based on Global_3
-    function _decreaseTotalShareSent(address asset, uint256 amt) internal {
-        uint256 cachedTotal = totalShareSent[asset];
-        unchecked {
-            totalShareSent[asset] -= amt;
-        }
-
-        // Check for overflow here
-        gte(cachedTotal, totalShareSent[asset], " _decreaseTotalShareSent Overflow");
     }
 
     // ===============================
@@ -1434,42 +1473,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev Property 1.3: Asset Queue Non-Negative
-    /// Definition: Asset snapshotQueue can never underflow (deposits/withdrawals ≥ 0)
-    /// Mathematical consistency of accumulation
-    function property_assetQueueNonNegative() public {
-        PoolId[] memory pools = _getPools();
-        for (uint256 i = 0; i < pools.length; i++) {
-            PoolId poolId = pools[i];
-            ShareClassId[] memory shareClassIds = _getPoolShareClasses(poolId);
-
-            for (uint256 j = 0; j < shareClassIds.length; j++) {
-                ShareClassId scId = shareClassIds[j];
-
-                AssetId[] memory assets = _getAssetIds();
-                for (uint256 k = 0; k < assets.length; k++) {
-                    AssetId assetId = assets[k];
-                    (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
-
-                    // Both values must be non-negative (uint128 enforces this, but verify explicitly)
-                    gte(uint256(deposits), 0, "property_assetQueueNonNegative: negative deposits");
-                    gte(uint256(withdrawals), 0, "property_assetQueueNonNegative: negative withdrawals");
-
-                    // Ghost variables should also be non-negative
-                    bytes32 assetKey = keccak256(abi.encode(poolId, scId, assetId));
-                    gte(
-                        ghost_assetQueueDeposits[assetKey], 0, "property_assetQueueNonNegative: ghost deposits negative"
-                    );
-                    gte(
-                        ghost_assetQueueWithdrawals[assetKey],
-                        0,
-                        "property_assetQueueNonNegative: ghost withdrawals negative"
-                    );
-                }
-            }
-        }
-    }
-
     /// @dev Property 1.6: Nonce Monotonicity
     /// Definition: Nonce strictly increases with each submission
     /// Ensures proper message ordering
@@ -1503,62 +1506,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev Property 2.6: Reserve/Unreserve Balance Integrity
-    /// @notice Ensures reserve operations maintain balance consistency
-    function property_reserveUnreserveBalanceIntegrity() public {
-        PoolId[] memory pools = _getPools();
-        for (uint256 i = 0; i < pools.length; i++) {
-            PoolId poolId = pools[i];
-            ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
-
-            for (uint256 j = 0; j < shareClasses.length; j++) {
-                ShareClassId scId = shareClasses[j];
-
-                AssetId[] memory assets = _getAssetIds();
-                for (uint256 k = 0; k < assets.length; k++) {
-                    AssetId assetId = assets[k];
-                    bytes32 key = keccak256(abi.encode(poolId, scId, assetId));
-
-                    // Skip if no reserve operations occurred
-                    if (ghost_totalReserveOperations[key] == 0 && ghost_totalUnreserveOperations[key] == 0) continue;
-
-                    // Use vault to get asset address
-                    IBaseVault vault = IBaseVault(_getVault());
-                    address asset = vault.asset();
-
-                    // Get available balance
-                    uint128 available = spoke.availableBalanceOf(poolId, scId, asset, 0);
-                    PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
-                    (, uint128 reserved) = poolEscrow.holding(scId, asset, assetId.raw());
-                    uint128 total = available + reserved;
-
-                    // Core Invariant 1: Available = Total - Reserved (automatically satisfied by construction)
-                    eq(
-                        available,
-                        total - reserved,
-                        "Reserve accounting formula violated: available != total - reserved"
-                    );
-
-                    // Core Invariant 2: Reserved cannot exceed total (automatically satisfied by construction)
-                    lte(reserved, total, "Reserved balance exceeds total balance");
-
-                    // Core Invariant 3: Net reserved matches ghost tracking
-                    // This is implicitly tested since we use ghost_netReserved to calculate reserved
-
-                    // Core Invariant 6: Available + Reserved = Total (automatically satisfied by construction)
-                    eq(uint256(available) + uint256(reserved), uint256(total), "Balance components don't sum to total");
-
-                    // Core Invariant 7: Max reserved never exceeded total
-                    // We can't validate this without accessing the escrow's actual reserved amount
-                    // But we can ensure our ghost tracking didn't overflow
-
-                    // Core Invariant 8: No integrity violations
-                    eq(ghost_reserveIntegrityViolations[key], 0, "Reserve integrity violations detected");
-                }
-            }
-        }
-    }
-
     /// @dev Property 2.4: Escrow Balance Sufficiency
     /// @notice Ensures available balance always covers withdrawals
     // NOTE: Removed because untestable; in BalanceSheet::withdraw, asset queue is increased at the same time that assets are sent to user which decreases holding_.total as well
@@ -1579,7 +1526,9 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     function property_availableGtQueued() public {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
-        AssetId assetId = _getAssetId();
+        // Same vault-derived keying as `property_hubHoldingMatchesEscrowAccounted`. Reading the queue at the cursor
+        // while reading the escrow at `vault.asset()` does not break here, it goes vacuous (queued reads 0).
+        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
         address asset = _getVault().asset();
 
         // Use holding.total (not availableBalanceOf) since reserve/unreserve
@@ -1621,6 +1570,76 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
 
         eq(actualBalance, aggregatedTotal, "escrow raw balance != aggregated holding.total");
+    }
+
+    /// @dev Property (holdings conservation): once the asset queue drains, the hub's derived holding amount
+    ///      must equal the escrow's accounted balance (total - reserved, floored at 0). Both ledgers net the
+    ///      same cumulative flows and floor at zero identically, so equality holds exactly, even through
+    ///      over-reserve deficit excursions (reserved > total). No price conversion crosses between the
+    ///      ledgers, so no dust tolerance is allowed.
+    /// @notice Same-chain recon applies queued updates synchronously, so once this asset's queue is empty
+    ///         the two sides must agree. Complements `property_escrowBalanceMatchesHoldingTotal` (escrow side only).
+    function property_hubHoldingMatchesEscrowAccounted() public assetIsSet {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        // Vault-derived, not the active-asset cursor: the escrow side below reads `vault.asset()`, so taking the
+        // hub side from the cursor compares two different assets as soon as a second one is registered.
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
+
+        (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
+        if (deposits != 0 || withdrawals != 0) return;
+
+        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
+        (uint128 total, uint128 reserved) = poolEscrow.holding(scId, vault.asset(), 0);
+        uint128 accounted = total > reserved ? total - reserved : 0;
+
+        eq(
+            uint256(holdings.amount(poolId, scId, assetId)),
+            uint256(accounted),
+            "hub holding.amount != escrow accounted (holdings conservation law)"
+        );
+    }
+
+    /// @dev Property: a holding with zero derived amount must carry zero value. Holdings.decrease() strips
+    ///      value pro-rata as amount hits zero, and update() re-quotes zero amount to zero, so stranded
+    ///      value here means the realized-delta valuation regressed (phantom NAV with no backing amount).
+    function property_holdingZeroAmountHasZeroValue() public assetIsSet {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = _getAssetId();
+
+        if (holdings.amount(poolId, scId, assetId) != 0) return;
+
+        eq(
+            uint256(holdings.value(poolId, scId, assetId)),
+            0,
+            "zero-amount holding carries non-zero value (realized-delta valuation regressed)"
+        );
+    }
+
+    /// @dev Property: the pool escrow's per-holding `reserved` total equals the sum of the keyed
+    ///      `reservedBy` ledger across reasons. AsyncRequestManager is the sole reserver in this harness and
+    ///      genuinely uses both REASON_DEPOSIT and REASON_REDEEM, so the sum is falsifiable, not tautological.
+    function property_poolEscrowReservedSumConsistency() public assetIsSet {
+        IBaseVault vault = _getVault();
+        PoolId poolId = vault.poolId();
+        address asset = vault.asset();
+        address reserver = address(asyncRequestManager);
+
+        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
+        ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+
+        for (uint256 i; i < shareClasses.length; i++) {
+            ShareClassId scId = shareClasses[i];
+            (, uint128 reserved) = poolEscrow.holding(scId, asset, 0);
+
+            uint256 keyedSum = uint256(poolEscrow.reservedBy(scId, reserver, REASON_DEPOSIT, asset, 0))
+                + uint256(poolEscrow.reservedBy(scId, reserver, REASON_REDEEM, asset, 0));
+
+            eq(uint256(reserved), keyedSum, "holding.reserved != sum of keyed reservedBy (ARM, both reasons)");
+        }
     }
 
     /// @dev Property 2.7: Authorization Boundary Enforcement
@@ -1731,33 +1750,27 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     }
 
     /// @dev Property: successful authorized calls must be made by authorized accounts
+    /// @dev Authorization is read live rather than from `ghost_authorizationLevel`: that ghost is keyed by caller
+    ///      alone, so a later `_trackAuthorization` for the same caller on a different pool overwrites the level and
+    ///      the assertion would fire on ghost drift instead of on protocol behaviour.
     function property_authorizationLevel() public {
         PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
-        bytes32 key = keccak256(abi.encode(poolId, scId));
+        bytes32 key = keccak256(abi.encode(poolId));
 
         // Verify all privileged operations had proper authorization
         if (ghost_privilegedOperationCount[key] > 0) {
             address lastCaller = ghost_lastAuthorizedCaller[key];
-            AuthLevel recordedLevel = ghost_authorizationLevel[lastCaller];
-            // Must be ward or manager
-            t(recordedLevel != AuthLevel.NONE, "Non-authorized address performed privileged operation");
-            // Verify authorization is still valid
-            if (recordedLevel == AuthLevel.WARD) {
-                eq(spoke.wards(lastCaller), 1, "Ward authorization was revoked but operations continued");
-            } else if (recordedLevel == AuthLevel.MANAGER) {
-                t(
-                    spokeRegistry.manager(poolId, lastCaller),
-                    "Manager authorization was revoked but operations continued"
-                );
-            }
+
+            t(
+                spoke.wards(lastCaller) == 1 || spokeRegistry.manager(poolId, lastCaller),
+                "Privileged operation by an address not authorized for this pool"
+            );
         }
     }
 
     /// @dev Property: authorization changes are correctly tracked
     function property_authorizationChange() public {
         PoolId poolId = _getPool();
-        ShareClassId scId = _getShareClassId();
         AuthLevel actualAuth = AuthLevel.NONE;
 
         // Determine actual authorization level
@@ -1770,7 +1783,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         // If auth changed, verify it was legitimate
         if (ghost_authorizationChanges[_getActor()] > 0 && actualAuth == AuthLevel.NONE) {
             // Auth was revoked - ensure no operations after revocation
-            address lastOp = ghost_lastAuthorizedCaller[keccak256(abi.encode(poolId, scId))];
+            address lastOp = ghost_lastAuthorizedCaller[keccak256(abi.encode(poolId))];
             t(
                 lastOp != _getActor() || ghost_authorizationChanges[_getActor()] == 1,
                 "Operations continued after authorization revoked"
@@ -1805,7 +1818,6 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                     t(!ghost_isEndorsedContract[lastFrom], "Transfer from endorsed contract was allowed");
 
                     // Additional validation for special addresses
-                    t(lastFrom != address(spoke), "Transfer from BalanceSheet contract was allowed");
                     t(lastFrom != address(spoke), "Transfer from Spoke contract was allowed");
                     t(lastFrom != address(hub), "Transfer from Hub contract was allowed");
                 }

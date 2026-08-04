@@ -19,6 +19,14 @@ contract MathLibTest is Test {
         assertEq(result, expected, "Incorrect rpow calculation");
     }
 
+    function testRpowZeroBaseZeroExp() public pure {
+        assertEq(MathLib.rpow(0, 0, 5), 5, "0^0 should return base");
+    }
+
+    function testRpowZeroBasePositiveExp() public pure {
+        assertEq(MathLib.rpow(0, 3, 10 ** 27), 0, "0^n (n>0) should be 0");
+    }
+
     function testMulDivDown(uint256 x, uint256 y, uint256 denominator) public pure {
         // Ignore cases where x * y overflows or denominator is 0.
         unchecked {

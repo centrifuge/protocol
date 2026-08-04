@@ -290,17 +290,19 @@ abstract contract BeforeAfter is Setup {
     function _updateValuesIfNonZero(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        if (_getShareToken() != address(0)) {
-            _structToUpdate.escrowShareTokenBalance = MockERC20(_getShareToken()).balanceOf(_getPoolEscrowAddress());
-            _structToUpdate.totalShareSupply = MockERC20(_getShareToken()).totalSupply();
-        }
-
         if (address(_getVault()) != address(0)) {
-            _structToUpdate.escrowAssetBalance[address(_getVault())] =
-                MockERC20(_getVault().asset()).balanceOf(_getPoolEscrowForVault(_getVault()));
+            IBaseVault vault = _getVault();
+
+            // Keyed off the vault, not the pool/share cursors: hub_createPool moves the pool cursor, which
+            // would snapshot an unrelated empty escrow and yield a zero delta against a vault-derived amount.
+            _structToUpdate.escrowShareTokenBalance = MockERC20(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
+            _structToUpdate.totalShareSupply = MockERC20(vault.share()).totalSupply();
+
+            _structToUpdate.escrowAssetBalance[address(vault)] =
+                MockERC20(vault.asset()).balanceOf(_getPoolEscrowForVault(vault));
             _structToUpdate.poolEscrowAssetBalance =
-                MockERC20(_getVault().asset()).balanceOf(address(poolEscrowFactory.escrow(_getVault().poolId())));
-            _structToUpdate.actualAssets = MockERC20(_getVault().asset()).balanceOf(address(_getVault()));
+                MockERC20(vault.asset()).balanceOf(address(poolEscrowFactory.escrow(vault.poolId())));
+            _structToUpdate.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         }
     }
 

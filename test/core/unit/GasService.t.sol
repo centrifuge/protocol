@@ -129,6 +129,43 @@ contract GasServiceTest is Test {
         assertEq(service.messageSourceCentrifugeId(message), message.messageSourceCentrifugeId());
     }
 
+    function _updateVault(VaultUpdateKind kind, bytes memory payload) internal pure returns (bytes memory) {
+        return MessageLib.UpdateVault({
+                poolId: 1,
+                scId: bytes16(uint128(2)),
+                assetId: 3,
+                vaultOrFactory: bytes32(uint256(4)),
+                kind: uint8(kind),
+                extraGasLimit: 0,
+                payload: payload
+            }).serialize();
+    }
+
+    function testMessageProcessingGasLimitIgnoresPayloadForLinkAndUnlink() public view {
+        VaultUpdateKind[2] memory kinds = [VaultUpdateKind.Link, VaultUpdateKind.Unlink];
+
+        for (uint256 i; i < kinds.length; i++) {
+            assertEq(
+                service.messageProcessingGasLimit(CENTRIFUGE_ID, _updateVault(kinds[i], "")),
+                service.messageProcessingGasLimit(CENTRIFUGE_ID, _updateVault(kinds[i], new bytes(900))),
+                string.concat("kind ", vm.toString(uint8(kinds[i])), ": limit depends on an unread payload")
+            );
+        }
+    }
+
+    /// @dev The gas estimator fully deserializes UpdateVault to read the kind byte.
+    function testMessageProcessingGasLimitRevertsOnOverlongDeclaredPayload() public {
+        bytes memory message = _updateVault(VaultUpdateKind.Link, "");
+        assertEq(message.length, 92);
+
+        uint16 declared = 300;
+        message[90] = bytes1(uint8(declared >> 8));
+        message[91] = bytes1(uint8(declared));
+
+        vm.expectRevert(BytesLib.SliceOutOfBounds.selector);
+        service.messageProcessingGasLimit(CENTRIFUGE_ID, message);
+    }
+
     function testMaxBatchGasLimit(uint16 centrifugeId) public view {
         uint256 expectedGasLimit = service.DEFAULT_SUPPORTED_TX_LIMIT();
         if (centrifugeId == 0) expectedGasLimit = 30;

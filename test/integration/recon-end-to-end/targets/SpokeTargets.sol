@@ -9,14 +9,13 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {VaultDetails} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
+import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {MessageLib, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
-import {VaultDetails, ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
-
-import {Vm} from "forge-std/Vm.sol";
 
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
@@ -30,46 +29,17 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     using CastLib for *;
     using MessageLib for *;
 
-    // NOTE: These introduce many false positives because they're used for cross-chain transfers but our test
-    // environment only allows tracking state on one chain so they were removed
-    // function spoke_handleTransferShares(uint128 amount, uint256 investorEntropy) public updateGhosts asActor {
-    //     address investor = _getRandomActor(investorEntropy);
-    //     spoke.handleTransferShares(poolId, scId, investor, amount);
-
-    //     // TF-12 mint share class tokens to user, not tracked in escrow
-
-    //     // Track minting for Global-3
-    //     incomingTransfers[address(token)] += amount;
-    // }
-
-    // function spoke_transferSharesToEVM(uint16 destinationChainId, bytes32 destinationAddress, uint128 amount)
-    //     public
-    // updateGhosts asActor {
-    //     uint256 balB4 = token.balanceOf(_getActor());
-
-    //     // Clamp
-    //     if (amount > balB4) {
-    //         amount %= uint128(balB4);
-    //     }
-
-    //     // Exact approval
-    //     token.approve(address(spoke), amount);
-
-    //     spoke.transferShares(destinationChainId, poolId, scId, destinationAddress, amount);
-    //     // TF-11 burns share class tokens from user, not tracked in escrow
-
-    //     // Track minting for Global-3
-    //     outGoingTransfers[address(token)] += amount;
-
-    //     uint256 balAfterActor = token.balanceOf(_getActor());
-
-    //     t(balAfterActor <= balB4, "PM-3-A");
-    //     t(balB4 - balAfterActor == amount, "PM-3-A");
-    // }
+    // NOTE: inbound/outbound share-transfer handlers are deliberately absent. They move supply across chains,
+    // and this harness only models one, so the compensating mint or burn is unobservable and every conservation
+    // property reports a false positive.
 
     // Step 1
+    /// @dev internal (deploy-only), not a fuzz entry: an arbitrary `assetAddress` is almost never a token, so the
+    /// fuzzer spends its budget on `AssetMissingDecimals` reverts. Worse, the literal address a `--repro` test
+    /// records is meaningless under Foundry, where the harness deploys to different addresses, so any finding whose
+    /// sequence contains this handler is unreplayable. Reach it via `spoke_registerAsset_clamped`.
     function spoke_registerAsset(address assetAddress, uint256 erc6909TokenId)
-        public
+        internal
         updateGhosts
         asAdmin
         returns (uint128 assetId)
@@ -98,8 +68,10 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
     }
 
     // Step 3
+    // internal (deploy-only), not a fuzz entry: a second share class has no vault and would shift the
+    // "current" share class away from the deployed one, desyncing vault-tracking ghosts (false positives).
     function spoke_addShareClass(uint128 scIdAsUint, uint8 decimals)
-        public
+        internal
         updateGhosts
         asAdmin
         returns (address, bytes16)
@@ -108,6 +80,11 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         string memory symbol = "TSC";
         bytes16 scId = bytes16(scIdAsUint);
         address hook = address(fullRestrictions);
+
+        // Clamp to the protocol's supported range [0, 18]. Zero is allowed since share decimals must
+        // match pool decimals (enforced by HubRegistry.updateCurrency's CurrencyDecimalsMismatch check);
+        // unclamped, the fuzzer could pick decimals that overflow PricingLib's asset<->share conversion.
+        decimals = uint8(between(decimals, 0, 18));
 
         spokeHandler.addShareClass(
             _getPool(),
@@ -142,26 +119,20 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
         PoolId poolId = _getPool();
         ShareClassId scId = _getShareClassId();
         AssetId assetId = _getAssetId();
+        (address asset, uint256 tokenId) = spokeRegistry.idToAsset(assetId);
+        address token = address(spokeRegistry.shareToken(poolId, scId));
 
-        // Core no longer keeps a tuple -> vault reverse lookup; recover the deployed vault from the
-        // DeployVault event (via the forge-std cheat, as used elsewhere in this suite under Foundry).
-        Vm forgeVm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
-        forgeVm.recordLogs();
+        // Core keeps no tuple -> vault reverse lookup, but IVaultFactory mandates a deterministic
+        // pre-deployment address, so the vault is knowable without a DeployVault log scan and therefore
+        // without a cheatcode in whichever fuzzer drives the suite.
+        address vault = IVaultFactory(factory).getVault(poolId, scId, asset, tokenId, token, bytes(""));
+
         spokeHandler.updateVault(poolId, scId, assetId, factory, VaultUpdateKind.DeployAndLink, bytes(""));
-
-        Vm.Log[] memory logs = forgeVm.getRecordedLogs();
-        address vault;
-        for (uint256 i = logs.length; i > 0; i--) {
-            if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
-                (,, vault) = abi.decode(logs[i - 1].data, (uint256, address, address));
-                break;
-            }
-        }
+        t(vault.code.length > 0, "spoke_deployAndLinkVault: factory preview does not match the deployed vault");
 
         _addVault(vault);
 
-        (, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
-        if (tokenId == 0 && vault != address(0)) {
+        if (tokenId == 0) {
             shareTokenRegistrar.fromHub(
                 poolId, abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId.raw(), assetId.raw(), vault)
             );
@@ -184,17 +155,14 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
 
     // Step 6- link the vault
     function spoke_linkVault(address vault) public updateGhosts asAdmin {
-        IBaseVault vaultInstance = IBaseVault(vault);
-        PoolId poolId = vaultInstance.poolId();
-        ShareClassId scId = vaultInstance.scId();
-        AssetId assetId = _getAssetId();
+        VaultDetails memory vd = spokeRegistry.vaultDetails(vault);
 
-        spokeRegistry.linkVault(poolId, scId, assetId, address(vault));
+        spokeRegistry.linkVault(vd.poolId, vd.scId, vd.assetId, vault);
 
-        (, uint256 tokenId) = spokeRegistry.idToAsset(assetId, true);
-        if (tokenId == 0) {
+        if (vd.tokenId == 0) {
             shareTokenRegistrar.fromHub(
-                poolId, abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), scId.raw(), assetId.raw(), vault)
+                vd.poolId,
+                abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), vd.scId.raw(), vd.assetId.raw(), vault)
             );
         }
     }

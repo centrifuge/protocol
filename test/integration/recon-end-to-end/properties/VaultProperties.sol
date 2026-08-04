@@ -33,83 +33,73 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     using MathLib for *;
 
     /// === Overridden Implementations === ///
-    function vault_3(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
+    function vault_3(address asyncVaultTarget) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_3(clamped);
     }
 
-    function vault_4(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
+    function vault_4(address asyncVaultTarget) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_4(clamped);
     }
 
-    function vault_5(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
+    function vault_5(address asyncVaultTarget) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_5(clamped);
     }
 
-    function vault_6_deposit(address asyncVaultTarget, uint256 amt) public {
-        _centrifugeSpecificPreChecks();
+    function vault_6_deposit(address asyncVaultTarget, uint256 amt) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_6_deposit(clamped, amt);
     }
 
-    function vault_6_mint(address asyncVaultTarget, uint256 amt) public {
-        _centrifugeSpecificPreChecks();
+    function vault_6_mint(address asyncVaultTarget, uint256 amt) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_6_mint(clamped, amt);
     }
 
-    function vault_6_withdraw(address asyncVaultTarget, uint256 amt) public {
-        _centrifugeSpecificPreChecks();
+    function vault_6_withdraw(address asyncVaultTarget, uint256 amt) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_6_withdraw(clamped, amt);
     }
 
-    function vault_6_redeem(address asyncVaultTarget, uint256 amt) public {
-        _centrifugeSpecificPreChecks();
+    function vault_6_redeem(address asyncVaultTarget, uint256 amt) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_6_redeem(clamped, amt);
     }
 
-    function vault_7(address asyncVaultTarget, uint256 shares) public {
-        _centrifugeSpecificPreChecks();
+    function vault_7(address asyncVaultTarget, uint256 shares) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_7(clamped, shares);
     }
 
-    function vault_8(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
+    function vault_8(address asyncVaultTarget) public statelessTest {
+        require(_canCheckProperties());
         address clamped = _clampVault(asyncVaultTarget);
+        require(Helpers.isAsyncVault(clamped));
         ERC7540Properties.erc7540_8(clamped);
     }
 
-    function vault_9_deposit(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
-        address clamped = _clampVault(asyncVaultTarget);
-        ERC7540Properties.erc7540_9_deposit(clamped);
-    }
-
-    function vault_9_mint(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
-        address clamped = _clampVault(asyncVaultTarget);
-        ERC7540Properties.erc7540_9_mint(clamped);
-    }
-
-    function vault_9_withdraw(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
-        address clamped = _clampVault(asyncVaultTarget);
-        ERC7540Properties.erc7540_9_withdraw(clamped);
-    }
-
-    function vault_9_redeem(address asyncVaultTarget) public {
-        _centrifugeSpecificPreChecks();
-        address clamped = _clampVault(asyncVaultTarget);
-        ERC7540Properties.erc7540_9_redeem(clamped);
-    }
+    // NOTE: erc7540_9 ("if max[method] > 0, method(max) must not revert") is intentionally NOT wrapped. The
+    // custom vault_maxDeposit/maxMint/maxWithdraw/maxRedeem properties below assert the same invariant but
+    // tolerate the admin ops erc7540_9 does not: an unlinked vault, and a stranded claim from a direct
+    // balanceSheet.issue.
 
     /// === Custom Properties === ///
 
@@ -132,6 +122,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         statelessTest
     {
         uint256 maxDepositBefore = _getVault().maxDeposit(_getActor());
+        require(maxDepositBefore > 0, "must be able to deposit");
 
         depositAmount = between(depositAmount, 1, maxDepositBefore);
 
@@ -503,16 +494,21 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     /// @return tolerance The maximum rounding error from ceil(x/price)→floor(result*price) round-trip
     function _asyncRoundTripTolerance(bool isAssetTolerance) internal view returns (uint256) {
         if (isAssetTolerance) {
-            // Degenerate price check: if 1 full share converts to 0 assets, the price is
-            // near-zero. Claims use fulfillment price but maxDeposit uses current price,
-            // making validation meaningless.
+            // `maxDeposit` is derived from `maxMint` at the actor's FULFILLMENT price, so the tolerance has to be
+            // quoted in that same price domain. `convertToAssets` quotes at the current registry price, which
+            // under-shoots as soon as the share price moves between fulfillment and claim.
+            D18 depositPrice = _actorDepositPrice();
+
+            // Degenerate price check: if 1 full share converts to 0 assets the price is near-zero and the
+            // comparison is meaningless.
+            if (depositPrice.isZero()) return type(uint256).max;
             uint256 oneFullShareInAssets =
-                _getVault().convertToAssets(10 ** IERC20Metadata(_getShareToken()).decimals());
+                _shareToAssetsAt(10 ** IERC20Metadata(_getVault().share()).decimals(), depositPrice);
             if (oneFullShareInAssets == 0) return type(uint256).max;
 
-            // Normal case: ceiling division adds at most 1 share wei (+convertToAssets(1)),
-            // floor-not-distributing adds at most 1 asset wei (+1).
-            return _getVault().convertToAssets(1) + 1;
+            // Normal case: ceiling division debits at most 1 share wei, and the floor on the way back to assets
+            // loses at most 1 asset wei.
+            return _shareToAssetsAt(1, depositPrice) + 1;
         } else {
             uint256 oneFullAssetInShares =
                 _getVault().convertToShares(10 ** IERC20Metadata(_getVault().asset()).decimals());
@@ -520,6 +516,25 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
             return _getVault().convertToShares(1) + 1;
         }
+    }
+
+    /// @dev The actor's weighted-average deposit price, i.e. the price `maxDeposit` is derived at.
+    function _actorDepositPrice() internal view returns (D18 depositPrice) {
+        (,, depositPrice,,,,,,,) = asyncRequestManager.investments(_getVault(), _getActor());
+    }
+
+    /// @dev Shares -> assets at an explicit `priceAssetPerShare`, rounded up, mirroring the manager's conversion.
+    function _shareToAssetsAt(uint256 shares, D18 priceAssetPerShare) internal view returns (uint256) {
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(_getVault()));
+
+        return PricingLib.shareToAssetAmount(
+            _getVault().share(),
+            shares.toUint128(),
+            vaultDetails.asset,
+            vaultDetails.tokenId,
+            priceAssetPerShare,
+            MathLib.Rounding.Up
+        );
     }
 
     /// @dev Validates AsyncVault max value changes
@@ -804,11 +819,6 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         }
 
         return true;
-    }
-
-    function _centrifugeSpecificPreChecks() internal view {
-        require(msg.sender == address(this)); // Enforces external call to ensure it's not state altering
-        require(_canCheckProperties()); // Early revert to prevent false positives
     }
 
     /// @dev Helper to validate async vault deposit failures

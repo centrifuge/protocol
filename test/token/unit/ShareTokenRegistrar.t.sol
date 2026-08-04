@@ -451,6 +451,57 @@ contract ShareTokenRegistrarTest is Test {
         registrar.fromHub(poolId, payload);
     }
 
+    function testFromHubRejectsValue() public {
+        registrar.file("spokeRegistry", spokeRegistry);
+        vm.deal(envoy, 1 ether);
+
+        PoolId poolId = PoolId.wrap(1);
+        ShareClassId scId = ShareClassId.wrap(bytes16(uint128(2)));
+        bytes memory payload = abi.encode(IShareTokenRegistrar.RegistrarCall.SetHook, scId.raw(), makeAddr("hook"));
+
+        vm.prank(envoy);
+        vm.expectRevert(IShareTokenRegistrar.UnexpectedValue.selector);
+        registrar.fromHub{value: 1}(poolId, payload);
+    }
+
+    function testFromHubUnknownCall() public {
+        address token = _newToken();
+        registrar.file("spokeRegistry", spokeRegistry);
+
+        PoolId poolId = PoolId.wrap(1);
+        ShareClassId scId = ShareClassId.wrap(bytes16(uint128(2)));
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.shareTokenAndRegistrar.selector, poolId, scId),
+            abi.encode(token, address(registrar))
+        );
+
+        bytes memory payload = abi.encode(uint8(99), scId.raw());
+
+        vm.prank(envoy);
+        vm.expectRevert(IShareTokenRegistrar.UnknownRegistrarCall.selector);
+        registrar.fromHub(poolId, payload);
+    }
+
+    function testFile() public {
+        address newEnvoy = makeAddr("newEnvoy");
+
+        vm.expectEmit();
+        emit IShareTokenRegistrar.File("envoy", newEnvoy);
+        registrar.file("envoy", newEnvoy);
+        assertEq(registrar.envoy(), newEnvoy);
+
+        vm.expectEmit();
+        emit IShareTokenRegistrar.File("spokeRegistry", spokeRegistry);
+        registrar.file("spokeRegistry", spokeRegistry);
+        assertEq(address(registrar.spokeRegistry()), spokeRegistry);
+    }
+
+    function testFileUnrecognizedParam() public {
+        vm.expectRevert(IShareTokenRegistrar.FileUnrecognizedParam.selector);
+        registrar.file("unknown", makeAddr("data"));
+    }
+
     function testFileNotAuthorized() public {
         vm.prank(makeAddr("notAuthorized"));
         vm.expectRevert(IAuth.NotAuthorized.selector);

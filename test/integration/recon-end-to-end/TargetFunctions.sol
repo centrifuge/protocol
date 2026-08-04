@@ -133,7 +133,7 @@ abstract contract TargetFunctions is
         // 2. Deploy new pool and register it
         {
             _poolId = newPoolId(CENTRIFUGE_CHAIN_ID, uint48(POOL_ID_COUNTER));
-            hub_createPool(_poolId.raw(), _getActor(), _getAssetId().raw());
+            _hub_createPool(_poolId.raw(), _getActor(), _getAssetId().raw());
 
             spoke_addPool();
 
@@ -153,7 +153,9 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            spoke_addShareClass(uint128(_scId), 18);
+            // Share token decimals must equal the pool currency decimals: the redeem path
+            // (BatchRequestManager.shareToAssetAmount) hard-assumes share==pool decimals.
+            spoke_addShareClass(uint128(_scId), decimals);
             ShareToken(_getShareToken()).rely(address(spoke));
             ShareToken(_getShareToken()).rely(address(spoke));
         }
@@ -253,6 +255,9 @@ abstract contract TargetFunctions is
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
         IBaseVault vault = _getVault();
 
+        // Clamp once so asset valuation and share price use the same bounded value.
+        navPerShare = _clampToPriceBand(navPerShare);
+
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), navPerShare);
 
@@ -266,6 +271,9 @@ abstract contract TargetFunctions is
 
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
         IBaseVault vault = _getVault();
+
+        // Clamp once so asset valuation and share price use the same bounded value.
+        navPerShare = _clampToPriceBand(navPerShare);
 
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), navPerShare);
@@ -286,7 +294,11 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // Request 2x amount to ensure sufficient pending after claiming the approved amount
-        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
+        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount.
+        // Bound to half the balance first: a raw uint256 draw overflows `amount * 2` and reverts the
+        // whole shortcut, and the 2x request only outlives the claim while it stays funded.
+        amount = amount % (_getTokenAndBalanceForVault() / 2 + 1);
+
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
 
         uint32 depositEpoch = batchRequestManager.nowDepositEpoch(_getPool(), _getShareClassId(), _getAssetId());
@@ -295,6 +307,30 @@ abstract contract TargetFunctions is
 
         hub_notifyDeposit(MAX_CLAIMS);
         vault_deposit(amount);
+    }
+
+    /// @dev Same chain as shortcut_deposit_and_claim but stops before the claim, so it leaves a notified,
+    ///      unclaimed position behind. That state is otherwise near-unreachable: vault_deposit drains a claim
+    ///      as soon as one exists, so maxDepositClaims is 0 at almost every sample, which keeps both the
+    ///      vault_max* liveness properties and the claim-completeness validation in hub_notifyDeposit dark.
+    ///      Notifies the exact claim bound, since that validation gates on equality with it.
+    function shortcut_deposit_and_notify(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 amount,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
+        // Bound to half the balance: a raw uint256 draw overflows `amount * 2`, and the 2x request must stay
+        // funded for pending to survive the approval.
+        amount = amount % (_getTokenAndBalanceForVault() / 2 + 1);
+
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
+
+        uint32 depositEpoch = batchRequestManager.nowDepositEpoch(_getPool(), _getShareClassId(), _getAssetId());
+        shortcut_approve_and_issue_shares_safe(uint128(amount), depositEpoch, navPerShare);
+
+        hub_notifyDeposit(_maxDepositClaims());
     }
 
     function shortcut_deposit_and_cancel(
@@ -391,6 +427,13 @@ abstract contract TargetFunctions is
         shortcut_claim_withdrawal(shares, toEntropy);
     }
 
+    /// @dev Redeem-side twin of shortcut_deposit_and_notify: leaves a notified, unclaimed redemption so
+    ///      vault_maxWithdraw / vault_maxRedeem have a non-zero max to assert against.
+    function shortcut_redeem_and_notify(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+        hub_notifyRedeem(_maxRedeemClaims());
+    }
+
     function shortcut_withdraw_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(_getVault().share())).balanceOf(_getActor()) + 1);
@@ -457,6 +500,30 @@ abstract contract TargetFunctions is
         vault_claimCancelRedeemRequest(toEntropy);
     }
 
+    /// @dev property_assetShareProportionalityWithdrawals needs a manager withdrawal AND a revoke on the same
+    ///      (pool, share class, asset), in that order: balanceSheet_revoke only accumulates revoked shares once
+    ///      balanceSheet_withdraw has flagged the asset as tracked. The fuzzer never produced that conjunction,
+    ///      leaving all three of the property's bounds unevaluated.
+    /// @dev The share leg is the share-equivalent of the asset leg, so both the deposit- and withdrawal-side
+    ///      proportionality properties hold by construction. Taking `shares` as an independent fuzzer input instead
+    ///      made them fail on the shortcut's own arithmetic rather than on protocol behaviour.
+    /// @dev Allowances go through the existing `asset_approve`/`token_approve` handlers rather than a local
+    ///      `vm.prank`, so the shortcut carries no cheatcode dependency onto the fuzzer entry path.
+    function shortcut_manager_withdraw_and_revoke(uint128 assetAmount) public {
+        IBaseVault vault = _getVault();
+
+        assetAmount = uint128(uint256(assetAmount) % (MockERC20(vault.asset()).balanceOf(_getActor()) + 1));
+        uint128 shares = uint128(vault.convertToShares(assetAmount));
+
+        asset_approve(address(spoke), assetAmount);
+        balanceSheet_deposit(0, assetAmount);
+        balanceSheet_issue(shares);
+
+        balanceSheet_withdraw(0, assetAmount);
+        token_approve(address(spoke), shares);
+        balanceSheet_revoke(shares);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // POOL ADMIN SHORTCUTS
     // ═══════════════════════════════════════════════════════════════
@@ -518,6 +585,8 @@ abstract contract TargetFunctions is
     // set the price of the asset in the transient valuation for a given pool
     function transientValuation_setPrice_clamped(uint128 price) public {
         AssetId assetId = _getAssetId();
+
+        price = _clampToPriceBand(price);
 
         transientValuation_setPrice(assetId, _getAssetId(), price);
     }
