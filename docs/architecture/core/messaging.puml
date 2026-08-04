@@ -4,32 +4,31 @@ hide empty members
 
 skinparam linetype ortho
 
-package messaging {
-    interface IMessageDispatcher
-    interface IMessageProcessor
-    class Gateway
-    class MultiAdapter
-    interface IAdapter
+package core {
+    class Hub
+    class Spoke
+    class HubHandler
+    class SpokeHandler
 }
 
-class Spoke
-class SpokeHandler
-class Hub
-class HubHandler
+class MessageDispatcher
+class MessageProcessor
+class Gateway
+class MultiAdapter
+interface IAdapter
 
+Hub -down-> MessageDispatcher
+Spoke -down-> MessageDispatcher
 
-Spoke --> IMessageDispatcher
-Hub --> IMessageDispatcher
-IMessageDispatcher -up-> SpokeHandler
-IMessageDispatcher -up-> HubHandler
-IMessageProcessor -up-> HubHandler
-IMessageProcessor -up-> SpokeHandler
+MessageDispatcher -up-> HubHandler : local
+MessageDispatcher -up-> SpokeHandler : local
 
-IMessageDispatcher --> Gateway
+MessageProcessor -up-> HubHandler
+MessageProcessor -up-> SpokeHandler
 
-Gateway -up-> IMessageProcessor
+MessageDispatcher -down-> Gateway
+Gateway -up-> MessageProcessor
 Gateway <-down-> MultiAdapter
 MultiAdapter <-down-> "n" IAdapter
-
 
 @enduml

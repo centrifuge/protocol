@@ -1,5 +1,5 @@
 @startuml
-title Fund Management Flow - Queued Assets State Changes
+title Balance Sheet Flow - Queued Assets State Changes
 
 skinparam sequenceArrowThickness 3
 skinparam backgroundColor white
@@ -17,98 +17,112 @@ skinparam sequence {
     GroupBackgroundColor #EEEEEE
 }
 
-actor "Balance Sheet Manager" as BSM
+actor "Pool Manager" as PM
 participant Spoke
-participant SnapshotQueue
 participant PoolEscrow
-participant "Hub" as Hub
+participant SnapshotQueue
+participant HubHandler
+participant Holdings
 
-note over Spoke, Hub
-    Spoke → Hub communication
-    routes through Messaging
+note over Spoke, HubHandler
+    Spoke → Hub communication routes through
+    MessageDispatcher → Gateway → adapters → MessageProcessor
 end note
 
 == Initial State ==
-note over SnapshotQueue
-    **Queued Assets:** 500 USDC deposits, 200 USDC withdrawals
-    **Net Queued:** +300 USDC
-end note
-
 note over PoolEscrow
-    **Available Balance:** 2000 USDC
+    **holding.total:** 2000 USDC
+    **availableBalanceOf:** 2000 USDC
 end note
 
-note over Hub
-    **Holdings:** 5000 USDC
-    **Issued Shares:** 10000 tokens
+note over SnapshotQueue
+    **queuedAssets.deposits:** 500 USDC
+    **queuedAssets.withdrawals:** 200 USDC
+    **queuedShares.nonce:** 0
+end note
+
+note over Holdings
+    **holding amount:** 5000 USDC
+    **snapshot.isSnapshot:** false, **snapshot.nonce:** 0
 end note
 
 == Deposit Operation ==
-BSM -> Spoke: deposit(1000 USDC)
+PM -> Spoke: deposit(poolId, scId, USDC, 0, 1000)
 activate Spoke
-Spoke -> PoolEscrow: transfer 1000 USDC from BSM
+Spoke -> PoolEscrow: deposit(scId, USDC, 0, 1000)
 activate PoolEscrow
-PoolEscrow --> PoolEscrow: availableBalance: 2000 → 3000 USDC
+PoolEscrow --> PoolEscrow: holding.total: 2000 → 3000 USDC
 deactivate PoolEscrow
-Spoke -> SnapshotQueue: queueAssets(+1000 USDC)
+Spoke -> SnapshotQueue: queueAssets(poolId, scId, assetId, 1000, isIncrease: true)
 activate SnapshotQueue
-SnapshotQueue --> SnapshotQueue: queuedDeposits: 500 → 1500 USDC
+SnapshotQueue --> SnapshotQueue: queuedAssets.deposits: 500 → 1500 USDC
 deactivate SnapshotQueue
+Spoke -> PoolEscrow: safeTransferFrom(caller → escrow, 1000 USDC)
 deactivate Spoke
 
-note over SnapshotQueue
-    **Queued Assets:** 1500 USDC deposits, 200 USDC withdrawals
-    **Net Queued:** +1300 USDC
+note over PoolEscrow, SnapshotQueue
+    **holding.total:** 3000 USDC
+    **queuedAssets:** 1500 USDC deposits, 200 USDC withdrawals
 end note
 
 == Withdraw Operation ==
-BSM -> Spoke: withdraw(800 USDC, to BSM)
+PM -> Spoke: withdraw(poolId, scId, USDC, 0, receiver, 800)
 activate Spoke
-Spoke -> PoolEscrow: transfer 800 USDC to BSM
+Spoke -> PoolEscrow: withdraw(scId, USDC, 0, receiver, 800)
 activate PoolEscrow
-PoolEscrow --> PoolEscrow: availableBalance: 3000 → 2200 USDC
+PoolEscrow --> PoolEscrow: holding.total: 3000 → 2200 USDC
 deactivate PoolEscrow
-Spoke -> SnapshotQueue: queueAssets(-800 USDC)
+Spoke -> SnapshotQueue: queueAssets(poolId, scId, assetId, 800, isIncrease: false)
 activate SnapshotQueue
-SnapshotQueue --> SnapshotQueue: queuedWithdrawals: 200 → 1000 USDC
+SnapshotQueue --> SnapshotQueue: queuedAssets.withdrawals: 200 → 1000 USDC
 deactivate SnapshotQueue
+Spoke -> PoolEscrow: authTransferTo(USDC, 0, receiver, 800)
 deactivate Spoke
 
-note over SnapshotQueue
-    **Queued Assets:** 1500 USDC deposits, 1000 USDC withdrawals
-    **Net Queued:** +500 USDC
+note over PoolEscrow, SnapshotQueue
+    **holding.total:** 2200 USDC
+    **queuedAssets:** 1500 USDC deposits, 1000 USDC withdrawals
 end note
 
 == Submit Queued Assets ==
-BSM -> Spoke: submitQueuedAssets()
+PM -> Spoke: submitQueuedAssets(poolId, scId, assetId, extraGasLimit, refund)
 activate Spoke
-Spoke -> SnapshotQueue: flushAssets()
+Spoke -> SnapshotQueue: flushAssets(poolId, scId, assetId)
 activate SnapshotQueue
-SnapshotQueue --> SnapshotQueue: calculate net: +500 USDC, clear queues to zero
-SnapshotQueue --> Spoke: UpdateData(+500 USDC)
+SnapshotQueue --> SnapshotQueue: net = deposits - withdrawals = 500 USDC; clear both to 0, queuedShares.nonce: 0 → 1
+SnapshotQueue --> Spoke: UpdateData(netAmount: 500, isIncrease: true, isSnapshot: true, nonce: 0)
 deactivate SnapshotQueue
-group Send snapshot to Hub
-Spoke -> Hub: sendUpdateHoldingAmount(+500 USDC)
-activate Hub
-Hub -> Hub: holdings: 5000 → 5500 USDC
-Hub -> Hub: update accounting with +500 USDC
-deactivate Hub
+group Send UpdateAssets message to Hub
+Spoke -> HubHandler: sendUpdateAssets(poolId, scId, assetId, data, extraGasLimit, refund)
+activate HubHandler
+HubHandler -> Holdings: increase(poolId, scId, assetId, centrifugeId, 500)
+activate Holdings
+Holdings --> HubHandler: value = delta priced at the hub valuation
+deactivate Holdings
+HubHandler --> HubHandler: hub.updateAccountingAmount(poolId, scId, assetId, isPositive: true, value)
+HubHandler -> Holdings: setSnapshot(poolId, scId, centrifugeId, isSnapshot: true, nonce: 0)
+activate Holdings
+Holdings --> Holdings: snapshot.isSnapshot = true, snapshot.nonce: 0 → 1
+deactivate Holdings
+deactivate HubHandler
 end
 deactivate Spoke
 
 == Final State ==
-note over SnapshotQueue
-    **Queued Assets:** 0 USDC deposits, 0 USDC withdrawals
-    **Net Queued:** 0 USDC
-end note
-
 note over PoolEscrow
-    **Available Balance:** 2200 USDC
+    **holding.total:** 2200 USDC
+    **availableBalanceOf:** 2200 USDC
 end note
 
-note over Hub
-    **Holdings:** 5500 USDC
-    **Issued Shares:** 10000 tokens
+note over SnapshotQueue
+    **queuedAssets.deposits:** 0 USDC
+    **queuedAssets.withdrawals:** 0 USDC
+    **queuedShares.nonce:** 1
+end note
+
+note over Holdings
+    **holding amount:** 5500 USDC
+    **snapshot.isSnapshot:** true, **snapshot.nonce:** 1
 end note
 
 @enduml

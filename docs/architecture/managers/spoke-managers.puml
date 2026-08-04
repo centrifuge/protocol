@@ -2,24 +2,69 @@
 title Spoke Managers
 hide empty members
 
+skinparam linetype ortho
+
 package core {
+    class Envoy
     interface ISpoke
     interface ISnapshotQueue
+    interface IManagerCallFromHub
 }
 
-OnOfframpManager --> ISpoke
+OnOffRamp -up-|> IManagerCallFromHub
+OnOffRamp --> ISpoke
+OnOffRamp --> AccountingToken
+AccountingToken -up-|> IManagerCallFromHub
+QueueManager -up-|> IManagerCallFromHub
 QueueManager --> ISpoke
 QueueManager --> ISnapshotQueue
+Envoy --> IManagerCallFromHub
 
-note top of OnOfframpManager
+OnchainPMFactory ..> "n" OnchainPM : deploys
+OnchainPM ..> ISpoke : via script
+FlashLoanHelper --> OnchainPMFactory
+
+package guards {
+    class ApprovalGuard
+    class CircuitBreakerGuard
+    class SlippageGuard
+}
+
+SlippageGuard -up-|> IManagerCallFromHub
+SlippageGuard --> ISpoke
+SlippageGuard --> OnchainPMFactory
+
+note top of OnOffRamp
   Manages on/off-ramping
   for assets entering/exiting
   the protocol
 end note
 
+note top of AccountingToken
+  ERC-6909 multi-token tracking
+  in-flight requests and
+  cross-chain liabilities
+end note
+
 note top of QueueManager
   Manages submission of queued
   assets and shares
+end note
+
+note top of OnchainPM
+  Executes Merkle-policy-gated
+  weiroll scripts for on-chain
+  portfolio management
+end note
+
+note top of FlashLoanHelper
+  Bridges Aave V3 flash loans
+  into OnchainPM callbacks
+end note
+
+note top of guards
+  Bookend contracts for scripts:
+  slippage, rate limits, approvals
 end note
 
 @enduml

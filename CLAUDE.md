@@ -69,9 +69,24 @@ src/
 │   ├── ProtocolGuardian.sol # Protocol guardian
 │   ├── GasService.sol     # Gas management
 │   └── interfaces/
+├── policies/              # Pool-level policy implementations
+│   └── hub/
+│       └── StdHubPolicy.sol # Default hub policy: classifies manager calls as immediate or time-locked
 ├── managers/              # Automation managers
+│   ├── hub/
+│   │   └── Supervisor.sol # Per-pool sentinel registry; sentinels veto pending authorizations
+│   ├── adapters/
+│   │   └── AdapterFailover.sol # Per-pool steward timelock for proposing new adapter sets
 │   └── spoke/
-│       └── QueueManager.sol # Queue automation
+│       ├── QueueManager.sol # Queue automation
+│       ├── OnOffRamp.sol    # On/off-ramp with accounting token support
+│       ├── AccountingToken.sol # ERC-6909 tracking in-flight requests/liabilities
+│       ├── FlashLoanHelper.sol # Aave V3 flash loan bridge for OnchainPM
+│       ├── ScriptHelpers.sol # Weiroll script utility functions
+│       └── guards/          # Bookend contracts for weiroll scripts
+│           ├── ApprovalGuard.sol      # Checks zero ERC20 allowances post-script
+│           ├── CircuitBreakerGuard.sol # Rolling-window rate limiter
+│           └── SlippageGuard.sol      # Net value slippage checker
 ├── vaults/                # Vault implementations
 │   ├── BatchRequestManager.sol # Batch request handling
 │   ├── AsyncRequestManager.sol # Async requests
@@ -90,10 +105,14 @@ src/
 ├── valuations/            # Asset valuations
 │   ├── OracleValuation.sol # Oracle-based pricing
 │   └── IdentityValuation.sol
+├── bridge/                # Cross-chain token bridge
+│   └── TokenBridge.sol    # Wrapper for cross-chain token transfers
 ├── adapters/              # Cross-chain adapters
 │   ├── AxelarAdapter.sol
 │   ├── ChainlinkAdapter.sol
-│   └── LayerZeroAdapter.sol
+│   ├── HyperlaneAdapter.sol
+│   ├── LayerZeroAdapter.sol
+│   └── StandbyAdapter.sol
 ├── token/                 # Share token implementations
 │   ├── ShareToken.sol     # ERC20 share tokens
 │   ├── ShareTokenRegistrar.sol # Deploys & operates ShareTokens (IRegistrar)
@@ -115,6 +134,9 @@ src/
     ├── types/            # Custom types
     ├── libraries/        # Utility libraries
     └── interfaces/       # Standard interfaces
+
+src-ir/                      # Contracts compiled with via_ir (stack-depth exceptions only)
+└── OnchainPM.sol            # OnchainPM + OnchainPMFactory (weiroll script executor per pool)
 
 test/                        # Tests mirror src/ structure
 ├── core/                 # Hub & spoke tests (unit + integration)

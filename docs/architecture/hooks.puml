@@ -2,7 +2,7 @@
 title Transfer Hooks
 hide empty members
 
-package core {
+package token {
     class ShareToken
     interface ITransferHook
 }

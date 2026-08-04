@@ -1,42 +1,48 @@
 @startuml spoke
-title Spoke Architecture
+title Spoke
 hide empty members
 
+skinparam linetype ortho
+
 package "Messaging" <<cloud>> {
-    circle " " as messaging
+    interface IMessageDispatcher
+    interface IMessageProcessor
 }
 
-package factories {
-    class TokenFactory
-    class PoolEscrowFactory
-    class PoolEscrow
-}
-
+class PoolEscrowFactory
+class PoolEscrow
 class Spoke
 class SpokeHandler
 class SpokeRegistry
-
 class SnapshotQueue
-class ShareToken
-interface ITransferHook
+
+interface IRegistrar
+interface IPolicy
 interface ISpokeRequestManager
+
+package token {
+    class ShareToken
+    class ShareTokenRegistrar
+    interface ITransferHook
+}
 
 Spoke -down-> SpokeRegistry
 Spoke -down-> SnapshotQueue
-Spoke -up-> messaging
+Spoke -up-> IMessageDispatcher
+Spoke --> ISpokeRequestManager
+Spoke .[dotted].> IPolicy
 
-messaging --> SpokeHandler
+IMessageProcessor --> SpokeHandler
 SpokeHandler --> SpokeRegistry
-SpokeHandler --> TokenFactory
+SpokeHandler --> IRegistrar
 SpokeHandler --> PoolEscrowFactory
 
 Spoke --> PoolEscrowFactory
 
-SpokeRegistry o-- "n" ISpokeRequestManager
 SpokeRegistry o-- "n" ShareToken
 
-' Factories
-TokenFactory ..> "n" ShareToken
+ShareTokenRegistrar -up-|> IRegistrar
+ShareTokenRegistrar ..> "n" ShareToken
 PoolEscrowFactory ..> "n" PoolEscrow
 ShareToken o--> ITransferHook
 

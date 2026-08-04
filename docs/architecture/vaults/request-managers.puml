@@ -4,9 +4,12 @@ hide empty members
 
 skinparam linetype ortho
 
-package misc {
+skinparam nodesep 25
+
+package core {
     class "Escrow" as PoolEscrow<<pool>>
-    class "Escrow" as RouterEscrow<<router>>
+    class Envoy
+    interface IManagerCallFromHub
 }
 
 package spoke {
@@ -23,15 +26,17 @@ IBaseRequestManager -up-|> ISpokeRequestManager
 
 IAsyncRequestManager -up-|> IBaseRequestManager
 
+Envoy --> IManagerCallFromHub
+
 AsyncRequestManager -up-> Spoke
 AsyncRequestManager -up-|> IAsyncRequestManager
 Spoke -up-> PoolEscrow
 Spoke -up-> SnapshotQueue
 
 SyncManager -up-|> ISyncManager
+SyncManager -up-|> IManagerCallFromHub
 SyncManager -up--> Spoke
 
-VaultRouter -up-> RouterEscrow
 VaultRouter -up-> Spoke
 
 @enduml

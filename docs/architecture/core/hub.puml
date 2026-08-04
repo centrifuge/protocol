@@ -4,9 +4,9 @@ hide empty members
 
 skinparam linetype ortho
 
-package messaging {
+package "Messaging" <<cloud>> {
     interface IMessageDispatcher
-    interface IMesssageProcessor
+    interface IMessageProcessor
 }
 
 class Hub
@@ -15,10 +15,17 @@ class Holdings
 class HubRegistry
 class ShareClassManager
 class Accounting
+class StdHubPolicy
+class BridgeCircuitBreaker
 
 interface ISnapshotHook
+interface IBridgingHook
 interface IValuation
 interface IFeeAccrual
+
+class OracleValuation
+class IdentityValuation
+interface IHubPolicy
 interface IHubRequestManager
 
 Hub --> Holdings
@@ -27,13 +34,19 @@ Hub --> ShareClassManager
 Hub --> Accounting
 Hub --> IMessageDispatcher
 Hub .[dotted].> IFeeAccrual
+Hub .[dotted].> IHubPolicy
 
 HubHandler --> Hub
-IMesssageProcessor --> HubHandler
+IMessageProcessor --> HubHandler
 
 IHubRequestManager --> Hub
 
 Holdings --> IValuation
+OracleValuation -up-|> IValuation
+IdentityValuation -up-|> IValuation
 Holdings .[dotted].> ISnapshotHook
+
+StdHubPolicy -up-|> IHubPolicy
+BridgeCircuitBreaker -up-|> IBridgingHook
 
 @enduml
