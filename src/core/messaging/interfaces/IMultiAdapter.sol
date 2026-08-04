@@ -118,6 +118,26 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     ///         e.g. `AdapterFailover`) passes its own next session id and is responsible for ensuring the
     ///         resulting sessionId matches the other endpoint, otherwise messages wrapped with the new session
     ///         won't verify.
+    ///
+    ///         Recovery runbook when an adapter of the active set starts reverting on `estimate`/`send`. Such an
+    ///         adapter vetoes every outbound message of the pool, including the rotation itself, so `Hub.setAdapters`
+    ///         and `Hub.updateManager` are unusable: both travel over the broken set before it can be replaced.
+    ///         1. Identify the culprit: `activeAdapters()` returns the live set and its session id, and simulating
+    ///            `estimate` per adapter isolates which one reverts.
+    ///         2. Rotate the sending chain locally: a pool adapter manager calls this function directly, passing
+    ///            `nextActiveSessionId()`. `AdapterFailover` is the intended wrapper, gating the rotation behind a
+    ///            steward and a hub-vetoable timelock. Appoint that manager while the adapters are still healthy;
+    ///            once the set is broken, a chain without one can only be reached by a Root spell on that chain.
+    ///         3. Install the mirrored set on the other endpoint the same way. Each call only advances the session
+    ///            counter of the chain it runs on, so from aligned endpoints one rotation per side keeps them aligned.
+    ///         4. Verify that alignment before resuming traffic: `activeSessionId(remoteId, poolId)` here must equal
+    ///            `activeSessionId(localCentrifugeId, poolId)` there. If a side lagged, call this function again on it
+    ///            with the same set until the ids match, since a payload wrapped with a session id the receiver never
+    ///            configured is rejected with {InvalidAdapter}.
+    ///         5. Retire the superseded session with `blockSession()` on each receiving side, once the messages sent
+    ///            under it have been delivered, following the flow documented in {IHub-setAdapters}.
+    ///         6. Re-issue the operations that reverted during the outage: they were never queued, so there is no
+    ///            underpaid backlog to repay.
     /// @param  centrifugeId Chain where the adapters are associated to.
     /// @param  poolId PoolId associated to the adapters
     /// @param  adapters New adapter addresses already deployed.

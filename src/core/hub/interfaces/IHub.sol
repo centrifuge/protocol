@@ -196,6 +196,10 @@ interface IHub is IBatchedMulticall {
     ///         3. Only then call blockSession() for the old session on the receiving chain, since blocking a
     ///            session that still has messages in flight would drop them. If it turns out to have been
     ///            retired too early, `unblockSession()` restores it.
+    ///
+    ///         This path only works while the pool's current adapters do: SetPoolAdapters routes over that very set,
+    ///         so an adapter reverting on `estimate`/`send` blocks the rotation that would remove it. Recovering from
+    ///         that requires rotating each endpoint locally, as described in {IMultiAdapter-setAdapters}.
     /// @param poolId Pool associated to this configuration
     /// @param centrifugeId Chain where to perform the adapter configuration
     /// @param localAdapters Adapter addresses in this chain
