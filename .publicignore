@@ -37,3 +37,6 @@
 + /.github/workflows/tests.yml
 
 - /.github/**
+
+# Docs: exclude internal audit out-of-scope lists, keep public audit reports
+- /docs/audits/out-of-scope/
