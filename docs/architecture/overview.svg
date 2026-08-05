@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="950" viewBox="0 0 2000 950" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#334155"/>
+    </marker>
+    <g id="person" fill="#4a5568">
+      <circle cx="0" cy="-54" r="16"/>
+      <rect x="-24" y="-30" width="48" height="62" rx="13"/>
+      <rect x="-18" y="28" width="36" height="43" rx="12"/>
+    </g>
+  </defs>
+
+  <rect x="0" y="0" width="2000" height="950" rx="16" fill="#ffffff"/>
+
+  <!-- three spoke chains, stacked, the front one opened up -->
+  <g fill="none" stroke="#dfe3e8" stroke-width="1.5">
+    <rect x="40" y="14" width="787" height="683" rx="12"/>
+    <rect x="55" y="65" width="787" height="683" rx="12"/>
+  </g>
+  <rect x="70" y="117" width="787" height="683" rx="12" fill="#f5f6f8"/>
+  <text x="60" y="53" font-size="22" font-weight="bold" fill="#9aa3af">Spoke A</text>
+  <text x="76" y="104" font-size="22" font-weight="bold" fill="#9aa3af">Spoke B</text>
+  <text x="92" y="152" font-size="24" font-weight="bold" fill="#1f2937">Spoke C</text>
+
+  <!-- hub chain -->
+  <rect x="1252" y="100" width="708" height="681" rx="12" fill="#f5f6f8" stroke="#e8eaed" stroke-width="1"/>
+  <text x="1276" y="142" font-size="28" font-weight="bold" fill="#1f2937">Hub network</text>
+
+  <!-- connectors -->
+  <g fill="none" stroke="#334155" stroke-width="2">
+    <!-- share token stack -->
+    <path d="M392,320 V352"/>
+    <path d="M392,418 V453"/>
+    <!-- vault into the spoke -->
+    <path d="M490,486 H525"/>
+    <!-- registry above the spoke -->
+    <path d="M641,418 V453"/>
+    <!-- spoke down to its managers -->
+    <path d="M545,519 V600"/>
+    <path d="M700,519 V600"/>
+    <!-- hub side -->
+    <path d="M1456,517 V565"/>
+    <path d="M1444,629 V677"/>
+    <path d="M1541,485 H1560"/>
+    <path d="M1625,517 V565"/>
+    <path d="M1773,517 V565"/>
+    <!-- the cross-chain channel -->
+    <path d="M757,486 H857"/>
+    <path d="M1252,486 H1372"/>
+  </g>
+  <g fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4 7">
+    <path d="M857,486 H997"/>
+    <path d="M1125,486 H1252"/>
+  </g>
+  <text x="925" y="462" font-size="24" fill="#8b95a1" text-anchor="middle">1-to-many</text>
+  <text x="1192" y="462" font-size="24" fill="#8b95a1" text-anchor="middle">1-to-1</text>
+
+  <!-- flow arrows -->
+  <g fill="none" stroke="#334155" stroke-width="2">
+    <path d="M215,486 H285" marker-end="url(#tip)"/>
+    <path d="M1590,311 V345" marker-end="url(#tip)"/>
+    <path d="M1590,411 V445" marker-end="url(#tip)"/>
+    <path d="M440,670 V822" marker-end="url(#tip)"/>
+    <path d="M760,670 V692" marker-end="url(#tip)"/>
+  </g>
+
+  <!-- spoke chain contracts -->
+  <g fill="#ffffff" stroke="#334155" stroke-width="2">
+    <rect x="295" y="352" width="195" height="66" rx="10"/>
+    <rect x="295" y="453" width="195" height="66" rx="10"/>
+    <rect x="525" y="352" width="232" height="66" rx="10"/>
+    <rect x="525" y="453" width="232" height="66" rx="10"/>
+  </g>
+  <g fill="#ffffff">
+    <rect x="1495" y="345" width="190" height="66" rx="10"/>
+    <rect x="295" y="252" width="195" height="68" rx="10"/>
+    <rect x="390" y="600" width="180" height="70" rx="10"/>
+    <rect x="650" y="600" width="180" height="70" rx="10"/>
+  </g>
+  <g font-size="25" fill="#1f2937" text-anchor="middle" dominant-baseline="central">
+    <text x="392" y="286">Transfer Hook</text>
+    <text x="392" y="385">Share Token</text>
+    <text x="392" y="486">Vault</text>
+    <text x="641" y="385">Spoke Registry</text>
+    <text x="641" y="486">Spoke</text>
+    <text x="480" y="635">On/Off Ramp</text>
+    <text x="740" y="635">Onchain PM</text>
+  </g>
+
+  <!-- what the managers allocate into -->
+  <g fill="#eef0f2">
+    <rect x="390" y="830" width="105" height="30" rx="15"/>
+    <rect x="505" y="830" width="150" height="30" rx="15"/>
+    <rect x="415" y="870" width="105" height="30" rx="15"/>
+    <rect x="530" y="870" width="90" height="30" rx="15"/>
+    <rect x="635" y="700" width="95" height="30" rx="15"/>
+    <rect x="740" y="700" width="105" height="30" rx="15"/>
+    <rect x="700" y="740" width="85" height="30" rx="15"/>
+  </g>
+  <g font-size="18" fill="#64748b" text-anchor="middle" dominant-baseline="central">
+    <text x="442" y="845">T-Bills</text>
+    <text x="580" y="845">AAA credit</text>
+    <text x="467" y="885">Equity</text>
+    <text x="575" y="885">Index</text>
+    <text x="682" y="715">WETH</text>
+    <text x="792" y="715">Morpho</text>
+    <text x="742" y="755">Aave</text>
+  </g>
+
+  <!-- the channel itself -->
+  <rect x="997" y="453" width="128" height="66" rx="10" fill="#f1f3f5"/>
+  <text x="1061" y="486" font-size="25" fill="#1f2937" text-anchor="middle" dominant-baseline="central">Gateway</text>
+
+  <!-- hub chain contracts -->
+  <g fill="#ffffff" stroke="#334155" stroke-width="2">
+    <rect x="1372" y="453" width="169" height="64" rx="10"/>
+    <rect x="1560" y="453" width="253" height="64" rx="10"/>
+    <rect x="1372" y="565" width="145" height="64" rx="10"/>
+    <rect x="1543" y="565" width="164" height="64" rx="10"/>
+    <rect x="1730" y="565" width="86" height="64" rx="10"/>
+    <rect x="1372" y="677" width="145" height="64" rx="10"/>
+  </g>
+  <g font-size="25" fill="#1f2937" text-anchor="middle" dominant-baseline="central">
+    <text x="1590" y="378">Policy</text>
+    <text x="1456" y="485">Hub Handler</text>
+    <text x="1686" y="485">Hub</text>
+    <text x="1444" y="597">Holdings</text>
+    <text x="1625" y="597">HubRegistry</text>
+    <text x="1773" y="597">SCM</text>
+    <text x="1444" y="709">Accounting</text>
+  </g>
+
+  <!-- people -->
+  <use href="#person" x="132" y="482"/>
+  <text x="132" y="577" font-size="25" font-weight="bold" fill="#1f2937" text-anchor="middle">Investor</text>
+
+  <use href="#person" x="1590" y="230"/>
+  <text x="1690" y="240" font-size="25" font-weight="bold" fill="#1f2937">Hub Manager</text>
+
+  <!-- the flow, in order -->
+  <g>
+    <rect x="20" y="325" width="226" height="63" rx="10" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+    <circle cx="54" cy="357" r="18" fill="#fdf1d0"/>
+    <text x="54" y="357" font-size="20" fill="#1f2937" text-anchor="middle" dominant-baseline="central">1</text>
+    <text x="86" y="357" font-size="20" fill="#1f2937" dominant-baseline="central">Deposit assets</text>
+
+    <rect x="1690" y="88" width="230" height="76" rx="10" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+    <circle cx="1724" cy="126" r="18" fill="#fdf1d0"/>
+    <text x="1724" y="126" font-size="20" fill="#1f2937" text-anchor="middle" dominant-baseline="central">2</text>
+    <text x="1756" y="114" font-size="20" fill="#1f2937" dominant-baseline="central">Update price,</text>
+    <text x="1756" y="140" font-size="20" fill="#1f2937" dominant-baseline="central">approve request</text>
+
+    <rect x="862" y="545" width="225" height="63" rx="10" fill="#ffffff" stroke="#334155" stroke-width="2"/>
+    <circle cx="896" cy="577" r="18" fill="#fdf1d0"/>
+    <text x="896" y="577" font-size="20" fill="#1f2937" text-anchor="middle" dominant-baseline="central">3</text>
+    <text x="928" y="577" font-size="20" fill="#1f2937" dominant-baseline="central">Allocate assets</text>
+  </g>
+</svg>
