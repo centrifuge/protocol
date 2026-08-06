@@ -67,6 +67,12 @@ contract EnvMainnetFilesTest is Test {
         assertEq(config.network.centrifugeId, 12);
         config.network.buildBatchLimits();
     }
+
+    function test_parseXLayer() public view {
+        EnvConfig memory config = Env.load("x-layer");
+        assertEq(config.network.centrifugeId, 13);
+        config.network.buildBatchLimits();
+    }
 }
 
 contract EnvTestnetFilesTest is Test {

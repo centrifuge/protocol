@@ -32,6 +32,11 @@
             "chains": [["plume"], ["ethereum"]],
             "adapters": ["layerZero", "chainlink"],
             "threshold": 2
+        },
+        {
+            "chains": [["x-layer"], ["ethereum", "base", "arbitrum", "avalanche", "bnb-smart-chain"]],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
         }
     ]
 }

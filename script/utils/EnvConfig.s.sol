@@ -322,9 +322,10 @@ library Env {
         config.freelyTransferableHook = _parseContractAddress(json, "freelyTransferableHook");
         config.redemptionRestrictionsHook = _parseContractAddress(json, "redemptionRestrictionsHook");
 
-        // Spoke managers
-        config.onOfframpManagerFactory = _parseContractAddress(json, "onOfframpManagerFactory");
-        config.merkleProofManagerFactory = _parseContractAddress(json, "merkleProofManagerFactory");
+        // Spoke managers. The onOfframp/merkleProof factories are legacy: chains deployed after
+        // OnOffRamp and OnchainPM superseded them only carry onOffRampFactory.
+        config.onOfframpManagerFactory = _tryParseContractAddress(json, "onOfframpManagerFactory");
+        config.merkleProofManagerFactory = _tryParseContractAddress(json, "merkleProofManagerFactory");
         config.onOffRampFactory = _tryParseContractAddress(json, "onOffRampFactory");
 
         // Valuations
@@ -339,9 +340,9 @@ library Env {
         // Bridge
         config.tokenBridge = _tryParseContractAddress(json, "tokenBridge");
 
-        // Decoders
-        config.vaultDecoder = _parseContractAddress(json, "vaultDecoder");
-        config.circleDecoder = _parseContractAddress(json, "circleDecoder");
+        // Decoders. Legacy companions of merkleProofManagerFactory: absent on newer chains.
+        config.vaultDecoder = _tryParseContractAddress(json, "vaultDecoder");
+        config.circleDecoder = _tryParseContractAddress(json, "circleDecoder");
 
         // Adapters
         config.layerZeroAdapter = _tryParseContractAddress(json, "layerZeroAdapter");
