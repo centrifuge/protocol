@@ -41,11 +41,9 @@
 
 import { readFileSync, writeFileSync } from "fs";
 import { artifactNamesForContractKey } from "./utils/abi-cache.js";
-
-const REGISTRY_URLS = {
-    mainnet: "https://registry.centrifuge.io",
-    testnet: "https://registry.testnet.centrifuge.io",
-};
+import { fetchLiveRegistry as fetchLiveRegistryDocument } from "./utils/registry-fetch.js";
+import { collectRegistryChain } from "./utils/registry-chain.js";
+import { checkDeltaInvariants, loadEnvChains } from "./utils/registry-invariants.js";
 
 const skipLiveCheck = process.env.SKIP_LIVE_REGISTRY_CHECK === "1";
 
@@ -55,27 +53,17 @@ async function fetchLiveRegistry(environment) {
         return null;
     }
 
-    const url = REGISTRY_URLS[environment];
-    if (!url) return null;
-
-    try {
-        console.log(`  Fetching live registry from ${url}...`);
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.log(`  Live registry returned ${response.status} — treating as no existing registry`);
-            return null;
-        }
-        const data = await response.json();
-        if (data && typeof data.version === "string") {
-            console.log(`  Live registry found: version ${data.version}`);
-            return data;
-        }
-        console.log("  Live registry response is not a valid registry (no version field)");
-        return null;
-    } catch (err) {
-        console.warn(`  Could not fetch live registry: ${err.message}`);
+    const data = await fetchLiveRegistryDocument(environment, { log: console.log });
+    if (!data || typeof data !== "object" || !data.chains) {
+        console.log("  No usable live registry — treating as no existing registry");
         return null;
     }
+
+    // A live tip may legitimately be a null-version patch layer, so presence is keyed on `chains`
+    // rather than on `version`. Reporting such a tip as "no registry" would waive the orphan check
+    // below and let a delta be published with no previousRegistry pointer.
+    console.log(`  Live registry found: version ${data.version ?? "null (patch layer)"}`);
+    return data;
 }
 
 async function validate(registryPath) {
@@ -177,6 +165,11 @@ async function validate(registryPath) {
             // address
             if (!contract.address || typeof contract.address !== "string") {
                 errors.push({ path: `chains.${chainId}.contracts.${name}.address`, message: `Must be a non-empty string, got ${JSON.stringify(contract.address)}` });
+            } else if (!/^0x[0-9a-fA-F]{40}$/.test(contract.address)) {
+                errors.push({
+                    path: `chains.${chainId}.contracts.${name}.address`,
+                    message: `Not a 20-byte hex address: ${JSON.stringify(contract.address)}`,
+                });
             }
 
             // blockNumber — api-v3 uses contract.blockNumber ?? chain.deployment.startBlock for
@@ -217,11 +210,49 @@ async function validate(registryPath) {
         }
     }
 
+    // --- delta invariants (semantic, not structural) ---
+    // Structural checks pass on a delta that re-states already-published contracts, which is how a
+    // near-full snapshot shipped three times. These compare the delta to the state it extends.
+    let deltaStats = null;
+    if (liveRegistry && mode !== "full") {
+        console.log("  Reconstructing the published chain to check delta invariants...");
+        const { layers, accumulated, accumulatedAbis, complete, reason, fatal } = await collectRegistryChain(liveRegistry, {
+            expectedNetwork: registry.network,
+            log: console.log,
+        });
+
+        if (fatal) {
+            // An unreachable layer only costs us the invariant check; a chain from the other
+            // environment means this registry is being compared to the wrong world entirely.
+            errors.push({ path: "(chain)", message: `Published chain is unusable: ${reason}` });
+        } else if (!complete) {
+            warnings.push({
+                path: "(chain)",
+                message: `Skipped delta invariants — could not reconstruct the published chain: ${reason}`,
+            });
+        } else {
+            const invariants = checkDeltaInvariants({
+                accumulatedChains: accumulated,
+                accumulatedAbiNames: accumulatedAbis,
+                deltaRegistry: registry,
+                envChains: loadEnvChains(registry.network),
+            });
+            errors.push(...invariants.errors);
+            warnings.push(...invariants.warnings);
+            deltaStats = invariants.stats;
+            console.log(
+                `  Delta carries ${deltaStats.deltaContracts} of ` +
+                `${deltaStats.accumulatedContracts} published contracts across ${layers.length} layer(s)`
+            );
+        }
+    }
+
     const summary = {
         mode, // "full" | "delta" | "patch"
         chains: chainIds.length,
         contracts: totalContracts,
         abis: abiNames.size,
+        ...(deltaStats ? { delta: deltaStats } : {}),
         errors: errors.length,
         warnings: warnings.length,
         // publishable: true only when the registry passes all hard requirements AND contains

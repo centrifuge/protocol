@@ -1,5 +1,8 @@
 {
     "type": "module",
+    "scripts": {
+        "test": "node --test test/*.test.js"
+    },
     "dependencies": {
         "pinata": "^2.5.1",
         "@actions/core": "^1.11.1"

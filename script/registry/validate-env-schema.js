@@ -7,9 +7,10 @@
  * cause abi-registry.js to silently skip chains or crash.
  *
  * When any contract has a numeric `blockNumber`, requires `deploymentInfo.*.startBlock`
- * (indexers use it for chain-level block polling). Validates that startBlock is not
- * wildly earlier than the earliest contract deployment block (gap threshold below).
- * The generated registry copies this from env (`abi-registry.js`); no duplicate check
+ * (indexers use it for chain-level block polling). Validates that **every** entry's startBlock is
+ * not wildly earlier than the earliest contract deployment block (gap threshold below) — later
+ * deploy batches are checked too, which is what catches an L1 block recorded on an L2 chain.
+ * The generated registry copies the first one from env (`abi-registry.js`); no duplicate check
  * in validate-registry.js.
  *
  * Usage:
@@ -32,16 +33,22 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
 ]);
 const ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 
-/** Same scan order as abi-registry.js `getDeploymentStartBlock`. */
-function getDeploymentStartBlockFromEnv(chain) {
+/**
+ * Every `deploymentInfo` entry carrying a numeric `startBlock`, in file order.
+ *
+ * All of them are validated, not just the first (which is what `abi-registry.js`
+ * `getDeploymentStartBlock` copies into the registry): a later batch's `startBlock` is just as
+ * likely to be wrong, and on chains where `block.number` reports the L1 block — Arbitrum — an
+ * L1-scale value in a later entry is exactly the mistake this catches.
+ *
+ * @returns {{key: string, startBlock: number}[]}
+ */
+function deploymentStartBlocksFromEnv(chain) {
     const info = chain.deploymentInfo;
-    if (!info || typeof info !== "object") return null;
-    for (const value of Object.values(info)) {
-        if (value && typeof value === "object" && typeof value.startBlock === "number") {
-            return value.startBlock;
-        }
-    }
-    return null;
+    if (!info || typeof info !== "object") return [];
+    return Object.entries(info)
+        .filter(([, value]) => value && typeof value === "object" && typeof value.startBlock === "number")
+        .map(([key, value]) => ({ key, startBlock: value.startBlock }));
 }
 
 function minActiveContractBlockNumber(contracts) {
@@ -61,7 +68,7 @@ function startBlockGapErrorThreshold(minContractBlock) {
 }
 
 /** @returns {string[]} human-readable errors (empty if ok) */
-function startBlockGapErrors(envLabel, startBlock, contracts) {
+function startBlockGapErrors(envLabel, entryKey, startBlock, contracts) {
     const minBlock = minActiveContractBlockNumber(contracts);
     if (minBlock == null || typeof startBlock !== "number" || !Number.isFinite(startBlock)) {
         return [];
@@ -70,8 +77,9 @@ function startBlockGapErrors(envLabel, startBlock, contracts) {
     const threshold = startBlockGapErrorThreshold(minBlock);
     if (gap < threshold) return [];
     return [
-        `${envLabel} deploymentInfo.startBlock: startBlock (${startBlock}) lies far before the earliest active contract deployment (min blockNumber ${minBlock}, gap ${gap} blocks ≥ threshold ${threshold}). ` +
-            `Chain-level block listeners use deployment.startBlock (e.g. hourly snapshots); align it when merging env/latest (deploymentStartBlock / broadcast fallback).`,
+        `${envLabel} deploymentInfo["${entryKey}"].startBlock: startBlock (${startBlock}) lies far before the earliest active contract deployment (min blockNumber ${minBlock}, gap ${gap} blocks ≥ threshold ${threshold}). ` +
+            `Chain-level block listeners use deployment.startBlock (e.g. hourly snapshots); align it when merging env/latest (deploymentStartBlock / broadcast fallback). ` +
+            `On chains where block.number reports the L1 block (Arbitrum), check this is the L2 block, not the L1 one.`,
     ];
 }
 
@@ -185,15 +193,17 @@ function validateEnvFile(filePath) {
 
     const envLabel = basename(filePath);
     if (hasAnyNumericContractBlockNumber(chain)) {
-        const startBlock = getDeploymentStartBlockFromEnv(chain);
-        if (startBlock == null) {
+        const startBlocks = deploymentStartBlocksFromEnv(chain);
+        if (startBlocks.length === 0) {
             errors.push(
                 `${envLabel}: missing deploymentInfo.*.startBlock — required when any contract has blockNumber ` +
                     `(indexers use it for chain-level block listeners, e.g. hourly snapshots; see script/registry/README.md)`
             );
         } else {
-            for (const msg of startBlockGapErrors(envLabel, startBlock, chain.contracts || {})) {
-                errors.push(msg);
+            for (const { key, startBlock } of startBlocks) {
+                for (const msg of startBlockGapErrors(envLabel, key, startBlock, chain.contracts || {})) {
+                    errors.push(msg);
+                }
             }
         }
     }

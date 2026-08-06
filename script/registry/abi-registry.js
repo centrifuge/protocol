@@ -7,7 +7,9 @@
  * registry's IPFS hash, allowing indexers to walk backwards through the version chain.
  *
  * This script:
- * 1. Fetches the current live registry from registry.centrifuge.io to compare against
+ * 1. Fetches the current live registry from registry.centrifuge.io and walks its
+ *    `previousRegistry.ipfsHash` chain, merging every layer into the accumulated state an indexer
+ *    would hold — that accumulated state, not the tip document, is what the delta compares against
  * 2. Reads chain configurations from env/*.json files
  * 3. Compares contracts to detect changes (new or modified addresses/blockNumbers)
  * 4. Fetches contract creation block numbers from Etherscan API (v2) for changed contracts
@@ -50,6 +52,14 @@
  *   - ETHERSCAN_API_KEY: API key for Etherscan v2 API (required for block number fetching)
  *   - REGISTRY_MODE: One of "auto" (default), "delta", "patch", "full". Overrides --full when set.
  *   - SOURCE_IPFS: IPFS hash (CID) of previous registry to compare against (Qm... or bafy...)
+ *   - ALLOW_PARTIAL_REGISTRY_CHAIN: "1" to generate even when the published chain cannot be fully
+ *     walked. Off by default — a partial chain understates what is already published, which
+ *     inflates the delta and drops deprecations.
+ *   - REGISTRY_CHAIN_MAX_DEPTH: Integer >= 1 bounding how many registry layers the chain walk may
+ *     hold (default in utils/registry-chain.js). Only needed if the chain outgrows that bound.
+ *   - REGISTRY_CHAIN_CACHE_DIR / REGISTRY_CHAIN_NO_CACHE: Relocate or disable the on-disk cache of
+ *     fetched layers (see utils/registry-fetch.js). Caching is an optimization; it is skipped
+ *     silently when the directory is unwritable.
  *
  * CLI Arguments:
  *   - --full: Generate a full snapshot registry (includes all contracts, no delta comparison)
@@ -81,8 +91,8 @@ import {
     existsSync,
 } from "fs";
 import { dirname, join } from "path";
-import { resolveTxt } from "dns/promises";
 import {
+    artifactNamesForContractKey,
     collectContractTags,
     ensureAbiCache,
     findAbiInOutput,
@@ -90,6 +100,14 @@ import {
     getCachedOutDir,
     resolveArtifactName,
 } from "./utils/abi-cache.js";
+import { collectRegistryChain, summarizeAccumulatedState } from "./utils/registry-chain.js";
+import { computeChainDelta } from "./utils/registry-delta.js";
+import {
+    fetchLiveRegistry,
+    fetchRegistryFromIpfs,
+    isValidIpfsHash,
+    resolveLiveCid,
+} from "./utils/registry-fetch.js";
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -131,6 +149,23 @@ if (registryMode === "full" || fullMode) {
 // Get SOURCE_IPFS from environment
 const sourceIpfs = process.env.SOURCE_IPFS || null;
 
+// Escape hatch for a registry chain that cannot be fully reconstructed (broken previousRegistry
+// pointer, unreachable IPFS layer). Off by default: an incomplete chain understates what is
+// already published, which inflates the delta towards a full snapshot and drops deprecations.
+const allowPartialChain = process.env.ALLOW_PARTIAL_REGISTRY_CHAIN === "1";
+
+// Optional override for how many registry layers the chain walk may fetch (default in
+// utils/registry-chain.js). Only useful if the published chain ever outgrows that bound.
+const registryChainMaxDepth = process.env.REGISTRY_CHAIN_MAX_DEPTH
+    ? Number(process.env.REGISTRY_CHAIN_MAX_DEPTH)
+    : undefined;
+if (registryChainMaxDepth != null && (!Number.isInteger(registryChainMaxDepth) || registryChainMaxDepth < 1)) {
+    console.error(
+        `Invalid REGISTRY_CHAIN_MAX_DEPTH "${process.env.REGISTRY_CHAIN_MAX_DEPTH}". Expected an integer >= 1.`
+    );
+    process.exit(1);
+}
+
 // Git commit hash of the codebase version used to build ABIs (set by CI workflow)
 const deploymentCommitOverride = process.env.DEPLOYMENT_COMMIT || null;
 
@@ -163,122 +198,33 @@ function sleep(ms) {
 }
 
 /**
- * Registry URLs for fetching current live registries
- */
-const REGISTRY_URLS = {
-    mainnet: "https://registry.centrifuge.io",
-    testnet: "https://registry.testnet.centrifuge.io",
-};
-
-/**
- * IPFS gateway URL (Pinata is used since that's where registries are pinned)
- */
-const IPFS_GATEWAY = "https://gateway.pinata.cloud";
-
-/**
- * DNS hostnames for dnslink CID resolution.
- * Cloudflare Web3 hostnames publish a TXT record at _dnslink.<hostname>
- * with value "dnslink=/ipfs/<CID>".
- */
-const DNSLINK_HOSTNAMES = {
-    mainnet: "registry.centrifuge.io",
-    testnet: "registry.testnet.centrifuge.io",
-};
-
-/**
- * Resolves the IPFS CID of the currently live registry via DNS TXT lookup.
- * This is the source of truth — the dnslink record points to whatever CID
- * Cloudflare is actually serving.
+ * Fetches the registry the delta is measured against: the live tip, or a specific CID when
+ * SOURCE_IPFS pins the comparison to an older layer.
  *
  * @param {string} environment - "mainnet" or "testnet"
- * @returns {Promise<string|null>} IPFS CID or null if not resolvable
- */
-async function resolveLiveCid(environment) {
-    const hostname = DNSLINK_HOSTNAMES[environment];
-    if (!hostname) return null;
-
-    const dnslinkHost = `_dnslink.${hostname}`;
-    try {
-        console.log(`  Resolving live CID via DNS: ${dnslinkHost}`);
-        const records = await resolveTxt(dnslinkHost);
-        // records is an array of arrays of strings, e.g. [["dnslink=/ipfs/Qm..."]]
-        for (const record of records) {
-            const txt = record.join("");
-            const match = txt.match(/^dnslink=\/ipfs\/(.+)$/);
-            if (match) {
-                const cid = match[1];
-                console.log(`  ✓ Resolved live CID: ${cid}`);
-                return cid;
-            }
-        }
-        console.warn(`  ⚠ No dnslink record found at ${dnslinkHost}`);
-        return null;
-    } catch (error) {
-        console.warn(`  ⚠ DNS lookup failed for ${dnslinkHost}: ${error.message}`);
-        return null;
-    }
-}
-
-/**
- * Validates that a string is a valid IPFS hash (CID).
- * Supports both v0 (Qm...) and v1 (baf...) CIDs.
- *
- * @param {string} input - String to validate
- * @returns {boolean} True if input is a valid IPFS CID
- */
-function isValidIpfsHash(input) {
-    if (!input || typeof input !== "string") return false;
-
-    // Check for CID patterns:
-    // v0: Qm followed by 44 base58 characters (total 46 chars)
-    //     Base58 alphabet: 1-9, A-H, J-N, P-Z, a-k, m-z (excludes 0, O, I, l)
-    // v1: baf followed by base32/base58 characters (variable length, typically 50+ chars)
-    //     Base32 alphabet: a-z, 2-7 (lowercase only)
-    //     Base58 alphabet: 1-9, A-H, J-N, P-Z, a-k, m-z (excludes 0, O, I, l)
-    // For v1, we allow alphanumeric characters (more permissive to handle various encodings)
-    const base58Char = "[1-9A-HJ-NP-Za-km-z]";
-    const cidV0Pattern = new RegExp(`^Qm${base58Char}{44}$`);
-    // v1 CIDs: baf followed by at least 50 alphanumeric characters
-    // Using [a-z0-9] for base32 (most common) but allowing flexibility
-    const cidV1Pattern = /^baf[a-z0-9]{50,}$/i;
-
-    return cidV0Pattern.test(input) || cidV1Pattern.test(input);
-}
-
-/**
- * Fetches the current live registry from the registry URL or IPFS.
- *
- * @param {string} environment - "mainnet" or "testnet"
- * @param {string|null} ipfsHash - Optional IPFS hash (CID) to fetch from IPFS gateway
- * @returns {Promise<Object|null>} The current live registry or null if not found
+ * @param {string|null} ipfsHash - Optional IPFS hash (CID) to fetch from IPFS instead of the tip
+ * @returns {Promise<Object|null>} The registry document, or null if it cannot be read
  */
 async function fetchCurrentRegistry(environment, ipfsHash = null) {
-    let url;
+    let registry = null;
+
     if (ipfsHash) {
-        url = `${IPFS_GATEWAY}/ipfs/${ipfsHash}`;
-        console.log(`Fetching registry from IPFS hash: ${ipfsHash} (via ${url})...`);
-    } else {
-        url = REGISTRY_URLS[environment];
-        if (!url) {
-            console.warn(`No registry URL configured for environment: ${environment}`);
+        console.log(`Fetching registry from IPFS hash: ${ipfsHash}...`);
+        try {
+            registry = await fetchRegistryFromIpfs(ipfsHash, { log: (msg) => console.log(msg) });
+        } catch (error) {
+            console.warn(`Could not fetch registry ${ipfsHash}: ${error.message}`);
             return null;
         }
-        console.log(`Fetching current registry from ${url}...`);
+    } else {
+        registry = await fetchLiveRegistry(environment);
+        if (!registry) return null;
     }
 
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            console.warn(`Failed to fetch registry: ${response.status} ${response.statusText}`);
-            return null;
-        }
-        const registry = await response.json();
-        console.log(`  ✓ Fetched registry with version: ${registry.version || registry.deploymentInfo?.gitCommit || "unknown"}`);
-        return registry;
-    } catch (error) {
-        console.warn(`Could not fetch current registry from ${url}: ${error.message}`);
-        return null;
-    }
+    console.log(
+        `  ✓ Fetched registry with version: ${registry.version || registry.deploymentInfo?.gitCommit || "unknown"}`
+    );
+    return registry;
 }
 
 /**
@@ -414,43 +360,6 @@ function deriveHighestContractVersion(chains) {
         }
     }
     return maxProtocolVersionLabel(labels);
-}
-
-/**
- * Compares a contract from local env with the current live registry.
- * Returns true if the contract has changed (new address, blockNumber, or is new).
- *
- * @param {string} contractName - Name of the contract
- * @param {Object} localContract - Contract data from local env file
- * @param {Object|null} currentRegistryChain - Chain data from current live registry
- * @returns {boolean} True if contract has changed
- */
-function hasContractChanged(contractName, localContract, currentRegistryChain) {
-    if (!currentRegistryChain?.contracts) {
-        return true; // No existing registry, everything is new
-    }
-
-    const existingContract = currentRegistryChain.contracts[contractName];
-    if (!existingContract) {
-        return true; // New contract
-    }
-
-    const localAddress = typeof localContract === "string" ? localContract : localContract?.address;
-    const existingAddress = typeof existingContract === "string" ? existingContract : existingContract?.address;
-
-    // Contract changed if address is different
-    if (localAddress?.toLowerCase() !== existingAddress?.toLowerCase()) {
-        return true;
-    }
-
-    // Also check blockNumber - if it changed, the contract was redeployed
-    const localBlock = localContract?.blockNumber;
-    const existingBlock = existingContract?.blockNumber;
-    if (localBlock && existingBlock && String(localBlock) !== String(existingBlock)) {
-        return true;
-    }
-
-    return false;
 }
 
 /**
@@ -739,9 +648,10 @@ async function processContracts(chain, networkFile) {
  * Main entry point: generates a delta registry JSON file.
  *
  * Process:
- * 1. Fetch current live registry from registry.centrifuge.io (unless in full mode)
+ * 1. Fetch current live registry from registry.centrifuge.io and flatten its chain into the
+ *    accumulated published state (unless in full mode)
  * 2. Process each chain in env/*.json matching the environment
- * 3. Compare contracts to detect what's changed (unless in full mode)
+ * 3. Compare contracts against the accumulated state to detect what's changed (unless in full mode)
  * 4. Fetch contract block numbers from Etherscan for changed contracts
  * 5. Combine into delta registry structure with previousRegistry pointer
  * 6. Write to output file
@@ -771,6 +681,7 @@ async function main() {
     // Fetch the current live registry to compare against (skip in full mode)
     let currentRegistry = null;
     let currentChains = {};
+    let publishedAbiNames = null; // null = no chain to compare ABI coverage against
     let previousVersion = null;
     let previousIpfsHash = sourceIpfs; // Use SOURCE_IPFS if provided
 
@@ -780,14 +691,83 @@ async function main() {
         }
 
         currentRegistry = await fetchCurrentRegistry(selector, sourceIpfs);
-        currentChains = currentRegistry?.chains || {};
         previousVersion = currentRegistry?.version || currentRegistry?.deploymentInfo?.gitCommit || null;
 
-        if (sourceIpfs && currentRegistry) {
-            console.log(`  Comparing against registry version: ${previousVersion || "unknown"}`);
-        } else if (!sourceIpfs && !currentRegistry) {
-            console.warn(`  ⚠ Could not fetch current registry for comparison`);
+        // No tip means no published state to measure against, and every env contract then reads as
+        // new — the same inflated snapshot-as-a-delta an incomplete chain produces, except it also
+        // leaves previousRegistry null and so presents itself as a base registry. An outage must not
+        // be able to publish that; deliberately republishing a base snapshot is what full mode is
+        // for, which is why there is no override here.
+        if (!currentRegistry) {
+            console.error(
+                `\n✗ Refusing to generate the ${selector} registry: could not read the published ` +
+                `tip${sourceIpfs ? ` at SOURCE_IPFS ${sourceIpfs}` : ""}.\n` +
+                `  A delta is measured against published state; without it every contract would be ` +
+                `re-emitted as new and the result would be pinned as a base registry.\n` +
+                `  Re-run once the registry endpoint or IPFS is reachable, or set REGISTRY_MODE=full ` +
+                `to publish a base snapshot on purpose.`
+            );
+            process.exitCode = 1;
+            return;
         }
+
+        if (sourceIpfs) {
+            console.log(`  Comparing against registry version: ${previousVersion || "unknown"}`);
+        }
+
+        // Compare against the accumulated state of the whole published chain, not just the tip.
+        // Each layer only carries what changed in that publish, so the tip alone would make every
+        // contract it omits look new — a "delta" that is really a full snapshot.
+        console.log(`  Reconstructing published state from the registry chain...`);
+        const { layers, accumulated, accumulatedAbis, complete, reason, fatal } = await collectRegistryChain(currentRegistry, {
+            maxDepth: registryChainMaxDepth,
+            expectedNetwork: selector,
+            log: console.log,
+        });
+
+        if (!complete) {
+            // One write, and no process.exit: under Actions stderr is a pipe and therefore
+            // async, so exiting here could truncate the very diagnostic that explains the
+            // failure. Setting exitCode lets Node flush and exit on its own.
+            if (fatal) {
+                // Not a transient condition — the chain belongs to another environment, so
+                // there is nothing to retry and no override that would make it safe.
+                console.error(
+                    `\n✗ Refusing to generate the ${selector} registry: ${reason}.\n` +
+                    `  Check SOURCE_IPFS (or the live ${selector} dnslink) points at a ` +
+                    `${selector} registry.`
+                );
+                process.exitCode = 1;
+                return;
+            }
+            const message =
+                `Could not reconstruct the full registry chain for ${selector}: ${reason}. ` +
+                `Comparing against a partial chain would emit contracts that are already ` +
+                `published and would miss deprecations.`;
+            if (!allowPartialChain) {
+                console.error(
+                    `\n✗ ${message}\n` +
+                    `  Re-run once IPFS is reachable, or set ALLOW_PARTIAL_REGISTRY_CHAIN=1 to ` +
+                    `generate against the ${layers.length} layer(s) that were reachable.`
+                );
+                process.exitCode = 1;
+                return;
+            }
+            console.warn(`  ⚠ ${message}`);
+            console.warn(`  ⚠ ALLOW_PARTIAL_REGISTRY_CHAIN=1 — continuing with a partial chain.`);
+        }
+
+        currentChains = accumulated;
+        // ABI coverage across the chain, so a contract whose ABI was never published can be
+        // pulled into this delta even when its address has not moved (see computeChainDelta).
+        publishedAbiNames = accumulatedAbis;
+        const { chains: accChains, contracts: accContracts } =
+            summarizeAccumulatedState(currentChains);
+        console.log(
+            `  ✓ Accumulated state from ${layers.length} layer(s): ` +
+            `${accContracts} contracts across ${accChains} chain(s), ` +
+            `${publishedAbiNames.size} ABIs`
+        );
 
         // Resolve the live CID via DNS if not explicitly provided
         if (!previousIpfsHash && previousVersion) {
@@ -818,6 +798,7 @@ async function main() {
     const versions = new Set();
     let totalChangedContracts = 0;
     let totalDeprecatedContracts = 0;
+    let totalAbiGapsHealed = 0;
     let totalContracts = 0;
 
     // Collect original chainSelector values from all env files (to restore after JSON.stringify)
@@ -861,7 +842,8 @@ async function main() {
             }
         }
 
-        // Get the current registry chain data for comparison (null in full mode)
+        // Accumulated published state for this chain, merged across every registry layer
+        // (null in full mode)
         const currentRegistryChain = fullMode ? null : currentChains[chainId];
 
         // Process ALL contracts to normalize env file data (will skip fetches for contracts with existing data)
@@ -876,39 +858,31 @@ async function main() {
             totalChangedContracts += Object.keys(allProcessedContracts).length;
             console.log(`  Including all ${Object.keys(allProcessedContracts).length} contracts (full mode)`);
         } else {
-            // Delta mode: identify changed contracts by comparing with current live registry
-            const changedContractNames = new Set();
+            // Delta mode: compare against the accumulated state of the whole published chain
             const allContracts = chain.contracts || {};
+            const { changed: changedContractNames, deprecated, abiGaps } = computeChainDelta(
+                allContracts,
+                currentRegistryChain,
+                { publishedAbiNames, abiNamesForContract: artifactNamesForContractKey }
+            );
 
-            for (const [contractName, contractData] of Object.entries(allContracts)) {
-                totalContracts++;
-                if (hasContractChanged(contractName, contractData, currentRegistryChain)) {
-                    changedContractNames.add(contractName);
-                    totalChangedContracts++;
-                }
+            totalContracts += Object.keys(allContracts).length;
+            totalChangedContracts += changedContractNames.size;
+
+            for (const [contractName, tombstone] of Object.entries(deprecated)) {
+                processedContracts[contractName] = tombstone;
+                totalDeprecatedContracts++;
+                console.log(`    ⊘ ${contractName}: deprecated (removed from env)`);
             }
+            const chainDeprecated = Object.keys(deprecated).length;
 
-            // Detect deprecated contracts: present in live registry but removed from local env
-            let chainDeprecated = 0;
-            if (currentRegistryChain?.contracts) {
-                for (const contractName of Object.keys(currentRegistryChain.contracts)) {
-                    const live = currentRegistryChain.contracts[contractName];
-                    // Skip keys already deprecated in the published delta (address null) — do not re-emit every run
-                    if (live?.address === null) continue;
-                    if (!allContracts[contractName]) {
-                        processedContracts[contractName] = {
-                            address: null,
-                            blockNumber: null,
-                            txHash: null,
-                        };
-                        chainDeprecated++;
-                        totalDeprecatedContracts++;
-                        console.log(`    ⊘ ${contractName}: deprecated (removed from env)`);
-                    }
-                }
+            for (const contractName of abiGaps) {
+                totalAbiGapsHealed++;
+                console.log(`    ⟲ ${contractName}: unchanged, re-emitted to ship an ABI the chain never carried`);
             }
 
             console.log(`  Found ${changedContractNames.size}/${Object.keys(allContracts).length} changed contracts` +
+                (abiGaps.size > 0 ? ` (${abiGaps.size} to heal missing ABIs)` : "") +
                 (chainDeprecated > 0 ? `, ${chainDeprecated} deprecated` : ""));
 
             // Filter to only include changed contracts in the delta registry
@@ -1072,8 +1046,16 @@ async function main() {
             console.log(`  Version: ${resolvedVersion || "unknown"}`);
             console.log(`  Previous version: ${previousVersion || "none (first registry)"}`);
         }
+        // The two counters are independent: a deprecated contract is by definition absent from
+        // env, so it can never be counted as changed. Keep them in separate clauses — a
+        // parenthesised "(N deprecated)" reads as "N of those M".
         console.log(`  Changed contracts: ${totalChangedContracts}/${totalContracts}` +
-            (totalDeprecatedContracts > 0 ? ` (${totalDeprecatedContracts} deprecated)` : ""));
+            (totalDeprecatedContracts > 0 ? `, plus ${totalDeprecatedContracts} deprecated` : ""));
+        const deltaEntries = totalChangedContracts + totalDeprecatedContracts;
+        console.log(`  Contracts in delta: ${deltaEntries}`);
+        if (totalAbiGapsHealed > 0) {
+            console.log(`  Unchanged contracts re-emitted to heal missing ABIs: ${totalAbiGapsHealed}`);
+        }
         console.log(`  Chains with changes: ${Object.keys(chains).length}`);
         console.log(`  ABIs included: ${Object.keys(registry.abis).length}`);
     }
@@ -1264,14 +1246,18 @@ function packAbis(chains) {
     return abis;
 }
 
+// No process.exit() in either handler: stdout/stderr are pipes in CI and therefore async, so
+// exiting explicitly can truncate the diagnostic that explains a failure. Setting exitCode lets
+// Node flush and exit on its own. `.then` runs before `.catch` so a rejection cannot be reported
+// as a success, and main() bailing out after printing why is respected via exitCode.
 main()
+    .then(() => {
+        if (process.exitCode) return;
+        console.log("Registry built successfully");
+    })
     .catch((error) => {
         console.error(error);
-        process.exit(1);
-    })
-    .then(() => {
-        console.log("Registry built successfully");
-        process.exit(0);
+        process.exitCode = 1;
     });
 
 /**

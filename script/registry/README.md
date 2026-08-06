@@ -6,6 +6,22 @@ This folder contains everything for Centrifuge's contract registry: scripts that
 
 Registries use a **delta format**: each version only contains contracts that changed since the previous version. Each delta has a `previousRegistry` field with an IPFS hash to the prior version, forming a linked chain. This enables selective loading, version-aware indexing (each delta has a `startBlock`), and full reconstruction by walking the IPFS chain.
 
+### What "changed since" is measured against
+
+A delta is computed against the **accumulated state of the entire published chain**, not against the tip document. `abi-registry.js` walks `previousRegistry.ipfsHash` from the live tip back to the base snapshot (`utils/registry-chain.js`) and merges every layer, newest winning, to reconstruct the effective state an indexer holds. Only then does it compare `env/*.json` against it.
+
+This matters because each published layer carries *only* its own changes. Comparing against the tip alone marks every contract the tip happens not to carry as new, so a small deploy emits a near-full snapshot — and since the next run then compares against that large layer, successive publishes oscillate between complementary halves of the contract set. The same flaw hides deprecations: a contract dropped from env is only tombstoned if it appears in the layer being compared against.
+
+If the chain cannot be fully reconstructed (broken `previousRegistry.ipfsHash`, unreachable IPFS layer, cycle, or more layers than `REGISTRY_CHAIN_MAX_DEPTH`), generation **fails** rather than emitting an inflated delta. Set `ALLOW_PARTIAL_REGISTRY_CHAIN=1` to override — but expect already-published contracts to be re-emitted and deprecations to be missed. `SOURCE_IPFS=<cid>` starts the walk from that CID instead of the live tip.
+
+If the tip itself cannot be read at all — the live endpoint and its dnslink fallback both unreachable, or an unfetchable `SOURCE_IPFS` — generation fails too, with **no override**. There would be no published state to measure against, so every contract would be re-emitted as new *and* the result would carry `previousRegistry: null`, presenting an outage as a base registry. Publishing a base snapshot on purpose is what `REGISTRY_MODE=full` is for.
+
+Every layer must also declare the network being generated. Nothing in the chain format ties a layer to an environment, so a `SOURCE_IPFS` pointing at the other environment's CID would otherwise flatten *its* contracts into this delta and pass every downstream check — the [delta invariants](#delta-invariants) included, since they compare against that same accumulated state. A mismatch is **not** overridable by `ALLOW_PARTIAL_REGISTRY_CHAIN`: unlike an unreachable gateway it is never something to proceed through. A layer carrying no `network` field at all is treated as unknown rather than wrong, so an old base snapshot that predates the field cannot fail a run.
+
+The walk costs one IPFS fetch per layer, so it grows with publish history: mainnet is ~7 layers, testnet ~50. Layers are fetched from Centrifuge's dedicated Pinata gateway with the shared Pinata gateway, `ipfs.io`, and `dweb.link` as fallbacks, so one flaky gateway cannot fail the run — and every fetched layer is cached by CID (see [Layer cache](#layer-cache)), so steady state is one fetch per new layer.
+
+`node script/registry/walk-registry-chain.js <env>` prints the same walk as a per-layer table when you want to inspect the chain by hand.
+
 ### Output modes
 
 `abi-registry.js` can emit a registry in three shapes; the indexer (`api-v3/scripts/fetch-registry.mjs`) reconciles them when it walks the chain.
@@ -40,10 +56,15 @@ The chosen mode is logged by `abi-registry.js`, recorded in `<registry>.validati
 | `abi-registry.js` | Builds `registry-*.json` from env files, explorer APIs, and per-tag Forge ABI caches. Output mode is one of `delta` (append), `patch` (null-version layer that "replaces the last registry" via the indexer's merge logic), or `full` (base snapshot). See [Output modes](#output-modes). |
 | `utils/abi-cache.js` | Per-tag Forge ABI cache (worktrees + `forge build`); env key → artifact names (`ABI_NAME_ALIASES` / `resolveArtifactName` / `artifactNamesForContractKey`). See [ABI cache layout](#abi-cache-layout-repo-root). |
 | `build-abi-cache.js` | CLI to warm the cache: `node script/registry/build-abi-cache.js <git-tag> [...]` (from repo root). |
+| `utils/registry-chain.js` | Walks `previousRegistry.ipfsHash` from a tip document back to the base snapshot (cycle/depth guards) and flattens the layers into the accumulated published state that delta comparison runs against (`flattenRegistryChain`) plus its ABI coverage (`flattenRegistryAbis`). |
+| `utils/registry-fetch.js` | All published-registry network I/O in one place: live endpoints, dnslink CID resolution, CID validation, multi-gateway IPFS fetch, and the [layer cache](#layer-cache). |
+| `utils/registry-delta.js` | Decides delta membership against the accumulated state: `hasContractChanged`, `computeChainDelta` (changed contracts + deprecation tombstones + [ABI-gap heals](#abi-gaps-and-how-they-heal)). |
+| `utils/registry-invariants.js` | `checkDeltaInvariants` — semantic checks that a delta is actually a delta, and that every live contract's ABI exists somewhere in the chain (see [Delta invariants](#delta-invariants)); `loadEnvChains`. |
+| `walk-registry-chain.js` | Ops CLI: per-layer audit of the published chain. See [Auditing the published chain](#auditing-the-published-chain). |
 | `utils/tag-resolution.js` | Shared helpers: map env contract `version` → git tag (used by `abi-registry.js` and CI). |
 | `utils/validate-env-contract-version-tags.js` | CI pre-check: every mainnet/testnet contract must have `version` and a matching local git tag (run after `git fetch --tags`). |
-| `validate-env-schema.js` | Validates all `env/*.json` against the expected schema, including `deploymentInfo.*.startBlock` vs contract `blockNumber` gap (chain-level indexer listeners). Fast-fail gate before generation. |
-| `validate-registry.js` | Validates generated registry JSON against indexer hard requirements. Sidecar `.validation.json` for PR comments. Uses the same artifact naming as `packAbis` via `utils/abi-cache.js`. |
+| `validate-env-schema.js` | Validates all `env/*.json` against the expected schema, including every `deploymentInfo.*.startBlock` vs contract `blockNumber` gap (chain-level indexer listeners; catches an L1 block recorded on an L2 chain). Fast-fail gate before generation. |
+| `validate-registry.js` | Validates generated registry JSON against indexer hard requirements plus the [delta invariants](#delta-invariants). Sidecar `.validation.json` for PR comments. Uses the same artifact naming as `packAbis` via `utils/abi-cache.js`. |
 | `pin-to-ipfs.js` | Pins generated registries to Pinata, outputs CID metadata. |
 | `validate-api-keys.js` | Read-only validation of Pinata and Cloudflare credentials. |
 | `.github/ci-scripts/detect-changed-environments.js` | Detects mainnet/testnet env changes to skip unnecessary CI builds. |
@@ -82,9 +103,36 @@ flowchart TD
 
 **Validation layers:**
 
-1. **`validate-env-schema.js`** (pre-generation) — broken JSON, missing `network.chainId`, invalid addresses, structural renames, and **`deploymentInfo.*.startBlock` vs contract `blockNumber` gap**. Fails the workflow immediately.
-2. **`validate-env-contract-version-tags.js`** — every mainnet/testnet contract has a `version` that resolves to a local git tag (ABI cache). Requires `git fetch --tags` in CI.
-3. **`validate-registry.js`** (post-generation) — indexer hard requirements on the generated JSON; writes `.validation.json` for the PR comment.
+1. **`npm test`** (pre-generation) — unit tests for the chain walk, layer cache, delta membership, and delta invariants. No network access.
+2. **`validate-env-schema.js`** (pre-generation) — broken JSON, missing `network.chainId`, invalid addresses, structural renames, and **`deploymentInfo.*.startBlock` vs contract `blockNumber` gap**. Fails the workflow immediately.
+3. **`validate-env-contract-version-tags.js`** — every mainnet/testnet contract has a `version` that resolves to a local git tag (ABI cache). Requires `git fetch --tags` in CI.
+4. **`validate-registry.js`** (post-generation) — indexer hard requirements on the generated JSON, plus the [delta invariants](#delta-invariants); writes `.validation.json` for the PR comment.
+
+### Delta invariants
+
+Structural validity is not enough: a delta that re-states contracts already published is well-formed JSON, which is how a near-full snapshot shipped as a delta three times. `validate-registry.js` therefore also checks what the delta *means*, against the flattened published chain (skipped for `full` mode and under `SKIP_LIVE_REGISTRY_CHECK=1`):
+
+| Invariant | Severity | Catches |
+|-----------|----------|---------|
+| **Projection** — applying the delta to the published state reproduces `env/*.json` exactly | error | An omitted change, an invented address, a `blockNumber` that disagrees with env, or a contract dropped from env without a tombstone |
+| **Minimality** — no delta entry restates the published address + blockNumber | error | A delta inflated toward a snapshot; re-tombstoning an already-retired contract |
+| **ABI coverage** — every live contract resolves to an ABI in the chain, or in this delta | error | A contract an indexer cannot decode, because no layer ever carried its ABI |
+| **Size** — delta carries >30% of published contracts | warning | The symptom a human notices first; expected for a broad redeploy or a tombstone backlog |
+
+Stats land in `summary.delta` of the sidecar and in the **Delta size** row of the PR comment. If the chain cannot be reconstructed the invariants warn and skip — generation already fails hard in that case.
+
+### ABI gaps and how they heal
+
+`packAbis` can finish with `⚠ ABIs not found for: …` and still publish, leaving a contract in the chain with no ABI. While deltas were computed against the tip alone, that healed by accident: nearly every contract counted as changed on every run, so its ABI was re-shipped. Comparing against the accumulated state removed the accident, which would otherwise make such a gap **permanent** — nothing re-emits an unchanged contract.
+
+Two mechanisms replace the accident:
+
+1. **Healing.** `computeChainDelta` treats "active in env, but the chain carries none of its required ABI names" as a reason to include a contract, even when its address has not moved. The log marks these `⟲ <name>: unchanged, re-emitted to ship an ABI the chain never carried`, and they are counted separately in the summary.
+2. **Detection.** The ABI-coverage invariant errors if a live contract still resolves to no ABI after the delta is applied — so a gap that cannot heal (a misnamed artifact, say) fails the build instead of shipping.
+
+Healing deliberately restates an unchanged contract, which the minimality invariant would otherwise reject; that case downgrades to a warning naming the ABI being shipped. Retired contracts (`address: null`) need no ABI and are exempt.
+
+**Required ABI names** per contract key come from `artifactNamesForContractKey` in `utils/abi-cache.js` — the same mapping `packAbis` uses, including the factory-plus-product rule (`tokenFactory` → `TokenFactory` + `ShareToken`).
 
 **Other workflows:**
 - **`tag-env-updates.yml`** – On any push that touches `env/**/*.json`: runs `compute-env-tags.js` and pushes annotated tags.
@@ -195,7 +243,22 @@ curl -s https://registry.centrifuge.io | jq '.previousRegistry.ipfsHash'
 curl -s https://ipfs.centrifuge.io/ipfs/<CID> | jq '.previousRegistry.ipfsHash'
 ```
 
-**Env / flags:** `DEPLOYMENT_COMMIT` (metadata only), `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `SOURCE_IPFS`; `--full`, `--source-url=<url>`. For pinning: `PINATA_JWT` (1Password, limited access).
+**Env / flags:** `DEPLOYMENT_COMMIT` (metadata only), `ETHERSCAN_API_KEY` (required), `REGISTRY_MODE=full`, `SOURCE_IPFS`, `ALLOW_PARTIAL_REGISTRY_CHAIN=1` (proceed even if the chain walk is incomplete), `REGISTRY_CHAIN_MAX_DEPTH` (fetch bound for the chain walk, default 500 — see [What "changed since" is measured against](#what-changed-since-is-measured-against)), `REGISTRY_CHAIN_CACHE_DIR` / `REGISTRY_CHAIN_NO_CACHE=1` (see [Layer cache](#layer-cache)); `--full`. For pinning: `PINATA_JWT` (1Password, limited access).
+
+### Auditing the published chain
+
+```bash
+node script/registry/walk-registry-chain.js mainnet            # per-layer table
+node script/registry/walk-registry-chain.js testnet --depth 100
+node script/registry/walk-registry-chain.js --cid <cid>         # start from a specific layer
+node script/registry/walk-registry-chain.js mainnet --json      # machine-readable
+```
+
+Prints one row per layer with the contracts and tombstones it carries, flags layers holding more than half the accumulated state (`⚠ snapshot-sized`), and exits non-zero if the chain does not walk cleanly to its base snapshot. A healthy chain is small layers on top of a large base snapshot; repeated snapshot-sized layers mean a publish compared against the wrong baseline.
+
+### Layer cache
+
+Published layers are content-addressed, so a CID's contents can never change. Fetched layers are cached at `cache/registry-chain/<cid>.json` (gitignored) and restored in CI via `actions/cache`, which keeps a chain walk to one fetch per new layer instead of re-reading the whole history from rate-limited public gateways on every run. Set `REGISTRY_CHAIN_CACHE_DIR` to relocate it, or `REGISTRY_CHAIN_NO_CACHE=1` to bypass it.
 
 ### Validating env files and registries locally
 
@@ -203,27 +266,21 @@ curl -s https://ipfs.centrifuge.io/ipfs/<CID> | jq '.previousRegistry.ipfsHash'
 # Validate all env/*.json files against expected schema
 node script/registry/validate-env-schema.js
 
-# Validate a generated registry against indexer hard requirements
+# Validate a generated registry against indexer hard requirements + delta invariants
 node script/registry/validate-registry.js registry/registry-mainnet.json
 node script/registry/validate-registry.js registry/registry-testnet.json
 
-# Skip live registry fetch (offline mode)
+# Skip live registry fetch (offline mode; also skips the delta invariants)
 SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js registry/registry-mainnet.json
 ```
 
-### Validating env files and registries locally
+### Running the script tests
 
 ```bash
-# Validate all env/*.json files against expected schema
-node script/registry/validate-env-schema.js
-
-# Validate a generated registry against indexer hard requirements
-node script/registry/validate-registry.js registry/registry-mainnet.json
-node script/registry/validate-registry.js registry/registry-testnet.json
-
-# Skip live registry fetch (offline mode)
-SKIP_LIVE_REGISTRY_CHECK=1 node script/registry/validate-registry.js registry/registry-mainnet.json
+cd script/registry && npm install && npm test
 ```
+
+`node:test`, no extra dependencies, no network access. Covers the chain walk and flatten, the layer cache, delta membership, and the delta invariants — including a regression fixture that reproduces the tip-only comparison the invariants exist to catch. CI runs this before generating anything.
 
 ### Testing API keys (no changes made)
 
@@ -264,7 +321,7 @@ If (1) works but the script fails at step 1/5, set `CLOUDFLARE_ACCOUNT_ID` to yo
 
 **Single version:** Import the JSON; use `registry.abis.<ContractName>`, `registry.chains[chainId].contracts.<name>.address`, and optional `blockNumber` / `txHash` for deployment metadata.
 
-**Deprecated contracts:** When a contract existed in the previous registry but was removed from `env/*.json` (rename, merge, or retirement), the delta includes that key with `address: null`. No ABI is shipped for that entry in the delta (the prior registry already carried it). Downstream indexers (e.g. [api-v3](https://github.com/centrifuge/api-v3)) must treat `null` as “stop indexing this logical contract from this version’s deployment boundary”; concrete wiring is left to those projects.
+**Deprecated contracts:** When a contract exists anywhere in the accumulated published state — and has not already been tombstoned by a later layer — but was removed from `env/*.json` (rename, merge, or retirement), the delta includes that key with `address: null`. No ABI is shipped for that entry in the delta (the prior registry already carried it). Downstream indexers (e.g. [api-v3](https://github.com/centrifuge/api-v3)) must treat `null` as “stop indexing this logical contract from this version’s deployment boundary”; concrete wiring is left to those projects.
 
 ---
 
@@ -320,7 +377,7 @@ Below is a **trimmed** illustration of what a delta looks like when some v3.0 co
 }
 ```
 
-**How this is produced:** In delta mode, `abi-registry.js` compares local `env/*.json` to the previous registry (live endpoint or `SOURCE_IPFS=<cid>`). Any contract name present in the previous registry’s chain but **missing** from the current env for that chain is emitted as above with all-null fields. Regenerating against the v3.0 IPFS pin while env reflects v3.1 yields real rows such as `guardian`, `hubHelpers`, `routerEscrow`, and `globalEscrow` on affected chains.
+**How this is produced:** In delta mode, `abi-registry.js` compares local `env/*.json` to the accumulated state of the published chain (walked back from the live endpoint, or from `SOURCE_IPFS=<cid>`). Any contract name present anywhere in that accumulated state but **missing** from the current env for that chain is emitted as above with all-null fields, unless a later layer already tombstoned it. Regenerating against the v3.0 IPFS pin while env reflects v3.1 yields real rows such as `guardian`, `hubHelpers`, `routerEscrow`, and `globalEscrow` on affected chains.
 
 ---
 

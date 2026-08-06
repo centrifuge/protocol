@@ -285,10 +285,10 @@
       "version": "v3.1"
     },
     "oracleValuation": {
-      "address": "0xCBdb6EFFC9b954D05dF89c747eCaa8A143c26E6D",
-      "blockNumber": 41362522,
-      "txHash": "0xd7e3cf8444fbf5df2500153160cf857bdb4183658bc15858603bcd99d0650112",
-      "version": "v3.1"
+      "address": "0x8c3E9f3cF2dD057d6a2eA33d979faa0061b42c12",
+      "blockNumber": 49308370,
+      "txHash": "0x5c14777a026e58a8c4ca4dfc80d80171ed35eef125cd87f1704707191cac5def",
+      "version": "v3.2"
     },
     "navManager": {
       "address": "0x493b6C8ccC7BfD43c5a20C4F2C648701f74E9130",
@@ -313,6 +313,54 @@
       "blockNumber": 41455566,
       "txHash": "0xc6ede0a81611b5ac8b1798aa584525e847bafb0a86049f088eca3bcb712062ad",
       "version": "v3.1"
+    },
+    "accountingToken": {
+      "address": "0x15a5D180A4b8da06268260b7B4f89ee7d239B6c5",
+      "blockNumber": 49308252,
+      "txHash": "0x660d4168369068c6669868ad44941f79aebead0d1351fc8f40a9e76386345ac4",
+      "version": "v3.2"
+    },
+    "scriptHelpers": {
+      "address": "0x052bb2c1F1551D7CC5373c39c3bC00dCD1F2154C",
+      "blockNumber": 49308260,
+      "txHash": "0xb5708b82ce488f63cc4570e1d09617b42295bafda1d4f3581f6fa50cd242ec83",
+      "version": "v3.2"
+    },
+    "onchainPMFactory": {
+      "address": "0x916bf6cdBE63aC01F4a9A4bb0f0f97Cc212733F6",
+      "blockNumber": 49308317,
+      "txHash": "0x4882ea21301b54a6198e2741cdd216814477acae9851b2458f28e07cd3378dad",
+      "version": "v3.2"
+    },
+    "flashLoanHelper": {
+      "address": "0x0EA533Edfb5e837f40756FF3b0A8654f062c6F3e",
+      "blockNumber": 49308339,
+      "txHash": "0x9084049973fc551dd25e34383999a9d884a9fc6546d081a47a82f49271a6716f",
+      "version": "v3.2"
+    },
+    "onOffRampFactory": {
+      "address": "0x22E2f679669D69b6b6f22CC9C1731035a3Fa0296",
+      "blockNumber": 49308346,
+      "txHash": "0xb90cdedd11196fac1fd45f4367fce228965542aed63ec6c8f3b5f634eb4faacb",
+      "version": "v3.2"
+    },
+    "approvalGuard": {
+      "address": "0x06522CA52ad905b025B2863F84BF433672d65820",
+      "blockNumber": 49308353,
+      "txHash": "0x1b5f86499de4ad17463d89a096e465d69dc417a0ecd08453d58b61c5e4ae417f",
+      "version": "v3.2"
+    },
+    "circuitBreakerGuard": {
+      "address": "0x6466899918602f6FC5Bf5c010Ddef417Df7057EA",
+      "blockNumber": 49308370,
+      "txHash": "0x825d289f96f6cdd250c6c4bfbaa73c653eecf698837c0f7c0e6f3b1ad8632ffc",
+      "version": "v3.2"
+    },
+    "slippageGuard": {
+      "address": "0x069385B688b1764B15E39E93ADFe12B768C8Bf95",
+      "blockNumber": 49308370,
+      "txHash": "0x5a4cbf2a55b6882e421abe54c0d78363c959dff7b06ec514b7649f837ed8dca0",
+      "version": "v3.2"
     }
   },
   "deploymentInfo": {
@@ -321,6 +369,12 @@
       "timestamp": "2026-01-27T11:38:30Z",
       "suffix": "",
       "startBlock": 41362271
+    },
+    "deploy:onchainpm": {
+      "gitCommit": "672da4510",
+      "timestamp": "2026-07-30T10:03:52Z",
+      "suffix": "",
+      "startBlock": 49308242
     }
   }
 }
