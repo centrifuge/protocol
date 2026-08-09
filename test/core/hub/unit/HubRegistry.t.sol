@@ -9,6 +9,7 @@ import {HubRegistry} from "../../../../src/core/hub/HubRegistry.sol";
 import {PoolId, newPoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
 
 import "forge-std/Test.sol";
@@ -190,5 +191,17 @@ contract HubRegistryTest is Test {
 
         PoolId nonExistingPool = PoolId.wrap(0xDEAD);
         assertEq(registry.exists(nonExistingPool), false);
+    }
+
+    function testErrNotAuthorized() public {
+        vm.startPrank(makeAddr("unauthorizedAddress"));
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.registerAsset(USD, 18);
+
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        registry.setHubRequestManager(POOL_A, CENTRIFUGE_ID, IHubRequestManager(address(0)));
+
+        vm.stopPrank();
     }
 }

@@ -11,6 +11,7 @@ import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IHoldings, HoldingAccount} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 
 import "forge-std/Test.sol";
@@ -21,6 +22,8 @@ AssetId constant ASSET_A = AssetId.wrap(2);
 ShareClassId constant NON_SC = ShareClassId.wrap(0);
 AssetId constant NON_ASSET = AssetId.wrap(0);
 AssetId constant POOL_CURRENCY = AssetId.wrap(23);
+uint16 constant CENTRIFUGE_ID = 1;
+uint16 constant TARGET_CENTRIFUGE_ID = 2;
 
 contract HubRegistryMock {
     function currency(PoolId) external pure returns (AssetId) {
@@ -423,5 +426,37 @@ contract TestLiability is TestCommon {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, true, new HoldingAccount[](0));
 
         assert(holdings.isLiability(POOL_A, SC_1, ASSET_A));
+    }
+}
+
+contract TestSetSnapshotHook is TestCommon {
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.setSnapshotHook(POOL_A, ISnapshotHook(address(0)));
+    }
+}
+
+contract TestSetSnapshot is TestCommon {
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.setSnapshot(POOL_A, SC_1, CENTRIFUGE_ID, true, 0);
+    }
+}
+
+contract TestCallOnSyncSnapshot is TestCommon {
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.callOnSyncSnapshot(POOL_A, SC_1, CENTRIFUGE_ID);
+    }
+}
+
+contract TestCallOnTransferSnapshot is TestCommon {
+    function testErrNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        holdings.callOnTransferSnapshot(POOL_A, SC_1, CENTRIFUGE_ID, TARGET_CENTRIFUGE_ID, 0);
     }
 }
