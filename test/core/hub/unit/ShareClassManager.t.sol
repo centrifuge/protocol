@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
@@ -323,6 +324,30 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
     function testUpdateMetadataClassInvalidSymbolExcess() public {
         vm.expectRevert(IShareClassManager.InvalidMetadataSymbol.selector);
         shareClass.updateMetadata(poolId, scId, SC_NAME, string(abi.encodePacked(new bytes(33))));
+    }
+
+    function testAddShareClassNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT);
+    }
+
+    function testUpdateSharePriceNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        shareClass.updateSharePrice(poolId, scId, d18(2, 1), uint64(block.timestamp));
+    }
+
+    function testUpdateMetadataNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        shareClass.updateMetadata(poolId, scId, SC_NAME, SC_SYMBOL);
+    }
+
+    function testUpdateSharesNotAuthorized() public {
+        vm.prank(makeAddr("unauthorizedAddress"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        shareClass.updateShares(centrifugeId, poolId, scId, 100, true);
     }
 }
 
