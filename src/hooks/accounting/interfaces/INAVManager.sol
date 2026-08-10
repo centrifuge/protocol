@@ -63,7 +63,8 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
         UpdateHoldingValuation,
         CloseGainLoss,
         UpdateManager,
-        SetDefaultValuation
+        SetDefaultValuation,
+        SetAccountMetadata
     }
 
     event SetNavHook(PoolId indexed poolId, address indexed navHook);
@@ -72,6 +73,7 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     event InitializeNetwork(PoolId indexed poolId, uint16 indexed centrifugeId);
     event InitializeHolding(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event InitializeLiability(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
+    event SetAccountMetadata(PoolId indexed poolId, AccountId indexed account, bytes metadata);
     event Sync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
     event SkipSync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint32 deficitCount);
     event Transfer(

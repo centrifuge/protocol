@@ -68,6 +68,10 @@ contract NAVManager is INAVManager {
             (, address valuation) = abi.decode(payload, (uint8, address));
             defaultValuation[poolId] = IValuation(valuation);
             emit SetDefaultValuation(poolId, IValuation(valuation));
+        } else if (kind == ManagerCall.SetAccountMetadata) {
+            (, AccountId account, bytes memory metadata) = abi.decode(payload, (uint8, AccountId, bytes));
+            hub.setAccountMetadata(poolId, account, metadata);
+            emit SetAccountMetadata(poolId, account, metadata);
         } else {
             (, uint16 centrifugeId) = abi.decode(payload, (uint8, uint16));
             _closeGainLoss(poolId, centrifugeId);

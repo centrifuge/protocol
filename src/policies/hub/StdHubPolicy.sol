@@ -254,8 +254,7 @@ contract StdHubPolicy is IStdHubPolicy {
             || selector == IHub.updateJournal.selector
             || selector == IHub.initializeHolding.selector
             || selector == IHub.updateHoldingValue.selector
-            || selector == IHub.updateHoldingValuation.selector
-            || selector == IHub.setHoldingAccountId.selector;
+            || selector == IHub.updateHoldingValuation.selector;
     }
 
     /// @dev A canonical `Freeze` is strictly tightening, so it runs instantly: waiting out `delay` would let

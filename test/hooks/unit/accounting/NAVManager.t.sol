@@ -64,6 +64,7 @@ contract NAVManagerTest is Test {
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValuation.selector), abi.encode());
         vm.mockCall(hub, abi.encodeWithSelector(IHub.updateJournal.selector), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.setAccountMetadata.selector), abi.encode());
 
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector), abi.encode(uint32(0)));
@@ -131,6 +132,11 @@ contract NAVManagerTest is Test {
     function _closeGainLoss(PoolId poolId, uint16 centrifugeId) internal {
         vm.prank(envoy);
         navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), centrifugeId));
+    }
+
+    function _setAccountMetadata(PoolId poolId, AccountId account, bytes memory metadata) internal {
+        vm.prank(envoy);
+        navManager.fromHub(poolId, abi.encode(uint8(INAVManager.ManagerCall.SetAccountMetadata), account, metadata));
     }
 
     function _expectedHoldingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
@@ -815,6 +821,19 @@ contract NAVManagerHelperFunctionsTest is NAVManagerTest {
         AccountId expected = withAssetId(asset1, uint16(NAVAccount.Expense));
         AccountId actual = navManager.expenseAccount(asset1);
         assertEq(actual.raw(), expected.raw());
+    }
+}
+
+contract NAVManagerSetAccountMetadataTest is NAVManagerTest {
+    function testSetAccountMetadata() public {
+        AccountId account = AccountId.wrap(42);
+        bytes memory metadata = "test";
+
+        vm.expectCall(address(hub), abi.encodeCall(IHub.setAccountMetadata, (POOL_A, account, metadata)));
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.SetAccountMetadata(POOL_A, account, metadata);
+
+        _setAccountMetadata(POOL_A, account, metadata);
     }
 }
 
