@@ -37,13 +37,14 @@ import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 ///         - Accounting/price writes, when `onchainAccounting` is set, are gated to the NAVManager /
 ///           SimplePriceManager and run instantly; `updateSharePrice` is further rate/cap-bounded by
 ///           {_checkSharePrice}.
-///         - `updateHubManager`, `setRequestManager`, `updateVault`, `addShareClass`,
-///           `updateManager`, and `setAdapters` are always out of policy.
+///         - `updateHubManager`, `setRequestManager`, `updateVault`, `updateCurrency`, `addShareClass`,
+///           `notifyShareClass`, `updateManager`, `setAdapters`, and `authorizeSpokeCall` are always out of policy.
 ///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
 ///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
 ///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
 ///         - `setPolicy` and `setSpokePolicy` use `escalation` instead of `delay`.
-///         - Cross-chain notifications and pool/share metadata updates are always in policy.
+///         - Cross-chain notifications and pool/share metadata updates are in policy, except
+///           `notifyShareClass`, which carries a caller-supplied registrar rather than committed state.
 ///         - Everything else (deny-by-default) falls through to `delay`.
 contract StdHubPolicy is IStdHubPolicy {
     using BytesLib for bytes;
@@ -194,13 +195,16 @@ contract StdHubPolicy is IStdHubPolicy {
         }
 
         // Out of policy, flat `delay`: hub-manager grant/revoke (delaying revocation stops instant
-        // Supervisor removal), request-manager / hook / vault / currency changes, and adding a share class.
+        // Supervisor removal), request-manager / hook / vault / currency changes, adding a share class, and
+        // notifying it to a spoke, whose caller-supplied registrar becomes the share token's mint authority.
+        // Sentinel runbook: check that registrar against the canonical one for the destination chain.
         // forgefmt: disable-next-item
         if (selector == IHub.updateHubManager.selector ||
             selector == IHub.setRequestManager.selector ||
             selector == IHub.updateVault.selector ||
             selector == IHub.updateCurrency.selector ||
             selector == IHub.addShareClass.selector ||
+            selector == IHub.notifyShareClass.selector ||
             selector == IHub.setAdapters.selector ||
             selector == IHub.authorizeSpokeCall.selector
         ) return delay;
@@ -224,10 +228,10 @@ contract StdHubPolicy is IStdHubPolicy {
         if (selector == IHub.setPolicy.selector || selector == IHub.setSpokePolicy.selector) return escalation;
 
         // In policy: cross-chain notifications (keeper-driven pushes of committed state) and metadata.
-        // Everything else (accounting, holdings, config) falls through to the timelocked default.
+        // `notifyShareClass` is excluded above: it is a one-shot deployment carrying an uncommitted registrar,
+        // not a re-push. Everything else (accounting, holdings, config) falls through to the timelocked default.
         // forgefmt: disable-next-item
         if (selector == IHub.notifyPool.selector ||
-            selector == IHub.notifyShareClass.selector ||
             selector == IHub.notifyShareMetadata.selector ||
             selector == IHub.notifySharePrice.selector ||
             selector == IHub.notifyAssetPrice.selector ||

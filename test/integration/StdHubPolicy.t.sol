@@ -9,6 +9,7 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {IRegistrar} from "../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IManagerCallFromHub} from "../../src/core/utils/interfaces/IManagerCall.sol";
 
@@ -494,6 +495,119 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         assertTrue(oracleValuation.feeder(POOL_A, 0, priceFeeder), "feeder added via authorized managerCall");
     }
 
+    /// @dev `notifyPool` stays in policy, so it lands synchronously. Required before the share class:
+    ///      {SpokeRegistry.addShareClass} reverts `InvalidPool` until the spoke knows the pool.
+    function _notifyPool() internal {
+        uint16 localId = messageDispatcher.localCentrifugeId();
+        vm.deal(FM, 1 ether);
+        vm.prank(FM);
+        hub.notifyPool{value: GAS}(POOL_A, localId, FUNDED);
+    }
+
+    /// @dev Must stay byte-identical to the live `hub.notifyShareClass` call sites: the authorization pins the
+    ///      whole calldata, down to `extraGasLimit` and `refund`.
+    function _notifyShareClassCall(address registrar, bytes memory payload) internal view returns (bytes memory) {
+        return abi.encodeCall(
+            IHub.notifyShareClass,
+            (POOL_A, SC_1, messageDispatcher.localCentrifugeId(), registrar.toBytes32(), payload, 0, FUNDED)
+        );
+    }
+
+    /// @notice The one notification that does not re-push committed state: `registrar` is caller-supplied, and
+    ///         {SpokeHandler.addShareClass} calls `newToken` on it and registers whatever it returns, handing
+    ///         that address the share class's mint authority on the destination chain.
+    function testNotifyShareClassIsOutOfPolicyByDefault() public {
+        _notifyPool();
+
+        uint16 localId = messageDispatcher.localCentrifugeId();
+        bytes32 registrarId = address(shareTokenRegistrar).toBytes32();
+        bytes memory call = _notifyShareClassCall(address(shareTokenRegistrar), "");
+
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, registrarId, "", 0, FUNDED);
+        assertFalse(spokeRegistry.hasShareClass(POOL_A, SC_1), "nothing landed on the spoke");
+
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, call);
+        assertEq(
+            hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, call)),
+            block.timestamp + POLICY_DELAY,
+            "flat delay, not escalation"
+        );
+
+        // Not matured yet -> still reverts.
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, registrarId, "", 0, FUNDED);
+
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, registrarId, "", 0, FUNDED);
+
+        assertTrue(spokeRegistry.hasShareClass(POOL_A, SC_1), "share class registered on the spoke");
+        (, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(POOL_A, SC_1);
+        assertEq(address(registrar), address(shareTokenRegistrar), "authorized registrar owns the share token");
+        assertEq(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, call)), 0, "authorization consumed");
+    }
+
+    /// @notice The property the classification buys: a sentinel reads the proposed registrar off
+    ///         `AuthorizationScheduled` and cancels within the window. No Supervisor branch is needed, since
+    ///         `_checkNotSelfRemoval` only inspects `managerCall`.
+    function testSentinelCanVetoNotifyShareClass() public {
+        _notifyPool();
+
+        uint16 localId = messageDispatcher.localCentrifugeId();
+        bytes32 registrarId = address(shareTokenRegistrar).toBytes32();
+        bytes memory call = _notifyShareClassCall(address(shareTokenRegistrar), "");
+
+        vm.prank(mockUpdater);
+        IManagerCallFromHub(address(supervisor)).fromHub(POOL_A, abi.encode(TrustedCall.AddSentinel, sentinel));
+
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, call);
+        assertGt(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, call)), 0, "authorization pending");
+
+        vm.prank(sentinel);
+        supervisor.cancelAuthorization(call);
+        assertEq(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, call)), 0, "authorization vetoed");
+
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, registrarId, "", 0, FUNDED);
+        assertFalse(spokeRegistry.hasShareClass(POOL_A, SC_1), "no registrar took the share class");
+    }
+
+    /// @notice The authorization hashes the whole calldata, so the registrar a sentinel blessed is the one that
+    ///         executes: a manager cannot bank the canonical registrar and substitute another after maturity.
+    function testNotifyShareClassAuthorizationPinsRegistrarAndPayload() public {
+        _notifyPool();
+
+        uint16 localId = messageDispatcher.localCentrifugeId();
+        bytes32 canonical = address(shareTokenRegistrar).toBytes32();
+        bytes32 hostile = makeAddr("hostileRegistrar").toBytes32();
+        bytes memory call = _notifyShareClassCall(address(shareTokenRegistrar), "");
+
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, call);
+        skip(POLICY_DELAY);
+
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, hostile, "", 0, FUNDED);
+
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, canonical, hex"01", 0, FUNDED);
+
+        // The exact authorized calldata still executes, so the two reverts were the mismatch and nothing else.
+        vm.prank(FM);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, canonical, "", 0, FUNDED);
+        (, IRegistrar registrar) = spokeRegistry.shareTokenAndRegistrar(POOL_A, SC_1);
+        assertEq(address(registrar), address(shareTokenRegistrar), "only the authorized registrar executes");
+    }
+
     /// @notice A non-withdrawal contract update is classified out of policy by `_checkManagerCall`: spoke
     ///         config actions are timelocked + sentinel-vetoable for policy pools. The update now rides
     ///         the unified `managerCall` transport (sentinel target + wrapped payload).
@@ -502,15 +616,15 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         uint16 localId = messageDispatcher.localCentrifugeId();
 
-        // The spoke-side share token must exist for SyncManager.setMaxReserve. The notify calls are
-        // in policy, so they run synchronously despite the installed policy.
-        vm.deal(FM, 1 ether);
-        vm.startPrank(FM);
-        hub.notifyPool{value: GAS}(POOL_A, localId, FUNDED);
-        hub.notifyShareClass{value: GAS}(
-            POOL_A, SC_1, localId, bytes32(bytes20(address(shareTokenRegistrar))), "", 0, FUNDED
-        );
-        vm.stopPrank();
+        // The spoke-side share token must exist for SyncManager.setMaxReserve. notifyPool is in policy;
+        // notifyShareClass is not, so it needs its own authorize -> mature -> execute cycle first.
+        _notifyPool();
+        bytes memory notifyCall = _notifyShareClassCall(address(shareTokenRegistrar), "");
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, notifyCall);
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, address(shareTokenRegistrar).toBytes32(), "", 0, FUNDED);
 
         uint128 newMaxReserve = 123e6;
         bytes32 target = address(syncManager).toBytes32();

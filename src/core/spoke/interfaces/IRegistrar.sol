@@ -7,8 +7,9 @@ pragma solidity >=0.5.0;
 ///         updates, and maintains metadata. One registrar is deployed per token standard per chain, and
 ///         each share class selects its registrar at creation (via the `NotifyShareClass` message).
 /// @dev    Registrar implementations MUST restrict all state-changing methods to the core spoke contracts
-///         (Spoke, SpokeHandler, SpokeRegistry). A registrar is chosen per pool, so a malicious
-///         registrar can only affect the share classes that selected it.
+///         (Spoke, SpokeHandler, SpokeRegistry). A registrar is chosen per share class, and holds that share
+///         class's mint authority on its chain. Because share supply is fungible across chains, a hostile
+///         registrar on one chain can mint into the same share class on another via a crosschain transfer.
 /// @dev    The registrar abstracts only privileged operations; core still moves shares via the token's
 ///         ERC20 `transfer`/`transferFrom`/`approve` directly, so every registrar's token MUST be
 ///         ERC20-transfer-compatible.

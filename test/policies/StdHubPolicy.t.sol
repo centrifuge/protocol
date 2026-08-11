@@ -1151,11 +1151,44 @@ contract StdHubPolicyTest is Test {
         assertEq(policy_.oracleValuation(), ORACLE);
     }
 
-    // ─── addShareClass ────────────────────────────────────────────────────────────
+    // ─── share class lifecycle ────────────────────────────────────────────────────
 
     function testAddShareClassTimelocked() public {
         bytes memory d = abi.encodeWithSelector(IHub.addShareClass.selector, POOL_A, "n", "s", bytes32(0));
         assertEq(_delayOf(d), DELAY);
+    }
+
+    /// @dev DELAY rather than ESCALATION pins it to the flat out-of-policy group.
+    function testNotifyShareClassTimelocked() public {
+        bytes memory d = abi.encodeWithSelector(
+            IHub.notifyShareClass.selector,
+            POOL_A,
+            SC_A,
+            LOCAL_CENTRIFUGE_ID,
+            bytes32(bytes20(who)),
+            bytes(""),
+            uint128(0),
+            address(0)
+        );
+        assertEq(_delayOf(d), DELAY);
+    }
+
+    /// @dev Pinned so a refactor of the in-policy block cannot sweep the remaining notifications out and
+    ///      strand every keeper. Truncated args are enough: none of the six inspects its payload.
+    function testNotifyAndMetadataSelectorsRemainInPolicy() public view {
+        bytes4[6] memory selectors = [
+            IHub.notifyPool.selector,
+            IHub.notifyShareMetadata.selector,
+            IHub.notifySharePrice.selector,
+            IHub.notifyAssetPrice.selector,
+            IHub.setPoolMetadata.selector,
+            IHub.updateShareClassMetadata.selector
+        ];
+
+        for (uint256 i; i < selectors.length; i++) {
+            bytes memory d = abi.encodeWithSelector(selectors[i], POOL_A);
+            assertEq(policy.authorizationDelay(POOL_A, manager, d), 0, "in policy");
+        }
     }
 
     // ─── per-caller selector allowlist ─────────────────────────────────────────────

@@ -460,6 +460,9 @@ interface IHub is IBatchedMulticall {
     function notifyPool(PoolId poolId, uint16 centrifugeId, address refund) external payable;
 
     /// @notice Notify to a CV instance that a new share class is available
+    /// @dev    Unlike its sibling notifications this does not re-push committed state: `registrar` and
+    ///         `payload` are caller-supplied, and the registrar becomes the share token's mint authority on
+    ///         the target chain. The standard Hub policy therefore classifies it out of policy.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param centrifugeId Chain where CV instance lives
