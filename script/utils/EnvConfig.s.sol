@@ -124,6 +124,8 @@ struct ContractsConfig {
     // Decoders
     address vaultDecoder;
     address circleDecoder;
+    // Deployment
+    address deployGate;
     // Adapters
     address layerZeroAdapter;
     address axelarAdapter;
@@ -339,6 +341,9 @@ library Env {
 
         // Bridge
         config.tokenBridge = _tryParseContractAddress(json, "tokenBridge");
+
+        // Deployment: written by DeployGateDeployer, absent on chains deployed before it existed
+        config.deployGate = _tryParseContractAddress(json, "deployGate");
 
         // Decoders. Legacy companions of merkleProofManagerFactory: absent on newer chains.
         config.vaultDecoder = _tryParseContractAddress(json, "vaultDecoder");

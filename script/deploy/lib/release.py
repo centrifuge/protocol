@@ -122,13 +122,41 @@ class ReleaseManager:
         )
         network_runner = DeploymentRunner(network_env, self.args)
         network_verifier = ContractVerifier(network_env, self.args)
-        
+
         # Step 1: Deploy protocol with retries (skip if already done)
         if not self.deployment_summary["networks"][network]["protocol"]:
             print_subsection(f"Step 1/4: Deploying protocol contracts to {network}")
-            if not self._retry_deployment(network, network_runner, "LaunchDeployer", "protocol"):
+            # The gate is a per-chain prerequisite of both phases, and is never brought up from here: its salt
+            # embeds its deployer, so a gate deployed with the release key would give this chain a different
+            # address set than every other one. A missing gate is not transient, so it must not be retried
+            if not self._has_deploy_gate(network_env, network_verifier):
+                print_error(f"No DeployGate on {network}. Bring it up once, from the canonical deployer:")
+                print_info(f"  EXECUTORS=<addresses> NETWORK={network} forge script script/DeployGateDeployer.s.sol \\")
+                print_info(f"    --tc DeployGateDeployer --rpc-url <rpc> --ledger --broadcast")
+                print_info(f"  python3 script/deploy/deploy.py {network} verify:contracts")
                 self._save_state()
                 return False
+
+            # The protocol goes through the DeployGate in one run per phase, and each is retried on its own:
+            # a failed execute has to be retried as execute, since re-entering validate would redeploy the
+            # whole protocol locally onto addresses the partial execute has already taken
+            phases = network_runner.gated_phases()
+            started_at = time.time()
+            for phase in phases:
+                if not self._retry_deployment(network, network_runner, "LaunchDeployer", None, phase):
+                    self._save_state()
+                    return False
+
+            # The step is recorded here, not by the phase that finished, so that it is only ever recorded over
+            # a deployment that is actually on chain. A forge run reports its own exit code, which says nothing
+            # about whether it deployed anything, and the steps below would otherwise run against an empty chain
+            if "execute" in phases and not self._protocol_landed(network_verifier, started_at):
+                print_error(f"The execute phase reported success but deployed nothing on {network}")
+                self._save_state()
+                return False
+
+            self.deployment_summary["networks"][network]["protocol"] = True
+            self._save_state()
         else:
             print_info("⏭️  Protocol already deployed, skipping...")
         
@@ -189,46 +217,59 @@ class ReleaseManager:
             print_info(f"    Wiring:       {'✓' if status.get('wiring') else '✗'}")
             print_info(f"    Test Data:    {'✓' if status.get('test_data') else '✗'}")
     
-    def _retry_deployment(self, network: str, runner: DeploymentRunner, script_name: str, step_name: str) -> bool:
+    def _retry_deployment(
+        self, network: str, runner: DeploymentRunner, script_name: str, step_name: str, phase: str = None
+    ) -> bool:
         """
         Generic retry mechanism for deployment steps with 1-minute waits and --resume
-        
+
         Args:
             network: Network name
             runner: DeploymentRunner instance
             script_name: Name of the deployment script (e.g., "LaunchDeployer")
-            step_name: Name of the step for tracking (e.g., "protocol")
-            
+            step_name: Name of the step for tracking (e.g., "protocol"), or None not to record it
+            phase: DEPLOY_PHASE for a gated deployment, one phase per call
+
         Returns:
             bool: True if deployment succeeded, False otherwise
         """
-        # Check if there's an existing broadcast file (indicating partial deployment)
-        if self._has_partial_deployment(runner, script_name):
-            print_info(f"📂 Detected existing broadcast file for {script_name} on {network}")
-            if "--resume" not in self.args.forge_args:
-                print_info("Adding --resume to continue from previous deployment")
-                self.args.forge_args.append("--resume")
-        
+        # An existing broadcast file says a previous run of this script stopped partway, so resume it rather
+        # than simulating it again. Not for a gated deployment: its phases share the one sequence file, so an
+        # existing one may well have been written by the phase that just succeeded, and resuming that would
+        # find it confirmed and deploy nothing
+        resume = phase is None and self._has_partial_deployment(runner, script_name)
+        if resume:
+            print_info(f"📂 Detected existing broadcast file for {script_name} on {network}, resuming")
+
+        label = f"{script_name} ({phase})" if phase else script_name
         retries = 3
         attempt = 0
-        
+
         while attempt < retries:
             attempt += 1
-            print_info(f"Deployment attempt {attempt}/{retries}")
-            
-            if runner.run_deploy(script_name):
-                self.deployment_summary["networks"][network][step_name] = True
-                self._save_state()  # Save state after each successful step
-                print_success(f"✓ {script_name} deployed to {network}")
+            print_info(f"{label}: deployment attempt {attempt}/{retries}")
+
+            sequence = self._sequence_state(runner, script_name)
+            if runner.run_deploy(script_name, phase, resume):
+                if step_name:
+                    self.deployment_summary["networks"][network][step_name] = True
+                    self._save_state()  # Save state after each successful step
+                print_success(f"✓ {label} finished on {network}")
                 return True
-            
+
             if attempt < retries:
-                print_warning(f"Deployment failed, waiting 1 minute then retrying with --resume...")
-                if "--resume" not in self.args.forge_args:
-                    self.args.forge_args.append("--resume")
+                # --resume replays the saved sequence, so it is only ever valid once this phase has written
+                # one. An attempt that failed in simulation broadcast nothing and left the file as whoever ran
+                # before it wrote it, which for a gated deployment is the validate phase: resuming that would
+                # find its one transaction confirmed, send nothing, and report success over an empty chain.
+                # Sticky once it does broadcast, since from then on the contracts it deployed are on chain and
+                # simulating the phase again would abort on the first validation it already spent
+                resume = resume or self._sequence_state(runner, script_name) != sequence
+                how = "with --resume" if resume else "from scratch (nothing was broadcast)"
+                print_warning(f"Deployment failed, waiting 1 minute then retrying {how}...")
                 time.sleep(60)  # Wait 1 minute before retry
-        
-        print_error(f"✗ Failed to deploy {script_name} to {network} after {retries} attempts")
+
+        print_error(f"✗ Failed to deploy {label} to {network} after {retries} attempts")
         return False
     
     def _retry_verification(self, network: str, verifier: ContractVerifier, script_name: str, step_name: str) -> bool:
@@ -324,6 +365,66 @@ class ReleaseManager:
             print_info("🗑️  Cleared deployment state")
         self.deployment_summary = {}
     
+    def _has_deploy_gate(self, network_env: EnvironmentLoader, verifier: ContractVerifier) -> bool:
+        """Check that the chain has the DeployGate both phases of a gated deployment need"""
+        entry = (network_env.config.get("contracts", {}) or {}).get("deployGate") or {}
+        gate = entry.get("address") if isinstance(entry, dict) else entry
+
+        try:
+            missing = not gate or int(gate, 16) == 0
+        except (TypeError, ValueError):
+            missing = True
+
+        if missing:
+            print_error(f"No usable contracts.deployGate in {format_path(network_env.config_file, self.root_dir)}")
+            return False
+        if not verifier.is_contract_deployed(gate):
+            print_error(f"contracts.deployGate is {gate}, but there is no code at that address")
+            return False
+
+        print_success(f"DeployGate found at {gate}")
+        return True
+
+    def _protocol_landed(self, verifier: ContractVerifier, since: float) -> bool:
+        """Check that the execute phase actually deployed, rather than only exiting zero.
+
+        The manifest is written by the phase that deploys, and only by it, so one that predates this run is
+        the previous deployment's and its addresses hold nothing on this chain.
+        """
+        manifest = verifier.latest_deployment
+
+        if not manifest.exists() or manifest.stat().st_mtime < since:
+            print_error(f"No deployment manifest was written by this run ({format_path(manifest, self.root_dir)})")
+            return False
+
+        try:
+            with open(manifest, 'r') as f:
+                root = (json.load(f).get("contracts", {}) or {}).get("root")
+        except (json.JSONDecodeError, OSError) as e:
+            print_error(f"Could not read the deployment manifest: {e}")
+            return False
+
+        if not root:
+            print_error("The deployment manifest reports no root")
+            return False
+        if not verifier.is_contract_deployed(root):
+            print_error(f"The deployment manifest reports root at {root}, but there is no code at that address")
+            return False
+
+        return True
+
+    def _sequence_state(self, runner: DeploymentRunner, script_name: str):
+        """Fingerprint of the forge broadcast sequence, to tell whether a run broadcast anything"""
+        run_latest = (
+            self.root_dir / "broadcast" / f"{script_name}.s.sol" / runner.env_loader.chain_id / "run-latest.json"
+        )
+
+        try:
+            stat = run_latest.stat()
+            return (stat.st_mtime_ns, stat.st_size)
+        except OSError:
+            return None
+
     def _has_partial_deployment(self, runner: DeploymentRunner, script_name: str) -> bool:
         """
         Check if there's a partial deployment in progress by looking for broadcast files

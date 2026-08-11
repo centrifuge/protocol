@@ -12,10 +12,18 @@ import {HyperlaneAdapter} from "../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../src/adapters/LayerZeroAdapter.sol";
 import {IInterchainSecurityModule} from "../src/adapters/interfaces/IHyperlaneAdapter.sol";
 
-string constant V3_1 = "v3.1";
-
-/// @title DeployAdapters
+/// @title  DeployAdapters
 /// @notice Deploys only messaging adapters, reusing existing core addresses from env/<network>.json
+///
+/// @dev    Deploying is all it does. It hands the new adapter's wards to root and the guardians and denies
+///         itself, but nothing here can make MultiAdapter route through it: that is
+///         `OpsGuardian.setAdapters`, which is `onlySafe`. So on a chain that already runs the protocol the
+///         run leaves a second, inert adapter beside the one still carrying messages, until the connections
+///         are wired and the adapter set is updated from the ops Safe.
+///
+///         `verify:contracts` merges the new address over `contracts.<name>Adapter` regardless, so the env
+///         file then describes the intended end state rather than the live one. Do not promote it to the
+///         registry until those steps have landed.
 contract DeployAdapters is BaseDeployer {
     using CastLib for *;
 
@@ -25,12 +33,13 @@ contract DeployAdapters is BaseDeployer {
         vm.startBroadcast();
         startDeploymentOutput();
 
-        _init(vm.envOr("SUFFIX", string("")), msg.sender);
+        _init(vm.envOr("SUFFIX", string("")));
 
         if (config.adapters.hyperlane.deploy) {
             HyperlaneAdapter hyperlaneAdapter = HyperlaneAdapter(
                 create3(
-                    createSalt("hyperlaneAdapter", V3_1),
+                    "hyperlaneAdapter",
+                    V3_3,
                     abi.encodePacked(
                         type(HyperlaneAdapter).creationCode,
                         abi.encode(config.contracts.multiAdapter, config.adapters.hyperlane.mailbox, msg.sender)
@@ -49,7 +58,8 @@ contract DeployAdapters is BaseDeployer {
         if (config.adapters.axelar.deploy) {
             AxelarAdapter axelarAdapter = AxelarAdapter(
                 create3(
-                    createSalt("axelarAdapter", V3_1),
+                    "axelarAdapter",
+                    V3_3,
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(
@@ -70,7 +80,8 @@ contract DeployAdapters is BaseDeployer {
         if (config.adapters.layerZero.deploy) {
             LayerZeroAdapter layerZeroAdapter = LayerZeroAdapter(
                 create3(
-                    createSalt("layerZeroAdapter", V3_1),
+                    "layerZeroAdapter",
+                    V3_3,
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
                         abi.encode(
@@ -92,7 +103,8 @@ contract DeployAdapters is BaseDeployer {
         if (config.adapters.chainlink.deploy) {
             ChainlinkAdapter chainlinkAdapter = ChainlinkAdapter(
                 create3(
-                    createSalt("chainlinkAdapter", V3_1),
+                    "chainlinkAdapter",
+                    V3_3,
                     abi.encodePacked(
                         type(ChainlinkAdapter).creationCode,
                         abi.encode(config.contracts.multiAdapter, config.adapters.chainlink.ccipRouter, msg.sender)

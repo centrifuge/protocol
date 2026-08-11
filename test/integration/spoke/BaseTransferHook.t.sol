@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {DeployGate} from "../../../src/deployment/misc/DeployGate.sol";
+
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
@@ -32,7 +34,11 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     address public poolEscrow;
 
     function setUp() public {
-        super.deployFull(
+        address[] memory executors = new address[](1);
+        executors[0] = address(this);
+
+        // A throwaway gate this contract both administers and executes
+        super.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
                 suffix: "",
@@ -41,7 +47,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                 opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
-            address(this)
+            address(this),
+            new DeployGate(address(this), makeAddr("governance"), executors)
         );
 
         MockPoolEscrow mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);

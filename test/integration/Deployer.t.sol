@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
+
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
+import {DeployPhase} from "../../script/GatedDeployer.s.sol";
 import {
     DeployerInput,
     FullDeployer,
@@ -44,6 +47,10 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
+    uint16 internal centrifugeId_ = CENTRIFUGE_ID;
+    DeployGate internal gate_;
+    address internal admin_;
+
     /// @dev Mock deployed code for validation check which requires deployed code length > 0
     function _mockBridgeContracts() internal {
         vm.etch(AXELAR_GATEWAY, SIMPLE_CONTRACT);
@@ -54,28 +61,47 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
     function setUp() public virtual {
         _mockBridgeContracts();
-        deployFull(
-            DeployerInput({
-                centrifugeId: CENTRIFUGE_ID,
-                suffix: "",
-                txLimits: defaultTxLimits(),
-                protocolSafe: ADMIN_SAFE,
-                opsSafe: OPS_SAFE,
-                adapters: AdaptersInput({
-                    axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
-                    layerZero: LayerZeroInput({
-                        shouldDeploy: true,
-                        endpoint: LAYERZERO_ENDPOINT,
-                        delegate: LAYERZERO_DELEGATE,
-                        configParams: new SetConfigParam[](0)
-                    }),
-                    chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
-                    hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: address(0)}),
-                    connections: new AdapterConnections[](0) // TODO: test this
-                })
-            }),
-            address(this)
-        );
+
+        // Both phases in one go, through a gate this contract administers and executes
+        _bootstrap();
+        deployFullBothPhases(_input(""), address(this), gate_);
+    }
+
+    /// @dev What DeployGateDeployer does, in its own isolated run. Its address is irrelevant here, only that it
+    ///      is a gate this contract administers. Root is relied from the start, at the address the gate is
+    ///      going to deploy it to, which is already determined by the gate's own address.
+    function _bootstrap() internal {
+        admin_ = address(this);
+
+        _init("");
+
+        address[] memory executors = new address[](1);
+        executors[0] = address(this);
+
+        address futureGate = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+        gate_ = new DeployGate(admin_, create3Address("root", V3_1, futureGate), executors);
+    }
+
+    function _input(string memory suffix_) internal view returns (DeployerInput memory) {
+        return DeployerInput({
+            centrifugeId: centrifugeId_,
+            suffix: suffix_,
+            txLimits: defaultTxLimits(),
+            protocolSafe: ADMIN_SAFE,
+            opsSafe: OPS_SAFE,
+            adapters: AdaptersInput({
+                axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
+                layerZero: LayerZeroInput({
+                    shouldDeploy: true,
+                    endpoint: LAYERZERO_ENDPOINT,
+                    delegate: LAYERZERO_DELEGATE,
+                    configParams: new SetConfigParam[](0)
+                }),
+                chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
+                hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: address(0)}),
+                connections: new AdapterConnections[](0) // TODO: test this
+            })
+        });
     }
 }
 
@@ -963,5 +989,193 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
 
     function _validateChainlinkInputExternal(AdaptersInput memory adaptersInput) external view {
         _validateChainlinkInput(adaptersInput);
+    }
+}
+
+/// @dev Deploying through the DeployGate must produce the very same deployment, only signed differently
+///      and at different addresses
+contract FullDeploymentGatedTest is FullDeploymentConfigTest {
+    function testEverythingWentThroughTheDeployGate() public view {
+        assertGt(executedContracts, 50, "the whole protocol should go through the DeployGate");
+    }
+
+    /// @dev The gate is built naming the address it is going to deploy root to, which only holds if that
+    ///      prediction is exact: the root deployed here has to be the very one relied back then
+    function testRootGovernsTheGateThatDeployedIt() public {
+        assertEq(deployGate.wards(address(root)), 1, "root should be a ward of the gate that deployed it");
+
+        // What root.relyContract(deployGate, ...) does, so governance can name an admin without the current one
+        address newAdmin = makeAddr("newAdmin");
+        vm.startPrank(address(root));
+        deployGate.rely(newAdmin);
+        deployGate.deny(admin_);
+        vm.stopPrank();
+
+        assertEq(deployGate.wards(newAdmin), 1, "root should be able to name another admin");
+        assertEq(deployGate.wards(admin_), 0, "root should be able to remove the deploying admin");
+    }
+
+    function testEveryContractIsDeployed() public view {
+        assertGt(address(deployGate).code.length, 0, "deployGate");
+        assertGt(address(root).code.length, 0, "root");
+        assertGt(address(spoke).code.length, 0, "spoke");
+        assertGt(address(hub).code.length, 0, "hub");
+        assertGt(address(coreBatcher).code.length, 0, "coreBatcher");
+        assertGt(address(nonCoreBatcher).code.length, 0, "nonCoreBatcher");
+        assertGt(address(adapterBatcher).code.length, 0, "adapterBatcher");
+        assertGt(address(layerZeroAdapter).code.length, 0, "layerZeroAdapter");
+    }
+
+    /// @dev The DeployGate deploys, it never wires. A leaked key must not reach a live deployment.
+    function testDeployGateHasNoPermissions() public view {
+        address deployGate_ = address(deployGate);
+
+        assertEq(root.wards(deployGate_), 0, "root");
+        assertEq(gateway.wards(deployGate_), 0, "gateway");
+        assertEq(multiAdapter.wards(deployGate_), 0, "multiAdapter");
+        assertEq(spoke.wards(deployGate_), 0, "spoke");
+        assertEq(spokeRegistry.wards(deployGate_), 0, "spokeRegistry");
+        assertEq(hub.wards(deployGate_), 0, "hub");
+        assertEq(hubRegistry.wards(deployGate_), 0, "hubRegistry");
+        assertEq(shareTokenRegistrar.wards(deployGate_), 0, "shareTokenRegistrar");
+        assertEq(asyncRequestManager.wards(deployGate_), 0, "asyncRequestManager");
+        assertEq(tokenBridge.wards(deployGate_), 0, "tokenBridge");
+    }
+
+    /// @dev The manifest reports what was deployed, once each. The validate phase registers addresses as it
+    ///      walks, and the state rollback that ends it is what discards them again, this script's own storage
+    ///      being rolled back along with everything else
+    /// @dev The three action batchers are deployed but not reported: they hold no permission once they have
+    ///      wired the protocol, and nothing ever reads one back, so they do not belong in `env/<network>.json`
+    function testReportsEveryContractButTheBatchers() public view {
+        assertEq(registeredContracts + 3, executedContracts, "the manifest should report every other contract");
+
+        assertEq(vm.indexOf(deploymentOutput, "coreBatcher"), type(uint256).max, "coreBatcher is not reported");
+        assertEq(vm.indexOf(deploymentOutput, "nonCoreBatcher"), type(uint256).max, "nonCoreBatcher is not reported");
+        assertEq(vm.indexOf(deploymentOutput, "adapterBatcher"), type(uint256).max, "adapterBatcher is not reported");
+    }
+
+    /// @dev Nothing stays validated once deployed, so a stale approval cannot linger on chain
+    function testValidationsAreConsumed() public view {
+        assertEq(deployGate.validated(_makeSalt("root", V3_1, address(deployGate))), 0, "root");
+        assertEq(deployGate.validated(_makeSalt("spoke", V3_3, address(deployGate))), 0, "spoke");
+        assertEq(deployGate.validated(_makeSalt("coreBatcher", V_LATEST, address(deployGate))), 0, "coreBatcher");
+    }
+
+    /// @dev Wiring depends on the addresses predicted while queueing, so a mismatch would show up here
+    function testWiringUsesThePredictedAddresses() public view {
+        assertEq(address(gateway.processor()), address(messageProcessor));
+        assertEq(address(gateway.adapter()), address(multiAdapter));
+        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(hub.sender()), address(messageDispatcher));
+        assertEq(address(hubHandler.sender()), address(messageDispatcher));
+        assertEq(address(messageDispatcher.spokeHandler()), address(spokeHandler));
+        assertEq(address(messageProcessor.hubHandler()), address(hubHandler));
+        assertEq(address(poolEscrowFactory.spoke()), address(spoke));
+        assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
+        assertEq(address(opsGuardian.opsSafe()), address(OPS_SAFE));
+
+        assertEq(gateway.wards(address(root)), 1);
+        assertEq(hub.wards(address(hubHandler)), 1);
+        assertEq(spokeRegistry.wards(address(spoke)), 1);
+        assertEq(root.wards(address(messageDispatcher)), 1);
+        assertTrue(root.endorsements(address(spoke)) == 1);
+
+        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
+        assertEq(hubRegistry.decimals(EUR_ID), ISO4217_DECIMALS);
+    }
+
+    /// @dev The action batchers must give up their permissions, exactly as in a direct deployment
+    function testActionBatchersRevokedThemselves() public view {
+        assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher on root");
+        assertEq(gateway.wards(address(coreBatcher)), 0, "coreBatcher on gateway");
+        assertEq(hub.wards(address(coreBatcher)), 0, "coreBatcher on hub");
+        assertEq(spoke.wards(address(coreBatcher)), 0, "coreBatcher on spoke");
+        assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
+        assertEq(multiAdapter.wards(address(adapterBatcher)), 0, "multiAdapter on adapterBatcher");
+    }
+}
+
+/// @dev The point of the design: the admin signs a single transaction, and nothing but what it committed to
+///      can then be deployed
+contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
+    address immutable EXECUTOR = makeAddr("executor");
+
+    function setUp() public override {
+        _mockBridgeContracts();
+        _bootstrap();
+
+        // The phases are signed by different accounts on a real deployment, so the fixture separates them too.
+        // Running both as one account would hide an init code that depends on who is deploying: it would come
+        // out the same in both walks here, and only revert with `NotValidated` on chain, after the signature
+        gate_.updateExecutor(EXECUTOR, true);
+        gate_.updateExecutor(address(this), false);
+
+        _deploy(DeployPhase.Validate);
+    }
+
+    /// @dev One phase at a time, unlike the base fixture, which runs both, and each as the account that signs
+    ///      it: the admin commits, an executor that is a ward of nothing deploys
+    function _deploy(DeployPhase phase) internal {
+        _deploy(phase, "");
+    }
+
+    function _deploy(DeployPhase phase, string memory suffix_) internal {
+        if (phase == DeployPhase.Validate) {
+            deployFull(_input(suffix_), address(this), phase, gate_);
+            return;
+        }
+
+        vm.startPrank(EXECUTOR);
+        deployFull(_input(suffix_), EXECUTOR, phase, gate_);
+        vm.stopPrank();
+    }
+
+    function testValidatePhaseDeploysNothingButTheDeployGate() public view {
+        assertGt(address(deployGate).code.length, 0, "deployGate");
+        assertEq(address(root).code.length, 0, "root");
+        assertEq(address(spoke).code.length, 0, "spoke");
+        assertEq(executedContracts, 0);
+    }
+
+    function testValidatePhaseCommitsEveryContract() public view {
+        assertGt(validatedContracts, 50, "the admin should commit the whole protocol in one transaction");
+        assertTrue(deployGate.validated(_makeSalt("root", V3_1, address(deployGate))) != 0, "root");
+        assertTrue(deployGate.validated(_makeSalt("spoke", V3_3, address(deployGate))) != 0, "spoke");
+        assertTrue(deployGate.validated(_makeSalt("hub", V3_3, address(deployGate))) != 0, "hub");
+        assertTrue(deployGate.validated(_makeSalt("coreBatcher", V_LATEST, address(deployGate))) != 0, "coreBatcher");
+        assertTrue(deployGate.validated(_makeSalt("neverDeployed", V3_3, address(deployGate))) == 0, "unknown salt");
+    }
+
+    function testExecutorCanOnlyDeployWhatWasValidated() public {
+        assertTrue(deployGate.isExecutor(EXECUTOR), "the executor may deploy what was validated");
+        assertEq(deployGate.wards(EXECUTOR), 0, "and is a ward of nothing, on the gate or anywhere else");
+        assertFalse(deployGate.isExecutor(address(this)), "the admin is not the one deploying");
+
+        _deploy(DeployPhase.Execute);
+
+        // Same deployment a single signer would have produced
+        assertGt(executedContracts, 50);
+        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
+        assertEq(gateway.wards(address(root)), 1);
+        assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
+        assertEq(root.wards(address(deployGate)), 0, "the gate must gain nothing");
+        assertEq(root.wards(EXECUTOR), 0, "nor the executor that deployed it");
+        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
+    }
+
+    /// @dev Executing needs a validation, so the executor cannot deploy a set the admin never committed to.
+    ///      Caught before anything is broadcast, the DeployGate itself being the backstop.
+    /// @dev The guard trips on the first contract, before the gate is called at all, so this runs from here
+    ///      rather than under a prank, which expectRevert needs anyway
+    function testExecutorCannotDeployWhatWasNotValidated() public {
+        vm.expectRevert("Deployment does not match what was validated, validate again");
+        this.deployUnvalidated();
+    }
+
+    /// @dev The same protocol under another suffix, through the same gate: nothing here was ever validated
+    function deployUnvalidated() external {
+        _deploy(DeployPhase.Execute, "unvalidated");
     }
 }

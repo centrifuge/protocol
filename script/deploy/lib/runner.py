@@ -42,8 +42,39 @@ class DeploymentRunner:
             env["ETHERSCAN_API_KEY"] = self.env_loader.etherscan_api_key
         return env
 
-    def run_deploy(self, script_name: str) -> bool:
-        """Run a forge script deployment"""
+    def gated_phases(self) -> List[str]:
+        """Phases a gated deployment runs, in order.
+
+        The protocol goes through the DeployGate in two phases, and they are always separate forge runs, on
+        every network: the execute phase rebuilds every init code in a fresh process and has to land on
+        exactly what the validate phase committed, which only running them apart ever exercises. Setting
+        DEPLOY_PHASE runs one of them, which is how a deployment separates the two in time.
+        """
+        explicit = os.environ.get("DEPLOY_PHASE", "").strip().lower()
+        if explicit:
+            return [explicit]
+        # A dry run broadcasts nothing, so there is no commitment on chain for an execute phase to find.
+        # Validating is both all a dry run can do and what it wants to prove: that the whole deployment
+        # simulates and every address is free
+        return ["validate"] if self.args.dry_run else ["validate", "execute"]
+
+    def run_gated_deploy(self, script_name: str) -> bool:
+        """Run a gated deployment as one forge invocation per phase, stopping at the first failure"""
+        for phase in self.gated_phases():
+            if not self.run_deploy(script_name, phase):
+                return False
+        return True
+
+    def run_deploy(self, script_name: str, phase: str = None, resume: bool = False) -> bool:
+        """Run a forge script deployment.
+
+        `phase` sets DEPLOY_PHASE for gated deployments. `resume` adds --resume for this run only: it must
+        not be sticky, because the phases of a gated deployment share one broadcast sequence file, and
+        resuming a run that is not the one that wrote it finds every transaction confirmed and deploys
+        nothing at all.
+        """
+        if phase:
+            self.env["DEPLOY_PHASE"] = phase
         # Default location: script/<ScriptName>.s.sol
         self.script_path = self.env_loader.root_dir / "script" / f"{script_name}.s.sol"
         # Fallback for hidden helpers (adapters-only, etc.)
@@ -66,9 +97,13 @@ class DeploymentRunner:
         print_info(f"Chain ID: {self.env_loader.chain_id}")
         if os.environ.get("SUFFIX"):
             print_info(f"Suffix (for salt): {os.environ.get('SUFFIX')}")
+        if self.env.get("DEPLOY_PHASE"):
+            print_info(f"Deploy phase: {self.env['DEPLOY_PHASE']}")
         print_info(f"Protocol Admin: {format_account(self.env_loader.protocol_admin_address)}")
         print_info(f"Ops Admin: {format_account(self.env_loader.ops_admin_address)}")
         base_cmd = self._build_command(script_name)
+        if resume and "--resume" not in base_cmd:
+            base_cmd.append("--resume")
         if self.args.catapulta:
             if self.args.dry_run:
                 print_warning("Catapulta cannot run without --broadcast")

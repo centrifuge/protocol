@@ -170,10 +170,26 @@ class AnvilManager:
         return True
 
     def _deploy_fork(self, net_env, args):
+        # The gate the protocol deploys through. Every anvil chain needs its own: the config was copied
+        # from a network whose gate does not exist here. Merged before LaunchDeployer, which reads it back
+        # from env/anvil/<net>.json
+        #
+        # The gate only lets the accounts it was built with run the execute phase, and here that is the one
+        # signing every run. Set before the runner is built, which is when it snapshots the environment the
+        # forge child gets: anything exported afterwards never reaches the script
+        os.environ["EXECUTORS"] = self.anvil_account0["address"]
         runner = DeploymentRunner(net_env, args)
         # Deploy core protocol
         args.step = "deploy:full"
-        if not runner.run_deploy("LaunchDeployer"):
+        if not runner.run_deploy("DeployGateDeployer"):
+            return False
+        try:
+            ContractVerifier(net_env, args).update_network_config("script/DeployGateDeployer.s.sol")
+        except Exception as e:
+            print_warning(f"Failed to merge the DeployGate into config: {e}")
+            return False
+        # Two runs, validate then execute, exactly as a real deployment is signed
+        if not runner.run_gated_deploy("LaunchDeployer"):
             return False
         # Merge latest into env/anvil/<net>.json
         try:

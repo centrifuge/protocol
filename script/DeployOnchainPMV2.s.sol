@@ -17,8 +17,6 @@ import {OracleValuation} from "../src/valuations/OracleValuation.sol";
 import "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-string constant ONCHAIN_PM_V2_VERSION = "v3.2";
-
 contract DeployOnchainPMV2 is BaseDeployer {
     AccountingToken public accountingToken;
     ScriptHelpers public scriptHelpers;
@@ -38,7 +36,7 @@ contract DeployOnchainPMV2 is BaseDeployer {
         vm.startBroadcast();
         startDeploymentOutput();
 
-        _init(suffix, msg.sender);
+        _init(suffix);
 
         _deploy(
             config.contracts.contractUpdater,
@@ -64,19 +62,18 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         accountingToken = AccountingToken(
             create3(
-                createSalt("accountingToken", ONCHAIN_PM_V2_VERSION),
+                "accountingToken",
+                V3_3,
                 abi.encodePacked(type(AccountingToken).creationCode, abi.encode(contractUpdater_))
             )
         );
 
-        scriptHelpers = ScriptHelpers(
-            create3(
-                createSalt("scriptHelpers", ONCHAIN_PM_V2_VERSION), abi.encodePacked(type(ScriptHelpers).creationCode)
-            )
-        );
+        scriptHelpers =
+            ScriptHelpers(create3("scriptHelpers", V3_2, abi.encodePacked(type(ScriptHelpers).creationCode)));
 
         onchainPMFactory = create3(
-            createSalt("onchainPMFactory", ONCHAIN_PM_V2_VERSION),
+            "onchainPMFactory",
+            V3_3,
             abi.encodePacked(
                 vm.getCode("out-ir/OnchainPM.sol/OnchainPMFactory.json"), abi.encode(contractUpdater_, spoke_, gateway_)
             )
@@ -84,36 +81,33 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         flashLoanHelper = FlashLoanHelper(
             create3(
-                createSalt("flashLoanHelper", ONCHAIN_PM_V2_VERSION),
+                "flashLoanHelper",
+                V3_3,
                 abi.encodePacked(type(FlashLoanHelper).creationCode, abi.encode(onchainPMFactory))
             )
         );
 
         onOffRampFactory = OnOffRampFactory(
             create3(
-                createSalt("onOffRampFactory", ONCHAIN_PM_V2_VERSION),
+                "onOffRampFactory",
+                V3_3,
                 abi.encodePacked(
                     type(OnOffRampFactory).creationCode, abi.encode(contractUpdater_, spoke_, accountingToken)
                 )
             )
         );
 
-        approvalGuard = ApprovalGuard(
-            create3(
-                createSalt("approvalGuard", ONCHAIN_PM_V2_VERSION), abi.encodePacked(type(ApprovalGuard).creationCode)
-            )
-        );
+        approvalGuard =
+            ApprovalGuard(create3("approvalGuard", V3_2, abi.encodePacked(type(ApprovalGuard).creationCode)));
 
         circuitBreakerGuard = CircuitBreakerGuard(
-            create3(
-                createSalt("circuitBreakerGuard", ONCHAIN_PM_V2_VERSION),
-                abi.encodePacked(type(CircuitBreakerGuard).creationCode)
-            )
+            create3("circuitBreakerGuard", V3_3, abi.encodePacked(type(CircuitBreakerGuard).creationCode))
         );
 
         slippageGuard = SlippageGuard(
             create3(
-                createSalt("slippageGuard", ONCHAIN_PM_V2_VERSION),
+                "slippageGuard",
+                V3_3,
                 abi.encodePacked(
                     type(SlippageGuard).creationCode, abi.encode(spoke_, contractUpdater_, onchainPMFactory)
                 )
@@ -122,7 +116,8 @@ contract DeployOnchainPMV2 is BaseDeployer {
 
         oracleValuation = OracleValuation(
             create3(
-                createSalt("oracleValuation", ONCHAIN_PM_V2_VERSION),
+                "oracleValuation",
+                V3_3,
                 abi.encodePacked(type(OracleValuation).creationCode, abi.encode(hub_, hubRegistry_, contractUpdater_))
             )
         );

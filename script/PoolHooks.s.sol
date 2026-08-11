@@ -34,8 +34,6 @@ contract PoolHooks is BaseDeployer {
     using stdJson for string;
     using JsonUtils for *;
 
-    string constant VERSION = "v3.1";
-
     uint16 public centrifugeId;
 
     address public envoy;
@@ -71,11 +69,11 @@ contract PoolHooks is BaseDeployer {
         console.log("Spoke:", address(spoke));
         console.log("FreelyTransferableHook:", freelyTransferableHook);
         console.log("FullRestrictionsHook:", fullRestrictionsHook);
-        console.log("Deployer:", deployer);
+        console.log("Deployer:", msg.sender);
 
         vm.startBroadcast();
 
-        _init("", msg.sender);
+        _init("");
 
         TokenInstanceData[] memory tokens = _tokenInstances(graphQL);
 
@@ -144,7 +142,7 @@ contract PoolHooks is BaseDeployer {
 
     function _deployFreelyTransferable(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("freelyTransferable-", vm.toString(PoolId.unwrap(poolId)));
-        address expectedAddr = previewCreate3Address(saltName, VERSION);
+        address expectedAddr = create3Address(saltName, V3_3, msg.sender);
 
         if (expectedAddr.code.length > 0) {
             console.log(
@@ -158,7 +156,8 @@ contract PoolHooks is BaseDeployer {
 
         FreelyTransferable hook = FreelyTransferable(
             create3(
-                createSalt(saltName, VERSION),
+                saltName,
+                V3_3,
                 abi.encodePacked(
                     type(FreelyTransferable).creationCode,
                     abi.encode(
@@ -167,7 +166,7 @@ contract PoolHooks is BaseDeployer {
                         spokeRegistry,
                         address(spoke),
                         spokeHandler,
-                        deployer,
+                        msg.sender,
                         address(poolEscrowFactory),
                         poolEscrow
                     )
@@ -189,7 +188,7 @@ contract PoolHooks is BaseDeployer {
 
     function _deployFullRestrictions(PoolId poolId, ShareClassId scId, address poolEscrow) internal {
         string memory saltName = string.concat("fullRestrictions-", vm.toString(PoolId.unwrap(poolId)));
-        address expectedAddr = previewCreate3Address(saltName, VERSION);
+        address expectedAddr = create3Address(saltName, V3_3, msg.sender);
 
         if (expectedAddr.code.length > 0) {
             console.log(
@@ -203,7 +202,8 @@ contract PoolHooks is BaseDeployer {
 
         FullRestrictions hook = FullRestrictions(
             create3(
-                createSalt(saltName, VERSION),
+                saltName,
+                V3_3,
                 abi.encodePacked(
                     type(FullRestrictions).creationCode,
                     abi.encode(
@@ -212,7 +212,7 @@ contract PoolHooks is BaseDeployer {
                         spokeRegistry,
                         address(spoke),
                         spokeHandler,
-                        deployer,
+                        msg.sender,
                         address(poolEscrowFactory),
                         poolEscrow
                     )

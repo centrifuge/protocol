@@ -2,32 +2,59 @@
 title Deployers
 hide empty members
 
-class JsonRegistry
-class CreateXScript
+class JsonRegistry << (S, motivation) >>
+class CreateXScript << (S, motivation) >>
 
-class BaseDeployer
-class FullDeployer {
-    + function deployFull(DeployerInput, address)
+class BaseDeployer << (S, motivation) >>
+class GatedDeployer << (S, motivation) >>
+
+class DeployGateDeployer << (S, application) >>
+class DeployAdapters << (S, application) >>
+class PoolHooks << (S, application) >>
+class DeployOnchainPMV2 << (S, application) >>
+
+class FullDeployer  << (S, application) >> {
+    + function deployFull()
 }
-class LaunchDeployer {
+class LaunchDeployer  << (S, application) >> {
     + function run()
 }
-class DeployAdapters
-class DeployOnchainPMV2
-class PoolHooks
+
+class DeployGate << (C, implementation) >>
+class CoreActionBatcher << (C, implementation) >>
+class NonCoreActionBatcher << (C, implementation) >>
+class AdapterActionBatcher << (C, implementation) >>
+
+class DeployerInput << (S,strategy) JsonConfig >>
+
+enum DeployPhase {
+    Validate
+    Execute
+}
 
 BaseDeployer -up-|> JsonRegistry
 BaseDeployer -up-|> CreateXScript
 
-FullDeployer -up-|> BaseDeployer
+GatedDeployer --up-|> BaseDeployer
+FullDeployer -up-|> GatedDeployer
 LaunchDeployer -up-|> FullDeployer
 
-DeployAdapters -up-|> BaseDeployer
-DeployOnchainPMV2 -up-|> BaseDeployer
-PoolHooks -up-|> BaseDeployer
+DeployGateDeployer ---up-|> BaseDeployer
+DeployAdapters ---up-|> BaseDeployer
+PoolHooks ---up-|> BaseDeployer
+DeployOnchainPMV2 ---up-|> BaseDeployer
+
+GatedDeployer -right> DeployPhase
+FullDeployer -left> DeployerInput
+
+DeployGateDeployer ..> DeployGate
+FullDeployer ...> CoreActionBatcher
+FullDeployer ...> NonCoreActionBatcher
+FullDeployer ...> AdapterActionBatcher
 
 note right of FullDeployer: Used in integration tests and \ntestnets
 note right of LaunchDeployer: Loads network config from JSON;\nentry point for production deployments
 note right of DeployOnchainPMV2: Standalone script for deploying\nOnchainPM to existing environments
+note right of DeployGateDeployer: Brings up the DeployGate once per chain;\nprerequisite of both gated phases
 
 @enduml

@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
+import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
 
 import {MockValuation} from "../core/mocks/MockValuation.sol";
 
@@ -34,8 +35,11 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
     MockValuation valuation;
 
     function setUp() public virtual {
-        // Deployment
-        super.deployFull(
+        address[] memory executors = new address[](1);
+        executors[0] = address(this);
+
+        // Deployment: a throwaway gate this contract both administers and executes
+        super.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
                 suffix: "",
@@ -44,7 +48,8 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
                 opsSafe: ISafe(makeAddr("OpsSafe")),
                 adapters: noAdaptersInput()
             }),
-            address(this)
+            address(this),
+            new DeployGate(address(this), makeAddr("governance"), executors)
         );
 
         // Extra deployment

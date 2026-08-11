@@ -180,7 +180,7 @@ class ContractVerifier:
             deployed_count = 0
             for contract_name, contract_address in contract_addresses.items():
                 # First check if it is deployed
-                if self._is_contract_deployed(contract_address):
+                if self.is_contract_deployed(contract_address):
                     print_success(f"{contract_name} ({contract_address}) is deployed")
                     deployed_count += 1
                 else:
@@ -234,7 +234,7 @@ class ContractVerifier:
         except Exception:
             return False
 
-    def _is_contract_deployed(self, address: str) -> bool:
+    def is_contract_deployed(self, address: str) -> bool:
         """Check if contract has code deployed"""
         payload = {
             "jsonrpc": "2.0",

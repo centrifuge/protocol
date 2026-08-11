@@ -36,9 +36,18 @@ IMPORTANT:
   - The network name must match the name of the network in the env/<network>.json file.
   - For mainnet deployments, omit SUFFIX (contracts reuse their canonical versioned addresses).
   - Set SUFFIX=XYZ to create an isolated fresh deployment (e.g. for testnet CI runs).
+  - Every deployment goes through a DeployGate, brought up once per chain by
+    script/DeployGateDeployer.s.sol, which seeds the accounts allowed to run the execute phase from EXECUTORS
+    (required, comma-separated), and whose address is merged into env/<network>.json. The protocol is then
+    deployed in two phases, one forge run each, so that the whole of it is committed to in a single
+    transaction before any of it is deployed. This script runs both; set DEPLOY_PHASE=validate or
+    DEPLOY_PHASE=execute to run one of them and sign the two at different times.
+    See script/deploy/README.md.
 
 Examples:
   python3 deploy.py sepolia deploy:full
+  DEPLOY_PHASE=validate python3 deploy.py ethereum deploy:protocol --ledger
+  DEPLOY_PHASE=execute python3 deploy.py ethereum deploy:protocol
   SUFFIX=PR-123 python3 deploy.py sepolia deploy:full
   python3 deploy.py base-sepolia deploy:full --catapulta --priority-gas-price 2
   python3 deploy.py sepolia deploy:adapters
@@ -119,6 +128,12 @@ def validate_arguments(args, root_dir: pathlib.Path):
         else:
             print_info("No SUFFIX set - deploying to canonical versioned addresses (mainnet mode)")
 
+        phase = os.environ.get("DEPLOY_PHASE", "").lower()
+        if not phase:
+            print_info("DEPLOY_PHASE unset - validate and execute run as two separate forge runs")
+        else:
+            print_warning(f"DEPLOY_PHASE={phase} - only this phase runs")
+
     # Validate forge arguments don't conflict with script defaults
     if args.forge_args:
         conflicting_args = ["--verify", "--broadcast", "--chain-id", "--tc", "--optimize"]
@@ -184,6 +199,10 @@ def main():
 
         if args.step in ("deploy:protocol", "deploy:full"):
             print_section("Running Protocol Deployment")
+            # The protocol is deployed in two phases, one forge run each. The validate phase commits the
+            # deployment on chain without deploying any of it, so a run that stops there reports no addresses:
+            # there is nothing to verify, and nothing for TestData to run against
+            validating_only = runner.gated_phases() == ["validate"]
             already_deployed = False
             if "--resume" in args.forge_args and not args.dry_run:
                 already_deployed = verifier.config_has_latest_contracts()
@@ -197,10 +216,13 @@ def main():
                 deploy_success = True
             else:
                 print_subsection(f"Deploying core protocol contracts for {args.network}")
-                deploy_success = runner.run_deploy("LaunchDeployer")
+                deploy_success = runner.run_gated_deploy("LaunchDeployer")
 
             # Skip verification in dry-run mode
-            if not args.dry_run:
+            if validating_only:
+                print_info("Validate phase: nothing deployed yet, skipping verification")
+                verify_success = True
+            elif not args.dry_run:
                 print_section(f"Verifying deployment for {args.network}")
                 if args.catapulta and not already_deployed:
                     print_info("Waiting for catapulta verification to complete...")
@@ -225,7 +247,13 @@ def main():
                 verify_success = True
 
             # Auto-run TestData on testnets (deploy:full only, skip in dry-run)
-            if args.step == "deploy:full" and verify_success and env_loader.is_testnet and not args.dry_run:
+            if (
+                args.step == "deploy:full"
+                and verify_success
+                and env_loader.is_testnet
+                and not args.dry_run
+                and not validating_only
+            ):
                 print_info("Auto-running TestData for testnet")
                 if "--resume" in args.forge_args and not already_deployed:
                     # User triggered command with --resume, probably because the protocol deployment failed
@@ -238,6 +266,8 @@ def main():
                 print_success("TestData deployment completed successfully")
                 # Restore forge args
                 args.forge_args = original_forge_args
+            elif args.step == "deploy:full" and validating_only:
+                print_info("Validate phase: skipping TestData deployment until the protocol is deployed")
             elif args.step == "deploy:full" and args.dry_run:
                 print_info("Dry-run mode: skipping TestData deployment")
 
