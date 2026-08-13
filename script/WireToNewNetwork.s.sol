@@ -25,26 +25,60 @@ import {SetConfigParam, ILayerZeroEndpointV2Like} from "../src/deployment/interf
 ///
 ///      Set NETWORK env var to the source chain name (e.g., "ethereum", "base", "arbitrum").
 ///      Set TARGETS env var to comma-separated target chain names (e.g., "monad,pharos").
+///      Set LEDGER_DERIVATION_PATH to override DEFAULT_LEDGER_DERIVATION_PATH, which only matches one
+///      signer's device. The proposal is rejected unless --sender equals the address it derives.
+///
+///      Requires --ffi (safe-utils signs via `cast wallet sign --ledger`). Do not pass --ledger to
+///      forge itself: it holds the device transport and the FFI signing call then fails.
+///
+///      The protocol batch must be executed before the ops batch on each source chain, so prefer the
+///      staged entry points: --sig "runProtocol()" first, then --sig "runOps()" once phase 1 has landed.
+///      Neither phase is safe to re-propose after it executes: wireAll skips already-wired targets, but
+///      configureLzDvnsAll has no such guard and setSendLibrary reverts on an unchanged value.
 ///
 ///      Example usage:
-///        NETWORK=ethereum TARGETS=monad,pharos forge script script/WireToNewNetwork.s.sol --rpc-url $ETH_RPC_URL --broadcast
-///        NETWORK=monad TARGETS=ethereum,base,arbitrum forge script script/WireToNewNetwork.s.sol --rpc-url $MONAD_RPC_URL --broadcast
+///        NETWORK=ethereum TARGETS=monad,pharos forge script script/WireToNewNetwork.s.sol --sig "runProtocol()" --rpc-url $ETH_RPC_URL --sender $SAFE_OWNER --ffi --broadcast
+///        NETWORK=ethereum TARGETS=monad,pharos forge script script/WireToNewNetwork.s.sol --sig "runOps()" --rpc-url $ETH_RPC_URL --sender $SAFE_OWNER --ffi --broadcast
 contract WireToNewNetwork is Script {
     using Safe for *;
 
-    string constant LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
+    string constant DEFAULT_LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     Safe.Client safe;
     Safe.Client protocolSafe;
 
+    /// @notice Proposes both batches at once. The protocol batch must still be *executed* before the ops
+    ///         batch: until the LZ libraries are pinned, the endpoint resolves the target EID to its
+    ///         default ULN config, and an EID no OApp has used yet resolves to the DeadDVN sentinel, so
+    ///         every send reverts. Prefer runProtocol/runOps, which stage the two phases so the ops Safe
+    ///         cannot front-run the slower protocol Safe.
     function run() external {
         vm.startBroadcast();
         string memory networkName = vm.envString("NETWORK");
         string[] memory targetNames = vm.envString("TARGETS", ",");
-        wireAll(networkName, targetNames, LEDGER_DERIVATION_PATH);
-        configureLzDvnsAll(networkName, targetNames, LEDGER_DERIVATION_PATH);
+        configureLzDvnsAll(networkName, targetNames, _derivationPath());
+        wireAll(networkName, targetNames, _derivationPath());
         vm.stopBroadcast();
+    }
+
+    /// @notice Phase 1: propose the protocol Safe batch (LZ libraries + ULN config) only.
+    function runProtocol() external {
+        vm.startBroadcast();
+        configureLzDvnsAll(vm.envString("NETWORK"), vm.envString("TARGETS", ","), _derivationPath());
+        vm.stopBroadcast();
+    }
+
+    /// @notice Phase 2: propose the ops Safe batch (adapter wiring + adapter set) only. Run once the
+    ///         phase 1 batch is executed, never before.
+    function runOps() external {
+        vm.startBroadcast();
+        wireAll(vm.envString("NETWORK"), vm.envString("TARGETS", ","), _derivationPath());
+        vm.stopBroadcast();
+    }
+
+    function _derivationPath() internal view returns (string memory) {
+        return vm.envOr("LEDGER_DERIVATION_PATH", string(DEFAULT_LEDGER_DERIVATION_PATH));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -274,8 +308,14 @@ contract WireToNewNetwork is Script {
         if (bytes(derivationPath).length > 0) {
             safeClient.initialize(safeAddr);
             (address to, bytes memory batchData) = safeClient.getProposeTransactionsTargetAndData(targets, data);
+            uint256 nonce = safeClient.getNonce();
             bytes memory signature =
                 safeClient.sign(to, batchData, Enum.Operation.DelegateCall, msg.sender, derivationPath);
+            _assertSignerIsSender(
+                safeClient.getSafeTxHash(to, 0, batchData, Enum.Operation.DelegateCall, nonce),
+                signature,
+                derivationPath
+            );
             safeClient.proposeTransactionsWithSignature(targets, data, msg.sender, signature);
         } else {
             for (uint256 i; i < targets.length; i++) {
@@ -283,6 +323,38 @@ contract WireToNewNetwork is Script {
                 if (!success) assembly { revert(add(returnData, 32), mload(returnData)) }
             }
         }
+    }
+
+    /// @dev A derivation path that resolves to a non-owner is otherwise only rejected by the
+    ///      transaction service, as an HTTP 422, after the device has already signed. Recover locally
+    ///      and name both addresses instead.
+    function _assertSignerIsSender(bytes32 safeTxHash, bytes memory signature, string memory derivationPath)
+        internal
+        view
+    {
+        require(signature.length == 65, "Unexpected signature length");
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+
+        address recovered = ecrecover(safeTxHash, v, r, s);
+        require(
+            recovered == msg.sender,
+            string.concat(
+                "Derivation path ",
+                derivationPath,
+                " signs as ",
+                vm.toString(recovered),
+                " but --sender is ",
+                vm.toString(msg.sender)
+            )
+        );
     }
 
     function _buildLzConfigParam(EnvConfig memory source, uint32 destEid)
