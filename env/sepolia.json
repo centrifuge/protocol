@@ -8,12 +8,6 @@
     "baseRpcUrl": "https://eth-sepolia.g.alchemy.com/v2/"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 11155111,
-      "mailbox": "0xfFAEF09B3cd11D9b20d1a19bECca54EEC2884766",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "axelar": {
       "axelarId": "ethereum-sepolia",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",

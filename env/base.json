@@ -9,12 +9,6 @@
     "baseRpcUrl": "https://base-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 8453,
-      "mailbox": "0xeA87ae93Fa0019a82A727bfd3eBd1cFCa8f64f1D",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30184,

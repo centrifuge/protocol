@@ -9,12 +9,6 @@
     "baseRpcUrl": "https://bnb-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 56,
-      "mailbox": "0x2971b9Aec44bE4eb673DF1B88cDB57b96eefe8a4",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "layerZero": {
       "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
       "layerZeroEid": 30102,

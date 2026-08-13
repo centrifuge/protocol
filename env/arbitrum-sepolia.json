@@ -10,12 +10,6 @@
     "baseRpcUrl": "https://arb-sepolia.g.alchemy.com/v2/"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 421614,
-      "mailbox": "0x598facE78a4302f11E3de0bee1894Da0b2Cb71F8",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "axelar": {
       "axelarId": "arbitrum-sepolia",
       "gateway": "0xe1cE95479C84e9809269227C7F8524aE051Ae77a",

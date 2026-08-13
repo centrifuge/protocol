@@ -10,12 +10,6 @@
     "baseRpcUrl": "https://base-sepolia.g.alchemy.com/v2/"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 84532,
-      "mailbox": "0x6966b0E55883d49BFB24539356a2f8A673E02039",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "axelar": {
       "axelarId": "base-sepolia",
       "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",

@@ -11,12 +11,6 @@
     "verifierUrl": "https://explorer.plume.org/api/"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 98866,
-      "mailbox": "0x3a464f746D23Ab22155710f44dB16dcA53e0775E",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "layerZero": {
       "endpoint": "0xC1b15d3B262bEeC0e3565C11C9e0F6134BdaCB36",
       "layerZeroEid": 30370,

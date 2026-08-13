@@ -11,12 +11,6 @@
     "verifierUrl": "https://api.socialscan.io/monad-mainnet/v1/explorer/command_api/contract"
   },
   "adapters": {
-    "hyperlane": {
-      "hyperlaneId": 143,
-      "mailbox": "0x3a464f746D23Ab22155710f44dB16dcA53e0775E",
-      "ism": "0x0000000000000000000000000000000000000000",
-      "deploy": false
-    },
     "layerZero": {
       "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
       "layerZeroEid": 30390,
