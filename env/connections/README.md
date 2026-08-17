@@ -2,7 +2,14 @@
 
 Defines which networks are connected and through which adapters. One file per environment: `mainnet.json`, `testnet.json`.
 
-Parsed by `script/utils/EnvConnectionsConfig.s.sol` (Solidity) and `script/deploy/lib/load_config.py` (Python).
+Interpreted in exactly one place: `EnvConnections.connectionsWith` in
+`script/utils/EnvConnectionsConfig.s.sol`. Aliases and literal arrays are resolved, the last matching rule
+wins, and a connection only counts when that rule still has adapters — fiddly enough that a second
+implementation would eventually disagree with the first.
+
+Anything that needs the list asks that function. The deploy and wiring scripts call it directly; the
+cross-chain test shell script gets it from `script/testnet/Connections.s.sol`, a one-function forge script
+that prints what it returns.
 
 ## Schema
 

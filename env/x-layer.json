@@ -7,8 +7,8 @@
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "batchLimit": 15,
     "baseRpcUrl": "https://rpc.xlayer.tech",
-    "verifier": "oklink",
-    "verifierUrl": "https://www.oklink.com/api/v5/explorer/xlayer/api"
+    "verifier": "sourcify",
+    "verifierUrl": "https://sourcify.dev/server"
   },
   "adapters": {
     "layerZero": {
@@ -37,289 +37,241 @@
     "root": {
       "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
       "blockNumber": 67075302,
-      "txHash": "0x02caed00ad239422ae46126ad7881d502587b2c467f2a5b52f75bba38068b7e7",
       "version": "v3.1"
     },
     "gateway": {
       "address": "0x19a524D03aA94ECEe41a80341537BCFCb47D3172",
       "blockNumber": 67075319,
-      "txHash": "0xcb70c655067eddaaa4becb7f9afa10d206cc0ea4a7026d9975b3c3fdc30cb71a",
       "version": "v3.1"
     },
     "multiAdapter": {
       "address": "0x35C837F0A54B715a23D193E1476BFC9BC30073BE",
       "blockNumber": 67075330,
-      "txHash": "0x189c8d8c1910ea18143f9f7473c56ae1a5a81273362d839cf03128f03c9c6eb6",
       "version": "v3.1"
     },
     "contractUpdater": {
       "address": "0x3B150B19245D2C366bc8f18c775b725DFB298F71",
       "blockNumber": 67075345,
-      "txHash": "0xd6f6b3d129bd1f92dfe47ba0eed02c95516501d18e57fa0cebae38ad1511dc57",
       "version": "v3.1"
     },
     "gasService": {
       "address": "0xbEbef21D686a957decECCe6a58455fA0F16754Be",
       "blockNumber": 67075387,
-      "txHash": "0x985bc4890a1217bd419c6fda09340b17262441a2ff8f4ec0a645579c2306042a",
       "version": "v3.1"
     },
     "messageProcessor": {
       "address": "0x97cc7e9Dafdd725Cc23B25eeBC93c4384B4Fe30A",
       "blockNumber": 67075398,
-      "txHash": "0x7b77725d00de547faeeb5d03ea1c06b8b24bb0a74debeaf20c43b8baa9882f2e",
       "version": "v3.1"
     },
     "messageDispatcher": {
       "address": "0xf837a22883e004f705E0D7e1deE08e295Df30B27",
       "blockNumber": 67075409,
-      "txHash": "0x9cf9c992603ee9b81603ceb99fc1c0cdce9b7b8a3c15fb188706845f9d07534c",
       "version": "v3.1"
     },
     "tokenFactory": {
       "address": "0xcE1616505F93215751FBb41Efac618b631997c38",
       "blockNumber": 67075420,
-      "txHash": "0x9f1dd3fa5f4a99e5063dda703635b1cf7c7ecd8fc4027562e7b45b546f186930",
       "version": "v3.1"
     },
     "spoke": {
       "address": "0xEC3582fcDc34078a4B7a8c75a5a3AE46f48525aB",
       "blockNumber": 67075432,
-      "txHash": "0x122f3d3300da3141932e41ca3d7f8abd381a4072d116d7bcae415b5b6fddaf82",
       "version": "v3.1"
     },
     "balanceSheet": {
       "address": "0x12a110cE5f0FC871cC72Bc7ECaF35cf39DD0f43e",
       "blockNumber": 67075445,
-      "txHash": "0x34332c45656f80650c1e8367d756f3bf02ea417ec1492bb3730c720be7c6f0b3",
       "version": "v3.1"
     },
     "vaultRegistry": {
       "address": "0xd9531AC47928c3386346f82d9A2478960bf2CA7B",
       "blockNumber": 67075458,
-      "txHash": "0xddab1946848ee84150a372021ea5dc827fd8c72738f482218ab70adc61fb44c5",
       "version": "v3.1"
     },
     "poolEscrowFactory": {
       "address": "0x5187A505c485E22f0b8a5FBdF69eF1c29C478CE3",
       "blockNumber": 67075468,
-      "txHash": "0x58a184e867d77552e014412da52c20a0d00661759972ec79f163d1b231e9539d",
       "version": "v3.1"
     },
     "hubRegistry": {
       "address": "0x19f46D8130e610C6C0f0116EA40Fb781dEFaDE93",
       "blockNumber": 67075478,
-      "txHash": "0xc2af3ba56270b313e0463c7048bc0fbc33c1330e7bbfc9d095d2afe9d0eb06db",
       "version": "v3.1"
     },
     "accounting": {
       "address": "0x050206c38f06e4710C4a37D39F75Ddc5c16a7396",
       "blockNumber": 67075570,
-      "txHash": "0x7a7ee2671b89663f2acaca632f6e28bb7949c9db43c5bc70322324cf1d6d2a60",
       "version": "v3.1"
     },
     "holdings": {
       "address": "0x3f0c8D8d2637881c3f6d8531F51a47c2094C918d",
       "blockNumber": 67075581,
-      "txHash": "0x92fa30db93e0928bdee3cd48307265e74f14ff9572642640204d108ca46167b0",
       "version": "v3.1"
     },
     "shareClassManager": {
       "address": "0xaFFC269c8fe18EE9C7DDb22301AC2c2507d69BEf",
       "blockNumber": 67075592,
-      "txHash": "0x94ff3861482060c677c821fd2c3d87a434918ae3df3318273e011c04018dba3e",
       "version": "v3.1"
     },
     "hub": {
       "address": "0xA4A7Bb3831958463b3FE3E27A6a160F764341953",
       "blockNumber": 67075770,
-      "txHash": "0x98585032936a2f0d0b790fe03607db53fc7b78c6400278732af5a7bae2b4d831",
       "version": "v3.1"
     },
     "hubHandler": {
       "address": "0x0dEFb429B1663698da4bAe3278393F6844c3392C",
       "blockNumber": 67075786,
-      "txHash": "0x4e476d83fc46e05cc01631e86d1c8d6f134abcf3fb9ae1811b150abce3d96cdd",
       "version": "v3.1"
     },
     "tokenRecoverer": {
       "address": "0x1E70530e9555711f8DF4838Ab940b97c039B4037",
       "blockNumber": 67075834,
-      "txHash": "0x7f65e165a1d3471d7982a0957898b83ec5034ab4449530ce4b2d3c6701201ea5",
       "version": "v3.1"
     },
     "protocolGuardian": {
       "address": "0xCEb7eD5d5B3bAD3088f6A1697738B60d829635c6",
       "blockNumber": 67075921,
-      "txHash": "0x82a17ace852cd02b180e30083addb8a98b6545f8a838bf4a41bff98fdea42c1f",
       "version": "v3.1"
     },
     "opsGuardian": {
       "address": "0x055589229506Ee89645EF08ebE9B9a863486d0dE",
       "blockNumber": 67075947,
-      "txHash": "0xc034a3bb08e7a820df23352b911814578801d3d9b58df933089a189370157d54",
       "version": "v3.1"
     },
     "refundEscrowFactory": {
       "address": "0xC4f9A1DCF2E05eb55AbB30BaA7070838D3Fd3D5B",
       "blockNumber": 67076335,
-      "txHash": "0xa125a269ad6d115463e5c12dc98d4ef620c82d68141a6f8a6afefebd7eef4885",
       "version": "v3.1"
     },
     "subsidyManager": {
       "address": "0xBFC7B60684880457030C08AceE2E675CbcB9d646",
       "blockNumber": 67076347,
-      "txHash": "0xe1861d3e0d2ef618849e692a15338aeeb62f305151c109cc44d84992d103f3c1",
       "version": "v3.1"
     },
     "asyncRequestManager": {
       "address": "0xF48256AbDDf96EcDDc4B3DbD23E8C1921f9761Ae",
       "blockNumber": 67076411,
-      "txHash": "0xd60d5e80135f472e4843887025caade81eee0faf5bd93f33c3cd793dc4ddfd36",
       "version": "v3.1"
     },
     "syncManager": {
       "address": "0xFf8Ed1862f6aC3a8e89B81C75507c225E36e273D",
       "blockNumber": 67076594,
-      "txHash": "0x9d8fd414a49df798dcc28b776db8a451bddbfd67d32af3c717afb08b46713a73",
       "version": "v3.1"
     },
     "vaultRouter": {
       "address": "0xF684014771C01e50B8B526968B3a1e33acDA63f6",
       "blockNumber": 67076612,
-      "txHash": "0x65ae788a3b976d09f7404a46686838ab8041d4055d79a096f5a7f8157af96450",
       "version": "v3.1"
     },
     "asyncVaultFactory": {
       "address": "0x55cde53B7dbc24336E34FFE233AF8DF10f72F0Be",
       "blockNumber": 67076676,
-      "txHash": "0x7bfbca24b22a2c0ecbc3b84e3e00e3a64c9cce4dee53ae33cbc96f54c2b3aeda",
       "version": "v3.1"
     },
     "syncDepositVaultFactory": {
       "address": "0xdb9C27762045Addd713182521C0580C68BDF700A",
       "blockNumber": 67076846,
-      "txHash": "0xd1944aa78ff5c768b1f5b9db99702773745f25e2fdec8ddd5b95c5ff682f670b",
       "version": "v3.1"
     },
     "freezeOnlyHook": {
       "address": "0xd5B243F05b2906F1f6C80c6096945faADa0731C1",
       "blockNumber": 67076858,
-      "txHash": "0x5dcb50eebae6aee9c18b28531770085a10f18e530700c4a0db547eb8c3c1d638",
       "version": "v3.1"
     },
     "fullRestrictionsHook": {
       "address": "0x8E680873b4C77e6088b4Ba0aBD59d100c3D224a4",
       "blockNumber": 67076897,
-      "txHash": "0xc106a36d0b769122491e2fd0a188eaee0d0ac0399905e1a7925a1e9e67168917",
       "version": "v3.1"
     },
     "freelyTransferableHook": {
       "address": "0x2a9B9C14851Baf7AD19f26607C9171CA1E7a1A61",
       "blockNumber": 67076941,
-      "txHash": "0x544b9bde6ee126ef130845b533f42cfa985395c266578df2437c71c634358ad6",
       "version": "v3.1"
     },
     "redemptionRestrictionsHook": {
       "address": "0xE5423eD8602Fa0F263e17b6212d88Efe42317f06",
       "blockNumber": 67076961,
-      "txHash": "0x4aa2f7773a16a96183a6f458dd8d31bd3ecaafc7f8b503072dca17c5664939bf",
       "version": "v3.1"
     },
     "queueManager": {
       "address": "0x971ACA9b4AB4895F400bA042Fd10A31c7918D220",
       "blockNumber": 67077120,
-      "txHash": "0xb4e51e887d9d2d0096ea54c4536113c56097c385812b0e68f1b8d2da956e85dc",
       "version": "v3.1"
     },
     "accountingToken": {
       "address": "0x15a5D180A4b8da06268260b7B4f89ee7d239B6c5",
       "blockNumber": 67081714,
-      "txHash": "0xb054dd67b144afa5cb0f8b9141906cbeedc52cc3092bf72ce90725ecbc8691b3",
       "version": "v3.2"
     },
     "scriptHelpers": {
       "address": "0x052bb2c1F1551D7CC5373c39c3bC00dCD1F2154C",
       "blockNumber": 67081724,
-      "txHash": "0x87553c7ed6f1537d88a3cef4469aa2de20a9c75825766bfb54f4a8eda806fcc3",
       "version": "v3.2"
     },
     "onchainPMFactory": {
       "address": "0x916bf6cdBE63aC01F4a9A4bb0f0f97Cc212733F6",
       "blockNumber": 67081734,
-      "txHash": "0x1bc7ba26d2cf161e547c73b6229a0a4fcffa587710a217548119034d80ef1709",
       "version": "v3.2"
     },
     "flashLoanHelper": {
       "address": "0x0EA533Edfb5e837f40756FF3b0A8654f062c6F3e",
       "blockNumber": 67081743,
-      "txHash": "0xf961908e910d559ac66f7c4b92a48302018b820efa68cf3687e96efa98095b35",
       "version": "v3.2"
     },
     "onOffRampFactory": {
       "address": "0x22E2f679669D69b6b6f22CC9C1731035a3Fa0296",
       "blockNumber": 67081753,
-      "txHash": "0x7251f6cf2f4196e79e4a8a44760ffbb8b7aae9991385c901d2e074b656e7fed8",
       "version": "v3.2"
     },
     "batchRequestManager": {
       "address": "0xc52Bd1Bdfa0135147D3F01a0B6D6cd0A831dFe77",
       "blockNumber": 67077465,
-      "txHash": "0xfd6a20fd5991e5bea0ac3d0dd04881a6c6fd62cc118aecc571d558d33d6925d9",
       "version": "v3.1"
     },
     "identityValuation": {
       "address": "0x05e22C20B21c1314a0c93d34855358B9B96133CF",
       "blockNumber": 67077475,
-      "txHash": "0xc93f4411c97d045799c2bb3e66d18c6e6c0f5d55780b68754f7f4f3860d96d9c",
       "version": "v3.1"
     },
     "oracleValuation": {
       "address": "0x8c3E9f3cF2dD057d6a2eA33d979faa0061b42c12",
       "blockNumber": 67081888,
-      "txHash": "0x190df329e22f93a31941cdc720a4a7102a39a765d620503aa395e6a5d2659c87",
       "version": "v3.2"
     },
     "navManager": {
       "address": "0x493b6C8ccC7BfD43c5a20C4F2C648701f74E9130",
       "blockNumber": 67077841,
-      "txHash": "0x144b25779e9112db18e88c770ba221e231fbf733ef542d7a456b30d1ec61718e",
       "version": "v3.1"
     },
     "simplePriceManager": {
       "address": "0x280C94eB440A8a75c2F8f6cA8c6FaFf907000823",
       "blockNumber": 67077852,
-      "txHash": "0x754c71907f90459b6fa1b452e57bbac50a5f6ac371f4ba4ac6356bf5658645c5",
       "version": "v3.1"
     },
     "layerZeroAdapter": {
       "address": "0xD517BC7ba17271a8D87BE7355B2523bF5c750295",
       "blockNumber": 67077881,
-      "txHash": "0x365d9b66723dd36d582e1d93e00c5282ec099c397e6f5b7a39e23887fec7a934",
       "version": "v3.1"
     },
     "chainlinkAdapter": {
       "address": "0x39CF679Eb0Ac9075CFb5f94930A367Ba1557D955",
       "blockNumber": 67077903,
-      "txHash": "0x68f0f7138a2ab85856264fc5d5abbfaa413888296a8734e167029fea90aa309e",
       "version": "v3.1"
     },
     "approvalGuard": {
       "address": "0x06522CA52ad905b025B2863F84BF433672d65820",
       "blockNumber": 67081789,
-      "txHash": "0x518a183416f51419b048273f202cbd2ce7b476a5b27c6cbd940f4f2ed1ef0605",
       "version": "v3.2"
     },
     "circuitBreakerGuard": {
       "address": "0x6466899918602f6FC5Bf5c010Ddef417Df7057EA",
       "blockNumber": 67081868,
-      "txHash": "0x58c21c537b12966c9ea628c55413634b71d6542b2b9a87088d6c588c0820e484",
       "version": "v3.2"
     },
     "slippageGuard": {
       "address": "0x069385B688b1764B15E39E93ADFe12B768C8Bf95",
       "blockNumber": 67081879,
-      "txHash": "0x2581c5daa87caa17f626e28a52eba5a54dd493b67e8f1e7f5d09d466456f64fe",
       "version": "v3.2"
     }
   },

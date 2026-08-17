@@ -19,14 +19,20 @@
 
 - /src/spell/**
 
-# Scripts: keep only FullDeployer, BaseDeployer and their script/ dependencies
+# Scripts: keep only the deployer stack the mirrored tests build on, and its script/ dependencies.
+# BaseDeployer <- GatedDeployer <- FullDeployer, which test/integration/{Deployer,EndToEnd,Integration,
+# ThreeChainEndToEnd,Create3Addresses} and test/deployment/DeployGate all import. LaunchDeployer is not
+# mirrored: nothing public reaches it, and it reads env/, which is not mirrored either.
 + /script/
-+ /script/FullDeployer.s.sol
-+ /script/BaseDeployer.s.sol
++ /script/deploy/
++ /script/deploy/BaseDeployer.s.sol
++ /script/deploy/GatedDeployer.s.sol
++ /script/deploy/FullDeployer.s.sol
 + /script/utils/
-+ /script/utils/ICreateX.sol
-+ /script/utils/CreateX.d.sol
-+ /script/utils/CreateXScript.sol
++ /script/utils/createx/
++ /script/utils/createx/ICreateX.sol
++ /script/utils/createx/CreateX.d.sol
++ /script/utils/createx/CreateXScript.sol
 + /script/utils/JsonRegistry.s.sol
 
 - /script/**

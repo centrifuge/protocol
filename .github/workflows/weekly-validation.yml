@@ -48,12 +48,16 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.4
-      - run: python3 script/deploy/load_secrets.py
+      - run: ./script/setup/load-secrets.sh
       - run: forge test --match-test "testLiveValidation" -vv 2>&1 | tee test-output.txt
         env:
           NETWORK: ${{ matrix.network }}
       - if: failure()
         run: echo "${{ matrix.network }}" > failed-chain.txt
+      # ::add-mask:: only stars secrets out of the live log, never out of a file that gets uploaded, and an
+      # RPC failure is exactly what puts a URL with its API key into this one
+      - if: failure()
+        run: ./script/setup/redact-secrets.sh test-output.txt
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -85,12 +89,15 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.4
-      - run: python3 script/deploy/load_secrets.py
+      - run: ./script/setup/load-secrets.sh
       - run: forge test --match-test "testInvestmentFlows" -vv 2>&1 | tee test-output.txt
         env:
           NETWORK: ${{ matrix.network }}
       - if: failure()
         run: echo "${{ matrix.network }}" > failed-chain.txt
+      # As above: the uploaded log has to be redacted, masking does not reach into files
+      - if: failure()
+        run: ./script/setup/redact-secrets.sh test-output.txt
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -103,7 +110,7 @@ jobs:
     needs: [validate-state, validate-flows]
     if: failure()
     runs-on: ubuntu-latest
-    permissions:q
+    permissions:
       contents: read
       issues: write
     steps:

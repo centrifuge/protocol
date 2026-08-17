@@ -17,7 +17,7 @@ import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
-import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../script/FullDeployer.s.sol";
+import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../script/deploy/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

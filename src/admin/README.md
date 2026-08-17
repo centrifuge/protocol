@@ -18,6 +18,6 @@ The admin module provides protocol governance and emergency controls, including 
 
 ### `GasService`
 
-The `GasService` stores gas limits (in gas units) for cross-chain message execution, providing adapters with information about how much gas to allocate for each message type on destination chains. Gas limits are benchmarked using `script/utils/benchmarks.sh` and include a base cost covering adapter and gateway processing overhead plus the specific execution cost for each message type.
+The `GasService` stores gas limits (in gas units) for cross-chain message execution, providing adapters with information about how much gas to allocate for each message type on destination chains. Gas limits are benchmarked using `script/checks/benchmarks.sh` and include a base cost covering adapter and gateway processing overhead plus the specific execution cost for each message type.
 
 Each message type has an immutable gas limit set at deployment, covering operations from simple notifications (~100k gas) to complex vault deployments (~2.8M gas). The contract implements `IGasService` to expose these values to the protocol, enabling accurate gas estimation for cross-chain operations. Gas values account for worst-case scenarios like creating new escrows during pool notifications or deploying and linking vaults in a single operation.

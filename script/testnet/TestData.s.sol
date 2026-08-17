@@ -23,7 +23,7 @@ contract TestData is BaseTestData {
     using UpdateRestrictionMessageLib for *;
 
     function run() public override {
-        EnvConfig memory config = Env.load(vm.envString("NETWORK"));
+        EnvConfig memory config = Env.load();
         uint16 centrifugeId = config.network.centrifugeId;
         loadContractsFromConfig(config);
 

@@ -1,8 +1,0 @@
-__pycache__/
-*.pyc
-/logs/
-*.log
-.env
-venv/
-.env.*
-*.back

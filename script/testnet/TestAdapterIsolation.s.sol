@@ -22,6 +22,7 @@ import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
 import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
+import {Connection} from "../utils/EnvConnectionsConfig.s.sol";
 import {Constants} from "../../src/deployment/ActionBatchers.sol";
 
 /**
@@ -193,11 +194,35 @@ contract TestAdapterIsolation is Script, Constants {
     //----------------------------------------------------------------------------------------------
 
     function _loadConfig() internal {
-        h = Env.load(vm.envString("NETWORK"));
-        s = Env.load(vm.envOr("SPOKE_NETWORK", string("arbitrum-sepolia")));
+        h = Env.load();
+        s = Env.load(_spokeNetwork());
+        _requireValidPair();
 
         xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
         gasTestBase = uint48(vm.envOr("GAS_TEST_BASE", uint256(DEFAULT_GAS_TEST_BASE)));
+    }
+
+    /// @dev The spoke this run tests. SPOKE_NETWORK names it; otherwise it is the hub's first connected
+    ///      network, which is always a valid choice for whatever hub the run is pointed at. It used to
+    ///      default to a fixed network, which silently tested the wrong pair — or the hub against itself —
+    ///      as soon as the hub was not the one that default was written for.
+    function _spokeNetwork() internal view returns (string memory) {
+        string memory named = vm.envOr("SPOKE_NETWORK", string(""));
+        if (bytes(named).length > 0) return named;
+
+        Connection[] memory connections = h.network.connections();
+        require(connections.length > 0, "Hub has no connected networks in env/connections/");
+        return connections[0].network;
+    }
+
+    /// @dev Guards the two ways this test can be pointed somewhere meaningless. Enforced here rather than in
+    ///      the shell wrapper only, because a bare `forge script --sig ...` bypasses the wrapper entirely.
+    function _requireValidPair() internal view {
+        require(!h.network.isMainnet(), "Adapter isolation is a testnet test; the hub is on mainnet");
+        require(
+            h.network.centrifugeId != s.network.centrifugeId,
+            string.concat("Hub and spoke are the same chain (", s.network.name, "); set SPOKE_NETWORK")
+        );
     }
 
     function _logConfig() internal view {
@@ -397,7 +422,11 @@ contract TestAdapterIsolation is Script, Constants {
             console.log("[Asset] Not registered on hub. Holdings init will be skipped.");
             console.log(
                 string.concat(
-                    "        To register: NETWORK=", s.network.name, " forge script ... --sig 'registerAssetOnly()'"
+                    "        To register, run against the spoke: HUB_NETWORK=",
+                    h.network.name,
+                    " forge script ... --rpc-url ",
+                    s.network.name,
+                    " --sig 'registerAssetOnly()'"
                 )
             );
             return;
@@ -422,8 +451,9 @@ contract TestAdapterIsolation is Script, Constants {
 
     /// @notice Register asset from spoke chain (for cross-chain setups)
     function registerAssetOnly() public {
-        s = Env.load(vm.envString("NETWORK"));
+        s = Env.load();
         h = Env.load(vm.envOr("HUB_NETWORK", string("base-sepolia")));
+        _requireValidPair();
         xcGasPerCall = vm.envOr("XC_GAS_PER_CALL", DEFAULT_XC_GAS_PER_CALL);
 
         console.log("=== Asset Registration (run on SPOKE chain) ===");
@@ -491,8 +521,17 @@ contract TestAdapterIsolation is Script, Constants {
         console.log("  - NotifyPool (creates pool on spoke)");
         console.log("\nNEXT STEPS:");
         console.log("1. Wait for XC relay (~5-10 min)");
+        // Built from the configs in play, so it points at the route this run actually used. It was once a
+        // fixed string, which sent anyone reading it to the wrong pair of chains
         console.log(
-            "   Monitor: https://testnet.axelarscan.io/gmp/search?sourceChain=base-sepolia&destinationChain=arbitrum-sepolia&senderAddress=0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb"
+            string.concat(
+                "   Monitor: https://testnet.axelarscan.io/gmp/search?sourceChain=",
+                h.adapters.axelar.axelarId,
+                "&destinationChain=",
+                s.adapters.axelar.axelarId,
+                "&senderAddress=",
+                vm.toString(h.network.opsAdmin)
+            )
         );
         console.log("\n2. Verify pool exists on spoke:");
         console.log(

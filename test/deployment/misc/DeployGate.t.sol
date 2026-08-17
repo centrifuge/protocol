@@ -5,9 +5,9 @@ import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {DeployGate} from "../../../src/deployment/misc/DeployGate.sol";
 import {IDeployGate} from "../../../src/deployment/misc/interfaces/IDeployGate.sol";
 
-import {ICreateX} from "../../../script/utils/ICreateX.sol";
-import {CREATEX_ADDRESS} from "../../../script/utils/CreateX.d.sol";
-import {CreateXScript} from "../../../script/utils/CreateXScript.sol";
+import {ICreateX} from "../../../script/utils/createx/ICreateX.sol";
+import {CREATEX_ADDRESS} from "../../../script/utils/createx/CreateX.d.sol";
+import {CreateXScript} from "../../../script/utils/createx/CreateXScript.sol";
 
 import "forge-std/Test.sol";
 

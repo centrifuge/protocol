@@ -30,7 +30,7 @@ import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {AsyncRequestManager} from "../../../src/vaults/AsyncRequestManager.sol";
 import {BatchRequestManager} from "../../../src/vaults/BatchRequestManager.sol";
 
-import {NonCoreReport as MainContracts} from "../../../script/FullDeployer.s.sol";
+import {NonCoreReport as MainContracts} from "../../../script/deploy/FullDeployer.s.sol";
 
 import {VMLabeling} from "../utils/VMLabeling.sol";
 import {ChainConfigs} from "../utils/ChainConfigs.sol";

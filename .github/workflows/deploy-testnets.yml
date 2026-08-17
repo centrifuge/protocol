@@ -1,0 +1,122 @@
+name: "Deploy testnets"
+
+# Deploys every testnet: the gated two-phase LaunchDeployer run per network, the config update, and test
+# data. The sequence lives here rather than in a wrapper script because CI is the only thing that runs all
+# testnets in one go.
+#
+# The matrix is not written down here: `set-vars` reads it out of env/connections/testnet.json, and the
+# deploy job fans out over whatever that says. That is deliberate, because the two must not be able to
+# disagree. There is no separate wiring pass — LaunchDeployer wires the adapters itself, from
+# AdapterActionBatcher, and it wires each remote peer to the address its own adapter landed on, which is
+# correct only because CREATE3 puts them at the same address on every chain given the same gate and SUFFIX.
+# A network left out of the run would keep the addresses of an earlier deployment while everyone else wires
+# to the ones this run predicts. Nothing would fail: the adapters would point at a well-formed address
+# holding no contract and the messages would simply never arrive. Deriving the matrix is what makes that
+# unreachable, so adding a network to the connections file is the whole change.
+#
+# Manual only, deliberately. There is no pull-request smoke test here because a dry run cannot prove anything
+# on a chain that has no DeployGate yet: LaunchDeployer aborts before simulating. ci.yml already covers this
+# path on every PR by running script/deploy/anvil.sh, which brings up its own gate and then does validate,
+# execute and TestData end to end on two forks.
+#
+# The addresses a run lands on leave as one `env-<network>` artifact per network, because a job's working
+# directory does not outlive it and this workflow has no write access to the repository. Whoever triggered
+# the run has to download them and commit them — nothing else will, and until they are committed the
+# repository still describes the deployment before this one.
+
+on:
+  workflow_dispatch:
+    inputs:
+      suffix:
+        description: "Salt suffix for isolated deployments (e.g. PR-123), 27 chars at most. Leave empty for canonical versioned addresses."
+        required: false
+        type: string
+        default: "TEST"
+
+jobs:
+  set-vars:
+    runs-on: ubuntu-latest
+    outputs:
+      suffix: ${{ steps.vars.outputs.suffix }}
+      networks: ${{ steps.vars.outputs.networks }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: vars
+        run: |
+          # A salt is `<version>-<suffix>` and BaseDeployer._makeSalt caps that at 32 bytes, so with a
+          # version like `v3.3-` the suffix has 27 characters to live in. The short sha keeps this run
+          # identifiable while leaving room; the full one made the default dispatch revert on the first salt
+          if [ "${{ github.event.inputs.suffix }}" = "TEST" ]; then
+            echo "suffix=TEST-${{ github.run_number }}-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=${{ github.event.inputs.suffix }}" >> $GITHUB_OUTPUT
+          fi
+
+          # The networks to deploy are the ones the environment connects, read straight out of the
+          # connections file so the two cannot disagree — see the note at the top of this workflow. Mirrors
+          # EnvConnections._collectNetworks: the union of both sides of every rule, where a side is a list,
+          # an alias, or a literal name
+          networks="$(jq -c '
+            . as $c
+            | [$c.connections[].chains[] | if type == "array" then .[] else ($c.aliases[.] // [.])[] end]
+            | unique
+          ' env/connections/testnet.json)"
+
+          echo "Deploying: $networks"
+          echo "networks=$networks" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: set-vars
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    strategy:
+      fail-fast: false
+      matrix:
+        network: ${{ fromJSON(needs.set-vars.outputs.networks) }}
+        include:
+          # base-sepolia otherwise leaves receipts pending forever
+          - network: base-sepolia
+            extra: "--gas-price 100000000000"
+    env:
+      SUFFIX: ${{ needs.set-vars.outputs.suffix }}
+      FLAGS: --rpc-url ${{ matrix.network }} --slow ${{ matrix.extra }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/deployer-setup
+        with:
+          gcp-workload-identity-provider: ${{ secrets.GCP_WIP }}
+          gcp-service-account: ${{ secrets.GCP_SA }}
+
+      - name: Validate
+        run: |
+          set -a; . ./.env; set +a
+          forge script script/deploy/LaunchDeployer.s.sol --tc LaunchDeployer --sig 'validate()' $FLAGS --private-key "$PRIVATE_KEY" --broadcast
+      # Deliberately without --verify: an explorer that is slow, down or rate-limiting fails the step after
+      # the deployment has landed, and the addresses would leave with it. Verification is the last step of
+      # the job instead, so nothing a deployment still owes — the config, the test data — waits behind it
+      - name: Execute
+        run: |
+          set -a; . ./.env; set +a
+          forge script script/deploy/LaunchDeployer.s.sol --tc LaunchDeployer --sig 'execute()' $FLAGS --private-key "$PRIVATE_KEY" --broadcast
+      # The only way the config leaves this job, and the only record of what this run deployed. `always()`
+      # because a run that stopped partway still wrote what it was going to deploy, and recovering by hand
+      # needs those addresses more than a clean run does
+      - name: Upload network config
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: env-${{ matrix.network }}
+          path: env/${{ matrix.network }}.json
+          if-no-files-found: error
+      - name: Test data
+        run: |
+          set -a; . ./.env; set +a
+          forge script script/testnet/TestData.s.sol --tc TestData $FLAGS --private-key "$PRIVATE_KEY" --broadcast
+      # Replays the broadcast sequence to verify what it deployed, deploying nothing. Failing here says the
+      # explorer did not take the sources, never that the deployment is in doubt
+      - name: Verify
+        run: |
+          set -a; . ./.env; set +a
+          forge script script/deploy/LaunchDeployer.s.sol --tc LaunchDeployer --sig 'execute()' $FLAGS --private-key "$PRIVATE_KEY" --resume --verify

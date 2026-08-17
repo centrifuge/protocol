@@ -23,9 +23,19 @@ struct NetworkConfig {
     address protocolAdmin;
     address opsAdmin;
     uint8 batchLimit;
-    string baseRpcUrl;
+    // `.network.baseRpcUrl` is deliberately not here: the RPC URL a script connects with comes from
+    // foundry.toml's [rpc_endpoints], which check_foundry_networks.py derives from that field. Parsing it
+    // again would be a second way to build the same URL, and the two would drift
+    //
+    // Two explorer URLs, because they are two different services. `verifierUrl` is where source is SUBMITTED
+    // for verification — for the Blockscout-family explorers that is a write-only endpoint that rejects
+    // every read. `explorerApiUrl` is where chain data is READ back, which is what VerifyFactoryContracts
+    // asks when checking whether a contract is verified already. They coincide on Etherscan, and on
+    // Blockscout instances exposing an Etherscan-compatible /api, which is why one field served both for so
+    // long; they diverge on SocialScan, whose verification endpoint answers "the action is error" to reads
     string verifier;
     string verifierUrl;
+    string explorerApiUrl;
 }
 
 struct LayerZeroConfig {
@@ -144,6 +154,16 @@ using EnvConfigLib for EnvConfig global;
 
 /// @notice loads an env/<network>.json file
 library Env {
+    /// @dev What `vm.indexOf` answers when the key is not in the string
+    uint256 private constant NOT_FOUND = type(uint256).max;
+
+    /// @notice Loads the config of the chain the run is pointed at, resolved by chain id: every network
+    ///         config names its chainId and they are unique, so `--rpc-url <network>` is the only input a
+    ///         script needs, and the one that decides both where it connects and what it reads.
+    function load() internal view returns (EnvConfig memory config) {
+        return load(detect());
+    }
+
     function load(string memory network) internal view returns (EnvConfig memory config) {
         string memory json = vm.readFile(string.concat("env/", network, ".json"));
 
@@ -153,13 +173,57 @@ library Env {
         config.contracts = _parseContractsConfig(json);
     }
 
+    /// @notice The network name `block.chainid` belongs to. Walks env/ two levels deep, so the configs an
+    ///         anvil run copies under env/anvil/ are found on their fork's own chain id, and skips anything
+    ///         that is not a network config (the connections files, the archived spells).
+    ///
+    /// @dev    There is deliberately no override: the chain the RPC points at is the single source of truth,
+    ///         so a script cannot be pointed at one chain while reading another's addresses. A script that
+    ///         has to choose a network *before* it has a chain — one that reads a config to know where to
+    ///         fork, as VerifyFactoryContracts does — passes the name to `load(name)` instead.
+    function detect() internal view returns (string memory) {
+        // readDir answers with absolute paths; everything below reasons relative to the project root
+        string memory root = string.concat(vm.projectRoot(), "/");
+
+        Vm.DirEntry[] memory entries = vm.readDir("env", 2);
+        for (uint256 i; i < entries.length; i++) {
+            if (entries[i].isDir) continue;
+
+            string memory path = vm.replace(entries[i].path, root, "");
+            if (!_isJson(path)) continue;
+
+            string memory json = vm.readFile(entries[i].path);
+            if (!vm.keyExistsJson(json, ".network.chainId")) continue;
+            if (vm.parseJsonUint(json, ".network.chainId") != block.chainid) continue;
+
+            // env/<name>.json, where <name> may contain a directory (anvil/sepolia)
+            return vm.replace(vm.replace(path, "env/", ""), ".json", "");
+        }
+
+        revert(
+            string.concat(
+                "No env config for chain ",
+                vm.toString(block.chainid),
+                ": add env/<network>.json naming that chainId, and point --rpc-url at it"
+            )
+        );
+    }
+
+    /// @dev The only filter the walk needs, and it is not optional: `keyExistsJson` *reverts* on anything
+    ///      that is not JSON, so the spells under env/spell/ would end the walk rather than be skipped by it.
+    ///      Everything else that parses — a connections file — has no `.network.chainId` and falls out below.
+    ///      Anchored to the end, so a `.json.bak` left lying around is not read as a config.
+    function _isJson(string memory path) private pure returns (bool) {
+        uint256 at = vm.indexOf(path, ".json");
+        return at != NOT_FOUND && at == bytes(path).length - 5;
+    }
+
     function _parseNetworkConfig(string memory json) private pure returns (NetworkConfig memory config) {
         config.chainId = vm.parseJsonUint(json, ".network.chainId");
         config.environment = vm.parseJsonString(json, ".network.environment");
         config.centrifugeId = uint16(vm.parseJsonUint(json, ".network.centrifugeId"));
         config.protocolAdmin = vm.parseJsonAddress(json, ".network.protocolAdmin");
         config.opsAdmin = vm.parseJsonAddress(json, ".network.opsAdmin");
-        config.baseRpcUrl = vm.parseJsonString(json, ".network.baseRpcUrl");
 
         try vm.parseJsonUint(json, ".network.batchLimit") returns (uint256 val) {
             config.batchLimit = uint8(val);
@@ -169,10 +233,28 @@ library Env {
             config.verifier = val;
         } catch {}
 
+        // Etherscan's multichain v2 endpoint covers most chains by id, and is where both submission and
+        // reads go unless a network names something else
+        string memory etherscanV2 =
+            string.concat("https://api.etherscan.io/v2/api?chainid=", vm.toString(config.chainId));
+
         try vm.parseJsonString(json, ".network.verifierUrl") returns (string memory val) {
             config.verifierUrl = val;
         } catch {
-            config.verifierUrl = string.concat("https://api.etherscan.io/v2/api?chainid=", vm.toString(config.chainId));
+            config.verifierUrl = etherscanV2;
+        }
+
+        // Only read for explorers speaking the Etherscan dialect: a network verifying through Sourcify asks
+        // Sourcify whether a contract is verified, so this default is never reached for one.
+        //
+        // Only set where the explorer's read API is somewhere other than where verification is submitted.
+        // Falling back to Etherscan v2 rather than to `verifierUrl` is the point of keeping them apart: a
+        // network that names a write-only verification endpoint gets a working read URL by default, and one
+        // whose reads genuinely live elsewhere says so explicitly
+        try vm.parseJsonString(json, ".network.explorerApiUrl") returns (string memory val) {
+            config.explorerApiUrl = val;
+        } catch {
+            config.explorerApiUrl = etherscanV2;
         }
     }
 
@@ -486,13 +568,11 @@ library NetworkConfigLib {
         return EnvConnections.load(config.environment).connectionsWith(config.name);
     }
 
+    /// @dev Resolves the `[rpc_endpoints]` alias named after the network, which is where a base URL and its
+    ///      API key are composed. Keeping that in foundry.toml is what lets `--rpc-url <network>` on the
+    ///      command line and this function reach the same endpoint.
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
-        string memory apiKey = "";
-        if (_contains(config.baseRpcUrl, "alchemy")) apiKey = prettyEnvString("ALCHEMY_API_KEY");
-        else if (_contains(config.baseRpcUrl, "plume")) apiKey = prettyEnvString("PLUME_API_KEY");
-        else if (_contains(config.baseRpcUrl, "pharos")) apiKey = prettyEnvString("PHAROS_API_KEY");
-
-        return string.concat(config.baseRpcUrl, apiKey);
+        return vm.rpcUrl(config.name);
     }
 
     function isMainnet(NetworkConfig memory config) internal pure returns (bool) {
@@ -501,29 +581,6 @@ library NetworkConfigLib {
 
     function graphQLApi(NetworkConfig memory config) internal pure returns (string memory) {
         return config.isMainnet() ? GraphQLConstants.MAINNET_API : GraphQLConstants.TESTNET_API;
-    }
-
-    function _contains(string memory str, string memory substr) private pure returns (bool) {
-        return _indexOf(str, substr) != type(uint256).max;
-    }
-
-    function _indexOf(string memory str, string memory substr) private pure returns (uint256) {
-        bytes memory strBytes = bytes(str);
-        bytes memory substrBytes = bytes(substr);
-
-        if (substrBytes.length > strBytes.length) return type(uint256).max;
-
-        for (uint256 i = 0; i <= strBytes.length - substrBytes.length; i++) {
-            bool found = true;
-            for (uint256 j = 0; j < substrBytes.length; j++) {
-                if (strBytes[i + j] != substrBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) return i;
-        }
-        return type(uint256).max;
     }
 }
 

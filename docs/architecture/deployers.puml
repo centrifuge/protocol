@@ -11,7 +11,6 @@ class GatedDeployer << (S, motivation) >>
 class DeployGateDeployer << (S, application) >>
 class DeployAdapters << (S, application) >>
 class PoolHooks << (S, application) >>
-class DeployOnchainPMV2 << (S, application) >>
 
 class FullDeployer  << (S, application) >> {
     + function deployFull()
@@ -42,7 +41,6 @@ LaunchDeployer -up-|> FullDeployer
 DeployGateDeployer ---up-|> BaseDeployer
 DeployAdapters ---up-|> BaseDeployer
 PoolHooks ---up-|> BaseDeployer
-DeployOnchainPMV2 ---up-|> BaseDeployer
 
 GatedDeployer -right> DeployPhase
 FullDeployer -left> DeployerInput
@@ -54,7 +52,6 @@ FullDeployer ...> AdapterActionBatcher
 
 note right of FullDeployer: Used in integration tests and \ntestnets
 note right of LaunchDeployer: Loads network config from JSON;\nentry point for production deployments
-note right of DeployOnchainPMV2: Standalone script for deploying\nOnchainPM to existing environments
 note right of DeployGateDeployer: Brings up the DeployGate once per chain;\nprerequisite of both gated phases
 
 @enduml

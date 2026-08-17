@@ -16,7 +16,7 @@ import {ISpokeHandler} from "../../src/core/spoke/interfaces/ISpokeHandler.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {FullDeployer} from "../../script/FullDeployer.s.sol";
+import {FullDeployer} from "../../script/deploy/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

@@ -5,7 +5,7 @@ import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
-import {DeployPhase} from "../../script/GatedDeployer.s.sol";
+import {DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
     DeployerInput,
     FullDeployer,
@@ -16,7 +16,7 @@ import {
     HyperlaneInput,
     defaultTxLimits,
     AdapterConnections
-} from "../../script/FullDeployer.s.sol";
+} from "../../script/deploy/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -1042,17 +1042,17 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertEq(tokenBridge.wards(deployGate_), 0, "tokenBridge");
     }
 
-    /// @dev The manifest reports what was deployed, once each. The validate phase registers addresses as it
+    /// @dev The registry reports what was deployed, once each. The validate phase registers addresses as it
     ///      walks, and the state rollback that ends it is what discards them again, this script's own storage
     ///      being rolled back along with everything else
     /// @dev The three action batchers are deployed but not reported: they hold no permission once they have
     ///      wired the protocol, and nothing ever reads one back, so they do not belong in `env/<network>.json`
     function testReportsEveryContractButTheBatchers() public view {
-        assertEq(registeredContracts + 3, executedContracts, "the manifest should report every other contract");
+        assertEq(registeredCount() + 3, executedContracts, "the registry should report every other contract");
 
-        assertEq(vm.indexOf(deploymentOutput, "coreBatcher"), type(uint256).max, "coreBatcher is not reported");
-        assertEq(vm.indexOf(deploymentOutput, "nonCoreBatcher"), type(uint256).max, "nonCoreBatcher is not reported");
-        assertEq(vm.indexOf(deploymentOutput, "adapterBatcher"), type(uint256).max, "adapterBatcher is not reported");
+        assertFalse(_registered("coreBatcher"), "coreBatcher is not reported");
+        assertFalse(_registered("nonCoreBatcher"), "nonCoreBatcher is not reported");
+        assertFalse(_registered("adapterBatcher"), "adapterBatcher is not reported");
     }
 
     /// @dev Nothing stays validated once deployed, so a stale approval cannot linger on chain

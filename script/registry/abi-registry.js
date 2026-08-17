@@ -531,13 +531,14 @@ async function processContracts(chain, networkFile) {
                 ? contractData
                 : contractData?.address;
             const blockNumber = contractData?.blockNumber || null;
-            const txHash = contractData?.txHash || null;
             const version = contractData?.version || null;
 
             processedContracts[contractName] = {
                 address: address,
                 blockNumber: blockNumber != null ? Number(blockNumber) : null,
-                txHash: txHash || null,
+                // Always null: env/ no longer records txHash, and nothing writes one back. The field stays
+                // in the registry output so consumers of registry-{mainnet,testnet}.json see an unchanged schema
+                txHash: null,
                 ...(version && { version }),
             };
         }
@@ -556,12 +557,13 @@ async function processContracts(chain, networkFile) {
             ? contractData
             : contractData?.address;
 
-        // Check if blockNumber and txHash already exist in the env file
+        // blockNumber is written by the deploy script into env/<network>.json. txHash is not recorded at all
+        // any more, so the explorer path below keeps only the block number out of what it fetches. Gating on
+        // blockNumber alone is what keeps a missing txHash from sending every contract down that path again
         let blockNumber = contractData?.blockNumber || null;
-        let txHash = contractData?.txHash || null;
         let fetchedNewData = false;
 
-        if (blockNumber && txHash) {
+        if (blockNumber) {
             // Already have full creation info from env file - skip fetching
             console.log(
                 `  [${processed}/${totalContracts}] ${contractName}: using existing metadata from env file`
@@ -588,11 +590,6 @@ async function processContracts(chain, networkFile) {
                 blockNumber = creationInfo.blockNumber;
                 fetchedNewData = true;
             }
-            if (creationInfo?.txHash && !txHash) {
-                txHash = creationInfo.txHash;
-                fetchedNewData = true;
-            }
-
             // Rate limiting
             await sleep(API_DELAY_MS);
         } else if (etherscanApiKey) {
@@ -605,23 +602,19 @@ async function processContracts(chain, networkFile) {
                 blockNumber = creationInfo.blockNumber;
                 fetchedNewData = true;
             }
-            if (creationInfo?.txHash && !txHash) {
-                txHash = creationInfo.txHash;
-                fetchedNewData = true;
-            }
-
             // Rate limiting
             await sleep(API_DELAY_MS);
         } else {
             console.log(`  [${processed}/${totalContracts}] ${contractName}: no API key, skipping explorer fetch`);
         }
 
-        // Always include blockNumber and txHash fields (null if not found) in the registry
+        // blockNumber may still be null if no explorer answered; txHash always is. The field is kept in the
+        // output so the published registry schema does not change for consumers
         const version = contractData?.version || null;
         processedContracts[contractName] = {
             address: address,
             blockNumber: blockNumber != null ? Number(blockNumber) : null,
-            txHash: txHash || null,
+            txHash: null,
             ...(version && { version }),
         };
 
@@ -631,7 +624,6 @@ async function processContracts(chain, networkFile) {
             if (!chain.contracts) chain.contracts = {};
             const envContract = { address };
             if (blockNumber) envContract.blockNumber = Number(blockNumber);
-            if (txHash) envContract.txHash = txHash;
             // Preserve version (and any future env-only fields) — required for ABI tag resolution / CI
             if (typeof contractData === "object" && contractData?.version) {
                 envContract.version = contractData.version;

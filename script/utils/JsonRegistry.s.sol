@@ -2,80 +2,171 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Script.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import {console} from "forge-std/console.sol";
 
+/// @notice Collects the contracts a deploy script produces and writes them into `env/<network>.json`.
+///
+/// @dev    A script opens a run with `startDeploymentOutput()`, registers each contract as it goes — which
+///         `BaseDeployer.reportedSalt()` already does for anything deployed through a reported salt — and
+///         closes with `saveDeploymentOutput(network)`. Deploy-time only contracts take `unreportedSalt()`
+///         instead and never reach this registry.
+///
+///         A deployment records itself completely: addresses, versions, block numbers and the chain's
+///         `startBlock`. Nothing has to be filled in afterwards and nothing else reads the chain to do it.
+///
+///         Writing happens during forge's simulation pass, before the broadcast lands. For the addresses
+///         that is exact — they are deterministic, CREATE3 from the gate, the salt and `SUFFIX`, so what is
+///         written is what will be deployed, including after a later `--resume`. For the block numbers it is
+///         an underestimate: `block.number` here is the block the script *read*, and the transactions land a
+///         few blocks later (measured: 1 on a local fork, up to ~183 on a fast chain). That is deliberate and
+///         it is the safe direction — these feed indexers, which must not start *after* a contract exists.
+///         Every contract in one run therefore shares a block number, since simulation does not advance.
+///
+///         Only an abandoned deployment leaves entries for contracts that never landed.
+///
+///         `env/` is read-only to forge (`fs_permissions`), so the merge goes through jq rather than a
+///         cheatcode. That keeps the guard against a test or a stray script rewriting a config, and keeps
+///         the diff to what actually changed.
 contract JsonRegistry is Script {
-    string deploymentOutput;
-    uint256 registeredContracts;
-    string addressLabelPrefix;
-    uint256 deploymentStartBlock;
+    /// @dev The whole merge, in one jq program, so that what a run does to `env/<network>.json` is read in
+    ///      one place. It takes `$new` (this run's contracts), `$block`, and the three `deploymentInfo`
+    ///      fields, and does three things:
+    ///
+    ///      1. A contract that landed on a new address gets this run's block number. One that was already
+    ///         recorded at the same address keeps the block it had — a run that re-reports an address it did
+    ///         not deploy this time is not evidence about when it was deployed, and overwriting would move
+    ///         the chain's `startBlock` under an indexer. One the run does not mention is left alone, so a
+    ///         config can hold more than one deployment's worth.
+    ///      2. Only a full protocol deployment claims the chain's `deploymentInfo`, which is what `$new`
+    ///         holding `root` says, and the same run claims its `startBlock`: a script shipping one contract
+    ///         records its address without redating the chain, so both live in one branch rather than two
+    ///         conditions that can disagree. The info is merged into what is there rather than replacing it.
+    ///      3. That `startBlock` is the earliest block *any* contract in the config carries, not this run's:
+    ///         a redeployment that reuses contracts leaves older ones in place, and an indexer starting
+    ///         after one of them misses its history. Computed over what the file ends up holding.
+    string internal constant MERGE = ". as $root" " | .contracts = (($root.contracts // {}) + ($new | with_entries("
+        "     ($root.contracts[.key] // {}) as $old" "     | .value = ({address: .value.address,"
+        "        blockNumber: (if ($old.address // null) == .value.address and ($old.blockNumber // null) != null"
+        "                      then $old.blockNumber else $block end),"
+        "        version: (if .value.version != \"\" then .value.version else ($old.version // null) end)"
+        "       } | if .version == null then del(.version) else . end))))" " | (if ($new | has(\"root\"))"
+        "    then .deploymentInfo[\"deploy:protocol\"] = ((.deploymentInfo[\"deploy:protocol\"] // {})"
+        "           + {gitCommit: $gitCommit, timestamp: $timestamp, suffix: $suffix})"
+        "         | ([.contracts[] | .blockNumber | select(. != null)] | min) as $earliest"
+        "         | if $earliest != null then .deploymentInfo[\"deploy:protocol\"].startBlock = $earliest else . end"
+        "    else . end)";
+
+    string[] private registeredNames;
+    address[] private registeredAddrs;
+    string[] private registeredVersions;
 
     function register(string memory name, address target, string memory version) public {
-        _register(
-            name, string(abi.encodePacked('{ "address": "', vm.toString(target), '", "version": "', version, '" }'))
-        );
-    }
-
-    function _register(string memory name, string memory value) internal {
-        string memory contractJson = string(abi.encodePacked('    "', name, '": ', value));
-
-        deploymentOutput = (registeredContracts == 0)
-            ? string(abi.encodePacked(deploymentOutput, contractJson))
-            : string(abi.encodePacked(deploymentOutput, ",\n", contractJson));
-
-        registeredContracts += 1;
+        registeredNames.push(name);
+        registeredAddrs.push(target);
+        registeredVersions.push(version);
     }
 
     function startDeploymentOutput() public {
-        registeredContracts = 0;
-        deploymentOutput = '{\n  "contracts": {\n';
-        deploymentStartBlock = block.number;
+        delete registeredNames;
+        delete registeredAddrs;
+        delete registeredVersions;
     }
 
-    function saveDeploymentOutput() public {
-        string memory dir = "./env/latest/";
-        if (!vm.exists(dir)) {
-            vm.createDir(dir, true);
+    /// @notice How many contracts this run has registered so far.
+    /// @dev    Worth asserting on: the validate phase registers addresses as it walks, and the state
+    ///         rollback that ends it discards them again — this contract's storage is rolled back with
+    ///         everything else — so after a gated deployment this equals what the execute phase deployed,
+    ///         less the contracts submitted unreported.
+    function registeredCount() public view returns (uint256) {
+        return registeredNames.length;
+    }
+
+    /// @param network The name to write under, `env/<network>.json`. Passed in rather than detected, so that
+    ///        this file stays free of the env-parsing stack — the deployer stack it belongs to is mirrored
+    ///        publicly and `EnvConfig` is not.
+    ///
+    /// @dev   Records no suffix, which is right for a script that deploys with `new`: its addresses come
+    ///        from the sender and its nonce, so there is no salt for a suffix to be part of. `BaseDeployer`
+    ///        overrides this with the suffix its salts were actually built from — never the environment,
+    ///        which a mainnet run deliberately ignores.
+    function saveDeploymentOutput(string memory network) public virtual {
+        _saveDeploymentOutput(network, "");
+    }
+
+    function _saveDeploymentOutput(string memory network, string memory suffix) internal {
+        if (registeredNames.length == 0) return;
+
+        // A dry run walks the same deployment and computes the same addresses, but save nothing
+        if (!vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) && !vm.isContext(VmSafe.ForgeContext.ScriptResume)) {
+            return;
         }
 
-        // Add deployment start block to output if captured
-        string memory blockJson = "";
-
-        // forgefmt: disable-next-item
-        if (deploymentStartBlock > 0)
-        {
-            blockJson = string(
-                abi.encodePacked(
-                    "\n  },\n  \"deploymentStartBlock\": \"",
-                    vm.toString(deploymentStartBlock),
-                    "\"\n}"
-                )
+        string memory contracts = "{";
+        for (uint256 i; i < registeredNames.length; i++) {
+            contracts = string.concat(
+                contracts,
+                i == 0 ? "" : ",",
+                "\"",
+                registeredNames[i],
+                "\":{\"address\":\"",
+                vm.toString(registeredAddrs[i]),
+                "\",\"version\":\"",
+                registeredVersions[i],
+                "\"}"
             );
-        } else {
-            blockJson = "\n  }\n}";
         }
+        contracts = string.concat(contracts, "}");
 
-        // Save with timestamp for history
-        string memory timestampedPath = string(
-            abi.encodePacked(
-                dir,
-                "_chain",
-                vm.toString(block.chainid),
-                "_block",
+        string memory path = string.concat("env/", network, ".json");
+
+        // Handed over through the environment rather than pasted into the command: a value that reaches a
+        // shell inside quotes it can close is a value that can run commands, and these are assembled from
+        // whatever a deploy script chose to name its contracts and tag its salts. The git and date calls are
+        // quoted for the same reason — jq's `--arg` then escapes each into JSON, so nothing here has to.
+        vm.setEnv("REGISTRY_CONTRACTS", contracts);
+        vm.setEnv("REGISTRY_SUFFIX", suffix);
+
+        _sh(
+            string.concat(
+                "jq --argjson new \"$REGISTRY_CONTRACTS\" --argjson block ",
                 vm.toString(block.number),
-                "_nonce",
-                vm.toString(vm.getNonce(msg.sender)),
-                ".json"
+                " --arg gitCommit \"$(git rev-parse --short HEAD)\"",
+                " --arg timestamp \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"",
+                " --arg suffix \"$REGISTRY_SUFFIX\"",
+                " '",
+                MERGE,
+                "' '",
+                path,
+                "' > '",
+                path,
+                ".tmp' && mv '",
+                path,
+                ".tmp' '",
+                path,
+                "'"
             )
         );
-        string memory fullOutput = string(abi.encodePacked(deploymentOutput, blockJson));
-        vm.writeFile(timestampedPath, fullOutput);
-        console.log("Contract addresses saved to: %s", timestampedPath);
+        console.log("Wrote %s contracts into %s", registeredNames.length, path);
+    }
 
-        // Save as latest
-        string memory latestPath = string(abi.encodePacked(dir, vm.toString(block.chainid), "-latest.json"));
+    /// @notice Whether a name reached this registry, which is how a test tells a reported contract from one
+    ///         deployed through `unreportedSalt`.
+    function _registered(string memory name) internal view returns (bool) {
+        for (uint256 i; i < registeredNames.length; i++) {
+            if (keccak256(bytes(registeredNames[i])) == keccak256(bytes(name))) return true;
+        }
+        return false;
+    }
 
-        vm.writeFile(latestPath, fullOutput);
-        console.log("Contract addresses also saved to: %s", latestPath);
+    function _sh(string memory command) private returns (string memory) {
+        string[] memory argv = new string[](5);
+        argv[0] = "bash";
+        argv[1] = "-euo";
+        argv[2] = "pipefail";
+        argv[3] = "-c";
+        argv[4] = command;
+
+        return string(vm.ffi(argv));
     }
 }

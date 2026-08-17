@@ -4,31 +4,39 @@
 
 ## Overview
 
-Test each cross-chain adapter (Axelar, LayerZero, Chainlink) in isolation between Base Sepolia (Hub) and Arbitrum Sepolia (Spoke).
+Test each cross-chain adapter (Axelar, LayerZero, Chainlink) in isolation between a hub and one spoke. Any
+connected testnet pair works; the examples below use Base Sepolia as hub.
 
 **Test Configuration:**
-- Hub: Base Sepolia (centrifugeId: 2)
-- Spoke: Arbitrum Sepolia (centrifugeId: 3)
+- Hub: whichever network the RPC points at (Base Sepolia in the examples, centrifugeId 2)
+- Spoke: the hub's first connected network, or `SPOKE_NETWORK` / the third script argument
 - Adapters: Axelar, LayerZero, Chainlink, Hyperlane
 - Pool IDs: Configurable via `GAS_TEST_BASE` env var
 
 ---
 
-## Automated Orchestration (deploy.py)
+## Automated Orchestration (crosschaintest.sh)
 
-Run from `script/deploy/`. All commands read `connectsTo` from the hub's `env/<network>.json` to determine spoke networks.
+Run from the repository root. The spokes are resolved by `EnvConnections.connectionsWith`, so the rules in
+`env/connections/<environment>.json` are interpreted in exactly one place.
+
+**One spoke is tested per run.** The point is isolating each adapter, not covering the topology, so a second
+spoke multiplies cost without adding signal. Step 1 registers the asset on every connected spoke (cheap
+groundwork that lets you retest against any of them), while steps 2 and 4 drive the hub against the single
+spoke under test — by default the hub's first connected network, or a third argument to choose it. A spoke
+that is not connected to the hub is rejected, and the hub can never be its own spoke.
 
 ### Full sequence (recommended for first run)
 
 ```bash
-python3 deploy.py base-sepolia crosschaintest
+./script/testnet/crosschaintest.sh base-sepolia
 ```
 
 Executes 4 steps sequentially:
 
 | Step | What it does | XC Messages |
 |------|--------------|-------------|
-| 1. Spoke registration | Runs `registerAssetOnly()` on each spoke in `connectsTo` | 1 per spoke |
+| 1. Spoke registration | Runs `registerAssetOnly()` on each connected spoke | 1 per spoke |
 | 2. Hub setup | Runs `runPoolSetup()` + `runAdapterSetup()` on hub | 2 per adapter |
 | 3. Wait for relay | Prints explorer links, waits for user confirmation (~5-10 min) | — |
 | 4. Share class test | Runs `runShareClassTest()` on hub | 1 per adapter |
@@ -37,11 +45,15 @@ Executes 4 steps sequentially:
 
 | Command | Description |
 |---------|-------------|
-| `python3 deploy.py base-sepolia crosschaintest:spoke` | Register assets on all connected spokes |
-| `python3 deploy.py base-sepolia crosschaintest:hub` | Run phases 1+2 on hub (pool setup + adapter config) |
-| `python3 deploy.py base-sepolia crosschaintest:test` | Run phase 3 on hub (repeatable share class test) |
+| `./script/testnet/crosschaintest.sh base-sepolia spoke` | Register assets on all connected spokes |
+| `./script/testnet/crosschaintest.sh base-sepolia hub` | Run phases 1+2 on hub (pool setup + adapter config) |
+| `./script/testnet/crosschaintest.sh base-sepolia test` | Run phase 3 on hub (repeatable share class test) |
+| `./script/testnet/crosschaintest.sh base-sepolia hub hyper-evm-testnet` | Same, against a chosen spoke |
 
-After the full run, phase 3 can be repeated independently with `crosschaintest:test`.
+Steps 2 and 4 must name the same spoke: phase 3 notifies a share class for a pool that phase 2 created for
+that pair, so `test` against a spoke you never ran `hub` for will revert.
+
+After the full run, phase 3 can be repeated independently with the `test` mode.
 
 **CI mode:** When `GITHUB_ACTIONS` is set, step 3 auto-waits instead of prompting (default 600s, override with `XC_RELAY_WAIT`).
 
@@ -60,9 +72,9 @@ Standalone script for single-chain deployment and validation.
 
 **Usage:**
 ```bash
-export NETWORK=sepolia
 forge script script/testnet/TestData.s.sol:TestData \
-  --rpc-url $RPC_URL \
+  --rpc-url sepolia \
+  --private-key $PRIVATE_KEY \
   --broadcast \
   -vvvv
 ```
@@ -71,17 +83,24 @@ forge script script/testnet/TestData.s.sol:TestData \
 
 ### WireAdapters.s.sol
 
-Configures adapter communication between networks.
+Configures adapter communication between networks. **Not part of a normal deployment** — `LaunchDeployer`
+wires everything itself, from the action batchers, so `deploy-testnets.yml` does not run this. Reach for it
+when an existing deployment needs re-wiring without being redeployed: after adding a network to
+`env/connections/testnet.json`, or when a chain's adapter address has drifted from the others (as happens
+when an adapter is deployed on its own by `script/ops/DeployAdapters.s.sol`, which uses a different salt).
+
+Unlike the batchers, it reads each remote adapter's address out of `env/<remote>.json` rather than assuming
+it matches the local one — which is exactly why it can repair a mismatch the batchers would reproduce.
 
 **Purpose:**
-- Sets up one-directional communication (source -> destination)
-- Wires adapters (LayerZero, Axelar) between networks
+- Sets up one-directional communication (source -> destination); run it on each network separately
+- Wires adapters (LayerZero, Axelar, Chainlink) between networks
 - Registers adapters that exist on BOTH source and destination networks
 
 **Usage:**
 ```bash
-export NETWORK=sepolia
-forge script script/testnet/WireAdapters.s.sol:WireAdapters --rpc-url $RPC_URL --broadcast -vvvv
+forge script script/testnet/WireAdapters.s.sol:WireAdapters \
+  --rpc-url sepolia --private-key $PRIVATE_KEY --broadcast -vvvv
 ```
 
 ---
@@ -105,20 +124,24 @@ Test each cross-chain adapter in isolation. Separates pool setup from adapter co
 | 3     | `runShareClassTest()` | **Repeatable**   | 1 (NotifyShareClass)             | ~0.1 ETH     |
 
 **Quick Start:**
+
+The hub is whichever network `--rpc-url` points at — there is no network env var. The spoke defaults to the
+hub's first connected network; `SPOKE_NETWORK` names a different one.
+
 ```bash
 # Phase 1: Create pools (hub only, no XC)
-NETWORK=base-sepolia forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runPoolSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
+  --sig "runPoolSetup()" --rpc-url base-sepolia --broadcast --private-key $PRIVATE_KEY -vvvv
 
 # Phase 2: Configure adapters (sends XC messages)
-NETWORK=base-sepolia forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAdapterSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
+  --sig "runAdapterSetup()" --rpc-url base-sepolia --broadcast --private-key $PRIVATE_KEY -vvvv
 
 # Wait for XC relay (~5-10 min)
 
 # Phase 3: Test NotifyShareClass (repeatable!)
-NETWORK=base-sepolia forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runShareClassTest()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
+  --sig "runShareClassTest()" --rpc-url base-sepolia --broadcast --private-key $PRIVATE_KEY -vvvv
 
 # Run Phase 3 again to test another share class...
 ```
@@ -131,7 +154,7 @@ forge script ... --sig "runAxelar_AdapterSetup()"
 forge script ... --sig "runAxelar_ShareClassTest()"
 
 # Or use ADAPTER env var
-ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
+ADAPTER=layerzero forge script ... --sig "runPoolSetup()" --rpc-url base-sepolia
 ```
 
 **Environment Variables:**
@@ -140,7 +163,7 @@ ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
 | `GAS_TEST_BASE`   | 91000            | Base pool index                        |
 | `ADAPTER`         | all              | Single adapter: axelar, layerzero, chainlink, hyperlane |
 | `XC_GAS_PER_CALL` | 0.1 ether        | Gas for each cross-chain call          |
-| `SPOKE_NETWORK`   | arbitrum-sepolia | Target spoke network                   |
+| `SPOKE_NETWORK`   | hub's first connected network | Target spoke network. Must differ from the hub and be connected to it in `env/connections/`; both are enforced |
 
 **Note:** For cross-chain setups, asset registration is optional. If not registered, pools are created without holdings initialization.
 
@@ -149,10 +172,11 @@ ADAPTER=layerzero forge script ... --sig "runPoolSetup()"
 ## Quick Start
 
 ```bash
-# Set environment
-export TESTNET_SAFE_PK="your-private-key"
-export RPC_URL="https://sepolia.base.org"
-export ARBITRUM_SEPOLIA_RPC="https://sepolia-rollup.arbitrum.io/rpc"
+# Secrets, including PRIVATE_KEY, into .env — which forge loads by itself
+./script/setup/load-secrets.sh
+set -a; . ./.env; set +a
+
+# Networks are named, not URLs: `--rpc-url base-sepolia` resolves through foundry.toml [rpc_endpoints]
 
 # Step 0: Register asset from spoke (one-time, if not already done)
 # Step 1: Create pools on hub (Phase 1)
@@ -174,7 +198,7 @@ You need ETH on Base Sepolia for:
 
 Check balance:
 ```bash
-cast balance 0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb --rpc-url https://sepolia.base.org
+cast balance 0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb --rpc-url base-sepolia
 ```
 
 ### Contract Addresses
@@ -195,15 +219,14 @@ Key contracts: `root`, `hub`, `hubRegistry`, `spoke`, `multiAdapter`, `vaultRegi
 Asset registration must happen FROM the spoke chain (where the token exists):
 
 ```bash
-# Run on Arbitrum Sepolia (spoke)
-NETWORK=arbitrum-sepolia \
+# Run on Arbitrum Sepolia (spoke). HUB_NETWORK names the hub, since the RPC now names the spoke
 HUB_NETWORK=base-sepolia \
 TEST_USDC_ADDRESS=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "registerAssetOnly()" \
-  --fork-url $ARBITRUM_SEPOLIA_RPC \
+  --rpc-url arbitrum-sepolia \
   --broadcast \
-  --private-key $TESTNET_SAFE_PK \
+  --private-key $PRIVATE_KEY \
   -vvvv
 ```
 
@@ -211,7 +234,7 @@ Wait for XC relay (~5-10 min), then verify on Hub:
 ```bash
 # Check if asset is registered (assetId for Arbitrum USDC)
 cast call $HUB_REGISTRY "isRegistered(uint128)(bool)" 15576890575604482885591488987660289 \
-  --rpc-url $RPC_URL
+  --rpc-url base-sepolia
 # Expected: true
 ```
 
@@ -222,12 +245,11 @@ cast call $HUB_REGISTRY "isRegistered(uint128)(bool)" 15576890575604482885591488
 Run on Hub (Base Sepolia). Creates one pool per adapter, no cross-chain messages:
 
 ```bash
-NETWORK=base-sepolia \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runPoolSetup()" \
-  --fork-url $RPC_URL \
+  --rpc-url base-sepolia \
   --broadcast \
-  --private-key $TESTNET_SAFE_PK \
+  --private-key $PRIVATE_KEY \
   -vvvv
 ```
 
@@ -241,12 +263,11 @@ forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
 ## Step 2: Configure Adapters (Phase 2) + Wait for Relay
 
 ```bash
-NETWORK=base-sepolia \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runAdapterSetup()" \
-  --fork-url $RPC_URL \
+  --rpc-url base-sepolia \
   --broadcast \
-  --private-key $TESTNET_SAFE_PK \
+  --private-key $PRIVATE_KEY \
   -vvvv
 ```
 
@@ -266,7 +287,7 @@ Verify adapter config on spoke (Arbitrum Sepolia):
 # Check Axelar pool (91000) has adapter configured
 # Pool ID = (2 << 48) | 91000 = 562949953512312
 cast call $MULTI_ADAPTER "quorum(uint16,uint64)(uint8)" 2 562949953512312 \
-  --rpc-url $ARBITRUM_SEPOLIA_RPC
+  --rpc-url arbitrum-sepolia
 # Expected: 1 (single adapter)
 ```
 
@@ -277,12 +298,11 @@ cast call $MULTI_ADAPTER "quorum(uint16,uint64)(uint8)" 2 562949953512312 \
 After adapter config is confirmed on spoke:
 
 ```bash
-NETWORK=base-sepolia \
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
   --sig "runShareClassTest()" \
-  --fork-url $RPC_URL \
+  --rpc-url base-sepolia \
   --broadcast \
-  --private-key $TESTNET_SAFE_PK \
+  --private-key $PRIVATE_KEY \
   -vvvv
 ```
 
@@ -301,7 +321,7 @@ Wait for cross-chain relay, then verify share tokens exist:
 # Check ShareToken exists on Spoke
 # NOTE: HubRegistry.exists() is Hub-only. On Spoke, check ShareToken instead.
 cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512312 0x00020000000163780000000000000001 \
-  --rpc-url $ARBITRUM_SEPOLIA_RPC
+  --rpc-url arbitrum-sepolia
 # Expected: non-zero ShareToken address
 
 # If you get error 0xd100e440 (ShareTokenDoesNotExist), the message hasn't been processed yet
@@ -339,15 +359,15 @@ Test a specific adapter in isolation to validate gas estimation and cross-chain 
 ```bash
 # Axelar only
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_PoolSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_PoolSetup()" --rpc-url base-sepolia --broadcast --private-key $PRIVATE_KEY -vvvv
 
 # After XC relay...
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_AdapterSetup()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_AdapterSetup()" --rpc-url base-sepolia --broadcast --private-key $PRIVATE_KEY -vvvv
 
 # Repeatable share class test
 forge script script/testnet/TestAdapterIsolation.s.sol:TestAdapterIsolation \
-  --sig "runAxelar_ShareClassTest()" --fork-url $RPC_URL --broadcast --private-key $TESTNET_SAFE_PK -vvvv
+  --sig "runAxelar_ShareClassTest()" --rpc-url base-sepolia --broadcast --private-key $PRIVATE_KEY -vvvv
 
 # LayerZero only
 forge script ... --sig "runLayerZero_PoolSetup()"
@@ -359,10 +379,10 @@ forge script ... --sig "runLayerZero_ShareClassTest()"
 
 ```bash
 # Run Phase 1 for LayerZero only
-ADAPTER=layerzero NETWORK=base-sepolia forge script ... --sig "runPoolSetup()"
+ADAPTER=layerzero forge script ... --sig "runPoolSetup()" --rpc-url base-sepolia
 
 # Run Phase 2 for Axelar only
-ADAPTER=axelar NETWORK=base-sepolia forge script ... --sig "runAdapterSetup()"
+ADAPTER=axelar forge script ... --sig "runAdapterSetup()" --rpc-url base-sepolia
 ```
 
 **Supported ADAPTER values:**
@@ -393,30 +413,30 @@ This avoids any conflicts with previously created pools.
 Chainlink CCIP has a per-message gas limit (~2M). Phase 3 sends single `NotifyShareClass` messages which stay under this limit.
 
 ### Keystore Issues with --account
-Using `--account TESTNET_SAFE` can cause simulation issues. Use `--private-key $TESTNET_SAFE_PK` instead.
-
-### Forge Script State
-Always use `--fork-url` (not `--rpc-url`) for proper chain state access during simulation.
+Using `--account TESTNET_SAFE` can cause simulation issues. Use `--private-key $PRIVATE_KEY` instead, which
+`./script/setup/load-secrets.sh` puts in `.env`.
 
 ---
 
 ## Troubleshooting
 
+`cast` resolves the same `[rpc_endpoints]` aliases as `forge script`, so these take a network name too.
+
 ### Check adapter wiring
 ```bash
-cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 3 --rpc-url $RPC_URL
+cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 3 --rpc-url base-sepolia
 ```
 
 ### Check pool subsidy balance
 ```bash
 # SUBSIDY_MANAGER address from env/<network>.json → contracts.subsidyManager.address
-cast call $SUBSIDY_MANAGER "subsidies(uint64)(uint256)" 562949953512312 --rpc-url $RPC_URL
+cast call $SUBSIDY_MANAGER "subsidies(uint64)(uint256)" 562949953512312 --rpc-url base-sepolia
 ```
 
 ### Debug transaction
 ```bash
-cast receipt <tx-hash> --rpc-url $RPC_URL
-cast run <tx-hash> --rpc-url $RPC_URL
+cast receipt <tx-hash> --rpc-url base-sepolia
+cast run <tx-hash> --rpc-url base-sepolia
 ```
 
 ---
@@ -427,16 +447,14 @@ cast run <tx-hash> --rpc-url $RPC_URL
 
 ```bash
 # SPOKE address from env/arbitrum-sepolia.json → contracts.spoke.address
-ARBITRUM_RPC="https://sepolia-rollup.arbitrum.io/rpc"
-
 # Axelar (91000)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512312 0x00020000000163780000000000000001 --rpc-url $ARBITRUM_RPC
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512312 0x00020000000163780000000000000001 --rpc-url arbitrum-sepolia
 
 # LayerZero (91001)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512313 0x00020000000163790000000000000001 --rpc-url $ARBITRUM_RPC
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512313 0x00020000000163790000000000000001 --rpc-url arbitrum-sepolia
 
 # Chainlink (91003)
-cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512315 0x000200000001637b0000000000000001 --rpc-url $ARBITRUM_RPC
+cast call $SPOKE "shareToken(uint64,bytes16)(address)" 562949953512315 0x000200000001637b0000000000000001 --rpc-url arbitrum-sepolia
 ```
 
 ### Check Axelar Message Status

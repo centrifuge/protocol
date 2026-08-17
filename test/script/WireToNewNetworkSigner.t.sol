@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {WireToNewNetwork} from "../../script/WireToNewNetwork.s.sol";
+import {WireToNewNetwork} from "../../script/ops/WireToNewNetwork.s.sol";
 
 import "forge-std/Test.sol";
 

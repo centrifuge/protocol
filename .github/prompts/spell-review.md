@@ -58,7 +58,7 @@ finding must cite a file:line that appears in `out/pr-diff.patch`.
 <not_in_scope>
 These run separately in CI; do not waste tokens reverifying them:
 
-  - Ward coverage on hub/spoke — `script/utils/check_ward_coverage.py`
+  - Ward coverage on hub/spoke — `script/checks/check_ward_coverage.py`
   - Compile / type / unit test — `forge build` + `forge test`
   - SMTChecker — `run-smtchecker.yml`
   - Snapshot / bytecode / ABI / registry drift — separate workflows

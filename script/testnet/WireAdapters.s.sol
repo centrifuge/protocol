@@ -25,7 +25,7 @@ contract WireAdapters is Script {
     IAdapter[] adapters;
 
     function run() public {
-        EnvConfig memory source = Env.load(vm.envString("NETWORK"));
+        EnvConfig memory source = Env.load();
 
         require(!source.network.isMainnet(), "Script only for testnet");
 

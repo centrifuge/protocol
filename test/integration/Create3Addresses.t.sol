@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
 
-import {ICreateX} from "../../script/utils/ICreateX.sol";
-import {BaseDeployer} from "../../script/BaseDeployer.s.sol";
-import {GatedDeployer, DeployPhase} from "../../script/GatedDeployer.s.sol";
+import {ICreateX} from "../../script/utils/createx/ICreateX.sol";
+import {BaseDeployer} from "../../script/deploy/BaseDeployer.s.sol";
+import {GatedDeployer, DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 
 import "forge-std/Test.sol";
 

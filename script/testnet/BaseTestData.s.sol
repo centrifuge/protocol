@@ -44,7 +44,7 @@ import "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 import {EnvConfig} from "../utils/EnvConfig.s.sol";
-import {LaunchDeployer} from "../LaunchDeployer.s.sol";
+import {LaunchDeployer} from "../deploy/LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
 import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
