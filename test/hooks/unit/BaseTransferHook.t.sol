@@ -6,6 +6,8 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../../../src/misc/libraries/BitmapLib.sol";
 
+import {MockPoolEscrowProvider} from "../../core/mocks/MockPoolEscrowProvider.sol";
+
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 
@@ -42,18 +44,6 @@ contract MockPoolEscrow {
 
     constructor(PoolId poolId_) {
         poolId = poolId_;
-    }
-}
-
-contract MockPoolEscrowProvider {
-    mapping(uint64 => address) public escrows;
-
-    function setEscrow(PoolId poolId, address escrowAddress) external {
-        escrows[poolId.raw()] = escrowAddress;
-    }
-
-    function escrow(PoolId poolId) external view returns (address) {
-        return escrows[poolId.raw()];
     }
 }
 
@@ -780,5 +770,10 @@ contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase 
             hook.isPoolEscrow(random), "multi-pool mode should reject escrow not registered in poolEscrowProvider"
         );
         assertTrue(hook.isPoolEscrow(otherEscrowAddr), "multi-pool mode should not reject otherEscrowAddr");
+    }
+
+    function testMultiPoolRejectsSelfDeclaredEscrow() public {
+        MockPoolEscrow impostor = new MockPoolEscrow(TEST_POOL_ID);
+        assertFalse(hook.isPoolEscrow(address(impostor)), "self-declared poolId must not grant escrow status");
     }
 }

@@ -258,8 +258,8 @@ CreateX derives a CREATE3 address from its caller and the salt, and the caller i
   deliberate: the contracts of an earlier release are warded by that release's action batchers, which denied
   themselves once they were done, so a later run could not wire them even if it were allowed to redeploy
   around them. Shipping a change to a live chain is a dedicated script plus a spell, as in
-  `DeployGasService`.
-- The standalone scripts (`DeployAdapters`, `PoolHooks`, `DeployGasService`) still salt with `msg.sender`, so
+  `DeployOnchainPMV2`.
+- The standalone scripts (`DeployAdapters`, `DeployOnchainPMV2`) still salt with `msg.sender`, so
   their addresses do not derive from the gate and no longer collide with the protocol's. **Their versions must
   never overlap with `FullDeployer`'s**: a name and version those scripts share with a gated deployment now
   lands on a second, unwired address instead of reverting on a taken one, and the config would record that one

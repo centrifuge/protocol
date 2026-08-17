@@ -10,7 +10,7 @@ class GatedDeployer << (S, motivation) >>
 
 class DeployGateDeployer << (S, application) >>
 class DeployAdapters << (S, application) >>
-class PoolHooks << (S, application) >>
+class DeployOnchainPMV2 << (S, application) >>
 
 class FullDeployer  << (S, application) >> {
     + function deployFull()
@@ -40,7 +40,7 @@ LaunchDeployer -up-|> FullDeployer
 
 DeployGateDeployer ---up-|> BaseDeployer
 DeployAdapters ---up-|> BaseDeployer
-PoolHooks ---up-|> BaseDeployer
+DeployOnchainPMV2 ---up-|> BaseDeployer
 
 GatedDeployer -right> DeployPhase
 FullDeployer -left> DeployerInput

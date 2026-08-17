@@ -126,14 +126,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         // Fast path: single-pool optimization
         if (poolEscrow != address(0)) return addr == poolEscrow;
 
-        // Multi-pool path: dynamic verification
-        if (addr.code.length == 0) return false;
-
-        (bool success, bytes memory data) = addr.staticcall(abi.encodeWithSignature("poolId()"));
-        if (!success || data.length != 32) return false;
-
-        PoolId poolId = abi.decode(data, (PoolId));
-        return address(poolEscrowProvider.escrow(poolId)) == addr;
+        return !poolEscrowProvider.poolId(addr).isNull();
     }
 
     function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {

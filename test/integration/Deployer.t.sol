@@ -543,6 +543,8 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(freezeOnlyHook.root()), address(root));
         assertEq(freezeOnlyHook.envoy(), address(envoy));
+        assertEq(address(freezeOnlyHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertFalse(freezeOnlyHook.isPoolEscrow(nonWard));
     }
 
     function testRedemptionRestriction(address nonWard) public view {
@@ -557,6 +559,8 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(redemptionRestrictionsHook.root()), address(root));
         assertEq(redemptionRestrictionsHook.envoy(), address(envoy));
+        assertEq(address(redemptionRestrictionsHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertFalse(redemptionRestrictionsHook.isPoolEscrow(nonWard));
     }
 
     function testFreelyTransferable(address nonWard) public view {
@@ -571,6 +575,8 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(freelyTransferableHook.root()), address(root));
         assertEq(freelyTransferableHook.envoy(), address(envoy));
+        assertEq(address(freelyTransferableHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertFalse(freelyTransferableHook.isPoolEscrow(nonWard));
     }
 
     function testFullRestriction(address nonWard) public view {
@@ -585,6 +591,8 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(fullRestrictionsHook.root()), address(root));
         assertEq(fullRestrictionsHook.envoy(), address(envoy));
+        assertEq(address(fullRestrictionsHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertFalse(fullRestrictionsHook.isPoolEscrow(nonWard));
     }
 
     function testOnOffRampFactory() public view {

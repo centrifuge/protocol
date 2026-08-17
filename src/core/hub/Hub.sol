@@ -26,8 +26,6 @@ import {IHubMessageSender, ShareClassMetadata} from "../messaging/interfaces/IGa
 
 import {ICreatePool} from "../../admin/interfaces/ICreatePool.sol";
 
-import {RequestCallbackMessageLib} from "../../vaults/libraries/RequestCallbackMessageLib.sol";
-
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
 import {AccountId} from "../types/AccountId.sol";
@@ -41,7 +39,6 @@ import {BatchedMulticall} from "../utils/BatchedMulticall.sol";
 contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCallback, ICreatePool {
     using MathLib for uint256;
     using CastLib for bytes32;
-    using RequestCallbackMessageLib for *;
 
     IFeeAccrual public feeAccrual;
     IHubMessageSender public sender;

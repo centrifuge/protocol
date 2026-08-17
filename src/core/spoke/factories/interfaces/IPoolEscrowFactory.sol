@@ -12,6 +12,11 @@ interface IPoolEscrowProvider {
     ///
     /// @dev Does not check, whether the escrow was already deployed.
     function escrow(PoolId poolId) external view returns (IPoolEscrow);
+
+    /// @notice Returns the pool id for a given escrow address.
+    ///
+    /// @dev Returns the null pool id if the address is not a known escrow deployed by this factory.
+    function poolId(address escrow) external view returns (PoolId);
 }
 
 /// @title  IPoolEscrowFactory
@@ -22,7 +27,6 @@ interface IPoolEscrowFactory is IPoolEscrowProvider {
     event File(bytes32 what, address data);
 
     error FileUnrecognizedParam();
-    error EscrowAlreadyDeployed();
 
     /// @notice Root authority that manages ward permissions and timelocked upgrades
     function root() external view returns (address);

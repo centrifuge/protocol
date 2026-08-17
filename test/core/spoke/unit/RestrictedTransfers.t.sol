@@ -8,6 +8,7 @@ import {FullRestrictions} from "../../../../src/token/hooks/FullRestrictions.sol
 import {IMemberlist} from "../../../../src/token/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "../../mocks/MockRoot.sol";
+import {MockPoolEscrowProvider} from "../../mocks/MockPoolEscrowProvider.sol";
 
 import "forge-std/Test.sol";
 
@@ -30,7 +31,7 @@ contract FullRestrictionsTest is Test {
             makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
-            makeAddr("poolEscrowProvider"),
+            address(new MockPoolEscrowProvider()),
             address(0) // Multi-pool mode
         );
         token.file("hook", address(fullRestrictionsHook));

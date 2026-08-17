@@ -30,6 +30,20 @@ contract PoolEscrowFactoryTest is Test {
         assertEq(expectedEscrow, actual, "Escrow address mismatch");
     }
 
+    function testPoolIdReverseMapping(PoolId poolId) public {
+        vm.assume(!poolId.isNull());
+        address escrowAddr = address(factory.newEscrow(poolId));
+        assertEq(factory.poolId(escrowAddr).raw(), poolId.raw(), "Reverse pool id mismatch");
+        assertFalse(factory.poolId(escrowAddr).isNull(), "Deployed escrow must not read as unknown");
+    }
+
+    function testPoolIdReturnsNullForUnknownAddress(PoolId poolId, address unknown) public {
+        vm.assume(!poolId.isNull());
+        address escrowAddr = address(factory.newEscrow(poolId));
+        vm.assume(unknown != escrowAddr);
+        assertTrue(factory.poolId(unknown).isNull(), "Unknown address should return null pool id");
+    }
+
     function testDeployEscrowTwiceReverts(PoolId poolId) public {
         factory.newEscrow(poolId);
         vm.expectRevert();
