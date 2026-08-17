@@ -37,6 +37,7 @@ import {SimplePriceManager} from "../../src/hooks/accounting/SimplePriceManager.
 import {RedemptionRestrictions} from "../../src/token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../../src/managers/spoke/QueueManager.sol";
+import {ShareManager} from "../../src/managers/spoke/ShareManager.sol";
 import {OnOffRampFactory} from "../../src/managers/spoke/OnOffRamp.sol";
 import {ScriptHelpers} from "../../src/managers/spoke/ScriptHelpers.sol";
 import {AccountingToken} from "../../src/managers/spoke/AccountingToken.sol";
@@ -175,6 +176,7 @@ contract FullDeployer is GatedDeployer, Constants {
     FlashLoanHelper public flashLoanHelper;
     IOnchainPMFactory public onchainPMFactory;
     OnOffRampFactory public onOffRampFactory;
+    ShareManager public shareManager;
     ApprovalGuard public approvalGuard;
     CircuitBreakerGuard public circuitBreakerGuard;
     SlippageGuard public slippageGuard;
@@ -638,6 +640,14 @@ contract FullDeployer is GatedDeployer, Constants {
             )
         );
 
+        shareManager = ShareManager(
+            submit(
+                "shareManager",
+                V3_3,
+                abi.encodePacked(type(ShareManager).creationCode, abi.encode(envoy, spoke, spokeRegistry))
+            )
+        );
+
         approvalGuard = ApprovalGuard(submit("approvalGuard", V3_2, abi.encodePacked(type(ApprovalGuard).creationCode)));
 
         circuitBreakerGuard = CircuitBreakerGuard(
@@ -828,6 +838,7 @@ contract FullDeployer is GatedDeployer, Constants {
             redemptionRestrictionsHook,
             queueManager,
             onOffRampFactory,
+            shareManager,
             batchRequestManager,
             identityValuation,
             oracleValuation,

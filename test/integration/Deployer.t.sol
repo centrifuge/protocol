@@ -594,6 +594,13 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(onOffRampFactory.accountingToken()), address(accountingToken));
     }
 
+    function testShareManager() public view {
+        // dependencies set correctly
+        assertEq(address(shareManager.envoy()), address(envoy));
+        assertEq(address(shareManager.spoke()), address(spoke));
+        assertEq(address(shareManager.spokeRegistry()), address(spokeRegistry));
+    }
+
     function testQueueManager() public view {
         // dependencies set correctly
         assertEq(address(queueManager.envoy()), address(envoy));

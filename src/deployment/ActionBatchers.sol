@@ -39,6 +39,7 @@ import {SimplePriceManager} from "../hooks/accounting/SimplePriceManager.sol";
 import {RedemptionRestrictions} from "../token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../managers/spoke/QueueManager.sol";
+import {ShareManager} from "../managers/spoke/ShareManager.sol";
 import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
 
 import {OracleValuation} from "../valuations/OracleValuation.sol";
@@ -100,6 +101,7 @@ struct NonCoreReport {
     RedemptionRestrictions redemptionRestrictionsHook;
     QueueManager queueManager;
     OnOffRampFactory onOffRampFactory;
+    ShareManager shareManager;
     BatchRequestManager batchRequestManager;
     IdentityValuation identityValuation;
     OracleValuation oracleValuation;

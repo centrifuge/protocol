@@ -18,6 +18,8 @@ AccountingToken -up-|> IManagerCallFromHub
 QueueManager -up-|> IManagerCallFromHub
 QueueManager --> ISpoke
 QueueManager --> ISnapshotQueue
+ShareManager -up-|> IManagerCallFromHub
+ShareManager --> ISpoke
 Envoy --> IManagerCallFromHub
 
 OnchainPMFactory ..> "n" OnchainPM : deploys
@@ -49,6 +51,12 @@ end note
 note top of QueueManager
   Manages submission of queued
   assets and shares
+end note
+
+note top of ShareManager
+  Hub-driven share issuance
+  and revocation for holdings
+  tracked outside the protocol
 end note
 
 note top of OnchainPM

@@ -51,6 +51,9 @@ import {FullRestrictions} from "../../src/token/hooks/FullRestrictions.sol";
 import {RedemptionRestrictions} from "../../src/token/hooks/RedemptionRestrictions.sol";
 import {UpdateRestrictionMessageLib} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {ShareManager} from "../../src/managers/spoke/ShareManager.sol";
+import {IShareManager} from "../../src/managers/spoke/interfaces/IShareManager.sol";
+
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
@@ -142,6 +145,8 @@ contract EndToEndDeployment is Test {
         AsyncRequestManager asyncRequestManager;
         SyncManager syncManager;
         RefundEscrowFactory refundEscrowFactory;
+        // Managers
+        ShareManager shareManager;
         // Hooks
         FreezeOnly freezeOnlyHook;
         FullRestrictions fullRestrictionsHook;
@@ -200,6 +205,7 @@ contract EndToEndDeployment is Test {
 
     uint256 constant PLACEHOLDER_REQUEST_ID = IntegrationConstants.PLACEHOLDER_REQUEST_ID;
     uint128 constant EXTRA_GAS = IntegrationConstants.EXTRA_GAS;
+    uint128 constant SHARE_REVOKE_EXTRA_GAS = IntegrationConstants.SHARE_REVOKE_EXTRA_GAS;
 
     // Set by _configurePrices and read by pricing utilities
     D18 currentAssetPrice = IntegrationConstants.identityPrice();
@@ -320,6 +326,7 @@ contract EndToEndDeployment is Test {
         s_.asyncRequestManager = deploy.asyncRequestManager();
         s_.syncManager = deploy.syncManager();
         s_.refundEscrowFactory = deploy.refundEscrowFactory();
+        s_.shareManager = deploy.shareManager();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
 
@@ -1106,6 +1113,49 @@ contract EndToEndUseCases is EndToEndFlows, VMLabeling {
         assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).name(), "Tokenized MMF 2");
         assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).symbol(), "MMF2");
         assertEq(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).hook(), address(s.fullRestrictionsHook));
+    }
+
+    /// @dev Hub-driven share issuance and revocation: Hub.updateManager grants ShareManager the spoke
+    ///      manager bit, then Hub.managerCall -> Envoy -> ShareManager.fromHub -> Spoke.issue/revoke.
+    /// forge-config: default.isolate = true
+    function testShareManager(bool sameChain) public {
+        uint128 shares = 100e18;
+        _configurePool(sameChain);
+
+        vm.startPrank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s.centrifugeId, ManagerKind.Spoke, address(s.shareManager).toBytes32(), true, REFUND
+        );
+
+        h.hub.managerCall{value: sameChain ? 0 : GAS}(
+            POOL_A,
+            s.centrifugeId,
+            address(s.shareManager).toBytes32(),
+            abi.encode(uint8(IShareManager.ManagerCall.Issue), SC_1.raw(), INVESTOR_A.toBytes32(), shares),
+            EXTRA_GAS,
+            0,
+            REFUND
+        );
+
+        IShareToken share = IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1)));
+        assertEq(share.balanceOf(INVESTOR_A), shares, "shares issued to investor");
+        assertEq(share.totalSupply(), shares, "total supply increased");
+
+        h.hub.managerCall{value: sameChain ? 0 : GAS}(
+            POOL_A,
+            s.centrifugeId,
+            address(s.shareManager).toBytes32(),
+            abi.encode(uint8(IShareManager.ManagerCall.Revoke), SC_1.raw(), INVESTOR_A.toBytes32(), shares),
+            SHARE_REVOKE_EXTRA_GAS,
+            0,
+            REFUND
+        );
+
+        assertEq(share.balanceOf(INVESTOR_A), 0, "shares revoked from investor");
+        assertEq(share.totalSupply(), 0, "total supply decreased");
     }
 
     /// @dev Hub pushes a spoke pool's policy end-to-end: Hub.setSpokePolicy -> SetPolicy

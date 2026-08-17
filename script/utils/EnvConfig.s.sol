@@ -121,6 +121,7 @@ struct ContractsConfig {
     address onOfframpManagerFactory;
     address merkleProofManagerFactory;
     address onOffRampFactory;
+    address shareManager;
     // Valuations
     address identityValuation;
     address oracleValuation;
@@ -411,6 +412,7 @@ library Env {
         config.onOfframpManagerFactory = _tryParseContractAddress(json, "onOfframpManagerFactory");
         config.merkleProofManagerFactory = _tryParseContractAddress(json, "merkleProofManagerFactory");
         config.onOffRampFactory = _tryParseContractAddress(json, "onOffRampFactory");
+        config.shareManager = _tryParseContractAddress(json, "shareManager");
 
         // Valuations
         config.identityValuation = _parseContractAddress(json, "identityValuation");

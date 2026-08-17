@@ -35,6 +35,9 @@ library IntegrationConstants {
     uint256 constant INTEGRATION_DEFAULT_SUBSIDY = 1 ether;
     uint128 constant HOOK_GAS = 0 ether;
     uint128 constant EXTRA_GAS = 0;
+    /// @dev Extra gas shipped with ShareManager revoke manager calls, whose pull + approve + burn
+    ///      sequence exceeds the light fromHub targets the ManagerCallFromHub estimate started from.
+    uint128 constant SHARE_REVOKE_EXTRA_GAS = 300_000;
 
     // ======== Protocol Addresses (v3.0.1) ========
 

@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1785870642,
+  "BENCHMARKING_RUN_ID": 1786702015,
   "scheduleUpgradeSlots": 14,
   "scheduleUpgradeAccounts": 7,
   "cancelUpgradeSlots": 13,
@@ -44,8 +44,8 @@
   "updateSharesAccounts": 11,
   "updateManagerSlots": 17,
   "updateManagerAccounts": 9,
-  "managerCallFromHubSlots": 26,
-  "managerCallFromHubAccounts": 12,
+  "managerCallFromHubSlots": 29,
+  "managerCallFromHubAccounts": 15,
   "managerCallFromSpokeSlots": 13,
   "managerCallFromSpokeAccounts": 9,
   "authorizeSpokeCallSlots": 17,

@@ -255,7 +255,8 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     function issue(PoolId poolId, ShareClassId scId, address to, uint128 shares) external payable;
 
     /// @notice Revoke share tokens
-    /// @dev Decreases the total issuance
+    /// @dev Decreases the total issuance. Pulls the shares from msgSender(), who must hold them and have
+    ///      approved the Spoke as spender
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param shares The number of shares to revoke

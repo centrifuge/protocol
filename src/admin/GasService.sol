@@ -92,10 +92,10 @@ contract GasService is IGasService {
 
         // forgefmt: disable-next-item
         coldSlotsPerMessageType = _pack(
-            [uint8(0), 14, 13, 15, 40, 22, 24, 17, 19, 20, 38, 23, 22, 0, 35, 23, 29, 41, 17, 13, 26, 17, 17, 17, 17, 35, 21, 20]
+            [uint8(0), 14, 13, 15, 40, 22, 24, 17, 19, 20, 38, 23, 22, 0, 35, 23, 29, 41, 17, 13, 29, 17, 17, 17, 17, 35, 21, 20]
         );
         coldAccountsPerMessageType = _pack(
-            [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 18, 12, 13, 0, 14, 11, 12, 17, 9, 9, 12, 9, 9, 9, 9, 14, 9, 9]
+            [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 18, 12, 13, 0, 14, 11, 12, 17, 9, 9, 15, 9, 9, 9, 9, 14, 9, 9]
         );
 
         scheduleUpgrade = _gasValue(162119);
@@ -110,8 +110,8 @@ contract GasService is IGasService {
         notifyShareMetadata = _gasValue(199980);
         initiateTransferShares = _gasValue(369980);
         executeTransferShares = _gasValue(254802);
-        updateRestriction = _gasValue(194426);
-        managerCallFromHub = _gasValue(215779);
+        updateRestriction = _gasValue(211526);
+        managerCallFromHub = _gasValue(376469);
         requestCallback = _gasValue(465157); // approve deposit case
         updateVaultDeployAndLink = _gasValue(2870035);
         updateVaultLink = _gasValue(192281);

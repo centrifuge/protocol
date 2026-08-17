@@ -32,6 +32,7 @@ import {SimplePriceManager} from "../../../../../src/hooks/accounting/SimplePric
 import {RedemptionRestrictions} from "../../../../../src/token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../../../../../src/managers/spoke/QueueManager.sol";
+import {ShareManager} from "../../../../../src/managers/spoke/ShareManager.sol";
 import {OnOffRampFactory} from "../../../../../src/managers/spoke/OnOffRamp.sol";
 
 import {OracleValuation} from "../../../../../src/valuations/OracleValuation.sol";
@@ -113,6 +114,7 @@ function testContractsFromConfig(EnvConfig memory config) pure returns (TestCont
         RedemptionRestrictions(c.redemptionRestrictionsHook),
         QueueManager(c.queueManager),
         OnOffRampFactory(c.onOffRampFactory),
+        ShareManager(c.shareManager),
         BatchRequestManager(c.batchRequestManager),
         IdentityValuation(c.identityValuation),
         OracleValuation(c.oracleValuation),

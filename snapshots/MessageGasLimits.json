@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1785870597,
+  "BENCHMARKING_RUN_ID": 1786701957,
   "scheduleUpgrade": 137119,
   "cancelUpgrade": 117612,
   "registerAsset": 144115,
@@ -12,7 +12,7 @@
   "notifyShareMetadata": 174980,
   "initiateTransferShares": 344980,
   "executeTransferShares": 229802,
-  "updateRestriction": 169426,
+  "updateRestriction": 186526,
   "requestCallback": 440157,
   "updateVaultDeployAndLink": 2845035,
   "updateVaultLink": 167281,
@@ -22,7 +22,7 @@
   "updateAssets": 366814,
   "updateShares": 240303,
   "updateManager": 153827,
-  "managerCallFromHub": 190779,
+  "managerCallFromHub": 351469,
   "managerCallFromSpoke": 126429,
   "authorizeSpokeCall": 159741,
   "unauthorizeSpokeCall": 137402
