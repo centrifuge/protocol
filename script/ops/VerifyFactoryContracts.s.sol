@@ -139,11 +139,15 @@ contract VerifyFactoryContracts is Script {
             vm.toString(contractAddress),
             " ",
             contractName,
+            // Always explicit, on both paths: without it forge assumes chain 1, then resolves the contract
+            // ABI against whatever `--verifier-url` names as if it spoke Etherscan. Sourcify answers that
+            // GET with an HTML 404, so the run fails on "Failed to obtain contract ABI" and every contract
+            // reports as unverified — the wrong chain surfacing as a missing ABI rather than as itself
+            " --chain ",
+            vm.toString(config.network.chainId),
             (bytes(config.network.verifier).length > 0)
                 ? string.concat(" --verifier ", config.network.verifier, " --verifier-url ", config.network.verifierUrl)
-                : string.concat(
-                    " --chain ", vm.toString(block.chainid), " --etherscan-api-key ", config.etherscanApiKey()
-                ),
+                : string.concat(" --etherscan-api-key ", config.etherscanApiKey()),
             " --constructor-args ",
             vm.toString(constructorArgs),
             " --watch",
