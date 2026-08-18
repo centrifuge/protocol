@@ -415,7 +415,9 @@ async function main() {
             } else {
                 console.log("Skipping IPFS pin");
                 const emptyResults = { mainnet: { cid: null, changed: false }, testnet: { cid: null, changed: false } };
-                writeStepSummary(emptyResults);
+                // Await so "Step summary written successfully" is not the last stdout line.
+                // The workflow parses `tail -n 1` as JSON.
+                await writeStepSummary(emptyResults);
                 console.log(JSON.stringify(emptyResults));
             }
             return;
