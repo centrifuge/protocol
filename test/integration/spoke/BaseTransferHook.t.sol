@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {DeployGate} from "../../../src/deployment/misc/DeployGate.sol";
-
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
@@ -37,7 +35,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         address[] memory executors = new address[](1);
         executors[0] = address(this);
 
-        // A throwaway gate this contract both administers and executes
+        // This contract is the validator of its own namespace, and its own executor
         super.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
@@ -48,7 +46,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                 adapters: noAdaptersInput()
             }),
             address(this),
-            new DeployGate(address(this), makeAddr("governance"), executors)
+            address(this),
+            executors
         );
 
         MockPoolEscrow mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);
@@ -259,14 +258,18 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     }
 
     function testEndorsementVerification(address notEndorsed) public view {
+        // Every account the deployment endorses, or the fuzzer eventually offers one of them as the
+        // account that should not be endorsed
         vm.assume(
             notEndorsed != address(spoke) && notEndorsed != address(asyncRequestManager)
-                && notEndorsed != address(vaultRouter) && notEndorsed != poolEscrow
+                && notEndorsed != address(vaultRouter) && notEndorsed != address(tokenBridge)
+                && notEndorsed != poolEscrow
         );
 
-        assertTrue(root.endorsed(address(spoke)), "balanceSheet must be endorsed");
+        assertTrue(root.endorsed(address(spoke)), "spoke must be endorsed");
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager must be endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter must be endorsed");
+        assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge must be endorsed");
 
         assertFalse(root.endorsed(poolEscrow));
         assertFalse(root.endorsed(notEndorsed));

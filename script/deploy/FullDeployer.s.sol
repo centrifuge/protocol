@@ -3,8 +3,6 @@ pragma solidity 0.8.28;
 
 import {GatedDeployer, DeployPhase} from "./GatedDeployer.s.sol";
 
-import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
-
 import {Hub} from "../../src/core/hub/Hub.sol";
 import {Envoy} from "../../src/core/utils/Envoy.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
@@ -200,16 +198,27 @@ contract FullDeployer is GatedDeployer, Constants {
     /// @dev Runs both phases back to back, in one process. For tests only: a real deployment gives each phase
     ///      its own run, which is what proves the execute phase rebuilds exactly what validate committed.
     ///      FullDeploymentPhasedTest is what covers the phases apart.
-    function deployFullBothPhases(DeployerInput memory input, address deployer_, DeployGate gate) public {
-        deployFull(input, deployer_, DeployPhase.Validate, gate);
-        deployFull(input, deployer_, DeployPhase.Execute, gate);
+    function deployFullBothPhases(
+        DeployerInput memory input,
+        address deployer_,
+        address validator_,
+        address[] memory executors_
+    ) public {
+        deployFull(input, deployer_, DeployPhase.Validate, validator_, executors_);
+        deployFull(input, deployer_, DeployPhase.Execute, validator_, executors_);
     }
 
     /// @dev Deploys every contract through a DeployGate, so that the admin signs a single transaction whatever
     ///      the number of contracts. NOTE: this changes every deployed address, since a CREATE3 address
     ///      derives from the CreateX caller.
-    function deployFull(DeployerInput memory input, address deployer_, DeployPhase phase, DeployGate gate) public {
-        _initGated(input.suffix, deployer_, phase, gate);
+    function deployFull(
+        DeployerInput memory input,
+        address deployer_,
+        DeployPhase phase,
+        address validator_,
+        address[] memory executors_
+    ) public {
+        _initGated(input.suffix, deployer_, phase, validator_, executors_);
 
         // Validating deploys the whole protocol locally, at the addresses it will really occupy, since only
         // running the init code reveals the runtime code to commit to, and constructors that wire their
@@ -219,15 +228,20 @@ contract FullDeployer is GatedDeployer, Constants {
         // Everything the walk put in storage does go, this script's own included, which is what keeps the
         // addresses it registered out of the deployment manifest: only the execute phase reports any.
         if (phase == DeployPhase.Validate) {
-            bool scripting = vm.isContext(VmSafe.ForgeContext.ScriptGroup);
-            if (scripting) vm.stopBroadcast();
+            bool bracketed = vm.isContext(VmSafe.ForgeContext.ScriptGroup) && !proposing;
+            if (bracketed) vm.stopBroadcast();
 
             uint256 snapshot = vm.snapshotState();
+
+            // A no-op except when proposing, the one run that reaches here without a gate: the walk needs
+            // one to ask for addresses, and bringing it up inside the rollback is what keeps the chain
+            // readable for the proposal built after it
+            setUpDeployGate();
             _deployProtocol(input);
             (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
             vm.revertToState(snapshot);
 
-            if (scripting) vm.startBroadcast(deployer);
+            if (bracketed) vm.startBroadcast(deployer);
 
             _commit(salts, initCodeHashes);
         } else {
@@ -249,9 +263,9 @@ contract FullDeployer is GatedDeployer, Constants {
 
     /// @dev One walk of the whole protocol. Deploys through the DeployGate, or locally when probing.
     function _deployProtocol(DeployerInput memory input) internal {
-        address coreBatcherAddr = create3Address("coreBatcher", V_LATEST, address(deployGate));
-        address nonCoreBatcherAddr = create3Address("nonCoreBatcher", V_LATEST, address(deployGate));
-        address adapterBatcherAddr = create3Address("adapterBatcher", V_LATEST, address(deployGate));
+        address coreBatcherAddr = gatedAddress("coreBatcher", V_LATEST);
+        address nonCoreBatcherAddr = gatedAddress("nonCoreBatcher", V_LATEST);
+        address adapterBatcherAddr = gatedAddress("adapterBatcher", V_LATEST);
 
         _deployCore(coreBatcherAddr, input);
         coreBatcher = CoreActionBatcher(
@@ -296,10 +310,10 @@ contract FullDeployer is GatedDeployer, Constants {
     }
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
-        address tokenBridgeAddr = create3Address("tokenBridge", V3_3, address(deployGate));
+        address tokenBridgeAddr = gatedAddress("tokenBridge", V3_3);
 
         // Admin
-        root = Root(submit("root", V3_1, abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
+        root = Root(submit("root", V3_3, abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
 
         gasService = GasService(
             submit(
@@ -460,7 +474,7 @@ contract FullDeployer is GatedDeployer, Constants {
         refundEscrowFactory = RefundEscrowFactory(
             submit(
                 "refundEscrowFactory",
-                V3_1,
+                V3_3,
                 abi.encodePacked(type(RefundEscrowFactory).creationCode, abi.encode(batcher))
             )
         );
@@ -612,7 +626,7 @@ contract FullDeployer is GatedDeployer, Constants {
             )
         );
 
-        scriptHelpers = ScriptHelpers(submit("scriptHelpers", V3_2, abi.encodePacked(type(ScriptHelpers).creationCode)));
+        scriptHelpers = ScriptHelpers(submit("scriptHelpers", V3_3, abi.encodePacked(type(ScriptHelpers).creationCode)));
 
         onchainPMFactory = IOnchainPMFactory(
             submit(
@@ -648,7 +662,7 @@ contract FullDeployer is GatedDeployer, Constants {
             )
         );
 
-        approvalGuard = ApprovalGuard(submit("approvalGuard", V3_2, abi.encodePacked(type(ApprovalGuard).creationCode)));
+        approvalGuard = ApprovalGuard(submit("approvalGuard", V3_3, abi.encodePacked(type(ApprovalGuard).creationCode)));
 
         circuitBreakerGuard = CircuitBreakerGuard(
             submit("circuitBreakerGuard", V3_3, abi.encodePacked(type(CircuitBreakerGuard).creationCode))
@@ -675,7 +689,7 @@ contract FullDeployer is GatedDeployer, Constants {
         identityValuation = IdentityValuation(
             submit(
                 "identityValuation",
-                V3_1,
+                V3_3,
                 abi.encodePacked(type(IdentityValuation).creationCode, abi.encode(hubRegistry))
             )
         );

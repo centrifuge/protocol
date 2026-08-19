@@ -97,7 +97,6 @@ struct ContractsConfig {
     address spokeHandler;
     address spokeRegistry;
     address snapshotQueue;
-    address balanceSheet;
     address contractUpdater;
     address envoy;
     address vaultRegistry;
@@ -118,8 +117,6 @@ struct ContractsConfig {
     address freelyTransferableHook;
     address redemptionRestrictionsHook;
     // Spoke managers
-    address onOfframpManagerFactory;
-    address merkleProofManagerFactory;
     address onOffRampFactory;
     address shareManager;
     // Valuations
@@ -136,7 +133,6 @@ struct ContractsConfig {
     address vaultDecoder;
     address circleDecoder;
     // Deployment
-    address deployGate;
     // Adapters
     address layerZeroAdapter;
     address axelarAdapter;
@@ -384,10 +380,9 @@ library Env {
         config.spokeHandler = _tryParseContractAddress(json, "spokeHandler");
         config.spokeRegistry = _tryParseContractAddress(json, "spokeRegistry");
         config.snapshotQueue = _tryParseContractAddress(json, "snapshotQueue");
-        config.balanceSheet = _parseContractAddress(json, "balanceSheet");
         config.contractUpdater = _tryParseContractAddress(json, "contractUpdater");
         config.envoy = _tryParseContractAddress(json, "envoy");
-        config.vaultRegistry = _parseContractAddress(json, "vaultRegistry");
+        config.vaultRegistry = _tryParseContractAddress(json, "vaultRegistry");
         config.hubHandler = _parseContractAddress(json, "hubHandler");
 
         // Vaults
@@ -409,8 +404,6 @@ library Env {
 
         // Spoke managers. The onOfframp/merkleProof factories are legacy: chains deployed after
         // OnOffRamp and OnchainPM superseded them only carry onOffRampFactory.
-        config.onOfframpManagerFactory = _tryParseContractAddress(json, "onOfframpManagerFactory");
-        config.merkleProofManagerFactory = _tryParseContractAddress(json, "merkleProofManagerFactory");
         config.onOffRampFactory = _tryParseContractAddress(json, "onOffRampFactory");
         config.shareManager = _tryParseContractAddress(json, "shareManager");
 
@@ -426,10 +419,7 @@ library Env {
         // Bridge
         config.tokenBridge = _tryParseContractAddress(json, "tokenBridge");
 
-        // Deployment: written by DeployGateDeployer, absent on chains deployed before it existed
-        config.deployGate = _tryParseContractAddress(json, "deployGate");
-
-        // Decoders. Legacy companions of merkleProofManagerFactory: absent on newer chains.
+        // Decoders. Legacy, and absent on newer chains.
         config.vaultDecoder = _tryParseContractAddress(json, "vaultDecoder");
         config.circleDecoder = _tryParseContractAddress(json, "circleDecoder");
 

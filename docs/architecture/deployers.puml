@@ -4,22 +4,22 @@ hide empty members
 
 class JsonRegistry << (S, motivation) >>
 class CreateXScript << (S, motivation) >>
+class DeployGateScript << (S, motivation) >>
 
 class BaseDeployer << (S, motivation) >>
 class GatedDeployer << (S, motivation) >>
 
-class DeployGateDeployer << (S, application) >>
 class DeployAdapters << (S, application) >>
-class DeployOnchainPMV2 << (S, application) >>
 
 class FullDeployer  << (S, application) >> {
     + function deployFull()
 }
 class LaunchDeployer  << (S, application) >> {
-    + function run()
+    + function validate()
+    + function revoke()
+    + function execute()
 }
 
-class DeployGate << (C, implementation) >>
 class CoreActionBatcher << (C, implementation) >>
 class NonCoreActionBatcher << (C, implementation) >>
 class AdapterActionBatcher << (C, implementation) >>
@@ -33,25 +33,26 @@ enum DeployPhase {
 
 BaseDeployer -up-|> JsonRegistry
 BaseDeployer -up-|> CreateXScript
+DeployGateScript -up-|> CreateXScript
 
 GatedDeployer --up-|> BaseDeployer
+GatedDeployer --up-|> DeployGateScript
 FullDeployer -up-|> GatedDeployer
 LaunchDeployer -up-|> FullDeployer
 
-DeployGateDeployer ---up-|> BaseDeployer
 DeployAdapters ---up-|> BaseDeployer
-DeployOnchainPMV2 ---up-|> BaseDeployer
 
 GatedDeployer -right> DeployPhase
 FullDeployer -left> DeployerInput
 
-DeployGateDeployer ..> DeployGate
 FullDeployer ...> CoreActionBatcher
 FullDeployer ...> NonCoreActionBatcher
 FullDeployer ...> AdapterActionBatcher
 
-note right of FullDeployer: Used in integration tests and \ntestnets
-note right of LaunchDeployer: Loads network config from JSON;\nentry point for production deployments
-note right of DeployGateDeployer: Brings up the DeployGate once per chain;\nprerequisite of both gated phases
+note right of JsonRegistry: Utilities to write in the env files
+note right of BaseDeployer: Base utilities to use create3\n in the project
+note right of GatedDeployer: Helpers to use DeployGate
+note right of FullDeployer: Used in integration tests
+note bottom of LaunchDeployer: Loads network config from JSON;\nentry point for production deployments
 
 @enduml

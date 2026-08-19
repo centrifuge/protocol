@@ -9,7 +9,6 @@ import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
-import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
 
 import {Hub} from "../../src/core/hub/Hub.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
@@ -287,7 +286,7 @@ contract EndToEndDeployment is Test {
         address[] memory executors = new address[](1);
         executors[0] = address(deploy);
 
-        // A throwaway gate the deployer both administers and executes
+        // The deployer is the validator of its own namespace, and its own executor
         deploy.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: localCentrifugeId,
@@ -298,7 +297,8 @@ contract EndToEndDeployment is Test {
                 adapters: noAdaptersInput()
             }),
             address(deploy),
-            new DeployGate(address(deploy), makeAddr("governance"), executors)
+            address(deploy),
+            executors
         );
 
         adapter = new LocalAdapter(localCentrifugeId, deploy.multiAdapter(), address(deploy));

@@ -10,6 +10,7 @@ import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
 import "forge-std/Script.sol";
 
 import {Safe, Enum} from "safe-utils/Safe.sol";
+import {ledgerDerivationPath} from "../utils/Admin.s.sol";
 import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 import {Env, EnvConfig, EnvConfigLib, Connection} from "../utils/EnvConfig.s.sol";
 import {SetConfigParam, ILayerZeroEndpointV2Like} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
@@ -25,7 +26,7 @@ import {SetConfigParam, ILayerZeroEndpointV2Like} from "../../src/deployment/int
 ///      The source chain is the one `--rpc-url` points at. Set TARGETS to comma-separated target chain
 ///      names (e.g., "monad,pharos"), each of which needs an env/<name>.json.
 ///
-///      Set LEDGER_DERIVATION_PATH to override DEFAULT_LEDGER_DERIVATION_PATH, which only matches one
+///      Set LEDGER_DERIVATION_PATH to override the default path, which only matches one
 ///      signer's device. The proposal is rejected unless --sender equals the address it derives.
 ///
 ///      Requires --ffi (safe-utils signs via `cast wallet sign --ledger`). Do not pass --ledger to
@@ -44,7 +45,6 @@ import {SetConfigParam, ILayerZeroEndpointV2Like} from "../../src/deployment/int
 contract WireToNewNetwork is Script {
     using Safe for *;
 
-    string constant DEFAULT_LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
     Safe.Client safe;
@@ -59,15 +59,15 @@ contract WireToNewNetwork is Script {
         vm.startBroadcast();
         string memory networkName = Env.detect();
         string[] memory targetNames = vm.envString("TARGETS", ",");
-        configureLzDvnsAll(networkName, targetNames, _derivationPath());
-        wireAll(networkName, targetNames, _derivationPath());
+        configureLzDvnsAll(networkName, targetNames, ledgerDerivationPath());
+        wireAll(networkName, targetNames, ledgerDerivationPath());
         vm.stopBroadcast();
     }
 
     /// @notice Phase 1: propose the protocol Safe batch (LZ libraries + ULN config) only.
     function runProtocol() external {
         vm.startBroadcast();
-        configureLzDvnsAll(Env.detect(), vm.envString("TARGETS", ","), _derivationPath());
+        configureLzDvnsAll(Env.detect(), vm.envString("TARGETS", ","), ledgerDerivationPath());
         vm.stopBroadcast();
     }
 
@@ -75,12 +75,8 @@ contract WireToNewNetwork is Script {
     ///         phase 1 batch is executed, never before.
     function runOps() external {
         vm.startBroadcast();
-        wireAll(Env.detect(), vm.envString("TARGETS", ","), _derivationPath());
+        wireAll(Env.detect(), vm.envString("TARGETS", ","), ledgerDerivationPath());
         vm.stopBroadcast();
-    }
-
-    function _derivationPath() internal view returns (string memory) {
-        return vm.envOr("LEDGER_DERIVATION_PATH", string(DEFAULT_LEDGER_DERIVATION_PATH));
     }
 
     //----------------------------------------------------------------------------------------------

@@ -79,16 +79,13 @@ start_fork() {
 deploy_fork() {
     BASE="$1"
 
-    # This fork has no gate: the config was copied from a network whose gate does not exist here. The script
-    # writes its own address into env/anvil/<network>.json, which is where LaunchDeployer reads it back from
+    # This fork has no gate. Nothing brings one up first: the validate phase does it, in the same run
     export PRIVATE_KEY="$DEPLOYER_KEY"
-    say "DeployGate ($BASE)"
-    EXECUTORS="$DEPLOYER" forge_deploy script/deploy/DeployGateDeployer.s.sol DeployGateDeployer
 
-    # Two runs, validate then execute, exactly as a real deployment is signed. The execute phase records
-    # what it deployed itself, so there is nothing to run afterwards
+    # Two runs, validate then execute, exactly as a real deployment is signed. EXECUTORS is read by validate,
+    # which is what names them. The execute phase records what it deployed itself
     say "LaunchDeployer: validate ($BASE)"
-    forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'validate()'
+    EXECUTORS="$DEPLOYER" forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'validate()'
     say "LaunchDeployer: execute ($BASE)"
     forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'execute()'
 

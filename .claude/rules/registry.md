@@ -17,7 +17,7 @@ paths:
 |------|------|
 | `abi-registry.js` | Builds `registry/registry-{mainnet,testnet}.json` from `env/*.json`, explorer APIs, deltas vs the flattened published chain (walked from the live registry or `SOURCE_IPFS`). |
 | `utils/registry-chain.js` | Walks `previousRegistry.ipfsHash` to the base snapshot and flattens layers into the accumulated published state. Call `collectRegistryChain` and take its `accumulated` — it flattens for you; `flattenRegistryChain` is exported for tests and requires oldest → newest ordering. |
-| `utils/registry-fetch.js` | **All** published-registry network I/O: `REGISTRY_URLS`, `DNSLINK_HOSTNAMES`, `IPFS_GATEWAYS`, `isValidIpfsHash`, `resolveLiveCid`, `fetchRegistryFromIpfs`, `fetchLiveRegistry`, CID layer cache. Never re-declare these elsewhere. |
+| `utils/registry-fetch.js` | **All** published-registry network I/O: `REGISTRY_URLS`, `DNSLINK_HOSTNAMES`, `IPFS_GATEWAYS`, `isValidIpfsHash`, `resolveLiveCid`, `fetchRegistryFromIpfs`, `fetchLiveRegistry`, CID layer cache. Never declare these a second time elsewhere. |
 | `utils/registry-delta.js` | Delta membership against the accumulated state: `hasContractChanged`, `computeChainDelta`. |
 | `utils/registry-invariants.js` | `checkDeltaInvariants` (projection / minimality / size), `loadEnvChains`. |
 | `walk-registry-chain.js` | Ops CLI: per-layer chain audit (contracts + tombstones per layer, flags snapshot-sized layers). |

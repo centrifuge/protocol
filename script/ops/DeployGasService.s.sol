@@ -10,6 +10,7 @@ import "forge-std/Script.sol";
 import {Safe, Enum} from "safe-utils/Safe.sol";
 import {Env, EnvConfig} from "../utils/EnvConfig.s.sol";
 import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
+import {ledgerDerivationPath} from "../utils/Admin.s.sol";
 
 /// @title DeployGasService
 /// @notice Deploys a new GasService and proposes an OpsGuardian.setGasService call via the ops Safe.
@@ -23,7 +24,6 @@ import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
 contract DeployGasService is Script, JsonRegistry {
     using Safe for *;
 
-    string constant LEDGER_DERIVATION_PATH = "m/44'/60'/0'/0/0";
     Safe.Client safe;
 
     function run() external {
@@ -39,7 +39,7 @@ contract DeployGasService is Script, JsonRegistry {
         bytes memory data = abi.encodeCall(IOpsGuardian.setGasService, (IGasService(address(gasService))));
 
         safe.initialize(config.network.opsAdmin);
-        bytes memory signature = safe.sign(opsGuardian, data, Enum.Operation.Call, msg.sender, LEDGER_DERIVATION_PATH);
+        bytes memory signature = safe.sign(opsGuardian, data, Enum.Operation.Call, msg.sender, ledgerDerivationPath());
         safe.proposeTransactionWithSignature(opsGuardian, data, msg.sender, signature);
 
         vm.stopBroadcast();

@@ -6,12 +6,12 @@ import {IProtocolGuardian} from "../../src/admin/interfaces/IProtocolGuardian.so
 import "forge-std/Script.sol";
 
 import {Safe, Enum} from "safe-utils/Safe.sol";
+import {PROTOCOL_SAFE, ledgerDerivationPath} from "../utils/Admin.s.sol";
 
 contract ProposeUnpause is Script {
     using Safe for *;
 
     address constant PROTOCOL_GUARDIAN = 0xCEb7eD5d5B3bAD3088f6A1697738B60d829635c6;
-    address constant PROTOCOL_SAFE = 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225;
 
     Safe.Client safe;
 
@@ -26,7 +26,7 @@ contract ProposeUnpause is Script {
             PROTOCOL_GUARDIAN,
             data,
             msg.sender,
-            safe.sign(PROTOCOL_GUARDIAN, data, Enum.Operation.Call, msg.sender, "m/44'/60'/0'/0/0")
+            safe.sign(PROTOCOL_GUARDIAN, data, Enum.Operation.Call, msg.sender, ledgerDerivationPath())
         );
 
         vm.stopBroadcast();

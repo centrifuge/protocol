@@ -5,6 +5,11 @@ import "forge-std/Script.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 import {console} from "forge-std/console.sol";
 
+// Passed to `startDeploymentOutput` by a run whose contracts are the whole of a chain's, so that everything
+// the config held and the run does not mention is dropped. Named rather than a bare `true` because what it
+// does is destructive and the call site is where that has to be visible.
+bool constant REPLACE = true;
+
 /// @notice Collects the contracts a deploy script produces and writes them into `env/<network>.json`.
 ///
 /// @dev    A script opens a run with `startDeploymentOutput()`, registers each contract as it goes — which
@@ -36,8 +41,11 @@ contract JsonRegistry is Script {
     ///      1. A contract that landed on a new address gets this run's block number. One that was already
     ///         recorded at the same address keeps the block it had — a run that re-reports an address it did
     ///         not deploy this time is not evidence about when it was deployed, and overwriting would move
-    ///         the chain's `startBlock` under an indexer. One the run does not mention is left alone, so a
-    ///         config can hold more than one deployment's worth.
+    ///         the chain's `startBlock` under an indexer. That holds under `$replace` too, which is what
+    ///         lets `--resume` finish a run without redating what the first attempt landed.
+    ///      1b. One the run does not mention is left alone, so a config can hold more than one script's
+    ///         worth — unless `$replace`, where this run's contracts are the whole of the chain's and
+    ///         whatever the config held belonged to a deployment this one supersedes.
     ///      2. Only a full protocol deployment claims the chain's `deploymentInfo`, which is what `$new`
     ///         holding `root` says, and the same run claims its `startBlock`: a script shipping one contract
     ///         records its address without redating the chain, so both live in one branch rather than two
@@ -45,7 +53,8 @@ contract JsonRegistry is Script {
     ///      3. That `startBlock` is the earliest block *any* contract in the config carries, not this run's:
     ///         a redeployment that reuses contracts leaves older ones in place, and an indexer starting
     ///         after one of them misses its history. Computed over what the file ends up holding.
-    string internal constant MERGE = ". as $root" " | .contracts = (($root.contracts // {}) + ($new | with_entries("
+    string internal constant MERGE = ". as $root"
+        " | .contracts = ((if $replace then {} else ($root.contracts // {}) end) + ($new | with_entries("
         "     ($root.contracts[.key] // {}) as $old" "     | .value = ({address: .value.address,"
         "        blockNumber: (if ($old.address // null) == .value.address and ($old.blockNumber // null) != null"
         "                      then $old.blockNumber else $block end),"
@@ -68,6 +77,16 @@ contract JsonRegistry is Script {
     }
 
     function startDeploymentOutput() public {
+        startDeploymentOutput(!REPLACE);
+    }
+
+    /// @notice Same, for a run that owns the whole of a chain's contracts. Pass `REPLACE` and everything the
+    ///         config held that this run does not register is dropped: a script deploying a protocol from
+    ///         nothing supersedes whatever was there, and leaving it would keep unreachable addresses beside
+    ///         the live ones with nothing marking them dead. Every other script shares the file and merges.
+    function startDeploymentOutput(bool replaces) public {
+        replacesDeployment = replaces;
+
         delete registeredNames;
         delete registeredAddrs;
         delete registeredVersions;
@@ -93,6 +112,8 @@ contract JsonRegistry is Script {
     function saveDeploymentOutput(string memory network) public virtual {
         _saveDeploymentOutput(network, "");
     }
+
+    bool private replacesDeployment;
 
     function _saveDeploymentOutput(string memory network, string memory suffix) internal {
         if (registeredNames.length == 0) return;
@@ -129,7 +150,9 @@ contract JsonRegistry is Script {
 
         _sh(
             string.concat(
-                "jq --argjson new \"$REGISTRY_CONTRACTS\" --argjson block ",
+                "jq --argjson new \"$REGISTRY_CONTRACTS\" --argjson replace ",
+                replacesDeployment ? "true" : "false",
+                " --argjson block ",
                 vm.toString(block.number),
                 " --arg gitCommit \"$(git rev-parse --short HEAD)\"",
                 " --arg timestamp \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"",

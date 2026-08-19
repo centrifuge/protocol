@@ -14,10 +14,10 @@ name: "Deploy testnets"
 # holding no contract and the messages would simply never arrive. Deriving the matrix is what makes that
 # unreachable, so adding a network to the connections file is the whole change.
 #
-# Manual only, deliberately. There is no pull-request smoke test here because a dry run cannot prove anything
-# on a chain that has no DeployGate yet: LaunchDeployer aborts before simulating. ci.yml already covers this
-# path on every PR by running script/deploy/anvil.sh, which brings up its own gate and then does validate,
-# execute and TestData end to end on two forks.
+# Manual only, deliberately: it broadcasts to real testnets with the shared deployer key. Nothing has to be
+# in place first — the validate phase brings up the DeployGate on a chain that has none — so a fresh testnet
+# needs no preparation beyond its env/<network>.json. ci.yml covers the same path on every PR by running
+# script/deploy/anvil.sh, which does validate, execute and TestData end to end on two forks.
 #
 # The addresses a run lands on leave as one `env-<network>` artifact per network, because a job's working
 # directory does not outlive it and this workflow has no write access to the repository. Whoever triggered
@@ -92,6 +92,8 @@ jobs:
       - name: Validate
         run: |
           set -a; . ./.env; set +a
+          # Off mainnet one key does every step, so the signer is also the executor the commitment names
+          export EXECUTORS=$(cast wallet address --private-key "$PRIVATE_KEY")
           forge script script/deploy/LaunchDeployer.s.sol --tc LaunchDeployer --sig 'validate()' $FLAGS --private-key "$PRIVATE_KEY" --broadcast
       # Deliberately without --verify: an explorer that is slow, down or rate-limiting fails the step after
       # the deployment has landed, and the addresses would leave with it. Verification is the last step of

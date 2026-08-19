@@ -12,13 +12,13 @@ import {
     HyperlaneInput
 } from "./FullDeployer.s.sol";
 
-import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
-
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import "forge-std/Script.sol";
 
+import {REPLACE} from "../utils/JsonRegistry.s.sol";
 import {EnvConfig, Env} from "../utils/EnvConfig.s.sol";
+import {PROTOCOL_SAFE, OPS_SAFE} from "../utils/Admin.s.sol";
 
 /// @notice Launches the protocol through the DeployGate, one run per phase:
 ///
@@ -30,12 +30,27 @@ import {EnvConfig, Env} from "../utils/EnvConfig.s.sol";
 ///         and an executor signs execute with `--account <name> --sender <addr> --slow`. The execute phase
 ///         records what it deployed into env/<network>.json itself.
 contract LaunchDeployer is FullDeployer {
-    address constant PROTOCOL_SAFE = 0x9711730060C73Ee7Fcfe1890e8A0993858a7D225;
-    address constant OPS_SAFE = 0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16;
-
     /// @notice Commits the whole deployment to the gate: the single transaction the admin signs.
     function validate() public {
         _launch(DeployPhase.Validate);
+    }
+
+    /// @notice Drops the commitment without deploying any of it, leaving the namespace as it was before
+    ///         `validate()`. Signed by the same account that would validate, since revoking is committing
+    ///         nothing. What a commitment already deployed stays deployed: this is not a rollback
+    function revoke() public {
+        EnvConfig memory config = Env.load();
+        address validator_ = _validator(config);
+
+        // A Safe validator is proposed to instead, and a proposing run broadcasts nothing
+        bool broadcasting = !proposes(validator_);
+        if (broadcasting) vm.startBroadcast();
+
+        // The suffix only shapes salts, and revoking commits none
+        _initGated("", msg.sender, DeployPhase.Validate, validator_, new address[](0));
+        _revokeCommitment();
+
+        if (broadcasting) vm.stopBroadcast();
     }
 
     /// @notice Deploys what has been committed, one transaction per contract, signed by an executor.
@@ -56,16 +71,25 @@ contract LaunchDeployer is FullDeployer {
         );
     }
 
+    /// @dev A validator can never be replaced, so on mainnet it is the Safe rather than a key, and it
+    ///      delegates to whichever one signs the phase. Off mainnet, the signer keeps to its own addresses
+    function _validator(EnvConfig memory config) internal view returns (address) {
+        return config.network.isMainnet() ? PROTOCOL_SAFE : vm.envOr("VALIDATOR", msg.sender);
+    }
+
     function _launch(DeployPhase phase) internal {
         bool validating = phase == DeployPhase.Validate;
 
         EnvConfig memory config = Env.load();
-        vm.startBroadcast();
+        // Only validating is the validator's own call; executing is signed by an executor key either way
+        bool broadcasting = !validating || !proposes(_validator(config));
+
+        if (broadcasting) vm.startBroadcast();
 
         // Validating deploys nothing, so it reports nothing: the manifest belongs to the phase that deploys.
         // Opening it here and writing it below would replace the addresses of whatever was deployed last with
         // an empty set, leaving the execute phase to put them back
-        if (!validating) startDeploymentOutput();
+        if (!validating) startDeploymentOutput(REPLACE);
 
         DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
@@ -97,17 +121,19 @@ contract LaunchDeployer is FullDeployer {
             })
         });
 
-        // Hardcoded admins to double-check a correct mainnet deployment, on what the deployment is about to be
-        // told. The guardians do not exist yet in this phase, and this is the phase where it matters: a wrong
-        // env file aborts before the admin signs a commitment to contracts built around the wrong safes
+        // Hardcoded admins to double-check a correct mainnet deployment
         if (config.network.isMainnet() && validating) {
             require(address(input.protocolSafe) == PROTOCOL_SAFE, "wrong safe admin");
             require(address(input.opsSafe) == OPS_SAFE, "wrong ops admin");
         }
 
-        DeployGate gate = DeployGate(config.contracts.deployGate);
+        address[] memory executors;
+        if (validating) {
+            executors = vm.envAddress("EXECUTORS", ",");
+            require(executors.length > 0, "EXECUTORS must name at least one account");
+        }
 
-        deployFull(input, msg.sender, phase, gate);
+        deployFull(input, msg.sender, phase, _validator(config), executors);
 
         // And the same on what the deployment produced, which the check above cannot speak for
         if (config.network.isMainnet() && !validating) {
@@ -117,6 +143,6 @@ contract LaunchDeployer is FullDeployer {
 
         if (!validating) saveDeploymentOutput(config.network.name);
 
-        vm.stopBroadcast();
+        if (broadcasting) vm.stopBroadcast();
     }
 }

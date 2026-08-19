@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {DeployGate} from "../../src/deployment/misc/DeployGate.sol";
-
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
@@ -48,8 +46,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
     uint16 internal centrifugeId_ = CENTRIFUGE_ID;
-    DeployGate internal gate_;
-    address internal admin_;
+    address internal validator_;
 
     /// @dev Mock deployed code for validation check which requires deployed code length > 0
     function _mockBridgeContracts() internal {
@@ -64,22 +61,19 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
         // Both phases in one go, through a gate this contract administers and executes
         _bootstrap();
-        deployFullBothPhases(_input(""), address(this), gate_);
+        deployFullBothPhases(_input(""), address(this), validator_, _executors(address(this)));
     }
 
-    /// @dev What DeployGateDeployer does, in its own isolated run. Its address is irrelevant here, only that it
-    ///      is a gate this contract administers. Root is relied from the start, at the address the gate is
-    ///      going to deploy it to, which is already determined by the gate's own address.
+    /// @dev The gate is brought up by the deployment itself, so there is nothing to place first. This
+    ///      contract owns the namespace it deploys under because it is the one that validates in it
     function _bootstrap() internal {
-        admin_ = address(this);
+        validator_ = address(this);
+    }
 
-        _init("");
-
-        address[] memory executors = new address[](1);
-        executors[0] = address(this);
-
-        address futureGate = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
-        gate_ = new DeployGate(admin_, create3Address("root", V3_1, futureGate), executors);
+    /// @dev Deployed by whoever is named here, in the namespace this contract validates in
+    function _executors(address executor_) internal pure returns (address[] memory executors) {
+        executors = new address[](1);
+        executors[0] = executor_;
     }
 
     function _input(string memory suffix_) internal view returns (DeployerInput memory) {
@@ -1014,20 +1008,19 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertGt(executedContracts, 50, "the whole protocol should go through the DeployGate");
     }
 
-    /// @dev The gate is built naming the address it is going to deploy root to, which only holds if that
-    ///      prediction is exact: the root deployed here has to be the very one relied back then
-    function testRootGovernsTheGateThatDeployedIt() public {
-        assertEq(deployGate.wards(address(root)), 1, "root should be a ward of the gate that deployed it");
-
-        // What root.relyContract(deployGate, ...) does, so governance can name an admin without the current one
-        address newAdmin = makeAddr("newAdmin");
-        vm.startPrank(address(root));
-        deployGate.rely(newAdmin);
-        deployGate.deny(admin_);
-        vm.stopPrank();
-
-        assertEq(deployGate.wards(newAdmin), 1, "root should be able to name another admin");
-        assertEq(deployGate.wards(admin_), 0, "root should be able to remove the deploying admin");
+    /// @dev The commitment is the whole of the gate's state, so a spent one leaves an executor nothing to
+    ///      deploy with, on this namespace or any other
+    function testTheCommitmentIsSpent() public view {
+        assertEq(
+            deployGate.deployed(validator_, DEFAULT_COMMITMENT_ID),
+            executedContracts,
+            "every committed contract was deployed"
+        );
+        assertEq(
+            deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("root", V3_3)),
+            0,
+            "and nothing is left to deploy"
+        );
     }
 
     function testEveryContractIsDeployed() public view {
@@ -1072,9 +1065,13 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
 
     /// @dev Nothing stays validated once deployed, so a stale approval cannot linger on chain
     function testValidationsAreConsumed() public view {
-        assertEq(deployGate.validated(_makeSalt("root", V3_1, address(deployGate))), 0, "root");
-        assertEq(deployGate.validated(_makeSalt("spoke", V3_3, address(deployGate))), 0, "spoke");
-        assertEq(deployGate.validated(_makeSalt("coreBatcher", V_LATEST, address(deployGate))), 0, "coreBatcher");
+        assertEq(deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("root", V3_3)), 0, "root");
+        assertEq(deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("spoke", V3_3)), 0, "spoke");
+        assertEq(
+            deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("coreBatcher", V_LATEST)),
+            0,
+            "coreBatcher"
+        );
     }
 
     /// @dev Wiring depends on the addresses predicted while queueing, so a mismatch would show up here
@@ -1122,10 +1119,8 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
 
         // The phases are signed by different accounts on a real deployment, so the fixture separates them too.
         // Running both as one account would hide an init code that depends on who is deploying: it would come
-        // out the same in both walks here, and only revert with `NotValidated` on chain, after the signature
-        gate_.updateExecutor(EXECUTOR, true);
-        gate_.updateExecutor(address(this), false);
-
+        // out the same in both walks here, and only revert with `NotValidated` on chain, after the signature.
+        // Naming the executor is the validate phase's job, so nothing has to be granted before it
         _deploy(DeployPhase.Validate);
     }
 
@@ -1137,12 +1132,12 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
 
     function _deploy(DeployPhase phase, string memory suffix_) internal {
         if (phase == DeployPhase.Validate) {
-            deployFull(_input(suffix_), address(this), phase, gate_);
+            deployFull(_input(suffix_), address(this), phase, validator_, _executors(EXECUTOR));
             return;
         }
 
         vm.startPrank(EXECUTOR);
-        deployFull(_input(suffix_), EXECUTOR, phase, gate_);
+        deployFull(_input(suffix_), EXECUTOR, phase, validator_, _executors(EXECUTOR));
         vm.stopPrank();
     }
 
@@ -1155,17 +1150,28 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
 
     function testValidatePhaseCommitsEveryContract() public view {
         assertGt(validatedContracts, 50, "the admin should commit the whole protocol in one transaction");
-        assertTrue(deployGate.validated(_makeSalt("root", V3_1, address(deployGate))) != 0, "root");
-        assertTrue(deployGate.validated(_makeSalt("spoke", V3_3, address(deployGate))) != 0, "spoke");
-        assertTrue(deployGate.validated(_makeSalt("hub", V3_3, address(deployGate))) != 0, "hub");
-        assertTrue(deployGate.validated(_makeSalt("coreBatcher", V_LATEST, address(deployGate))) != 0, "coreBatcher");
-        assertTrue(deployGate.validated(_makeSalt("neverDeployed", V3_3, address(deployGate))) == 0, "unknown salt");
+        assertTrue(deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("root", V3_3)) != 0, "root");
+        assertTrue(deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("spoke", V3_3)) != 0, "spoke");
+        assertTrue(deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("hub", V3_3)) != 0, "hub");
+        assertTrue(
+            deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("coreBatcher", V_LATEST)) != 0,
+            "coreBatcher"
+        );
+        assertTrue(
+            deployGate.validated(validator_, DEFAULT_COMMITMENT_ID, _gatedSalt("neverDeployed", V3_3)) == 0,
+            "unknown salt"
+        );
     }
 
     function testExecutorCanOnlyDeployWhatWasValidated() public {
-        assertTrue(deployGate.isExecutor(EXECUTOR), "the executor may deploy what was validated");
-        assertEq(deployGate.wards(EXECUTOR), 0, "and is a ward of nothing, on the gate or anywhere else");
-        assertFalse(deployGate.isExecutor(address(this)), "the admin is not the one deploying");
+        assertTrue(
+            deployGate.isExecutor(validator_, DEFAULT_COMMITMENT_ID, EXECUTOR),
+            "the executor may deploy what was validated"
+        );
+        assertFalse(
+            deployGate.isExecutor(validator_, DEFAULT_COMMITMENT_ID, address(this)),
+            "the validator is not the one deploying"
+        );
 
         _deploy(DeployPhase.Execute);
 
