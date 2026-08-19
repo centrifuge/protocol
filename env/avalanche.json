@@ -173,11 +173,6 @@
       "blockNumber": 76720454,
       "version": "v3.1"
     },
-    "onOfframpManagerFactory": {
-      "address": "0x2539e60B0B50D7BD004A09e9D2b7E8c86EB0AaF6",
-      "blockNumber": 76720476,
-      "version": "v3.1"
-    },
     "merkleProofManagerFactory": {
       "address": "0xc5243bdEa2d86eA7541AC69084dF3EDdc137a18b",
       "blockNumber": 76720487,

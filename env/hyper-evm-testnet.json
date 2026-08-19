@@ -191,11 +191,6 @@
       "blockNumber": 43581099,
       "version": "v3.1"
     },
-    "onOfframpManagerFactory": {
-      "address": "0xAa696bCD0FCeBC186BcCD6de548EB385d57e132B",
-      "blockNumber": 43581099,
-      "version": "v3.1"
-    },
     "merkleProofManagerFactory": {
       "address": "0x81c38f8a9ef2953dA2DAF7b6bddFF3baB5095216",
       "blockNumber": 43581099,
