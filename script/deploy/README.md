@@ -1,15 +1,16 @@
 # Centrifuge Protocol – Deployment
 
-Launching the protocol on a chain that does not have one. For changing a chain that already runs it, see
-`script/ops/`; for a map of all the script directories, see [`../README.md`](../README.md).
+Launching the protocol on a chain that does not have one. Changing a chain that already runs it is not done
+from this branch — those scripts live on `live`; for a map of the script directories here, see
+[`../README.md`](../README.md).
 
 There is no wrapper: **every intent is one forge command**. `--rpc-url <network>` is the only input that
-selects a network: it decides where the run connects, and `Env.detect()` matches that chain id against
-`env/*.json` to decide which config it reads, so the two cannot disagree. There is no override. The RPC URL
+selects a network: it decides where the run connects, and `Chains.detect()` matches that chain id against
+`env/<environment>/*.json` to decide which config it reads, so the two cannot disagree. There is no override. The RPC URL
 itself and the verification key come from `foundry.toml` (`[rpc_endpoints]`, `[etherscan]`). The signer is always passed explicitly, so a
-testnet run and a mainnet run have the same shape and differ only in who signs. The two things that cannot be
-a forge command — bringing up local forks, and a test that spans networks and waits for relays — have one
-dedicated script each: `anvil.sh` here and `../testnet/crosschaintest.sh`.
+testnet run and a mainnet run have the same shape and differ only in who signs. The one thing that cannot be
+a forge command — bringing up local forks, which needs anvil processes — has a dedicated script here:
+`anvil.sh`.
 
 **Run everything from the repository root.**
 
@@ -36,10 +37,10 @@ KEY="--private-key $PRIVATE_KEY"
 
 EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' --rpc-url sepolia $KEY --broadcast
 forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()'  --rpc-url sepolia $KEY --broadcast --verify
-forge script script/testnet/TestData.s.sol --rpc-url sepolia $KEY --broadcast   # optional test data
+forge script script/testnet/TestData.s.sol --rpc-url <network> $KEY --broadcast # optional test data
 ```
 
-`LaunchDeployer` writes the addresses, versions and block numbers into `env/sepolia.json` itself, as it
+`LaunchDeployer` writes the addresses, versions and block numbers into `env/testnet/sepolia.json` itself, as it
 deploys. There is no follow-up step and nothing to remember.
 
 ### Deploy the protocol (mainnet)
@@ -86,16 +87,16 @@ broadcast would post the proposal over ffi and then fail to send the deferred tr
 no gate the gate's own deployment is batched into the same Safe transaction. `revoke()` follows the validator
 the same way; `execute()` never does.
 
-The Safe can also name a **delegate** at any point (`ProposeSetDelegate`, itself a Safe proposal) — an
+The Safe can also name a **delegate** at any point (`ProposeSetDelegate` on the `live` branch, itself a Safe
+proposal) — an
 optional step that turns the validator-signed phases back into ordinary broadcasts: a run signed by a
 delegate is not proposed, it commits to the gate directly from its own key, `validate()` and `revoke()`
 alike — one transaction, no owner round-trip, which is also the fast path for dropping or replacing a
 commitment in a hurry. Runs signed by anyone else keep following the validator and end in a proposal.
 
 ```bash
-# Optional, once per chain: name a delegate. Afterwards it signs the phases as ordinary broadcasts
-DELEGATE_ADDR=<delegate-address> forge script script/ops/ProposeSetDelegate.s.sol --sig 'grant()' \
-    --rpc-url ethereum --sender <safe-owner-address> --ffi
+# Optional, once per chain: name a delegate (ProposeSetDelegate, on the `live` branch). Afterwards it signs
+# the phases as ordinary broadcasts
 
 EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' \
     --rpc-url ethereum --ledger --sender <delegate-address> --slow --broadcast
@@ -113,24 +114,21 @@ forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()' --rpc-url <net
 forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()' --rpc-url <network> --resume --verify
 ```
 
-### Local forks / every testnet / cross-chain test
+### Local forks / every testnet
 
 ```bash
-./script/deploy/anvil.sh                       # two local forks, deployed exactly the way mainnet is
-./script/testnet/crosschaintest.sh base-sepolia # cross-chain adapter isolation test
+./script/anvil/anvil.sh                        # two local chains, deployed exactly the way mainnet is
 ```
 
-Deploying **all** testnets in one go is a CI concern and lives in `.github/workflows/deploy-testnets.yml` as
-a network matrix running the cookbook commands above. That workflow is manual (`workflow_dispatch`) only, and
-testnets only: the sole signing key CI can reach is the testnet one, and mainnet is signed on a Ledger, so a
-mainnet deployment never runs there.
+Deploying a whole environment in one go is a CI concern, and lives on the `live` branch with the configs it
+deploys against — every deployment that outlives a process is made from there. The base branch deploys only
+the local pair above.
 
-It does no wiring of its own, because `LaunchDeployer` already wires the adapters from the action batchers —
-pointing each remote peer at the address its own adapter landed on, which is right because CREATE3 puts them
-at the same address on every chain given the same validator and `SUFFIX`. That only holds if every connected
-network is deployed in the same run, so the workflow does not hard-code which networks those are: it reads
-them out of `env/connections/testnet.json` when it starts. Adding a network to the connections file is
-therefore the entire change needed to have it deployed and wired.
+That matters for one reason worth knowing here. `LaunchDeployer` wires the adapters itself, from the action
+batchers, pointing each remote peer at the address its own adapter landed on — right only because CREATE3
+puts them at the same address on every chain given the same validator and `SUFFIX`. That holds only if every
+connected network is deployed in the same run, which is why the run reads its network list out of the
+environment's connections file rather than being told one.
 
 ### Trying a deployment before committing to it
 
@@ -153,7 +151,6 @@ sequence, which is also what ci.yml runs on every pull request.
 |---|---|
 | `EXECUTORS` | Accounts allowed to run the execute phase. **Required** by `validate()`, at least one. Read nowhere else |
 | `VALIDATOR` | Namespace the addresses derive from. Off mainnet only, defaulting to the signer; pinned to the protocol Safe on mainnet. Two phases signed by different keys have to pass it to **both**, or the second reads another namespace |
-| `DELEGATE_ADDR` | Account `ProposeSetDelegate` names, or drops. Required by that script, read nowhere else |
 | `LEDGER_DERIVATION_PATH` | Where on the Ledger the signer is. Optional, defaulting to the first account |
 | `SUFFIX` | Isolates a deployment onto its own addresses. Optional, and ignored on mainnet |
 | `PRIVATE_KEY` | The testnet key `.env` holds, for you to pass as `--private-key`. No script reads it |
@@ -276,7 +273,7 @@ named after an account. The gate has no roles of its own — no wards, no owner,
   `setDelegate(delegatee, isValid)`. This is how a cold validator key can be the thing addresses derive from
   while a warmer key signs the phase. The deployment no longer depends on one — a Safe validator is proposed
   to instead, which needs no second account — but naming one stays open at any point as an optional step:
-  `ProposeSetDelegate` proposes the call, and a run signed by the delegate afterwards broadcasts to the gate
+  `ProposeSetDelegate` (on `live`) proposes the call, and a run signed by the delegate afterwards broadcasts to the gate
   directly instead of being proposed. Delegation goes one way and one level deep: `setDelegate` always writes
   to the *caller's own* namespace, so a delegate naming one names it in its own, and there is no call that
   takes a namespace from the account it is named after. A leaked delegate key can commit, and can be revoked
@@ -326,9 +323,9 @@ CreateX derives a CREATE3 address from its caller and the salt, and the caller i
   existing deployment aborts on the first contract whose address is taken, in either phase, and that is
   deliberate: the contracts of an earlier release are warded by that release's action batchers, which denied
   themselves once they were done, so a later run could not wire them even if it were allowed to redeploy
-  around them. Shipping a change to a live chain is a dedicated script plus a spell, as in
-  `DeployOnchainPMV2`.
-- The standalone scripts (`DeployAdapters`, `DeployOnchainPMV2`) still salt with `msg.sender`, so
+  around them. Shipping a change to a live chain is a dedicated script plus a spell, both on the `live`
+  branch.
+- The standalone scripts there still salt with `msg.sender`, so
   their addresses do not derive from the gate and no longer collide with the protocol's. **Their versions must
   never overlap with `FullDeployer`'s**: a name and version those scripts share with a gated deployment now
   lands on a second, unwired address instead of reverting on a taken one, and the config would record that one
@@ -375,14 +372,13 @@ CreateX derives a CREATE3 address from its caller and the salt, and the caller i
 
 ---
 
-## How a deployment reaches `env/<network>.json`
+## How a deployment reaches `env/<environment>/<network>.json`
 
 One step: **the deploy script records itself, as it deploys.** `JsonRegistry` (`startDeploymentOutput()` +
-`register()`, which `createSalt()` already calls, + `saveDeploymentOutput(network)`) merges the names,
-addresses, versions and block numbers straight into `env/<network>.json`. The scripts that deploy —
-`LaunchDeployer`, `DeployAdapters`, `DeployGasService` — each do this for what they
-produce, because the running script is the only thing that knows those addresses. Nothing has to be run
-afterwards.
+`register()`, which `reportedSalt()` already calls, + `saveDeploymentOutput(path)`) merges the names,
+addresses, versions and block numbers straight into `env/<environment>/<network>.json`. Every script that deploys does this
+for what it produces, because the running script is the only thing that knows those addresses. Nothing has to
+be run afterwards.
 
 **`startBlock` is the earliest block any contract in the config carries**, recomputed on every write rather
 than set to the current run's block. A redeployment that reuses contracts leaves older ones in place, and an
@@ -426,7 +422,7 @@ already present; `./script/setup/add-gcp-secret.sh` adds or rotates one. See `sc
 
 | Secret name | Becomes | Used for |
 |-------------|---------|----------|
-| `protocol-etherscan-api` | `ETHERSCAN_API_KEY` | `--verify`, and VerifyFactoryContracts' explorer lookups |
+| `protocol-etherscan-api` | `ETHERSCAN_API_KEY` | `--verify`, and the explorer lookups the verification flow makes |
 | `protocol-alchemy-api` | `ALCHEMY_API_KEY` | RPC for every Alchemy-hosted network |
 | `protocol-plume-api` | `PLUME_API_KEY` | RPC for Plume |
 | `protocol-pharos-api` | `PHAROS_API_KEY` | RPC for Pharos (via Zan) |
@@ -448,11 +444,8 @@ produces. Two mechanisms cover that, and they cover different things.
 Two details worth knowing:
 
 - Deploy commands never carry a key: `--rpc-url <network>` passes an `[rpc_endpoints]` **alias** and
-  `--verify` reads `[etherscan]`, both resolved by forge internally. The one exception is `anvil
-  --fork-url`, which has no alias support and needs a real URL built for it: `anvil.sh` spells one out for
-  the two Sepolia forks it starts, and `ops/test-pool-hooks-fork.sh`, which takes any network, reads the
-  entry back out of `[rpc_endpoints]` with `forge config --json`. `anvil.sh` redacts `anvil-*.log` once
-  anvil has stopped in CI, and the file is gitignored either way.
+  `--verify` reads `[etherscan]`, both resolved by forge internally. The local chains carry none at all —
+  `script/anvil/anvil.sh` starts bare anvil, no fork, no URL, no key, and its `anvil-*.log` is gitignored.
 
 GitHub only auto-masks `${{ secrets.* }}`. These values come from Secret Manager at runtime, so nothing masks
 them unless `load-secrets.sh` does.
@@ -461,17 +454,17 @@ them unless `load-secrets.sh` does.
 
 ## Network config and RPC endpoints
 
-Per-network config lives in **`env/<network>.json`**: chain id, environment, admins, adapter config, and the
+Per-network config lives in **`env/<environment>/<network>.json`**: chain id, environment, admins, adapter config, and the
 deployed `contracts` section. **RPC URLs live in `foundry.toml`** under `[rpc_endpoints]`, one alias per
 network, API key interpolated from the environment; **verification keys live next to them** under
 `[etherscan]`. The command line and Solidity reach the same endpoint through the same alias (`--rpc-url
 <network>` / `vm.rpcUrl(<network>)`).
 
-`env/<network>.json` is the source of truth for all of it. The two `foundry.toml` tables are derived from it,
+`env/<environment>/<network>.json` is the source of truth for all of it. The two `foundry.toml` tables are derived from it,
 because forge's Rust side cannot read the env files, so **adding a network is one edit plus one command**:
 
 ```bash
-# write env/<network>.json, then
+# write env/<environment>/<network>.json, then
 python3 script/checks/check_foundry_networks.py --fix
 ```
 
@@ -490,8 +483,8 @@ A network can name **two** explorer endpoints, because on some chains they are t
 
 | field | what it is | who uses it |
 |---|---|---|
-| `.network.verifierUrl` | where source is **submitted** for verification | `forge verify-contract` via `VerifyFactoryContracts`, and `[etherscan]` in `foundry.toml` |
-| `.network.explorerApiUrl` | where an Etherscan-compatible **read** goes | `VerifyFactoryContracts`, asking whether a contract is verified already |
+| `.network.verifierUrl` | where source is **submitted** for verification | `forge verify-contract`, and `[etherscan]` in `foundry.toml` |
+| `.network.explorerApiUrl` | where an Etherscan-compatible **read** goes | asking whether a contract is verified already |
 
 Both default to Etherscan's multichain v2 endpoint for the network's chain id, so most networks set neither.
 Set `verifierUrl` when verification goes somewhere else; set `explorerApiUrl` only when reads do.
@@ -502,7 +495,7 @@ not work. They diverge on SocialScan: monad and pharos point `verifierUrl` at a 
 endpoint that accepts submissions and rejects every read with `"the action is error"`, so leaving their
 `explorerApiUrl` unset sends reads to Etherscan v2 instead.
 
-Getting this wrong is quiet rather than loud: nothing fails, `VerifyFactoryContracts` just reports every
+Getting this wrong is quiet rather than loud: nothing fails, the verification run just reports every
 contract on the chain as unverified and re-submits it.
 
 ### Chains that verify somewhere other than Etherscan
@@ -519,7 +512,7 @@ contract on the chain as unverified and re-submits it.
   `NON_ETHERSCAN_VERIFIERS`), and **that absence is the mechanism**: finding no Etherscan key for the chain,
   forge falls back to Sourcify on its own — `Attempting to verify on Sourcify`. A plain `--verify` is
   therefore right on x-layer, and naming it (`--verifier sourcify --verifier-url https://sourcify.dev/server`)
-  only makes the fallback explicit. `VerifyFactoryContracts` passes those two from `.network.verifier` and
+  only makes the fallback explicit. The verification run passes those two from `.network.verifier` and
   `.network.verifierUrl` already.
 
   An entry pointing at Etherscan would be worse than none: forge would aim at a chain Etherscan does not
@@ -528,13 +521,13 @@ contract on the chain as unverified and re-submits it.
 Reading verification back is a separate question, and two chains have no endpoint for it: Etherscan v2
 serves neither 196 nor 1672 (`Missing or unsupported chainid parameter`), and SocialScan's pharos API
 answers `the action is error` to a `getsourcecode` read on its `command_api` and `Not Found` on every other
-path tried. So on those two, "is it verified already?" always answers no and `VerifyFactoryContracts`
+path tried. So on those two, "is it verified already?" always answers no and the verification run
 re-submits — wasteful, not wrong. Sourcify covers both chains if we ever want to read from it too, but its
-API is not Etherscan-shaped, so that is a change to `VerifyFactoryContracts` rather than a URL.
-### What a run does to `env/<network>.json`
+API is not Etherscan-shaped, so that is a change to the verification script rather than a URL.
+### What a run does to `env/<environment>/<network>.json`
 
 Every deploy script records what it deployed, and the write is a **merge**: a contract the run does not
-mention keeps whatever the config said, so `DeployAdapters` and `DeployGasService` can add to a file without
+mention keeps whatever the config said, so a script that adds to an existing deployment can write to a file without
 erasing each other.
 
 `LaunchDeployer` is the exception: it opens its run with `startDeploymentOutput(REPLACE)`. It launches a

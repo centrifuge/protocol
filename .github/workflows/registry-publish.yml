@@ -1,0 +1,41 @@
+# Registry publish — the manual entry point for the registry pipeline, and nothing else.
+#
+# The pipeline itself is the live branch's registry.yml, which also runs there on push and PR; encoding
+# its publish half a second time here would be a copy that drifts, so this calls that workflow instead —
+# pinned at the ref, so the pipeline that runs is exactly the one beside the data it publishes. The
+# dispatch payload propagates into the called run, which is why the input here must keep the name
+# `environment`: the pipeline reads it as github.event.inputs.environment.
+#
+# This file sits on main because a workflow must exist on the default branch to be dispatchable at all.
+# Live branches are version-pinned (live-v3.2, live-v3.3, ...), so cutting a new release means updating the
+# refs below to name its branch — `uses:` takes no expression, so they cannot be inputs.
+
+name: Registry publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Which registry to publish (mainnet, testnet, or both)'
+        required: true
+        type: choice
+        options:
+          - both
+          - mainnet
+          - testnet
+
+jobs:
+  publish:
+    uses: centrifuge/protocol-internal/.github/workflows/registry.yml@live-v3.3
+    with:
+      ref: live-v3.3
+    # `inherit` hands the called ref every repo secret, and the ref is a mutable branch: whoever can push
+    # live-v3.3 can change what runs here. Kept until that branch can declare its secrets (an explicit list
+    # needs `on.workflow_call.secrets` on its registry.yml, which is frozen right now — it uses exactly
+    # CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID, ETHERSCAN_API_KEY, PINATA_JWT). Branch protection on live-*
+    # is the real boundary either way.
+    secrets: inherit
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write

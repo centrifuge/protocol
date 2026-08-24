@@ -1,13 +1,24 @@
-# Weekly Deployment Validation
+# Weekly Deployment Validation — the trigger, and nothing else.
 #
-# Runs live fork tests from the `live-validators` branch against all deployed networks.
-# The `live-validators` branch is pinned to the latest deployed protocol version.
+# What actually runs lives on the release's live branch (live-v3.2, live-v3.3, ...): one branch per
+# deployed protocol version, never renamed, since several versions can be live at once. This file names no
+# network, no test, no profile and no toolchain version: it checks the branch out and asks it what to do.
 #
-# To update after a new deployment:
-#   git push origin <release-tag-or-commit>:refs/heads/live-validators --force
+#   .github/ci-scripts/weekly-validation.sh plan          -> {"foundry": "<version>", "targets": ["<id>", …]}
+#   .github/ci-scripts/weekly-validation.sh run <id>      -> runs one target; a non-zero exit fails the job
 #
-# Schedule triggers only fire on the default branch (main), so this file must
-# live on main even though it checks out `live-validators` for test execution.
+# A target id is opaque here and is used verbatim as a matrix value, a job name and an artifact name, so it
+# has to stay within [A-Za-z0-9._-]. A failing run leaves files in $CI_FAILURE_DIR; a `summary.md` among
+# them is pasted into the issue this workflow opens. Redacting them is the entrypoint's job, because
+# ::add-mask:: stars secrets out of the live log and never out of a file that gets uploaded, and an RPC
+# failure is exactly what puts a URL with its API key into one.
+#
+# Everything version-specific therefore lives with the branch. Cutting a new release means cutting its
+# live-v<version> branch and updating the defaults below to name it — the branch input stays, so a run can
+# still be pointed at an older release's branch by hand.
+#
+# The file has to sit on main regardless: schedule triggers only fire on the default branch, and a workflow
+# must exist on the default branch to be dispatchable at all.
 
 name: Weekly Deployment Validation
 
@@ -17,56 +28,37 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch to validate (default: live-validators)"
+        description: "Branch to validate (default: live-v3.3)"
         required: false
-        default: "live-validators"
-
-env:
-  FOUNDRY_PROFILE: ci
+        default: "live-v3.3"
 
 jobs:
-  validate-state:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     permissions:
       contents: "read"
-      id-token: "write"
-    strategy:
-      fail-fast: false
-      matrix:
-        network: [ethereum, base, arbitrum, plume, avalanche, bnb-smart-chain, optimism, hyper-evm, monad]
-    name: "State: ${{ matrix.network }}"
+    outputs:
+      targets: ${{ steps.plan.outputs.targets }}
+      foundry: ${{ steps.plan.outputs.foundry }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch || 'live-validators' }}
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/setup-gcloud@v2
-      - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.4.4
-      - run: ./script/setup/load-secrets.sh
-      - run: forge test --match-test "testLiveValidation" -vv 2>&1 | tee test-output.txt
-        env:
-          NETWORK: ${{ matrix.network }}
-      - if: failure()
-        run: echo "${{ matrix.network }}" > failed-chain.txt
-      # ::add-mask:: only stars secrets out of the live log, never out of a file that gets uploaded, and an
-      # RPC failure is exactly what puts a URL with its API key into this one
-      - if: failure()
-        run: ./script/setup/redact-secrets.sh test-output.txt
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: failure-state-${{ matrix.network }}
-          path: |
-            failed-chain.txt
-            test-output.txt
+          ref: ${{ inputs.branch || 'live-v3.3' }}
 
-  validate-flows:
+      - name: Ask the branch what to run
+        id: plan
+        run: |
+          plan=$(.github/ci-scripts/weekly-validation.sh plan)
+          jq . <<<"$plan"
+          # The contract the comments state, enforced: ids become matrix values, job names, artifact names
+          # and an inline-interpolated argument, so they stay within [A-Za-z0-9._-]; foundry is one token
+          jq -e '(.foundry | test("^[A-Za-z0-9._-]+$")) and (.targets | length > 0 and all(test("^[A-Za-z0-9._-]+$")))' \
+            <<<"$plan" >/dev/null || { echo "plan output violates the target-id contract" >&2; exit 1; }
+          echo "targets=$(jq -c '.targets' <<<"$plan")" >> "$GITHUB_OUTPUT"
+          echo "foundry=$(jq -r '.foundry' <<<"$plan")" >> "$GITHUB_OUTPUT"
+
+  validate:
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -75,12 +67,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        network: [ethereum, base, arbitrum, plume, avalanche, bnb-smart-chain, optimism, hyper-evm, monad]
-    name: "Flows: ${{ matrix.network }}"
+        target: ${{ fromJson(needs.plan.outputs.targets) }}
+    name: ${{ matrix.target }}
+    env:
+      CI_FAILURE_DIR: ${{ github.workspace }}/ci-failures
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch || 'live-validators' }}
+          ref: ${{ inputs.branch || 'live-v3.3' }}
+          submodules: recursive
+
+      # Credentials and the toolchain are all this side provides: which secrets to load and what to do with
+      # them is the entrypoint's, since only the validated branch knows how it stores either
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -88,27 +86,23 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.4
-      - run: ./script/setup/load-secrets.sh
-      - run: forge test --match-test "testInvestmentFlows" -vv 2>&1 | tee test-output.txt
-        env:
-          NETWORK: ${{ matrix.network }}
-      - if: failure()
-        run: echo "${{ matrix.network }}" > failed-chain.txt
-      # As above: the uploaded log has to be redacted, masking does not reach into files
-      - if: failure()
-        run: ./script/setup/redact-secrets.sh test-output.txt
+          version: ${{ needs.plan.outputs.foundry }}
+
+      - run: .github/ci-scripts/weekly-validation.sh run "${{ matrix.target }}"
+
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: failure-flows-${{ matrix.network }}
-          path: |
-            failed-chain.txt
-            test-output.txt
+          name: failure-${{ matrix.target }}
+          path: ci-failures/
+          if-no-files-found: ignore
 
   report-failures:
-    needs: [validate-state, validate-flows]
-    if: failure()
+    # Explicit over failure()'s dependency-chain semantics: a failed `plan` skips `validate`, and whether a
+    # skipped intermediate still propagates failure() is exactly the kind of reading two people disagree on.
+    # This job is the only thing that turns a dead Monday cron into a page, so its condition takes no reading.
+    needs: [plan, validate]
+    if: always() && (needs.plan.result == 'failure' || needs.validate.result == 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -118,31 +112,35 @@ jobs:
         with:
           pattern: failure-*
           path: failures
-      - name: Build failure summary
+
+      # The entrypoint redacts before writing to $CI_FAILURE_DIR, but this job has no .env to re-check that
+      # against, and an issue body leaves the private-repo boundary in notification mails. So mask anything
+      # shaped like a keyed RPC URL as defence in depth — a summary that trips this had a redaction bug, and
+      # the issue still opens, pointing at it, secret withheld.
+      - name: Collect the summaries
         id: summary
         run: |
-          CHAINS=""
-          DETAILS=""
-          for dir in failures/failure-*/; do
-            [ -d "$dir" ] || continue
-            chain=$(cat "$dir/failed-chain.txt" 2>/dev/null || echo "unknown")
-            type=$(basename "$dir" | sed 's/failure-//' | sed "s/-${chain}//")
-            CHAINS="${CHAINS}- **${chain}** (${type})\n"
-            DETAILS="${DETAILS}<details><summary>${chain} (${type})</summary>\n\n\`\`\`\n$(tail -50 "$dir/test-output.txt" 2>/dev/null || echo "No output")\n\`\`\`\n</details>\n\n"
-          done
+          shopt -s nullglob
           {
-            echo "chains<<EOF"
-            echo -e "$CHAINS"
-            echo "EOF"
-            echo "details<<EOF"
-            echo -e "$DETAILS"
-            echo "EOF"
+            echo "body<<CI_SUMMARY_EOF"
+            for f in failures/failure-*/summary.md; do
+              # any >=20-char path segment in a URL: covers Alchemy (/v2/KEY), Plume (rpc.plume.org/KEY)
+              # and Pharos (/pharos/mainnet/KEY) shapes; masking an explorer-link address too is the safe
+              # direction, and bare addresses in the log text are untouched
+              sed -E 's#(://[^[:space:]]*/)[A-Za-z0-9_-]{20,}#\1[REDACTED]#g' "$f"
+              echo
+            done
+            echo "CI_SUMMARY_EOF"
           } >> "$GITHUB_OUTPUT"
-      - name: Create GitHub issue
+
+      - name: Open an issue
         uses: actions/github-script@v7
+        env:
+          BODY: ${{ steps.summary.outputs.body }}
         with:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const planFailed = ${{ needs.plan.result == 'failure' }};
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -150,9 +148,7 @@ jobs:
               labels: ['validation-failure'],
               body: `## Weekly deployment validation failed\n\n` +
                 `**Run:** ${runUrl}\n\n` +
-                `### Failing networks\n\n${process.env.CHAINS}\n` +
-                `### Error details\n\n${process.env.DETAILS}`
+                (planFailed
+                  ? '_Planning failed: the branch could not even say what to validate. No network was checked._'
+                  : (process.env.BODY || '_No summaries were uploaded._'))
             });
-          env:
-            CHAINS: ${{ steps.summary.outputs.chains }}
-            DETAILS: ${{ steps.summary.outputs.details }}

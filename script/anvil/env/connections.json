@@ -1,0 +1,12 @@
+{
+  "aliases": {
+    "ALL": ["local-a", "local-b"]
+  },
+  "connections": [
+    {
+      "chains": ["ALL", "ALL"],
+      "adapters": ["axelar", "layerZero", "chainlink"],
+      "threshold": 1
+    }
+  ]
+}

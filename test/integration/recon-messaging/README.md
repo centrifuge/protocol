@@ -143,14 +143,10 @@ FOUNDRY_PROFILE=echidna echidna test/integration/recon-messaging/CryticMessaging
 # quick local smoke: drop --test-limit (Echidna default 50k)
 ```
 
-Do NOT run `echidna .`. Whole-project compilation pulls in `script/**`, where `EnvConnections` (in `script/utils/EnvConnectionsConfig.s.sol`) declares a `public` library function and therefore needs linking. It is not in `echidna-messaging.yaml`'s `--compile-libraries` list and cannot be, because the cloud target is a single file whose import closure excludes it. `echidna .` fails with:
-
-```
-Error: Unlinked libraries detected in bytecode of contract
-  script/DeployGasService.s.sol:DeployGasService
-```
-
-The file target is also what Recon Cloud uses, so running it locally keeps the two in sync.
+Run the file target, not `echidna .`. Both compile — `EnvConnections.load` used to be a `public` library
+function needing linking that whole-project compilation could not provide, but it is `internal` now — the
+reason that survives is parity: the file target is what Recon Cloud uses, so running it locally keeps the
+two in sync.
 
 ### `recon fuzz` takes the OPPOSITE target
 

@@ -128,7 +128,6 @@ src/
 │   ├── RefundEscrow.sol   # Refund handling
 │   ├── RefundEscrowFactory.sol
 │   └── SubsidyManager.sol
-├── spell/                  # Governance spells (archived under env/spell/ after execution)
 └── misc/                  # Utilities & types
     ├── Auth.sol          # Auth mixin
     ├── ERC20.sol         # Token standard
@@ -146,18 +145,16 @@ test/                        # Tests mirror src/ structure
 ├── managers/             # Manager contract tests
 ├── hooks/                # Transfer hook tests
 ├── adapters/             # Cross-chain adapter tests
-├── integration/          # Cross-module integration & fork tests & spell tests
+├── integration/          # Cross-module integration tests
 └── misc/                 # Utility & library tests
 
 script/
-├── deploy/              # Launching the protocol on a chain: the deployer stack + anvil.sh for local forks
-├── ops/                 # Acting on a deployment that already exists (upgrades, wiring, unpause, one-offs)
+├── anvil/               # Two local chains with the protocol on both, and the fixtures describing them
+├── deploy/              # Launching the protocol on a chain: the deployer stack
 ├── setup/               # Credentials & hygiene: setup.sh, load-secrets.sh, redact-secrets.sh
-├── testnet/             # Test data & cross-chain adapter tests
-├── spell/               # Spell execution scripts
-├── registry/            # ABI registry pipeline (Node)
+├── testnet/             # Test data for a fresh deployment
 ├── checks/              # Repo-wide checks CI enforces (imports, ward coverage, CLAUDE.md tree, foundry.toml network tables, gas benchmarks)
-└── utils/               # Shared Solidity helpers (EnvConfig, JsonRegistry)
+└── utils/               # Shared Solidity helpers (ChainConfig, EnvConfig, JsonRegistry)
     ├── createx/         # Bindings for the externally deployed CreateX factory: ICreateX, constants, script mixin
     └── gate/            # Same shape for the DeployGate: IDeployGate, constants (address/salt/bytecode/codehash),
                          # DeployGateScript mixin. src/ and test/ hold the contract and its unit test until
@@ -175,7 +172,11 @@ docs/
 ├── audits/              # Security audit reports
 └── architecture/        # Contract relationship diagrams
 
-env/                     # Deployed contract addresses, archived spells
+env/                     # Where a deployment records itself, as env/<environment>/<network>.json.
+                         # Deployment configs (testnet/, mainnet/) exist only on the `live` branch, as does
+                         # everything that reads or publishes them; the base branch writes only env/anvil/,
+                         # copied from script/anvil/env/ and gitignored
+└── spell/               # Archive of executed spells
 ```
 
 ### Async Vault Lifecycle (ERC-7540)
@@ -212,17 +213,60 @@ Async vaults implement a three-phase deposit flow:
 
 **Key Insight:** PoolEscrow holds both assets and shares. Assets are accounted during APPROVAL (Phase 2a), shares are claimed during CLAIM (Phase 3).
 
+## Branch Model: main vs live
+
+Two kinds of branch with different lifetimes, and every file belongs to exactly one of them. **main** is
+the library: it evolves, and it defines what a deployment *is* — contracts, schemas, tests, the deployer
+stack, the repo checks. **Live branches are version-pinned, one per release, and never renamed** —
+`live-v3.2`, `live-v3.3`, ... — because several protocol versions can be live at the same time, each needing
+its own record and tooling. A live branch holds the data its release's deployment wrote and everything that
+acts on that deployment. "The live branch", here and elsewhere in this file, means the branch of whichever
+release is in question; `live-v3.3` is the one main's triggers currently name.
+
+**The decision rule for new work:**
+- If it can only run against a chain that already carries the protocol, or it records what a deployment
+  wrote → **live**. (Ops scripts, spells, the registry pipeline, live fork validation, `env/testnet/` and
+  `env/mainnet/` configs, the public mirror's `.publicignore`.)
+- If it defines or checks what a deployment is → **main**. (Everything in `src/`, the schema readers
+  `ChainConfig`/`EnvConfig`, `LaunchDeployer` and the deployer stack, `script/anvil/` and its fixtures —
+  the only deployment main makes — `script/checks/`, `script/setup/`, `script/testnet/TestData`.)
+- When both readings fit, prefer main: live should carry only what *cannot* be structural.
+
+The rule's sharpest instance: `Env.load()` is strict and describes exactly what `LaunchDeployer` deploys
+from the current branch — the reader is the schema and lives on main; the configs it rejects or accepts are
+data and live on live. `env/spell/` (executed-spell archive) is the one deployment record kept on main.
+
+**CI follows the same line.** Manual and scheduled jobs keep a trigger on main — `workflow_dispatch` and
+`schedule` only work from the default branch — but the trigger knows no chains: it checks out the live
+branch and calls its `.github/ci-scripts/*.sh` entrypoint (`plan`/`run`), which owns the matrix, commands
+and toolchain pin. `registry-publish.yml` instead calls live's `registry.yml` as a reusable workflow, since
+that pipeline also runs on live on push/PR. Main names the current release's branch only inside its
+trigger workflows — the `branch` input defaults (and cron fallbacks) plus `registry-publish.yml`'s literal
+`uses:` refs. Cutting a new release means cutting its `live-v<version>` branch and updating those defaults;
+the `branch` inputs stay overridable, so a job can still be dispatched against an older release's branch.
+
+**Live's shape:** one commit on top of main, almost entirely new files (`foundry.toml` is the only
+modification — regenerated network tables); rebased when main moves. Until the release is deployed, its
+configs record only `root`, and tests that need the deployed chain skip via `SkipsUntilDeployed` — they
+re-arm on their own when the deployment writes the full configs back.
+
+**Cutting a release branch:** a new `live-v<version>` is NOT a main tag pushed under a new name — a bare
+tag carries none of the environmental half (entrypoints, mirror rules, spell review, ops scripts), and
+every trigger would brick at its `plan` step. It is the previous live branch's commit rebased onto the
+release point, adapted to what changed under it; then main's trigger defaults and `registry-publish.yml`'s
+literal refs are updated to name it.
+
 ## Deployment Info
-- **Current Version**: v3.1.0 (see `env/*.json` for network-specific details)
+- **Deployed versions**: recorded per release on its live branch (`env/<environment>/<network>.json` there); this branch records no deployment
 - Contract addresses are deterministic across ALL networks using the standard CREATE3 deploy flow (same deployer + salt). Do NOT treat this as a protocol-enforced invariant when writing security-relevant checks: some EVM chains implement custom address-derivation logic (breaking CREATE3 determinism), the deploy flow has a legacy pre-CREATE3 salt path with no cross-chain guarantee, and the protocol aims to support non-EVM chains where "address" may not even be a comparable concept. Never validate a remote-chain address against a local-chain address as a security check.
-- Find addresses in `env/*.json` (e.g., `env/ethereum.json`)
-- **A deploy script records itself.** `JsonRegistry` (`startDeploymentOutput()` + `register()`, which `reportedSalt()` already calls — `unreportedSalt()` is the same salt without the reporting, for deploy-time only contracts like the action batchers — + `saveDeploymentOutput(network)`) merges names, addresses, versions and block numbers straight into `env/<network>.json`. The deploying scripts — `LaunchDeployer`, `DeployAdapters`, `DeployGasService` — each do this; there is no follow-up command and no manifest. The write is a merge for every script but one: what a run does not mention is left alone, so several scripts share one config. `LaunchDeployer` opens its run with `startDeploymentOutput(REPLACE)`, because it brings up a protocol on a chain that has none — its set *is* the chain's contracts, so anything the config held is dropped rather than left sitting unreachable beside the new addresses. A contract re-reported at the address it already had keeps its block number either way, which is what lets `--resume` finish a partial run without redating it. Only a run registering `root` writes `deploymentInfo` (gitCommit/timestamp/suffix), merged into what is there rather than replacing it. `deploymentInfo.startBlock` is recomputed on every write as the earliest `blockNumber` in the whole config, not the current run's block — a redeployment that reuses contracts leaves older ones in place, and an indexer starting after one of them misses its history. Block numbers are an **underestimate**: the write happens during forge's simulation pass, so `block.number` is the block the script read and the transactions land a few blocks later (1 on a local fork, up to ~183 on a fast chain); every contract in a run shares one. That is the safe direction for indexers and is accepted deliberately. Addresses are exact, being CREATE3-deterministic. There is no `txHash` field: it was dropped. `script/registry/abi-registry.js` still asks explorers for creation info (`fetchContractCreationInfo`, and the Routescan/Plume variants), but only for a contract whose `blockNumber` is missing from `env/`, and it keeps only the block number — the `txHash` in the answer is what the Avalanche and Plume fetchers look the transaction up by, never something written back. The published registry still emits `txHash: null`, so its schema is unchanged for consumers. `env/` stays read-only to Forge (`fs_permissions`); the write goes through jq behind ffi so the guard holds for everything else. Making a new address readable back is: `register()` it in the script, add the field to `ContractsConfig` in `script/utils/EnvConfig.s.sol`. A run that deploys nothing (`LaunchDeployer --sig 'validate()'`) must not call `startDeploymentOutput()`/`saveDeploymentOutput()` at all. Registrations made during a walk that gets rolled back (`vm.revertToState`) disappear with it: the registry keeps its state in storage
-- **The deployer stack is layered, and the layers mean something.** `BaseDeployer` knows CreateX, salts and the JSON registry, and **nothing about the DeployGate** — it is what an ungated script (`DeployAdapters`, `DeployGasService`, `PoolHooks`) inherits. Do NOT put gate helpers, gate constants or gate checks in it, however convenient it is that everything already inherits it: a script that deploys directly has no gate and should not compile as though it might. Making a chain *have* a gate is `script/utils/gate/DeployGateScript.sol` (`setUpDeployGate()`, `isDeployGateDeployed()`), a mixin shaped like `CreateXScript` and self-sufficient the same way — it ensures CreateX itself, so it needs no `_init()` first, and any script can inherit it alone (`ProposeSetDelegate` does). Deploying *through* a gate is `GatedDeployer`: `DEFAULT_COMMITMENT_ID`, `_gatedSalt()`, `gatedAddress()`, `submit()`. `FullDeployer` adds the protocol walk, `LaunchDeployer` the network config and phases.
-- There is no deployment wrapper: every intent is one forge command (see `script/deploy/README.md` for the cookbook). The network is detected from `block.chainid` via `Env.load()`/`Env.detect()`, with no override — `--rpc-url <network>` alone decides both where a run connects and which config it reads. A script that must pick a network *before* it has a chain (`VerifyFactoryContracts`, which reads a config to know where to fork) passes the name to `Env.load(name)` and takes it from `NETWORK` itself; RPC URLs live in `foundry.toml` `[rpc_endpoints]` (reach one with `--rpc-url <network>` or `vm.rpcUrl(<network>)`) and verification keys in `[etherscan]`; the signer is always passed explicitly on the command line (`--private-key $PRIVATE_KEY` off mainnet; on it, `--ledger --sender <addr>` for what the admin signs and `--account <keystore-name> --sender <addr>` for the executor-signed `execute()` phase), so `msg.sender` inside a script is the broadcaster and is what salts and wards should use. Do NOT call `vm.startBroadcast(key)` with an in-script key: that leaves `msg.sender` at forge's default sender while transactions come from the key, so a salt or ward derived from it silently belongs to the wrong account. A new network needs only `env/<network>.json`: the `[rpc_endpoints]` and `[etherscan]` tables are derived from it by `python3 script/checks/check_foundry_networks.py --fix`, and CI fails if they drift. `LaunchDeployer` has no `run()`: the gated phases are `--sig 'validate()'` and `--sig 'execute()'`, always two separate forge runs. Local forks: `script/deploy/anvil.sh`; cross-chain test: `script/testnet/crosschaintest.sh`
+- Find addresses in `env/<environment>/<network>.json`; every deployment that outlives a process is made from the `live` branch, and its configs live there
+- **A deploy script records itself.** `JsonRegistry` (`startDeploymentOutput()` + `register()`, which `reportedSalt()` already calls — `unreportedSalt()` is the same salt without the reporting, for deploy-time only contracts like the action batchers — + `saveDeploymentOutput(path)`, the path from `Chains.pathOf` and always under `env/`) merges names, addresses, versions and block numbers straight into `env/<environment>/<network>.json`. `LaunchDeployer` does this; there is no follow-up command and no manifest. The write is a merge for every script but one: what a run does not mention is left alone, so several scripts can share one config (the ones that add to an existing deployment live on the `live` branch). `LaunchDeployer` opens its run with `startDeploymentOutput(REPLACE)`, because it brings up a protocol on a chain that has none — its set *is* the chain's contracts, so anything the config held is dropped rather than left sitting unreachable beside the new addresses. A contract re-reported at the address it already had keeps its block number either way, which is what lets `--resume` finish a partial run without redating it. Only a run registering `root` writes `deploymentInfo` (gitCommit/timestamp/suffix), merged into what is there rather than replacing it. `deploymentInfo.startBlock` is recomputed on every write as the earliest `blockNumber` in the whole config, not the current run's block — a redeployment that reuses contracts leaves older ones in place, and an indexer starting after one of them misses its history. Block numbers are an **underestimate**: the write happens during forge's simulation pass, so `block.number` is the block the script read and the transactions land a few blocks later (1 on a local fork, up to ~183 on a fast chain); every contract in a run shares one. That is the safe direction for indexers and is accepted deliberately. Addresses are exact, being CREATE3-deterministic. There is no `txHash` field: it was dropped, and the registry pipeline that publishes `env/` (on the `live` branch) still emits `txHash: null` so its schema is unchanged for consumers. `env/` stays read-only to Forge (`fs_permissions`); the write goes through jq behind ffi so the guard holds for everything else. Making a new address readable back is: `register()` it in the script, add the field to `ContractsConfig` in `script/utils/EnvConfig.s.sol` (an `EnvConfig` is `chain` + `contracts`: the chain half lives in `ChainConfig.s.sol` and knows nothing of what is deployed on it, which is what a script that deploys from scratch reads). A run that deploys nothing (`LaunchDeployer --sig 'validate()'`) must not call `startDeploymentOutput()`/`saveDeploymentOutput()` at all. Registrations made during a walk that gets rolled back (`vm.revertToState`) disappear with it: the registry keeps its state in storage
+- **The deployer stack is layered, and the layers mean something.** `BaseDeployer` knows CreateX, salts and the JSON registry, and **nothing about the DeployGate** — it is what an ungated script inherits. Do NOT put gate helpers, gate constants or gate checks in it, however convenient it is that everything already inherits it: a script that deploys directly has no gate and should not compile as though it might. Making a chain *have* a gate is `script/utils/gate/DeployGateScript.sol` (`setUpDeployGate()`, `isDeployGateDeployed()`), a mixin shaped like `CreateXScript` and self-sufficient the same way — it ensures CreateX itself, so it needs no `_init()` first, and any script can inherit it alone. Deploying *through* a gate is `GatedDeployer`: `DEFAULT_COMMITMENT_ID`, `_gatedSalt()`, `gatedAddress()`, `submit()`. `FullDeployer` adds the protocol walk, `LaunchDeployer` the network config and phases.
+- There is no deployment wrapper: every intent is one forge command (see `script/deploy/README.md` for the cookbook). The network is detected from `block.chainid` via `Chains.detect()`, which `Env.load()` and `Chains.load()` call when given no name, with no override — `--rpc-url <network>` alone decides both where a run connects and which config it reads. A script that must pick a network *before* it has a chain passes the name to `Env.load(name)` and takes it from `NETWORK` itself; RPC URLs live in `foundry.toml` `[rpc_endpoints]` (reach one with `--rpc-url <network>` or `vm.rpcUrl(<network>)`) and verification keys in `[etherscan]`; the signer is always passed explicitly on the command line (`--private-key $PRIVATE_KEY` off mainnet; on it, `--ledger --sender <addr>` for what the admin signs and `--account <keystore-name> --sender <addr>` for the executor-signed `execute()` phase), so `msg.sender` inside a script is the broadcaster and is what salts and wards should use. Do NOT call `vm.startBroadcast(key)` with an in-script key: that leaves `msg.sender` at forge's default sender while transactions come from the key, so a salt or ward derived from it silently belongs to the wrong account. A new network needs only `env/<environment>/<network>.json` (under an environment `Chains.configRoots()` lists — a new environment is a one-line addition there): the `[rpc_endpoints]` and `[etherscan]` tables are derived from it by `python3 script/checks/check_foundry_networks.py --fix`, and CI fails if they drift. `LaunchDeployer` has no `run()`: the gated phases are `--sig 'validate()'` and `--sig 'execute()'`, always two separate forge runs. Local chains: `script/anvil/anvil.sh`
 
 ## Root Access & Spell Execution
 
-There is no direct Root access on testnet or mainnet. All privileged operations require a **spell** (a contract that executes admin actions).
+There is no direct Root access on testnet or mainnet. All privileged operations require a **spell** (a contract that executes admin actions). Spells are written and reviewed on the `live` branch, pinned to the deployed version; main carries only the archive under `env/spell/`.
 
 ### Spell Execution Flow
 
@@ -299,7 +343,7 @@ handler.updateRestriction(poolId, scId, restrictionUpdate);
 ### Structure
 - **Unit tests**: Fully isolated, use `vm.mockCall` to mock all external dependencies. One contract under test, everything else mocked.
 - **Integration tests**: Use `BaseTest` (inherits `FullDeployer`) to deploy the full protocol stack. Test multi-contract interactions.
-- **Fork tests**: Use mainnet/testnet state via `vm.createSelectFork`. Organized under `test/integration/fork/`.
+- **Fork tests**: Live-state tests run from the `live` branch, which is pinned to the deployed version. Not on main.
 
 ### Common Patterns
 - `vm.expectRevert(CustomError.selector)` before calls that should fail

@@ -1054,7 +1054,7 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
     ///      walks, and the state rollback that ends it is what discards them again, this script's own storage
     ///      being rolled back along with everything else
     /// @dev The three action batchers are deployed but not reported: they hold no permission once they have
-    ///      wired the protocol, and nothing ever reads one back, so they do not belong in `env/<network>.json`
+    ///      wired the protocol, and nothing ever reads one back, so they do not belong in `env/<environment>/<network>.json`
     function testReportsEveryContractButTheBatchers() public view {
         assertEq(registeredCount() + 3, executedContracts, "the registry should report every other contract");
 

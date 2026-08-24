@@ -10,7 +10,7 @@ import {console} from "forge-std/console.sol";
 // does is destructive and the call site is where that has to be visible.
 bool constant REPLACE = true;
 
-/// @notice Collects the contracts a deploy script produces and writes them into `env/<network>.json`.
+/// @notice Collects the contracts a deploy script produces and writes them into `env/<environment>/<network>.json`.
 ///
 /// @dev    A script opens a run with `startDeploymentOutput()`, registers each contract as it goes — which
 ///         `BaseDeployer.reportedSalt()` already does for anything deployed through a reported salt — and
@@ -28,13 +28,16 @@ bool constant REPLACE = true;
 ///         it is the safe direction — these feed indexers, which must not start *after* a contract exists.
 ///         Every contract in one run therefore shares a block number, since simulation does not advance.
 ///
-///         Only an abandoned deployment leaves entries for contracts that never landed.
+///         Only an abandoned deployment leaves entries for contracts that never landed — a run whose
+///         simulation reverts partway never reaches this, and one that stops during the broadcast is
+///         finished with `--resume`. Nor is that window anything the `REPLACE` flag below widens: the merge
+///         overwrites by name, and a run that registers a name claims it either way.
 ///
 ///         `env/` is read-only to forge (`fs_permissions`), so the merge goes through jq rather than a
 ///         cheatcode. That keeps the guard against a test or a stray script rewriting a config, and keeps
 ///         the diff to what actually changed.
 contract JsonRegistry is Script {
-    /// @dev The whole merge, in one jq program, so that what a run does to `env/<network>.json` is read in
+    /// @dev The whole merge, in one jq program, so that what a run does to `env/<environment>/<network>.json` is read in
     ///      one place. It takes `$new` (this run's contracts), `$block`, and the three `deploymentInfo`
     ///      fields, and does three things:
     ///
@@ -101,29 +104,12 @@ contract JsonRegistry is Script {
         return registeredNames.length;
     }
 
-    /// @param network The name to write under, `env/<network>.json`. Passed in rather than detected, so that
-    ///        this file stays free of the env-parsing stack — the deployer stack it belongs to is mirrored
-    ///        publicly and `EnvConfig` is not.
-    ///
-    /// @dev   Records no suffix, which is right for a script that deploys with `new`: its addresses come
-    ///        from the sender and its nonce, so there is no salt for a suffix to be part of. `BaseDeployer`
-    ///        overrides this with the suffix its salts were actually built from — never the environment,
-    ///        which a mainnet run deliberately ignores.
-    function saveDeploymentOutput(string memory network) public virtual {
-        _saveDeploymentOutput(network, "");
-    }
-
-    bool private replacesDeployment;
-
-    function _saveDeploymentOutput(string memory network, string memory suffix) internal {
-        if (registeredNames.length == 0) return;
-
-        // A dry run walks the same deployment and computes the same addresses, but save nothing
-        if (!vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) && !vm.isContext(VmSafe.ForgeContext.ScriptResume)) {
-            return;
-        }
-
-        string memory contracts = "{";
+    /// @notice What this run would write under `.contracts`, as JSON.
+    /// @dev    Public so that a test can hold the parser to the deployer: `EnvConfig` reads this object back,
+    ///         and requiring a contract the deployer never registers is then a test failure rather than a
+    ///         deployment that writes a config no script can load.
+    function registeredContractsJson() public view returns (string memory contracts) {
+        contracts = "{";
         for (uint256 i; i < registeredNames.length; i++) {
             contracts = string.concat(
                 contracts,
@@ -138,8 +124,38 @@ contract JsonRegistry is Script {
             );
         }
         contracts = string.concat(contracts, "}");
+    }
 
-        string memory path = string.concat("env/", network, ".json");
+    /// @param path Where to write, as `Chains.pathOf` resolves it. Passed in rather than worked out here, so
+    ///        that this file stays free of the env-parsing stack — the deployer stack it belongs to is
+    ///        mirrored publicly and `ChainConfig` is not.
+    ///
+    /// @dev   Records no suffix, which is right for a script that deploys with `new`: its addresses come
+    ///        from the sender and its nonce, so there is no salt for a suffix to be part of. `BaseDeployer`
+    ///        overrides this with the suffix its salts were actually built from — never the environment,
+    ///        which a mainnet run deliberately ignores.
+    function saveDeploymentOutput(string memory path) public virtual {
+        _saveDeploymentOutput(path, "");
+    }
+
+    bool private replacesDeployment;
+
+    function _saveDeploymentOutput(string memory path, string memory suffix) internal {
+        if (registeredNames.length == 0) return;
+
+        // A deployment records itself under env/, never anywhere else. `Chains.pathOf` resolves by probing
+        // and falls through to the checked-in fixtures under script/anvil/env/ when env/anvil/ has not been
+        // seeded — a LaunchDeployer run started without anvil.sh would otherwise merge its addresses into a
+        // tracked fixture, which describes two chains and never a deployment. The write goes through ffi,
+        // which `fs_permissions` does not bind, so the guard has to live here.
+        require(vm.indexOf(path, "env/") == 0, "a deployment records itself under env/");
+
+        // A dry run walks the same deployment and computes the same addresses, but save nothing
+        if (!vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) && !vm.isContext(VmSafe.ForgeContext.ScriptResume)) {
+            return;
+        }
+
+        string memory contracts = registeredContractsJson();
 
         // Handed over through the environment rather than pasted into the command: a value that reaches a
         // shell inside quotes it can close is a value that can run commands, and these are assembled from

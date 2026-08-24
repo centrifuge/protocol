@@ -142,7 +142,7 @@ contract GatedDeployer is BaseDeployer, DeployGateScript {
 
     /// @notice Same as `submit`, for a contract the deployment does not report. The action batchers wire the
     ///         protocol from their constructors and deny themselves once they are done, so nothing ever reads
-    ///         one back: keeping them out of the manifest keeps `env/<network>.json` to the contracts that are
+    ///         one back: keeping them out of the manifest keeps `env/<environment>/<network>.json` to the contracts that are
     ///         still part of the protocol, and keeps verification from chasing addresses nobody needs.
     function submitUnreported(string memory contractName, string memory version, bytes memory initCode)
         public
@@ -161,7 +161,7 @@ contract GatedDeployer is BaseDeployer, DeployGateScript {
         vm.label(target, string.concat(contractName, "-", version, "-", suffix));
     }
 
-    /// @notice Same, for a contract the deployment reports, which is what puts it in `env/<network>.json`.
+    /// @notice Same, for a contract the deployment reports, which is what puts it in `env/<environment>/<network>.json`.
     function reportedGatedAddress(string memory contractName, string memory version) public returns (address target) {
         target = gatedAddress(contractName, version);
 

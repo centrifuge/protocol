@@ -24,7 +24,7 @@ contract TestData is BaseTestData {
 
     function run() public override {
         EnvConfig memory config = Env.load();
-        uint16 centrifugeId = config.network.centrifugeId;
+        uint16 centrifugeId = config.chain.network.centrifugeId;
         loadContractsFromConfig(config);
 
         vm.startBroadcast();
@@ -44,7 +44,7 @@ contract TestData is BaseTestData {
                 poolIndex: 1,
                 token: token,
                 assetId: assetId,
-                admin: config.network.protocolAdmin,
+                admin: config.chain.network.protocolAdmin,
                 poolMetadata: "Testing pool",
                 shareClassName: "Tokenized MMF",
                 shareClassSymbol: "MMF",
@@ -88,7 +88,7 @@ contract TestData is BaseTestData {
                 poolIndex: 2,
                 token: token,
                 assetId: assetId,
-                admin: config.network.protocolAdmin,
+                admin: config.chain.network.protocolAdmin,
                 poolMetadata: "Testing pool",
                 shareClassName: "RWA Portfolio",
                 shareClassSymbol: "RWA",

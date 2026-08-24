@@ -1,32 +1,60 @@
+# Verify Factory Contracts — the trigger, and nothing else.
+#
+# Same split as weekly-validation.yml: the networks, the script and the verification itself live on the
+# release's live branch, which is pinned to what that release deployed. This file names none of them.
+#
+#   .github/ci-scripts/verify-factory-contracts.sh plan       -> {"foundry": "<version>", "targets": [ids]}
+#   .github/ci-scripts/verify-factory-contracts.sh run <id>   -> verifies one; a non-zero exit fails the job
+#
+# SOURCE_VERSION reaches the entrypoint as an environment variable. Checking src/ out at that tag is the
+# entrypoint's to do, not this file's — which is why the checkout here is unshallowed.
+#
+# Anything the entrypoint leaves in $CI_FAILURE_DIR is uploaded as an artifact, failed runs included — and a
+# verification failure is characteristically an explorer or RPC error, exactly what prints a keyed URL. The
+# entrypoint must redact before writing there: ::add-mask:: stars secrets out of the live log, never out of
+# an uploaded file.
+
 name: Verify Factory Contracts
 
 on:
   workflow_dispatch:
     inputs:
+      branch:
+        description: "Branch holding the verification scripts (default: live-v3.3)"
+        required: false
+        default: "live-v3.3"
       source_version:
-        description: "Git tag of the deployed source code (e.g. v3.1.0). src/ will be checked out from this tag so forge verify-contract uses matching bytecode."
+        description: "Git tag of the deployed source code (e.g. v3.1.0). src/ is checked out from it so the bytecode matches."
         required: true
         default: "v3.1.0"
 
 jobs:
-  setup:
+  plan:
     runs-on: ubuntu-latest
     permissions:
       contents: "read"
     outputs:
-      networks: ${{ steps.list.outputs.networks }}
+      targets: ${{ steps.plan.outputs.targets }}
+      foundry: ${{ steps.plan.outputs.foundry }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
 
-      - name: List networks from env/*.json
-        id: list
+      - name: Ask the branch what to verify
+        id: plan
         run: |
-          networks=$(ls env/*.json | xargs -n1 basename | sed 's/.json//' | grep -v anvil | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "networks=$networks" >> "$GITHUB_OUTPUT"
-          echo "Discovered networks: $networks"
+          plan=$(.github/ci-scripts/verify-factory-contracts.sh plan)
+          jq . <<<"$plan"
+          # The contract the comments state, enforced: ids become matrix values, job names, artifact names
+          # and an inline-interpolated argument, so they stay within [A-Za-z0-9._-]; foundry is one token
+          jq -e '(.foundry | test("^[A-Za-z0-9._-]+$")) and (.targets | length > 0 and all(test("^[A-Za-z0-9._-]+$")))' \
+            <<<"$plan" >/dev/null || { echo "plan output violates the target-id contract" >&2; exit 1; }
+          echo "targets=$(jq -c '.targets' <<<"$plan")" >> "$GITHUB_OUTPUT"
+          echo "foundry=$(jq -r '.foundry' <<<"$plan")" >> "$GITHUB_OUTPUT"
 
   verify:
-    needs: setup
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -34,27 +62,35 @@ jobs:
       id-token: "write"
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 3 # explorer rate limits, not a property of any one chain
       matrix:
-        network: ${{ fromJson(needs.setup.outputs.networks) }}
-
-    name: "${{ matrix.network }}"
-
+        target: ${{ fromJson(needs.plan.outputs.targets) }}
+    name: ${{ matrix.target }}
+    env:
+      CI_FAILURE_DIR: ${{ github.workspace }}/ci-failures
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0 # the entrypoint checks src/ out at SOURCE_VERSION, so it needs the tags
           submodules: recursive
 
-      - name: Checkout src/ from deployed version
-        run: git checkout ${{ inputs.source_version }} -- src/
-
-      - uses: ./.github/actions/deployer-setup
+      - uses: google-github-actions/auth@v2
         with:
-          gcp-workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          gcp-service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ needs.plan.outputs.foundry }}
 
-      - name: Verify ${{ matrix.network }}
+      - run: .github/ci-scripts/verify-factory-contracts.sh run "${{ matrix.target }}"
         env:
-          NETWORK: ${{ matrix.network }}
-        run: forge script script/ops/VerifyFactoryContracts.s.sol --skip test
+          SOURCE_VERSION: ${{ inputs.source_version }}
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-${{ matrix.target }}
+          path: ci-failures/
+          if-no-files-found: ignore

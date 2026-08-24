@@ -18,12 +18,12 @@ again. Nothing here talks to a chain — every one of them reads the repository 
 python3 script/checks/fix_imports.py --organize        # before opening a PR
 python3 script/checks/check_ward_coverage.py           # after changing permissions
 python3 script/checks/check_claude_tree.py --fix       # after moving files around
-python3 script/checks/check_foundry_networks.py --fix  # after adding or editing env/<network>.json
+python3 script/checks/check_foundry_networks.py --fix  # after adding or editing env/<environment>/<network>.json
 ./script/checks/benchmarks.sh apply                    # after changing message handling
 ```
 
-There is deliberately **no** check that `deploy-testnets.yml` deploys every connected network. It reads its
-matrix out of `env/connections/testnet.json` at run time, so the two cannot drift and there is nothing to
+There is deliberately **no** check that the testnet deployment covers every connected network. It reads its
+matrix out of the connections file at run time, so the two cannot drift and there is nothing to
 police. A check belongs here only where the copy is forced — `foundry.toml`'s tables exist because forge's
 Rust side cannot read `env/`.
 
@@ -37,5 +37,5 @@ meters gas differently and the check ends up demanding values nobody can regener
 back into `src/admin/GasService.sol`.
 
 A note on where things go: this is separate from [`../utils/`](../utils/) because the two are different kinds
-of thing. `utils/` is Solidity that other scripts import (`EnvConfig`, `JsonRegistry`, `CreateX`); `checks/`
+of thing. `utils/` is Solidity that other scripts import (`ChainConfig`, `EnvConfig`, `JsonRegistry`, `CreateX`); `checks/`
 is executables that CI runs.

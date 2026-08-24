@@ -10,17 +10,17 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# Read from the composite action that pins Foundry for CI, rather than named again here: a second constant
-# is a second thing to bump, and the one that gets forgotten is the one that lets a laptop meter gas
-# differently from the pipeline. Empty if the file is not there, which check_foundry below reports.
+# Read from what CI installs, rather than named again here: a second constant is a second thing to bump, and
+# the one that gets forgotten is the one that lets a laptop meter gas differently from the pipeline. Empty if
+# the file is not there, which check_foundry below reports.
 REQUIRED_FORGE_VERSION="$(
-    sed -n 's/^[[:space:]]*default:[[:space:]]*v\{0,1\}\([0-9][0-9.]*\).*/\1/p' \
-        "$ROOT/.github/actions/deployer-setup/action.yml" 2>/dev/null | head -n1
+    sed -n 's/^[[:space:]]*version:[[:space:]]*v\{0,1\}\([0-9][0-9.]*\).*/\1/p' \
+        "$ROOT/.github/workflows/ci.yml" 2>/dev/null | head -n1
 )"
 
 # Not a convenience: JsonRegistry re-prints the whole network config through jq, and before 1.7 jq parses
 # every number into a double, so a chainSelector like 5009297550715157269 comes back as 5009297550715157000
-# — a silently wrong Chainlink route committed to env/<network>.json. 1.7 keeps the literal it did not touch.
+# — a silently wrong Chainlink route committed to env/<environment>/<network>.json. 1.7 keeps the literal it did not touch.
 REQUIRED_JQ_VERSION="1.7"
 
 case "${OSTYPE:-}" in
@@ -118,7 +118,7 @@ check_jq() {
     if at_least "$REQUIRED_JQ_VERSION" "$version"; then
         ok "jq $version (>= $REQUIRED_JQ_VERSION)"
     else
-        bad "jq $version loses precision on the large numbers in env/<network>.json; $REQUIRED_JQ_VERSION or newer is required"
+        bad "jq $version loses precision on the large numbers in env/<environment>/<network>.json; $REQUIRED_JQ_VERSION or newer is required"
         if [ "$PLATFORM" = mac ]; then
             install "a newer jq" "brew upgrade jq" && fixed "jq"
         else
@@ -146,7 +146,7 @@ check_foundry() {
     fi
 
     if [ -z "$REQUIRED_FORGE_VERSION" ]; then
-        warn "Could not read the pinned version from .github/actions/deployer-setup/action.yml; skipping the check"
+        warn "Could not read the pinned version from .github/workflows/ci.yml; skipping the check"
         return 0
     fi
 

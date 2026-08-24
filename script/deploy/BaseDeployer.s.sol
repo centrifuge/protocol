@@ -62,8 +62,8 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     /// @dev What every address in this run was salted with is this contract's state, so the record cannot
     ///      disagree with the addresses: a mainnet run is initialised with `""` whatever `SUFFIX` holds, and
     ///      that is what lands in the config.
-    function saveDeploymentOutput(string memory network) public override {
-        _saveDeploymentOutput(network, suffix);
+    function saveDeploymentOutput(string memory path) public override {
+        _saveDeploymentOutput(path, suffix);
     }
 
     /// @dev Salt for a contract the deployment does not report, labeled so that it is named in traces.
@@ -79,7 +79,7 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     }
 
     /// @dev Same, for a contract the deployment reports, which is what puts it in the deployment manifest and,
-    ///      from there, in `env/<network>.json`. Deploy-time only contracts take `unreportedSalt` instead.
+    ///      from there, in `env/<environment>/<network>.json`. Deploy-time only contracts take `unreportedSalt` instead.
     function reportedSalt(string memory contractName, string memory contractVersion, address deployer_)
         internal
         returns (bytes32 salt)

@@ -2,13 +2,13 @@
 """
 foundry.toml network tables checker.
 
-`env/<network>.json` is the source of truth for every network fact. Two of those facts also have to be
+`env/<environment>/<network>.json` is the source of truth for every network fact. Two of those facts also have to be
 reachable from forge's Rust side, which cannot read the env files: the RPC URL, so `--rpc-url <network>`
 resolves, and the verification key, so `--verify` needs no flags. Those live in foundry.toml's
 `[rpc_endpoints]` and `[etherscan]`, which makes them derived copies rather than a second source.
 
 This keeps the copies honest: it regenerates both tables from `env/*.json` and, in check mode, fails if what
-is in foundry.toml differs. So adding a network stays a single edit — write `env/<network>.json`, run
+is in foundry.toml differs. So adding a network stays a single edit — write `env/<environment>/<network>.json`, run
 `--fix` — and a forgotten table entry is caught by CI instead of surfacing later as a confusing forge error
 or a verification failure in the middle of a deployment.
 
@@ -40,15 +40,19 @@ ENV_DIR = REPO_ROOT / "env"
 # Which API key a base URL needs, in match order
 API_KEYS = (("alchemy", "ALCHEMY_API_KEY"), ("plume", "PLUME_API_KEY"), ("pharos", "PHAROS_API_KEY"))
 
-# Not derived from env/: the configs for these are written at runtime by script/deploy/anvil.sh, under
-# env/anvil/, and are gitignored. Their endpoints are fixed, so they are emitted verbatim.
-LOCAL_FORKS = {"anvil/sepolia": "http://localhost:8545", "anvil/arbitrum-sepolia": "http://localhost:8546"}
+# Not derived from a config field: the local chains script/anvil/anvil.sh brings up answer on fixed ports,
+# and nothing in env/anvil/*.json says which. Everything else about them is derived like any other network.
+LOCAL_CHAINS = {"local-a": "http://localhost:8545", "local-b": "http://localhost:8546"}
+
+# The local chains are described by fixtures next to the script that brings them up, not under env/: env/
+# holds what a deployment writes, and a run of anvil.sh copies these in before writing to them
+ANVIL_FIXTURES = REPO_ROOT / "script" / "anvil" / "env"
 
 # Verifiers that [etherscan] cannot express. The table describes one thing — an Etherscan-style key and URL
 # per chain — so it fits Etherscan itself and Blockscout, whose /api speaks the same dialect. Sourcify does
 # not: it takes no key, and forge reaches it through `--verifier sourcify`, so an entry here would only give
 # `--verify` an Etherscan endpoint to fail against on a chain Etherscan does not serve. Those chains carry
-# the flag on the command line instead, and `VerifyFactoryContracts` passes it from `.network.verifier`.
+# the flag on the command line instead, passed from `.network.verifier`.
 NON_ETHERSCAN_VERIFIERS = {"sourcify"}
 
 BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -60,9 +64,14 @@ def toml_key(name: str) -> str:
 
 
 def networks() -> list[tuple[str, dict]]:
-    """Every env/<network>.json, mainnets first then testnets, alphabetical within each."""
+    """Every env/<environment>/<network>.json, mainnets first then testnets, alphabetical within each.
+
+    Configs are filed under the environment they declare, so the directory is not part of the name: the
+    alias a run reaches with `--rpc-url` is the network, not the path. Anything under env/ that is not a
+    chain — the connections files, and env/spell/ — has no `network` key and drops out here.
+    """
     found = []
-    for path in sorted(ENV_DIR.glob("*.json")):
+    for path in sorted(ENV_DIR.glob("*/*.json")) + sorted(ANVIL_FIXTURES.glob("*.json")):
         config = json.loads(path.read_text())
         if "network" not in config:
             continue
@@ -86,6 +95,10 @@ def expected_tables() -> tuple[dict[str, str], dict[str, dict]]:
     for name, network in networks():
         rpc[name] = rpc_url(network)
 
+        # A local chain has no explorer to verify against, and `--verify` is never passed to a run on one
+        if name in LOCAL_CHAINS:
+            continue
+
         if network.get("verifier") in NON_ETHERSCAN_VERIFIERS:
             continue
 
@@ -94,7 +107,7 @@ def expected_tables() -> tuple[dict[str, str], dict[str, dict]]:
             entry["url"] = network["verifierUrl"]
         etherscan[name] = entry
 
-    rpc.update(LOCAL_FORKS)
+    rpc.update(LOCAL_CHAINS)
     return rpc, etherscan
 
 
@@ -112,8 +125,8 @@ def render(rpc: dict[str, str], etherscan: dict[str, dict]) -> tuple[str, str]:
         return out
 
     rpc_lines = grouped(rpc, lambda n: f"{toml_key(n)} = {json.dumps(rpc[n])}")
-    rpc_lines.append("# Local forks brought up by script/deploy/anvil.sh, one per chain")
-    rpc_lines.extend(f"{toml_key(n)} = {json.dumps(url)}" for n, url in LOCAL_FORKS.items())
+    rpc_lines.append("# Local chains brought up by script/anvil/anvil.sh, one per chain")
+    rpc_lines.extend(f"{toml_key(n)} = {json.dumps(url)}" for n, url in LOCAL_CHAINS.items())
 
     def etherscan_line(name: str) -> str:
         entry = etherscan[name]
@@ -177,7 +190,7 @@ def check(rpc: dict[str, str], etherscan: dict[str, dict]) -> list[str]:
 
     for name in actual_rpc:
         if name not in rpc:
-            problems.append(f'[rpc_endpoints] has "{name}", which no env/<network>.json declares')
+            problems.append(f'[rpc_endpoints] has "{name}", which no env/<environment>/<network>.json declares')
 
     for name, entry in etherscan.items():
         if name not in actual_etherscan:
@@ -195,7 +208,7 @@ def check(rpc: dict[str, str], etherscan: dict[str, dict]) -> list[str]:
 
     for name in actual_etherscan:
         if name not in etherscan:
-            problems.append(f'[etherscan] has "{name}", which no env/<network>.json declares')
+            problems.append(f'[etherscan] has "{name}", which no env/<environment>/<network>.json declares')
 
     return problems
 
@@ -216,11 +229,11 @@ def main() -> int:
 
     problems = check(rpc, etherscan)
     if problems:
-        print("foundry.toml disagrees with env/<network>.json:\n", file=sys.stderr)
+        print("foundry.toml disagrees with env/<environment>/<network>.json:\n", file=sys.stderr)
         for problem in problems:
             print(f"  - {problem}", file=sys.stderr)
         print(
-            "\nenv/<network>.json is the source of truth. Fix it there, then run:"
+            "\nenv/<environment>/<network>.json is the source of truth. Fix it there, then run:"
             "\n  python3 script/checks/check_foundry_networks.py --fix",
             file=sys.stderr,
         )

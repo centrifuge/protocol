@@ -16,7 +16,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE="$ROOT/.env"
 
 if [ ! -f "$ENV_FILE" ]; then
-    # Nothing to redact against: pass the input through rather than failing a job over it
+    # In CI, no .env means the caller is about to upload something this script cannot vouch for — the whole
+    # reason it is called is that the output may hold a keyed RPC URL, so passing it through unredacted is
+    # the one wrong answer. Fail closed there; on a laptop, pass through rather than failing a run over it.
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+        echo "redact-secrets.sh: no .env to redact against; refusing to pass output through in CI" >&2
+        exit 1
+    fi
     if [ "$#" -eq 0 ]; then cat; fi
     exit 0
 fi

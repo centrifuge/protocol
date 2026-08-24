@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {ICreateX} from "../../script/utils/createx/ICreateX.sol";
 import {BaseDeployer} from "../../script/deploy/BaseDeployer.s.sol";
+import {CREATEX_ADDRESS} from "../../script/utils/createx/CreateX.d.sol";
 import {EnsureDeployGate} from "../../script/utils/gate/DeployGateScript.sol";
 import {GatedDeployer, DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
@@ -91,6 +92,34 @@ contract DeployGateAddressTest is Test, BaseDeployer {
 
         assertEq(deployed, DEPLOY_GATE_ADDRESS, "whoever deploys it, it lands in the same place");
         assertEq(deployed.codehash, DEPLOY_GATE_EXTCODEHASH, "and it is the gate");
+    }
+
+    /// @dev Which is the whole point: one gate, one address, everywhere. Nothing chain-specific reaches the
+    ///      derivation, so a constant can stand for it
+    function testGateAddressIsTheSameOnEveryChain() public {
+        address here = CreateX.computeCreate2Address(
+            keccak256(abi.encode(DEPLOY_GATE_SALT)), keccak256(DEPLOY_GATE_BYTECODE), CREATEX_ADDRESS
+        );
+
+        vm.chainId(block.chainid + 1);
+
+        assertEq(
+            CreateX.computeCreate2Address(
+                keccak256(abi.encode(DEPLOY_GATE_SALT)), keccak256(DEPLOY_GATE_BYTECODE), CREATEX_ADDRESS
+            ),
+            here,
+            "the chain id must not reach the gate's address"
+        );
+    }
+
+    /// @dev A CREATE3 gate address would be code anyone could choose, and the gate's code is its whole
+    ///      authority. Under CREATE2 the only contract that fits its address is the gate
+    function testGateAddressCoversItsCode() public pure {
+        address impostor = CreateX.computeCreate2Address(
+            keccak256(abi.encode(DEPLOY_GATE_SALT)), keccak256(type(SimpleContract).creationCode), CREATEX_ADDRESS
+        );
+
+        assertTrue(impostor != DEPLOY_GATE_ADDRESS, "another contract must not reach the gate's address");
     }
 
     /// @dev Which is how a chain that derives addresses its own way is caught, rather than deployed onto

@@ -94,22 +94,6 @@ jobs:
       - name: Check unused imports
         run: python3 script/checks/fix_imports.py --check-unused
 
-  pre-migration-validation:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.4.4
-
-      - name: Run pre-migration validation
-        run: forge test --match-contract PreMigrationValidation --ffi -vv
-        env:
-          FOUNDRY_PROFILE: ci
-
   # halmos:
   #   runs-on: ubuntu-latest
 
@@ -142,22 +126,24 @@ jobs:
   #     - name: Run Halmos symbolic tests
   #       run: halmos --contract TestMessageLibIdentities --function test
 
+  # Deploys the protocol on two local chains the way a real chain gets it: through the DeployGate, validate
+  # and execute as separate runs, then test data. Needs no credentials and no network — the chains are bare
+  # anvil rather than forks, so this job carries no secrets and cannot be blocked by a rate limit
   anvil-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: "read"
-      id-token: "write"
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/deployer-setup
         with:
-          gcp-workload-identity-provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          gcp-service-account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.4.4
       - name: Build ir profile
         run: FOUNDRY_PROFILE=ir forge build
-      - name: Deploy Anvil
-        run: |
-          ./script/deploy/anvil.sh
+      - name: Deploy on two local chains
+        run: ./script/anvil/anvil.sh
 
   spelling:
     runs-on: ubuntu-latest

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {VMLabeling} from "./utils/VMLabeling.sol";
 import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
@@ -1060,15 +1059,10 @@ contract EndToEndFlows is EndToEndUtils {
 }
 
 /// Common and generic flows ready to be used in different tests
-contract EndToEndUseCases is EndToEndFlows, VMLabeling {
+contract EndToEndUseCases is EndToEndFlows {
     using CastLib for *;
     using MathLib for *;
     using MessageLib for *;
-
-    function setUp() public virtual override {
-        super.setUp();
-        _setupVMLabels();
-    }
 
     /// forge-config: default.isolate = true
     function testWardUpgrade(bool sameChain) public {

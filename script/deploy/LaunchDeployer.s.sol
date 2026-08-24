@@ -17,8 +17,8 @@ import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import "forge-std/Script.sol";
 
 import {REPLACE} from "../utils/JsonRegistry.s.sol";
-import {EnvConfig, Env} from "../utils/EnvConfig.s.sol";
 import {PROTOCOL_SAFE, OPS_SAFE} from "../utils/Admin.s.sol";
+import {ChainConfig, Chains} from "../utils/ChainConfig.s.sol";
 
 /// @notice Launches the protocol through the DeployGate, one run per phase:
 ///
@@ -28,7 +28,7 @@ import {PROTOCOL_SAFE, OPS_SAFE} from "../utils/Admin.s.sol";
 ///         The network comes from the chain the RPC points at, and off mainnet the signer comes from the
 ///         PRIVATE_KEY in .env; on mainnet the admin signs validate with `--ledger --sender <addr> --slow`
 ///         and an executor signs execute with `--account <name> --sender <addr> --slow`. The execute phase
-///         records what it deployed into env/<network>.json itself.
+///         records what it deployed into env/<environment>/<network>.json itself.
 contract LaunchDeployer is FullDeployer {
     /// @notice Commits the whole deployment to the gate: the single transaction the admin signs.
     function validate() public {
@@ -39,7 +39,7 @@ contract LaunchDeployer is FullDeployer {
     ///         `validate()`. Signed by the same account that would validate, since revoking is committing
     ///         nothing. What a commitment already deployed stays deployed: this is not a rollback
     function revoke() public {
-        EnvConfig memory config = Env.load();
+        ChainConfig memory config = Chains.load();
         address validator_ = _validator(config);
 
         // A Safe validator is proposed to instead, and a proposing run broadcasts nothing
@@ -73,14 +73,14 @@ contract LaunchDeployer is FullDeployer {
 
     /// @dev A validator can never be replaced, so on mainnet it is the Safe rather than a key, and it
     ///      delegates to whichever one signs the phase. Off mainnet, the signer keeps to its own addresses
-    function _validator(EnvConfig memory config) internal view returns (address) {
+    function _validator(ChainConfig memory config) internal view returns (address) {
         return config.network.isMainnet() ? PROTOCOL_SAFE : vm.envOr("VALIDATOR", msg.sender);
     }
 
     function _launch(DeployPhase phase) internal {
         bool validating = phase == DeployPhase.Validate;
 
-        EnvConfig memory config = Env.load();
+        ChainConfig memory config = Chains.load();
         // Only validating is the validator's own call; executing is signed by an executor key either way
         bool broadcasting = !validating || !proposes(_validator(config));
 
@@ -141,7 +141,7 @@ contract LaunchDeployer is FullDeployer {
             require(address(opsGuardian.opsSafe()) == OPS_SAFE, "wrong ops admin");
         }
 
-        if (!validating) saveDeploymentOutput(config.network.name);
+        if (!validating) saveDeploymentOutput(Chains.pathOf(config.network.name));
 
         if (broadcasting) vm.stopBroadcast();
     }

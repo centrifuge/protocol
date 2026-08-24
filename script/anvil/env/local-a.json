@@ -1,0 +1,33 @@
+{
+  "network": {
+    "chainId": 31337,
+    "environment": "anvil",
+    "centrifugeId": 1,
+    "protocolAdmin": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    "opsAdmin": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+  },
+  "adapters": {
+    "axelar": {
+      "axelarId": "local-a",
+      "gateway": "0x00000000000000000000000000000000000Aa001",
+      "gasService": "0x00000000000000000000000000000000000Aa002",
+      "deploy": true
+    },
+    "layerZero": {
+      "endpoint": "0x00000000000000000000000000000000000Aa003",
+      "layerZeroEid": 40001,
+      "deploy": true,
+      "blockConfirmations": 1,
+      "requiredDVNs": [
+        "0x00000000000000000000000000000000000Aa005"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
+    },
+    "chainlink": {
+      "chainSelector": 31337,
+      "ccipRouter": "0x00000000000000000000000000000000000Aa004",
+      "deploy": true
+    }
+  }
+}
