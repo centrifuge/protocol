@@ -77,6 +77,8 @@ interface ISpokeGatewayHandler {
     function addPool(PoolId poolId) external;
 
     /// @notice     New share class details from an existing Centrifuge pool are added.
+    /// @param      salt Deterministic deployment salt, whose first 8 bytes MUST be `poolId`. Registrars are
+    ///             shared across pools, so this keeps one pool out of another pool's salt namespace.
     /// @param      payload Opaque data forwarded to the registrar on token creation; empty if unused
     function addShareClass(
         PoolId poolId,

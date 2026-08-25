@@ -21,6 +21,17 @@ import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol"
 ///         StandbyAdapter (so its inbound `handle` lands here), while this adapter's `entrypoint` is the
 ///         MultiAdapter. A shared underlying would route its votes to the wrong place.
 contract StandbyAdapter is IStandbyAdapter {
+    /// @dev Cost of executing `handle()` except entrypoint.handle(), reserved per destination chain.
+    ///      Covers 1 cold CALL (entrypoint) at 2_600, plus a flat 900 for dispatch, calldata copy and
+    ///      call setup. Measured at ~3_000 relaying a 1KB message.
+    uint256 public constant DEFAULT_RECEIVE_COST = 3_500;
+
+    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
+    // Monad reprices cold account access (2600→10100) per its published opcode schedule (docs.monad.xyz),
+    // putting `handle()`'s single cold CALL at 10_100 => +7_500 over DEFAULT. Mirrors the same per-chain
+    // reserve the carrying adapters and GasService keep.
+    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 7_500;
+
     IAdapter public immutable underlying;
     IMessageHandler public immutable entrypoint;
 
@@ -65,16 +76,37 @@ contract StandbyAdapter is IStandbyAdapter {
         require(forwardable[id] > 0, NotForwardable());
         forwardable[id]--;
 
-        require(msg.value >= underlying.estimate(centrifugeId, payload, gasLimit), NotEnoughValue());
-        bytes32 adapterData = underlying.send{value: msg.value}(centrifugeId, payload, gasLimit, msg.sender);
+        require(msg.value >= estimateForward(centrifugeId, payload, gasLimit), NotEnoughValue());
+        bytes32 adapterData = underlying.send{value: msg.value}(
+            centrifugeId, payload, _forwardGasLimit(centrifugeId, gasLimit), msg.sender
+        );
 
         emit Forward(centrifugeId, id, payload, gasLimit, adapterData);
+    }
+
+    /// @inheritdoc IStandbyAdapter
+    function estimateForward(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit)
+        public
+        view
+        returns (uint256)
+    {
+        return underlying.estimate(centrifugeId, payload, _forwardGasLimit(centrifugeId, gasLimit));
     }
 
     /// @dev Internal bookkeeping key, not the MultiAdapter payloadId. Hashing in gasLimit binds `forward`
     ///      to the gas originally requested; the single trailing dynamic field keeps it unambiguous.
     function _id(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(centrifugeId, gasLimit, payload));
+    }
+
+    /// @dev The destination gas the underlying must request. `gasLimit` was provisioned for the normal
+    ///      Executor -> Adapter -> MultiAdapter -> Gateway path (see GasService.messageOverallGasLimit,
+    ///      which corrects for those 3 EIP-150 boundaries), but relaying through this adapter inserts a
+    ///      4th frame. Reserves this contract's own cost and adds the 64/63 that frame's boundary needs,
+    ///      so the entrypoint is entered with as much gas as it would have been on the normal path.
+    function _forwardGasLimit(uint16 centrifugeId, uint256 gasLimit) internal pure returns (uint256) {
+        uint256 receiveCost = centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
+        return (gasLimit + receiveCost) * 64 / 63;
     }
 
     //----------------------------------------------------------------------------------------------

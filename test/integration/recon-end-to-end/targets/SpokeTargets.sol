@@ -19,6 +19,7 @@ import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
+import {shareClassSalt} from "../../../utils/ShareClassSalt.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 import {IShareTokenRegistrar} from "../../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
@@ -87,7 +88,7 @@ abstract contract SpokeTargets is BaseTargetFunctions, Properties {
             name,
             symbol,
             decimals,
-            keccak256(abi.encodePacked(_getPool(), scId)),
+            shareClassSalt(_getPool().raw(), scId),
             shareTokenRegistrar,
             ""
         );

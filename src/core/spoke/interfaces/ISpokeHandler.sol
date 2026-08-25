@@ -25,6 +25,7 @@ interface ISpokeHandler {
     error FileUnrecognizedParam();
     error InvalidRegistrar();
     error InvalidRequestManager();
+    error InvalidSalt();
     error MalformedVaultUpdateMessage();
 
     //----------------------------------------------------------------------------------------------

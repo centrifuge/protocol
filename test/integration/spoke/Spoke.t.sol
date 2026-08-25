@@ -7,6 +7,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {ISpokeHandler} from "../../../src/core/spoke/interfaces/ISpokeHandler.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
@@ -274,6 +275,62 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         );
 
         assertEq(recordingFactory.lastPayload(), payload, "factory did not receive the forwarded payload");
+    }
+}
+
+/// @dev Share tokens are deployed from a registrar shared by every pool, so the spoke re-checks that a
+///      salt carries the pool id it arrived under. Without it, a pool forging its own inbound message
+///      could deploy at another pool's deterministic token address and lock it out of that chain.
+contract SpokeShareClassSaltTest is CentrifugeIntegrationTest {
+    using CastLib for *;
+
+    PoolId victim;
+    PoolId attacker;
+
+    function setUp() public override {
+        super.setUp();
+        victim = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
+        attacker = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 2);
+
+        vm.startPrank(address(opsGuardian.opsSafe()));
+        opsGuardian.createPool(victim, address(this), USD_ID);
+        opsGuardian.createPool(attacker, address(this), USD_ID);
+        vm.stopPrank();
+
+        hub.notifyPool{value: 0}(victim, LOCAL_CENTRIFUGE_ID, address(this));
+        hub.notifyPool{value: 0}(attacker, LOCAL_CENTRIFUGE_ID, address(this));
+    }
+
+    function testCannotDeployAtAnotherPoolsAddress() public {
+        bytes32 victimSalt = bytes32(bytes8(victim.raw()));
+        ShareClassId victimScId = shareClassManager.previewNextShareClassId(victim);
+        hub.addShareClass(victim, "Victim Share", "VIC", victimSalt);
+
+        // The registrar's address depends only on decimals and salt, so a deploy with the victim's salt
+        // would land on the victim's address regardless of which pool it arrives under
+        address victimToken = shareTokenRegistrar.previewTokenAddress("Victim Share", "VIC", 18, victimSalt, "");
+        assertEq(victimToken, shareTokenRegistrar.previewTokenAddress("Attacker Share", "ATK", 18, victimSalt, ""));
+        assertEq(victimToken.code.length, 0, "not yet deployed");
+
+        // The attacker's own inbound path, carrying the victim's salt
+        vm.prank(address(messageProcessor));
+        vm.expectRevert(ISpokeHandler.InvalidSalt.selector);
+        spokeHandler.addShareClass(
+            attacker,
+            ShareClassId.wrap(bytes16(uint128(1))),
+            "Victim Share",
+            "VIC",
+            18,
+            victimSalt,
+            shareTokenRegistrar,
+            ""
+        );
+
+        // The victim still reaches its own deterministic address
+        hub.notifyShareClass{value: 0}(
+            victim, victimScId, LOCAL_CENTRIFUGE_ID, address(shareTokenRegistrar).toBytes32(), "", 0, address(this)
+        );
+        assertEq(address(spokeRegistry.shareToken(victim, victimScId)), victimToken);
     }
 }
 

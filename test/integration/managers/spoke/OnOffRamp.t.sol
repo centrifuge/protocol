@@ -11,7 +11,7 @@ import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";
 import {IOnOffRamp} from "../../../../src/managers/spoke/interfaces/IOnOffRamp.sol";
 import {IAccountingToken} from "../../../../src/managers/spoke/interfaces/IAccountingToken.sol";
 
-import {AssetId, VaultBaseTest as BaseTest, ShareClassId} from "../../vaults/VaultBaseTest.sol";
+import {AssetId, VaultBaseTest as BaseTest, ShareClassId, shareClassSalt} from "../../vaults/VaultBaseTest.sol";
 
 import {IShareTokenRegistrar} from "../../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
@@ -48,7 +48,7 @@ abstract contract OnOffRampBaseTest is BaseTest {
             "testShareClass",
             "tsc",
             defaultDecimals,
-            bytes32(""),
+            shareClassSalt(POOL_A.raw(), defaultShareClassId),
             shareTokenRegistrar,
             ""
         );

@@ -70,6 +70,8 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
         bytes memory payload
     ) external auth {
         require(address(registrar) != address(0), InvalidRegistrar());
+        // A registrar can serve multiple pools, so this prevents forged salts from taking another pool's token address.
+        require(PoolId.wrap(uint64(bytes8(salt))) == poolId, InvalidSalt());
 
         address shareToken_ = registrar.newToken(name, symbol, decimals, salt, payload);
         spokeRegistry.addShareClass(poolId, scId, shareToken_, registrar);

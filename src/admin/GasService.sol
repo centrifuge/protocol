@@ -104,7 +104,7 @@ contract GasService is IGasService {
         setPoolAdapters = _gasValue(791178); // using MAX_ADAPTER_COUNT
         request = _gasValue(282863);
         notifyPool = _gasValue(1379253);
-        notifyShareClass = _gasValue(1876046);
+        notifyShareClass = _gasValue(1876096);
         notifyPricePoolPerShare = _gasValue(177813);
         notifyPricePoolPerAsset = _gasValue(184348);
         notifyShareMetadata = _gasValue(199980);

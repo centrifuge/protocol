@@ -17,28 +17,41 @@ contract MockUnderlying is IAdapter {
     uint16 public lastCentrifugeId;
     bytes public lastPayload;
     uint256 public lastValue;
+    uint256 public lastGasLimit;
     uint256 public sendCount;
     uint256 public cost;
+    uint256 public costPerGas;
     bytes32 public adapterData;
 
     function setCost(uint256 c) external {
         cost = c;
     }
 
+    function setCostPerGas(uint256 c) external {
+        costPerGas = c;
+    }
+
     function setAdapterData(bytes32 d) external {
         adapterData = d;
     }
 
-    function send(uint16 centrifugeId, bytes calldata payload, uint256, address) external payable returns (bytes32) {
+    function send(uint16 centrifugeId, bytes calldata payload, uint256 gasLimit, address)
+        external
+        payable
+        returns (bytes32)
+    {
         lastCentrifugeId = centrifugeId;
         lastPayload = payload;
         lastValue = msg.value;
+        lastGasLimit = gasLimit;
         sendCount++;
         return adapterData;
     }
 
-    function estimate(uint16, bytes calldata, uint256) external view returns (uint256) {
-        return cost;
+    /// @dev `costPerGas` is 0 unless a test sets it, so the quote reflects the gasLimit it was asked
+    ///      about. `estimate` must stay `view`, so this is how a test observes that argument.
+    function estimate(uint16, bytes calldata, uint256 gasLimit) external view returns (uint256) {
+        return cost + gasLimit * costPerGas;
     }
 }
 
@@ -125,10 +138,12 @@ contract StandbyAdapterTest is Test {
     }
 
     /// @dev send then forward must round-trip for any (payload, gasLimit): the credit is recorded under
-    ///      the exact tuple and consumed once, never exceeding sends.
-    function testFuzzSendForwardRoundTrip(bytes calldata payload, uint256 gasLimit, uint8 sends) public {
+    ///      the exact tuple and consumed once, never exceeding sends. `gasLimit` is fuzzed over the width
+    ///      the Gateway provisions (`messageOverallGasLimit` returns uint128), which is the widest value a
+    ///      credit can ever carry; `forward`'s uplift arithmetic cannot overflow below it.
+    function testFuzzSendForwardRoundTrip(bytes calldata payload, uint128 gasLimit, uint8 sends) public {
         sends = uint8(bound(sends, 1, 10));
-        bytes32 id = keccak256(abi.encodePacked(REMOTE, gasLimit, payload));
+        bytes32 id = keccak256(abi.encodePacked(REMOTE, uint256(gasLimit), payload));
 
         for (uint256 i; i < sends; i++) {
             vm.prank(address(entrypoint));
@@ -202,6 +217,51 @@ contract StandbyAdapterTest is Test {
         underlying.setCost(1 ether);
         vm.expectRevert(IStandbyAdapter.NotEnoughValue.selector);
         standby.forward{value: 0.5 ether}(REMOTE, PAYLOAD, GAS);
+    }
+
+    /// @dev A forwarded delivery runs one frame deeper than a normal one (underlying -> standby ->
+    ///      MultiAdapter), which the sender's gasLimit was not provisioned for: the standby reserves its
+    ///      own receive cost and one more EIP-150 64/63 on top of what `send` recorded.
+    function testForwardUpliftsGasLimit() public {
+        _send();
+        standby.forward{value: 1 ether}(REMOTE, PAYLOAD, GAS);
+
+        uint256 expected = (GAS + standby.DEFAULT_RECEIVE_COST()) * 64 / 63;
+        assertGt(expected, GAS, "the underlying must be asked for more than was recorded");
+        assertEq(underlying.lastGasLimit(), expected, "send gets the uplifted limit");
+    }
+
+    /// @dev The forwarder is quoted for, and pays for, the uplifted limit rather than the recorded one.
+    function testForwardEstimatesUpliftedGasLimit() public {
+        _send();
+        underlying.setCostPerGas(1 wei);
+        uint256 expected = (GAS + standby.DEFAULT_RECEIVE_COST()) * 64 / 63;
+        assertEq(standby.estimateForward(REMOTE, PAYLOAD, GAS), expected, "quote exposes the uplifted price");
+
+        vm.expectRevert(IStandbyAdapter.NotEnoughValue.selector);
+        standby.forward{value: expected - 1}(REMOTE, PAYLOAD, GAS);
+
+        standby.forward{value: expected}(REMOTE, PAYLOAD, GAS);
+        assertEq(underlying.lastValue(), expected);
+    }
+
+    /// @dev Monad reprices the cold CALL the relay makes, so it reserves more.
+    function testForwardUpliftsGasLimitForMonad() public {
+        uint16 monad = standby.MONAD_CENTRIFUGE_ID();
+        vm.prank(address(entrypoint));
+        standby.send(monad, PAYLOAD, GAS, address(this));
+        standby.forward{value: 1 ether}(monad, PAYLOAD, GAS);
+
+        assertEq(underlying.lastGasLimit(), (GAS + standby.MONAD_RECEIVE_COST()) * 64 / 63);
+        assertGt(standby.MONAD_RECEIVE_COST(), standby.DEFAULT_RECEIVE_COST());
+    }
+
+    /// @dev The uplift changes only what the underlying is asked for: the credit stays keyed on the
+    ///      gasLimit `send` recorded, so an outstanding credit is still forwardable with that same value.
+    function testForwardUpliftDoesNotRekeyCredit() public {
+        _send();
+        standby.forward{value: 1 ether}(REMOTE, PAYLOAD, GAS);
+        assertEq(standby.forwardable(_id()), 0, "the recorded gasLimit still finds its credit");
     }
 
     function testForwardCannotExceedSends() public {
@@ -287,5 +347,69 @@ contract StandbyAdapterMultiAdapterTest is Test {
         vm.prank(address(standbyUnderlying));
         standby.handle(REMOTE, wrapped);
         assertEq(gateway.count(REMOTE), 1, "standby vote met the 2-of-3 threshold");
+    }
+}
+
+/// @dev Records the gas the MultiAdapter frame is entered with.
+contract GasRecordingEntrypoint is IMessageHandler {
+    uint256 public gasSeen;
+
+    function handle(uint16, bytes calldata) external {
+        gasSeen = gasleft();
+    }
+}
+
+/// @dev Stands in for an adapter's inbound frame, which calls its entrypoint with everything it has
+///      left, exactly as LayerZeroAdapter.lzReceive and AxelarAdapter.execute do.
+contract InboundRelay {
+    IMessageHandler public entrypoint;
+
+    function setEntrypoint(IMessageHandler entrypoint_) external {
+        entrypoint = entrypoint_;
+    }
+
+    function deliver(uint16 centrifugeId, bytes calldata message) external {
+        entrypoint.handle(centrifugeId, message);
+    }
+}
+
+/// @dev The reason `forward` uplifts the gas limit: a forwarded delivery runs one frame deeper than a
+///      normal one, so the same limit would enter the MultiAdapter with less gas than the sender
+///      provisioned. Measures both paths against each other rather than pinning absolute gas numbers.
+contract StandbyAdapterGasTest is Test {
+    uint16 constant REMOTE = 2;
+
+    GasRecordingEntrypoint directEntrypoint = new GasRecordingEntrypoint();
+    GasRecordingEntrypoint standbyEntrypoint = new GasRecordingEntrypoint();
+
+    InboundRelay direct = new InboundRelay();
+    InboundRelay viaStandby = new InboundRelay();
+    StandbyAdapter standby;
+
+    function setUp() public {
+        // Normal path: adapter -> MultiAdapter
+        direct.setEntrypoint(directEntrypoint);
+
+        // Forwarded path: adapter -> standby -> MultiAdapter. The standby only accepts inbound calls
+        // from its `underlying`, so the two point at each other.
+        standby = new StandbyAdapter(standbyEntrypoint, IAdapter(address(viaStandby)));
+        viaStandby.setEntrypoint(standby);
+    }
+
+    function testForwardUpliftCoversTheRelayFrame(uint32 gasLimit, uint16 messageLength) public {
+        gasLimit = uint32(bound(gasLimit, 100_000, 10_000_000));
+        bytes memory message = new bytes(bound(messageLength, 0, 8192));
+
+        // What a normal adapter delivers on `gasLimit`, against what the standby delivers on the
+        // uplifted limit `forward` hands its underlying.
+        uint256 uplifted = (uint256(gasLimit) + standby.DEFAULT_RECEIVE_COST()) * 64 / 63;
+        direct.deliver{gas: gasLimit}(REMOTE, message);
+        viaStandby.deliver{gas: uplifted}(REMOTE, message);
+
+        assertGe(
+            standbyEntrypoint.gasSeen(),
+            directEntrypoint.gasSeen(),
+            "a forwarded delivery must not enter the MultiAdapter with less gas than a normal one"
+        );
     }
 }

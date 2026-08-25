@@ -29,6 +29,7 @@ import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCa
 import "forge-std/Test.sol";
 
 import {MAX_MESSAGE_COST} from "../../utils/GasConstants.sol";
+import {shareClassSalt} from "../../utils/ShareClassSalt.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 import {ShareTokenRegistrar} from "../../../src/token/ShareTokenRegistrar.sol";
 import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
@@ -96,7 +97,7 @@ contract MockCentrifugeChainDirect is Test {
         uint8 decimals,
         address hook
     ) public {
-        addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, keccak256(abi.encodePacked(poolId, scId)), hook);
+        addShareClass(poolId, scId, tokenName, tokenSymbol, decimals, shareClassSalt(poolId, scId), hook);
     }
 
     function updateMember(uint64 poolId, bytes16 scId, address user, uint64 validUntil) public {

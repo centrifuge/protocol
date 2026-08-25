@@ -41,14 +41,16 @@ contract SpokeHandlerTest is Test {
     address HOOK2 = makeAddr("hook2");
     address NO_HOOK = address(0);
 
-    PoolId constant POOL_A = PoolId.wrap(1);
+    uint64 constant POOL_A_RAW = 1;
+    PoolId constant POOL_A = PoolId.wrap(POOL_A_RAW);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
     AssetId immutable ASSET_ID = newAssetId(LOCAL_CENTRIFUGE_ID, 1);
 
     uint8 constant DECIMALS = 18;
     string constant NAME = "name";
     string constant SYMBOL = "symbol";
-    bytes32 constant SALT = "salt";
+    // A share class salt carries its pool id in the leading 8 bytes
+    bytes32 constant SALT = bytes32(uint256(POOL_A_RAW) << 192 | uint256(uint64(bytes8("salt"))));
     bytes constant PAYLOAD = "payload";
 
     D18 immutable PRICE = d18(42e18);
@@ -129,6 +131,12 @@ contract SpokeHandlerTestAddShareClass is SpokeHandlerTest {
         vm.prank(AUTH);
         vm.expectRevert(ISpokeHandler.InvalidRegistrar.selector);
         handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, SALT, IRegistrar(address(0)), PAYLOAD);
+    }
+
+    function testErrInvalidSalt() public {
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeHandler.InvalidSalt.selector);
+        handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, DECIMALS, "salt", registrar, PAYLOAD);
     }
 
     function _mockNewToken() internal {
