@@ -70,7 +70,6 @@ contract NAVManagerTest is Test {
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector), abi.encode(uint32(0)));
 
         vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.accountValue.selector), abi.encode(true, uint128(0)));
-        _mockAccount(false, 0);
 
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset1), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset2), abi.encode(6));
@@ -82,16 +81,6 @@ contract NAVManagerTest is Test {
 
     function _deployManager() internal {
         navManager = new NAVManager(IHub(hub), envoy);
-    }
-
-    /// @dev Mocks `accounting.accounts` for every account: `lastUpdated == 0` means the account does not
-    ///      exist yet, which is what makes `_createHolding` create it.
-    function _mockAccount(bool isDebitNormal, uint64 lastUpdated) internal {
-        vm.mockCall(
-            address(accounting),
-            abi.encodeWithSelector(IAccounting.accounts.selector),
-            abi.encode(uint128(0), uint128(0), isDebitNormal, lastUpdated, bytes(""))
-        );
     }
 
     function _mockAccountValue(AccountId accountId, uint128 value, bool isPositive) internal {
@@ -332,68 +321,18 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
         navManager.fromHub(POOL_B, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset1));
     }
 
-    /// @dev A pool's assets are shared across its share classes, so a second share class over the same asset
-    ///      reuses the asset account the first one created instead of reverting `AccountExists`. Both holdings
-    ///      then debit the one shared account, which is what keeps the pool-wide NAV whole.
-    function testInitializeHoldingSameAssetTwiceReusesAccount() public {
+    function testInitializeHoldingSameAssetTwice() public {
         _initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
         AccountId expectedAssetAccount = withAssetId(asset1, uint16(NAVAccount.Asset));
-        _mockAccount(true, uint64(block.timestamp)); // asset account now exists, debit-normal
 
         vm.expectCall(
-            address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true), 0
+            address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
         );
-        vm.expectCall(
-            address(hub),
-            abi.encodeWithSelector(
-                IHub.initializeHolding.selector,
-                POOL_A,
-                SC_2,
-                asset1,
-                mockValuation,
-                _expectedHoldingAccounts(
-                    expectedAssetAccount,
-                    navManager.equityAccount(CENTRIFUGE_ID_1),
-                    navManager.gainAccount(CENTRIFUGE_ID_1),
-                    navManager.lossAccount(CENTRIFUGE_ID_1)
-                )
-            )
-        );
-
-        vm.expectEmit(true, true, false, true);
-        emit INAVManager.InitializeHolding(POOL_A, SC_2, asset1);
 
         _initializeHolding(POOL_A, SC_2, asset1, mockValuation);
 
         assertEq(navManager.assetAccount(asset1).raw(), expectedAssetAccount.raw());
-    }
-
-    /// @dev Reuse is only for a debit-normal account: an existing credit-normal account at the same id must
-    ///      never be adopted as the holding's debit slot.
-    function testInitializeHoldingRejectsCreditNormalAccount() public {
-        _mockAccount(false, uint64(block.timestamp));
-
-        vm.prank(envoy);
-        vm.expectRevert(INAVManager.NotDebitNormalAccount.selector);
-        navManager.fromHub(POOL_A, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset1));
-    }
-
-    /// @dev Same reuse on the liability path, whose debit slot is the per-asset expense account.
-    function testInitializeLiabilitySameAssetTwiceReusesAccount() public {
-        _initializeLiability(POOL_A, SC_1, asset1, mockValuation);
-
-        AccountId expectedExpenseAccount = withAssetId(asset1, uint16(NAVAccount.Expense));
-        _mockAccount(true, uint64(block.timestamp));
-
-        vm.expectCall(
-            address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedExpenseAccount, true), 0
-        );
-
-        vm.expectEmit(true, true, false, true);
-        emit INAVManager.InitializeLiability(POOL_A, SC_2, asset1);
-
-        _initializeLiability(POOL_A, SC_2, asset1, mockValuation);
     }
 }
 
@@ -639,9 +578,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
 
     function _mockDeficitCount(uint16 centrifugeId, uint32 count) internal {
         vm.mockCall(
-            holdings,
-            abi.encodeWithSelector(IHoldings.deficitCount.selector, POOL_A, SC_1, centrifugeId),
-            abi.encode(count)
+            holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector, POOL_A, centrifugeId), abi.encode(count)
         );
     }
 

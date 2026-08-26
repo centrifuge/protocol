@@ -506,10 +506,10 @@ contract TestDeficitCount is TestCommon {
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 100);
 
         vm.expectEmit();
-        emit IHoldings.UpdateDeficitCount(POOL_A, SC_1, CENT_A, 1);
+        emit IHoldings.UpdateDeficitCount(POOL_A, CENT_A, 1);
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150);
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
         assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
 
         (uint128 increased, uint128 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
@@ -519,10 +519,10 @@ contract TestDeficitCount is TestCommon {
 
     function testDecreaseFromEmptyEntersDeficit() public {
         vm.expectEmit();
-        emit IHoldings.UpdateDeficitCount(POOL_A, SC_1, CENT_A, 1);
+        emit IHoldings.UpdateDeficitCount(POOL_A, CENT_A, 1);
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 50);
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
     }
 
     function testDeepenDeficitDoesNotDoubleIncrement() public {
@@ -530,7 +530,7 @@ contract TestDeficitCount is TestCommon {
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150); // deficit -50
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 50); // deeper -100, still one holding
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
     }
 
     function testPartialRefillDoesNotDecrement() public {
@@ -538,7 +538,7 @@ contract TestDeficitCount is TestCommon {
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150); // deficit -50
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 30); // still deficit -20
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
     }
 
     function testExitAtExactEqualityDecrements() public {
@@ -546,10 +546,10 @@ contract TestDeficitCount is TestCommon {
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150); // deficit -50
 
         vm.expectEmit();
-        emit IHoldings.UpdateDeficitCount(POOL_A, SC_1, CENT_A, 0);
+        emit IHoldings.UpdateDeficitCount(POOL_A, CENT_A, 0);
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 50); // increased == decreased == 150
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 0);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
         assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
     }
 
@@ -558,7 +558,7 @@ contract TestDeficitCount is TestCommon {
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 100);
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 100);
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 0);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
         assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
     }
 
@@ -567,44 +567,28 @@ contract TestDeficitCount is TestCommon {
         holdings.increase(POOL_A, SC_1, a2, CENT_A, 100);
 
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
 
         holdings.decrease(POOL_A, SC_1, a2, CENT_A, 150);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 2);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 2);
 
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 50); // a1 out
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
 
         holdings.increase(POOL_A, SC_1, a2, CENT_A, 50); // a2 out
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 0);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
     }
 
-    /// @dev The count is per share class, so the same asset in two share classes keeps two separate buckets:
-    ///      a deficit on one share class must never hold the other's price.
-    function testShareClassesCountIndependently() public {
+    /// @dev Per-pool-network count spans share classes: the same asset in two share classes is two distinct
+    ///      holdings, each counted.
+    function testTwoShareClassesSameAssetCountIndependently() public {
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 100);
         holdings.increase(POOL_A, SC_2, a1, CENT_A, 100);
 
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1, "deficit lands in its own share class");
-        assertEq(holdings.deficitCount(POOL_A, SC_2, CENT_A), 0, "must not leak into a solvent share class");
-
         holdings.decrease(POOL_A, SC_2, a1, CENT_A, 150);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
-        assertEq(holdings.deficitCount(POOL_A, SC_2, CENT_A), 1);
 
-        holdings.increase(POOL_A, SC_1, a1, CENT_A, 50); // SC_1 out, SC_2 still in deficit
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 0);
-        assertEq(holdings.deficitCount(POOL_A, SC_2, CENT_A), 1);
-    }
-
-    /// @dev Two assets in the same share class still share one bucket: the gate must hold the share class
-    ///      price while any of its holdings misstates the NAV.
-    function testTwoAssetsSameShareClassShareOneBucket() public {
-        holdings.decrease(POOL_A, SC_1, a1, CENT_A, 50);
-        holdings.decrease(POOL_A, SC_1, a2, CENT_A, 50);
-
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 2);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 2);
     }
 
     function testTwoNetworksIndependent() public {
@@ -612,22 +596,22 @@ contract TestDeficitCount is TestCommon {
         holdings.increase(POOL_A, SC_1, b1, CENT_B, 100);
 
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 150);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_B), 0);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_B), 0);
 
         holdings.decrease(POOL_A, SC_1, b1, CENT_B, 150);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_B), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_B), 1);
     }
 
     /// @dev A carried over-decrease that later nets fully clears the deficit exactly once.
     function testOverDecreaseNetsAndClearsDeficit() public {
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 100);
         holdings.decrease(POOL_A, SC_1, a1, CENT_A, 120); // -20, count 1
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1);
 
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 20); // back to zero, not deficit
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 0);
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 0);
 
         (uint128 increased, uint128 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
         assertEq(increased, 120);
@@ -644,7 +628,7 @@ contract TestDeficitCount is TestCommon {
         holdings.increase(POOL_A, SC_1, isoAsset, CENT_A, 100);
         holdings.decrease(POOL_A, SC_1, isoAsset, CENT_A, 150); // reported for CENT_A, not isoAsset's own (0)
 
-        assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1, "deficit must land in the reporting network's bucket");
-        assertEq(holdings.deficitCount(POOL_A, SC_1, 0), 0, "must not leak into the asset's own embedded centrifugeId");
+        assertEq(holdings.deficitCount(POOL_A, CENT_A), 1, "deficit must land in the reporting network's bucket");
+        assertEq(holdings.deficitCount(POOL_A, 0), 0, "must not leak into the asset's own embedded centrifugeId");
     }
 }

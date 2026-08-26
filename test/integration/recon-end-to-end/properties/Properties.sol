@@ -863,44 +863,37 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev `deficitCount(poolId, scId, centrifugeId)` must equal the number of holdings on that share
-    ///      class-network with `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts`.
-    ///      Regression guard for the deficit-gate crossing logic in `Holdings.increase/decrease`, and for the
-    ///      per-share-class keying: a deficit must never be counted against a sibling share class. The NAV-hook
-    ///      gate itself isn't observable here (snapshot-hook layer not wired into this harness); covered by
-    ///      NAVManager tests.
+    /// @dev `deficitCount(poolId, centrifugeId)` must equal the number of holdings on that pool-network with
+    ///      `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts`. Regression guard for
+    ///      the deficit-gate crossing logic in `Holdings.increase/decrease`. The NAV-hook gate itself isn't
+    ///      observable here (snapshot-hook layer not wired into this harness); covered by NAVManager tests.
     function property_deficitCountMatchesHoldings() public {
         PoolId[] memory pools = _getPools();
         AssetId[] memory assetIds = _getAssetIds();
 
         for (uint256 p; p < pools.length; p++) {
-            ShareClassId[] memory shareClasses = _getPoolShareClasses(pools[p]);
-
-            for (uint256 s; s < shareClasses.length; s++) {
-                for (uint256 a; a < assetIds.length; a++) {
-                    uint16 centrifugeId = assetIds[a].centrifugeId();
-                    eq(
-                        uint256(holdings.deficitCount(pools[p], shareClasses[s], centrifugeId)),
-                        _countDeficitHoldings(pools[p], shareClasses[s], centrifugeId),
-                        "deficitCount != holdings in deficit"
-                    );
-                }
+            for (uint256 a; a < assetIds.length; a++) {
+                uint16 centrifugeId = assetIds[a].centrifugeId();
+                eq(
+                    uint256(holdings.deficitCount(pools[p], centrifugeId)),
+                    _countDeficitHoldings(pools[p], centrifugeId),
+                    "deficitCount != holdings in deficit"
+                );
             }
         }
     }
 
-    /// @dev Counts holdings in deficit for a share class-network across its assets.
-    function _countDeficitHoldings(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
-        internal
-        view
-        returns (uint256 count)
-    {
+    /// @dev Counts holdings in deficit for a pool-network across its share classes and assets.
+    function _countDeficitHoldings(PoolId poolId, uint16 centrifugeId) internal view returns (uint256 count) {
+        ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
         AssetId[] memory assetIds = _getAssetIds();
 
-        for (uint256 a; a < assetIds.length; a++) {
-            if (assetIds[a].centrifugeId() != centrifugeId) continue;
-            (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, scId, assetIds[a]);
-            if (decreased > increased) count++;
+        for (uint256 s; s < shareClasses.length; s++) {
+            for (uint256 a; a < assetIds.length; a++) {
+                if (assetIds[a].centrifugeId() != centrifugeId) continue;
+                (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, shareClasses[s], assetIds[a]);
+                if (decreased > increased) count++;
+            }
         }
     }
 

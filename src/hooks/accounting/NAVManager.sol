@@ -142,21 +142,13 @@ contract NAVManager is INAVManager {
 
     /// @dev Creates only `accounts[0]`, the per-asset debit account; the other slots are per-network
     ///      accounts already created in `_initializeNetwork` and reused across holdings.
-    ///      `accounts[0]` is keyed by asset alone because a pool's assets are shared across its share
-    ///      classes, so a second share class over the same asset reuses the account the first one created
-    ///      instead of reverting `AccountExists`. Both holdings then debit the one shared asset account,
-    ///      which is what keeps the pool-wide NAV whole. The reuse is gated on the account being
-    ///      debit-normal, so it can never adopt a credit-normal account created for another purpose.
     function _createHolding(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId[4] memory accounts) private {
         require(initialized[poolId][assetId.centrifugeId()], NotInitialized());
 
         IValuation valuation = defaultValuation[poolId];
         require(address(valuation) != address(0), ValuationNotSet());
 
-        (,, bool isDebitNormal, uint64 lastUpdated,) = accounting.accounts(poolId, accounts[0]);
-        if (lastUpdated == 0) hub.createAccount(poolId, accounts[0], true);
-        else require(isDebitNormal, NotDebitNormalAccount());
-
+        hub.createAccount(poolId, accounts[0], true);
         hub.initializeHolding(poolId, scId, assetId, valuation, accounts);
     }
 
@@ -168,12 +160,9 @@ contract NAVManager is INAVManager {
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
         require(msg.sender == address(holdings), NotAuthorized());
 
-        // While the share class-network is in deficit its NAV misstates the holdings, so it is kept out of
-        // the hook entirely: skip silently (never reverting) and resume once the deficit clears. This holds
-        // the share class-network's slice, not the pool's published price. A hook aggregating several
-        // networks keeps publishing on a sync from any other network, carrying this one's last consistent
-        // slice. Gate precedes the `navHook` check.
-        uint32 deficitCount = holdings.deficitCount(poolId, scId, centrifugeId);
+        // While the pool-network is in deficit, hold the last published price by skipping silently (never
+        // reverting) and resume once the deficit clears. Gate precedes the `navHook` check.
+        uint32 deficitCount = holdings.deficitCount(poolId, centrifugeId);
         if (deficitCount != 0) {
             emit SkipSync(poolId, scId, centrifugeId, deficitCount);
             return;

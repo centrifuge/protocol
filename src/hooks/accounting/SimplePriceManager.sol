@@ -31,10 +31,6 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVHook
-    /// @dev A network's slice of the aggregate only advances on its own sync, so a network whose sync is being
-    ///      skipped (NAVManager holds it while it is in deficit) keeps contributing its last consistent slice
-    ///      here, and a sync from any other network still republishes the price. Its NAV and issuance are frozen
-    ///      together, so the aggregate stays coherent, but it is stale in that network's share of it.
     function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) public virtual {
         require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());

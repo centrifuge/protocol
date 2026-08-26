@@ -407,7 +407,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     }
 }
 
-/// @dev End-to-end deficit gate: an over-decrease (e.g. revoke-without-assets) pushes the share class-network into
+/// @dev End-to-end deficit gate: an over-decrease (e.g. revoke-without-assets) pushes the pool-network into
 ///      deficit; `onSync` holds the last published price instead of reverting, and resumes once a refill clears it.
 contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
     /// forge-config: default.isolate = true
@@ -417,7 +417,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         // Baseline: CHAIN_CV at 3300e18, no deficit.
         (uint128 navBefore, uint128 issuanceBefore,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         assertEq(navBefore, 3300e18);
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 0);
+        assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 0);
 
         // Over-decrease asset1 by 1500: holding saturates at zero, network enters deficit; onSync must
         // skip, not revert.
@@ -428,7 +428,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), false, true, 3);
 
         // Gate engaged: live NAV reflects the shortfall, but the published price is held.
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 1);
+        assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 1);
         assertEq(navManager.netAssetValue(POOL_A, CHAIN_CV), 2300e18); // live: equity down 1000e18
         (uint128 navDuring, uint128 issuanceDuring,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         assertEq(navDuring, navBefore); // frozen at last good
@@ -438,7 +438,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
 
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 0);
+        assertEq(holdings.deficitCount(POOL_A, CHAIN_CV), 0);
         (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
         assertEq(navAfter, 3300e18); // 1000 - 1500 + 1500 = 1000 asset1 restored -> NAV back to 3300e18
         assertEq(issuanceAfter, issuanceBefore);
@@ -520,39 +520,5 @@ contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
         valuation.setPrice(POOL_A, scId, asset3, d18(96, 100));
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         navManager.updateHoldingValue(POOL_A, scId, asset3);
-    }
-}
-
-/// @dev A pool's assets are shared across its share classes, so two share classes over one asset are two
-///      holdings sharing one asset account. Before the reuse in `_createHolding` the second one reverted
-///      `AccountExists`, which is what blocked a tranched pool from setting up.
-contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
-    function testTwoShareClassesShareOneAssetAccount() public {
-        vm.prank(FM);
-        ShareClassId scId2 =
-            hub.addShareClass(POOL_A, "Junior Share Class", "JSC", bytes32(bytes8(POOL_A.raw())) | bytes32(uint256(2)));
-        valuation.setPrice(POOL_A, scId2, asset1, d18(1, 1));
-
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId2, asset1));
-
-        assertTrue(holdings.isInitialized(POOL_A, scId, asset1));
-        assertTrue(holdings.isInitialized(POOL_A, scId2, asset1));
-        assertEq(
-            holdings.accountId(POOL_A, scId2, asset1, 0).raw(),
-            holdings.accountId(POOL_A, scId, asset1, 0).raw(),
-            "both holdings must debit the one shared asset account"
-        );
-
-        // Each class reports its own inflow, both journal into the shared account, so the pool-wide NAV
-        // counts both. Snapshots stay open so the (single-class) price hook is not driven here.
-        vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
-
-        vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId2, asset1, uint128(500 * 10 ** asset1Decimals), true, false, 0);
-
-        assertEq(navManager.netAssetValue(POOL_A, CHAIN_CV), 1500e18, "junior inflow must count towards pool NAV");
     }
 }
