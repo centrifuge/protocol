@@ -30,6 +30,8 @@ import {ChainConfig, Chains} from "../utils/ChainConfig.s.sol";
 ///         and an executor signs the deploy with `--account <name> --sender <addr> --slow`. The deploy phase
 ///         records what it deployed into env/<environment>/<network>.json itself.
 contract LaunchDeployer is FullDeployer {
+    uint256 public constant MAINNET_DELAY = 48 hours;
+
     /// @notice Commits the whole deployment to the gate: the single transaction the admin signs.
     function commit() public {
         _launch(DeployPhase.Commit);
@@ -97,6 +99,8 @@ contract LaunchDeployer is FullDeployer {
             txLimits: config.network.buildBatchLimits(),
             protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),
+            root: config.rootAddress(),
+            delay: config.network.isMainnet() ? MAINNET_DELAY : 0,
             adapters: AdaptersInput({
                 layerZero: LayerZeroInput({
                     shouldDeploy: config.adapters.layerZero.deploy,
@@ -144,5 +148,16 @@ contract LaunchDeployer is FullDeployer {
         if (!committing) saveDeploymentOutput(Chains.pathOf(config.network.name));
 
         if (broadcasting) vm.stopBroadcast();
+
+        if (input.root != address(0)) _printRootFixes(input.root);
+    }
+
+    /// @dev Takes the Root rather than reading it back, so this reads the same in both phases: a validating
+    ///      run rolls its walk back, and only `rootFixes` is carried across it
+    function _printRootFixes(address keptRoot) internal view {
+        console.log("");
+        console.log("Root %s was reused, so this deployment is NOT complete:", keptRoot);
+        console.log("the wiring only Root can do is waiting in RootFixes at %s", address(rootFixes));
+        console.log("Cast it: scheduleRely, wait out root.delay(), executeScheduledRely, then rootFixes.cast()");
     }
 }

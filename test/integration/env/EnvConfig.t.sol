@@ -22,6 +22,30 @@ contract EnvConnectionsTest is ChainConfigBase {
     }
 }
 
+/// @dev Why a launch reads the Root off the chain half. Until a release is deployed, a live config records
+///      `contracts.root` and nothing else — the shape a launch onto an existing Root is handed — and
+///      `Env.parseContracts` requires every other address, so it rejects those configs outright.
+contract EnvRootIsReadOffTheChainHalfTest is Test {
+    /// @dev An `env/<environment>/<network>.json` as live carries them before its release is deployed
+    string constant ROOT_ONLY = '{"contracts":{"root":{'
+        '"address":"0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f","blockNumber":22924235,"version":"3"}}}';
+
+    function test_theChainHalfAnswersWithTheRecordedRoot() public pure {
+        assertEq(Chains.parseRootAddress(ROOT_ONLY), 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
+    }
+
+    function test_theContractsHalfCannotReadTheSameConfig() public {
+        vm.expectRevert();
+        this.parseContracts();
+    }
+
+    /// @dev An external hop, so that `vm.expectRevert` sees the revert below its own call
+    function parseContracts() external view returns (ContractsConfig memory) {
+        AdaptersConfig memory noAdapters;
+        return Env.parseContracts(ROOT_ONLY, noAdapters);
+    }
+}
+
 /// @dev The one thing that holds `ContractsConfig` to reality on this branch. `Env.load` describes what a
 ///      deployment writes, not what any chain is running, so no config in `env/` can prove it — the configs
 ///      there record earlier releases and are expected to be rejected. What can prove it is a deployment:

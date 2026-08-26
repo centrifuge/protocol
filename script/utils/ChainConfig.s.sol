@@ -224,6 +224,16 @@ library Chains {
         config.adapters = _parseAdaptersConfig(json);
     }
 
+    /// @notice The `Root` a config records under `.contracts`, or zero where it records none.
+    /// @dev    The JSON-taking half of `ChainConfigLib.rootAddress`, as `parse` is of `load`.
+    function parseRootAddress(string memory json) internal pure returns (address) {
+        try vm.parseJsonAddress(json, ".contracts.root.address") returns (address addr) {
+            return addr;
+        } catch {
+            return address(0);
+        }
+    }
+
     /// @notice The network name `block.chainid` belongs to. Walks every root `configRoots()` names — so a
     ///         local run's copies under env/anvil/ and the fixtures they came from are both reachable — and
     ///         skips anything that is not a network config (the connections files carry no chainId).
@@ -420,6 +430,15 @@ library ChainConfigLib {
 
     /// @dev LayerZero `MessageLib` config type for `UlnConfig`.
     uint32 internal constant ULN_CONFIG_TYPE = 2;
+
+    /// @notice The `Root` the chain's config records, or zero where it records none.
+    ///
+    /// @dev    The one deployed address `ChainConfig` answers for, because `ContractsConfig` cannot: until a
+    ///         release is deployed a config records `contracts.root` and nothing else, which
+    ///         `Env.parseContracts` rejects. Re-reads the file, a `ChainConfig` carrying no JSON
+    function rootAddress(ChainConfig memory config) internal view returns (address) {
+        return Chains.parseRootAddress(Chains.jsonOf(config.network.name));
+    }
 
     /// @dev Live-branch consumer only (see `GraphQLConstants`). The ignored receiver is the attachment
     ///      point: it exists so a caller writes `config.chain.etherscanApiKey()` through `using`.

@@ -87,6 +87,19 @@ contract ChainConfigTest is ChainConfigBase {
         '"opsAdmin":"0x0000000000000000000000000000000000000002",'
         '"verifier":"etherscan","verifierUrl":"https://write-only.example/api"}}';
 
+    /// @dev A `.contracts` section with the Root in it, and a neighbour, so the lookup has to pick one
+    string constant WITH_ROOT = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002"},'
+        '"contracts":{"spoke":{"address":"0x0000000000000000000000000000000000000004"},'
+        '"root":{"address":"0x0000000000000000000000000000000000000003","version":"v3.3"}}}';
+
+    /// @dev The same with the Root taken out, which is a config a launch is meant to bring one up on
+    string constant WITHOUT_ROOT = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002"},'
+        '"contracts":{"spoke":{"address":"0x0000000000000000000000000000000000000004"}}}';
+
     /// @dev A config carries the name it was read under, not one it names itself: `detect()` derives the
     ///      name from the path, and everything downstream — the rpc alias, the connections lookup — keys off
     ///      it, so a config could not disagree about who it is even if it tried.
@@ -134,6 +147,20 @@ contract ChainConfigTest is ChainConfigBase {
             vm.expectRevert();
             this.parse(without);
         }
+    }
+
+    /// @dev `Root` is the one `.contracts` entry the chain half reads, because keeping it is what decides
+    ///      whether a launch lands beside the Root a chain already has or stands a second one next to it.
+    function test_rootAddressIsWhatTheConfigRecords() public pure {
+        assertEq(Chains.parseRootAddress(WITH_ROOT), address(3));
+    }
+
+    /// @dev Absent is an answer, not a failure: it is what a chain being prepared looks like, and what tells a
+    ///      launch to deploy its own. Zero whether the section is missing or merely has no Root in it — a
+    ///      revert either way would make every such config undeployable.
+    function test_rootAddressIsZeroWhereNoneIsRecorded() public pure {
+        assertEq(Chains.parseRootAddress(WITHOUT_ROOT), address(0), "a contracts section with no root");
+        assertEq(Chains.parseRootAddress(MINIMAL), address(0), "no contracts section at all");
     }
 
     /// @dev An external hop, so that `vm.expectRevert` sees the revert at a lower depth than its own call

@@ -128,6 +128,10 @@ struct AdapterConnections {
     uint8 threshold;
 }
 
+/// @notice Thrown when a batcher is told to wire Root but is not a ward of it, or the other way round: the
+///         deployment and the Root on the chain disagree about whether that Root was deployed by this run.
+error RootAccessMismatch();
+
 abstract contract Constants {
     uint8 public constant ISO4217_DECIMALS = 18;
     AssetId public immutable USD_ID = newAssetId(840);
@@ -140,9 +144,16 @@ contract CoreActionBatcher is Constants {
         ISafe protocolSafe,
         ISafe opsSafe,
         address adapterBatcher_,
-        address nonCoreBatcher_
+        address nonCoreBatcher_,
+        bool wireRoot
     ) {
         address root = address(report.root);
+
+        // False where the chain already carried its Root, which leaves everything reaching into it to
+        // `RootFixes`. Passed in rather than inferred, and checked against the ward that has to follow from
+        // it, so the two can never drift: wiring Root without the ward reverts, and skipping it while holding
+        // the ward would leave this contract a ward of Root for good
+        require(wireRoot == (report.root.wards(address(this)) == 1), RootAccessMismatch());
 
         // Rely root
         report.gateway.rely(root);
@@ -178,14 +189,14 @@ contract CoreActionBatcher is Constants {
         report.multiAdapter.rely(address(report.messageDispatcher));
         report.envoy.rely(address(report.messageDispatcher));
         report.hubHandler.rely(address(report.messageDispatcher));
-        report.root.rely(address(report.messageDispatcher));
+        if (wireRoot) report.root.rely(address(report.messageDispatcher));
 
         // Rely messageProcessor
         report.gateway.rely(address(report.messageProcessor));
         report.multiAdapter.rely(address(report.messageProcessor));
         report.hubHandler.rely(address(report.messageProcessor));
         report.envoy.rely(address(report.messageProcessor));
-        report.root.rely(address(report.messageProcessor));
+        if (wireRoot) report.root.rely(address(report.messageProcessor));
 
         // Rely spoke
         report.messageDispatcher.rely(address(report.spoke));
@@ -224,7 +235,7 @@ contract CoreActionBatcher is Constants {
         report.gateway.rely(address(report.protocolGuardian));
         report.multiAdapter.rely(address(report.protocolGuardian));
         report.messageDispatcher.rely(address(report.protocolGuardian));
-        report.root.rely(address(report.protocolGuardian));
+        if (wireRoot) report.root.rely(address(report.protocolGuardian));
 
         // Rely opsGuardian
         report.multiAdapter.rely(address(report.opsGuardian));
@@ -265,7 +276,7 @@ contract CoreActionBatcher is Constants {
         report.protocolGuardian.file("safe", address(protocolSafe));
 
         // Endorse methods
-        report.root.endorse(address(report.spoke));
+        if (wireRoot) report.root.endorse(address(report.spoke));
 
         // Initial configuration
         report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
@@ -273,7 +284,7 @@ contract CoreActionBatcher is Constants {
 
         // Other batchers
         report.multiAdapter.rely(adapterBatcher_);
-        report.root.rely(nonCoreBatcher_);
+        if (wireRoot) report.root.rely(nonCoreBatcher_);
 
         // Revoke batcher permissions
         report.gateway.deny(address(this));
@@ -297,13 +308,16 @@ contract CoreActionBatcher is Constants {
         report.hub.deny(address(this));
         report.hubHandler.deny(address(this));
 
-        report.root.deny(address(this));
+        if (wireRoot) report.root.deny(address(this));
     }
 }
 
 contract NonCoreActionBatcher {
-    constructor(NonCoreReport memory report) {
+    constructor(NonCoreReport memory report, bool wireRoot) {
         address root = address(report.core.root);
+
+        // As in `CoreActionBatcher`. The ward this checks is the one that batcher granted, under the same flag
+        require(wireRoot == (report.core.root.wards(address(this)) == 1), RootAccessMismatch());
 
         // Rely Root
         report.tokenBridge.rely(root);
@@ -372,9 +386,11 @@ contract NonCoreActionBatcher {
         report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
-        report.core.root.endorse(address(report.asyncRequestManager));
-        report.core.root.endorse(address(report.vaultRouter));
-        report.core.root.endorse(address(report.tokenBridge));
+        if (wireRoot) {
+            report.core.root.endorse(address(report.asyncRequestManager));
+            report.core.root.endorse(address(report.vaultRouter));
+            report.core.root.endorse(address(report.tokenBridge));
+        }
 
         // Revoke batcher permissions
         report.tokenBridge.deny(address(this));
@@ -395,7 +411,7 @@ contract NonCoreActionBatcher {
 
         report.bridgeCircuitBreaker.deny(address(this));
 
-        report.core.root.deny(address(this));
+        if (wireRoot) report.core.root.deny(address(this));
     }
 }
 

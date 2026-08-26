@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
+
+import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
 import {DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
@@ -18,6 +21,8 @@ import {
 
 import "forge-std/Test.sol";
 
+import {RootFixes} from "../../src/deployment/RootFixes.sol";
+import {CoreReport, CoreActionBatcher, RootAccessMismatch} from "../../src/deployment/ActionBatchers.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 contract LayerZeroEndpointMock {
@@ -45,8 +50,14 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
+    uint256 internal constant MAINNET_DELAY = 48 hours;
+
     uint16 internal centrifugeId_ = CENTRIFUGE_ID;
     address internal namespace_;
+
+    /// @dev What a launch is handed. Zero root means it deploys its own; the subclasses below vary them
+    address internal existingRoot_;
+    uint256 internal delay_ = MAINNET_DELAY;
 
     /// @dev Mock deployed code for validation check which requires deployed code length > 0
     function _mockBridgeContracts() internal {
@@ -83,6 +94,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
             txLimits: defaultTxLimits(),
             protocolSafe: ADMIN_SAFE,
             opsSafe: OPS_SAFE,
+            root: existingRoot_,
+            delay: delay_,
             adapters: AdaptersInput({
                 axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
                 layerZero: LayerZeroInput({
@@ -795,7 +808,7 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
     function testAdapterFailover() public view {
         assertEq(address(adapterFailover.multiAdapter()), address(multiAdapter));
         assertEq(adapterFailover.envoy(), address(envoy));
-        assertEq(adapterFailover.timelock(), uint64(DELAY));
+        assertEq(adapterFailover.timelock(), uint64(MAINNET_DELAY));
     }
 }
 
@@ -1111,7 +1124,7 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
 contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
     address immutable EXECUTOR = makeAddr("executor");
 
-    function setUp() public override {
+    function setUp() public virtual override {
         _mockBridgeContracts();
         _bootstrap();
 
@@ -1146,7 +1159,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
         assertEq(deployedContracts, 0);
     }
 
-    function testCommitPhaseCommitsEveryContract() public view {
+    function testCommitPhaseCommitsEveryContract() public view virtual {
         assertGt(committedContracts, 50, "the admin should commit the whole protocol in one transaction");
         assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("root", V3_3)) != 0, "root");
         assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("spoke", V3_3)) != 0, "spoke");
@@ -1196,5 +1209,218 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
     /// @dev The same protocol under another suffix, through the same gate: nothing here was ever committed
     function deployUncommitted() external {
         _deploy(DeployPhase.Deploy, "uncommitted");
+    }
+}
+
+/// @dev Launching onto a chain that already carries a Root: it is kept rather than replaced, and the wiring
+///      only Root can do waits for `RootFixes`, since the action batchers are wards of nothing on it
+contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
+    Root internal priorRoot;
+
+    function setUp() public override {
+        // Stands for the Root a previous release left on the chain, this contract being its governance
+        priorRoot = new Root(MAINNET_DELAY, address(this));
+        existingRoot_ = address(priorRoot);
+
+        super.setUp();
+    }
+
+    function testKeepsTheRootItWasGiven() public view {
+        assertEq(address(root), address(priorRoot), "the deployment should not have deployed a second Root");
+        assertEq(root.wards(address(this)), 1, "the Root it was given keeps its own wards");
+    }
+
+    /// @dev Everything not reaching into Root is wired as usual, batcher wards and all
+    function testTheRestOfTheDeploymentIsUnchanged() public view {
+        assertEq(gateway.wards(address(root)), 1, "root on gateway");
+        assertEq(hub.wards(address(hubHandler)), 1, "hubHandler on hub");
+        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(gateway.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
+        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
+    }
+
+    /// @dev Deploy-time only, like the action batchers, so it stays out of `env/<network>.json`. The Root it
+    ///      wires does belong there, at the address it already had
+    function testRootIsRecordedAndRootFixesIsNot() public view {
+        assertTrue(_registered("root"), "root");
+        assertFalse(_registered("rootFixes"), "rootFixes");
+    }
+
+    /// @dev The batchers cannot touch a Root that does not ward them, so they must not have tried
+    function testRootWiringIsLeftUndone() public view {
+        assertEq(root.wards(address(messageDispatcher)), 0, "messageDispatcher on root");
+        assertEq(root.wards(address(messageProcessor)), 0, "messageProcessor on root");
+        assertEq(root.wards(address(protocolGuardian)), 0, "protocolGuardian on root");
+        assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher on root");
+        assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
+        assertFalse(root.endorsed(address(spoke)), "spoke endorsed");
+        assertFalse(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
+    }
+
+    /// @dev What the batchers left, done under a ward governance grants through the ordinary timelock
+    function testRootFixesFinishesTheWiring() public {
+        assertEq(address(rootFixes.root()), address(root), "rootFixes should point at the Root in use");
+
+        priorRoot.scheduleRely(address(rootFixes));
+        vm.warp(block.timestamp + MAINNET_DELAY);
+        priorRoot.executeScheduledRely(address(rootFixes));
+
+        rootFixes.cast();
+
+        // Exactly what a deployment that brought its own Root up ends with
+        assertEq(root.wards(address(messageDispatcher)), 1, "messageDispatcher on root");
+        assertEq(root.wards(address(messageProcessor)), 1, "messageProcessor on root");
+        assertEq(root.wards(address(protocolGuardian)), 1, "protocolGuardian on root");
+        assertTrue(root.endorsed(address(spoke)), "spoke endorsed");
+        assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
+        assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
+        assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
+
+        // And it gives the ward back, as the batchers do
+        assertTrue(rootFixes.done());
+        assertEq(root.wards(address(rootFixes)), 0, "rootFixes should have revoked itself");
+    }
+
+    function testRootFixesNeedsItsWard() public {
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        rootFixes.cast();
+    }
+
+    function testRootFixesCastsOnce() public {
+        priorRoot.scheduleRely(address(rootFixes));
+        vm.warp(block.timestamp + MAINNET_DELAY);
+        priorRoot.executeScheduledRely(address(rootFixes));
+
+        rootFixes.cast();
+
+        vm.expectRevert(RootFixes.AlreadyCast.selector);
+        rootFixes.cast();
+    }
+}
+
+/// @dev The phases apart, over an existing Root: what the validate phase commits has to be exactly what the
+///      execute phase rebuilds, and Root is a constructor argument of nearly everything in it
+contract ExistingRootPhasedTest is FullDeploymentPhasedTest {
+    Root internal priorRoot;
+
+    function setUp() public override {
+        priorRoot = new Root(MAINNET_DELAY, address(this));
+        existingRoot_ = address(priorRoot);
+
+        super.setUp();
+    }
+
+    /// @dev The base fixture's, less the Root this chain already carries — which is not part of the
+    ///      commitment, nothing here deploying it — plus the `RootFixes` that stands in for it
+    function testCommitPhaseCommitsEveryContract() public view override {
+        assertGt(committedContracts, 50, "the admin should commit the whole protocol in one transaction");
+        assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("spoke", V3_3)) != 0, "spoke");
+        assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("hub", V3_3)) != 0, "hub");
+        assertTrue(
+            deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("rootFixes", V_LATEST)) != 0, "rootFixes"
+        );
+        assertTrue(
+            deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("root", V3_3)) == 0,
+            "the Root already on the chain is not committed to"
+        );
+    }
+
+    /// @dev The one address a committing run has to be able to name, its walk having been rolled back
+    function testCommitPhaseStillNamesRootFixes() public view {
+        assertEq(address(rootFixes), gatedAddressOf("rootFixes"), "carried across the rollback");
+        assertEq(address(rootFixes).code.length, 0, "but nothing is deployed there yet");
+        assertEq(address(root), address(0), "the rest of the walk is gone");
+    }
+
+    function gatedAddressOf(string memory name) internal view returns (address) {
+        return deployGate.addressOf(namespace_, _gatedSalt(name, V_LATEST));
+    }
+
+    function testDeployPhaseRebuildsWhatWasCommitted() public {
+        _deploy(DeployPhase.Deploy);
+
+        assertEq(address(root), address(priorRoot), "the Root it was given");
+        assertGt(address(rootFixes).code.length, 0, "rootFixes");
+        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(gateway.wards(address(root)), 1, "root on gateway");
+        assertEq(root.wards(address(messageDispatcher)), 0, "root wiring waits for rootFixes");
+    }
+}
+
+/// @dev The flag and the ward it implies have to agree, or the batcher stops the deployment. Unreachable
+///      through `FullDeployer`, which derives the flag from the same `input.root`, and asserted because the
+///      wrong pairing is silent: skipping the wiring while holding the ward leaves the batcher a ward of Root
+contract ActionBatcherRootAccessTest is Test {
+    function testWiringARootItIsNoWardOfReverts() public {
+        Root root = new Root(48 hours, makeAddr("someoneElse"));
+
+        vm.expectRevert(RootAccessMismatch.selector);
+        new CoreActionBatcher(_report(root), ISafe(address(0)), ISafe(address(0)), address(0), address(0), true);
+    }
+
+    function testSkippingARootItIsAWardOfReverts() public {
+        // Warded, as a freshly deployed Root wards the batcher that deployed it
+        Root root = new Root(48 hours, _batcherAddress());
+
+        vm.expectRevert(RootAccessMismatch.selector);
+        new CoreActionBatcher(_report(root), ISafe(address(0)), ISafe(address(0)), address(0), address(0), false);
+    }
+
+    /// @dev Where the next `new CoreActionBatcher` in this contract lands, so the Root above can ward it
+    function _batcherAddress() private view returns (address) {
+        return vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
+    }
+
+    function _report(Root root) private pure returns (CoreReport memory report) {
+        report.root = root;
+    }
+}
+
+/// @dev A kept Root keeps its own delay, so `AdapterFailover` has to follow that rather than the input, or
+///      the two disagree about what the protocol delay is
+contract FullDeploymentKeptRootDelayTest is FullDeploymentConfigTest {
+    uint256 constant PRIOR_DELAY = 6 hours;
+
+    function setUp() public override {
+        existingRoot_ = address(new Root(PRIOR_DELAY, address(this)));
+        delay_ = MAINNET_DELAY;
+
+        super.setUp();
+    }
+
+    function testAdapterFailoverFollowsTheKeptRoot() public view {
+        assertEq(root.delay(), PRIOR_DELAY, "the input delay must not touch a kept Root");
+        assertEq(adapterFailover.timelock(), uint64(PRIOR_DELAY));
+    }
+}
+
+/// @dev What everything off mainnet deploys: no timelock, so a spell casts in the block it was scheduled in
+contract FullDeploymentNoDelayTest is FullDeploymentConfigTest {
+    function setUp() public override {
+        delay_ = 0;
+
+        super.setUp();
+    }
+
+    function testRootCarriesNoDelay() public view {
+        assertEq(root.delay(), 0);
+        assertEq(adapterFailover.timelock(), 0, "AdapterFailover should match the protocol delay");
+    }
+
+    function testASpellIsRelyableAtOnce() public {
+        address spell = makeAddr("spell");
+
+        vm.prank(address(ADMIN_SAFE));
+        protocolGuardian.scheduleRely(spell);
+
+        root.executeScheduledRely(spell);
+
+        assertEq(root.wards(spell), 1);
+    }
+
+    /// @dev The delay is init code, which CREATE3 does not look at
+    function testTheDelayMovesNoAddress() public {
+        assertEq(address(root), gatedAddress("root", V3_3));
+        assertEq(address(adapterFailover), gatedAddress("adapterFailover", V3_3));
     }
 }

@@ -58,6 +58,7 @@ import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVau
 
 import {VmSafe} from "forge-std/Vm.sol";
 
+import {RootFixes} from "../../src/deployment/RootFixes.sol";
 import {TokenBridge} from "../../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
@@ -119,12 +120,14 @@ struct DeployerInput {
     uint8[32] txLimits;
     ISafe protocolSafe;
     ISafe opsSafe;
+    // Both reach init code, so both have to come out the same in either gate phase. `delay` is what a fresh
+    // Root is deployed with, and is ignored where one is kept
+    address root;
+    uint256 delay;
     AdaptersInput adapters;
 }
 
 contract FullDeployer is GatedDeployer, Constants {
-    uint256 public constant DELAY = 48 hours;
-
     Root public root;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
@@ -191,6 +194,8 @@ contract FullDeployer is GatedDeployer, Constants {
     LayerZeroAdapter layerZeroAdapter;
     HyperlaneAdapter hyperlaneAdapter;
 
+    RootFixes public rootFixes;
+
     CoreActionBatcher public coreBatcher;
     NonCoreActionBatcher public nonCoreBatcher;
     AdapterActionBatcher public adapterBatcher;
@@ -239,7 +244,12 @@ contract FullDeployer is GatedDeployer, Constants {
             setUpDeployGate();
             _deployProtocol(input);
             (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
+
+            // Carried across the rollback in memory, as the commitment is, so that a validating run can still
+            // name the one address it leaves work behind at
+            address rootFixes_ = address(rootFixes);
             vm.revertToState(snapshot);
+            rootFixes = RootFixes(rootFixes_);
 
             if (bracketed) vm.startBroadcast(deployer);
 
@@ -274,17 +284,26 @@ contract FullDeployer is GatedDeployer, Constants {
                 V_LATEST,
                 abi.encodePacked(
                     type(CoreActionBatcher).creationCode,
-                    abi.encode(coreReport(), input.protocolSafe, input.opsSafe, adapterBatcherAddr, nonCoreBatcherAddr)
+                    abi.encode(
+                        coreReport(),
+                        input.protocolSafe,
+                        input.opsSafe,
+                        adapterBatcherAddr,
+                        nonCoreBatcherAddr,
+                        input.root == address(0)
+                    )
                 )
             )
         );
 
-        _deployNonCore(nonCoreBatcherAddr, input.centrifugeId);
+        _deployNonCore(nonCoreBatcherAddr, input);
         nonCoreBatcher = NonCoreActionBatcher(
             submitUnreported(
                 "nonCoreBatcher",
                 V_LATEST,
-                abi.encodePacked(type(NonCoreActionBatcher).creationCode, abi.encode(nonCoreReport()))
+                abi.encodePacked(
+                    type(NonCoreActionBatcher).creationCode, abi.encode(nonCoreReport(), input.root == address(0))
+                )
             )
         );
 
@@ -307,13 +326,23 @@ contract FullDeployer is GatedDeployer, Constants {
                 )
             )
         );
+
+        if (input.root != address(0)) {
+            rootFixes = RootFixes(
+                submitUnreported(
+                    "rootFixes", V_LATEST, abi.encodePacked(type(RootFixes).creationCode, abi.encode(nonCoreReport()))
+                )
+            );
+        }
     }
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
         address tokenBridgeAddr = gatedAddress("tokenBridge", V3_3);
 
         // Admin
-        root = Root(submit("root", V3_3, abi.encodePacked(type(Root).creationCode, abi.encode(DELAY, batcher))));
+        root = input.root != address(0)
+            ? _existingRoot(input.root)
+            : Root(submit("root", V3_3, abi.encodePacked(type(Root).creationCode, abi.encode(input.delay, batcher))));
 
         gasService = GasService(
             submit(
@@ -470,7 +499,18 @@ contract FullDeployer is GatedDeployer, Constants {
         );
     }
 
-    function _deployNonCore(address batcher, uint16 centrifugeId_) internal {
+    /// @dev Taken as it stands: its delay, wards and endorsements are whatever governance left them.
+    ///      Registered anyway, so `REPLACE` keeps the entry rather than dropping it, and with no version, so
+    ///      the registry keeps the version and block number already recorded against that address.
+    function _existingRoot(address root_) internal returns (Root) {
+        require(root_.code.length > 0, "The root passed in is not a deployed contract");
+
+        register("root", root_, "");
+
+        return Root(root_);
+    }
+
+    function _deployNonCore(address batcher, DeployerInput memory input) internal {
         refundEscrowFactory = RefundEscrowFactory(
             submit(
                 "refundEscrowFactory",
@@ -616,13 +656,16 @@ contract FullDeployer is GatedDeployer, Constants {
             submit("accountingToken", V3_3, abi.encodePacked(type(AccountingToken).creationCode, abi.encode(envoy)))
         );
 
-        // Timelock is immutable and matches the protocol delay. Per-pool stewards and MultiAdapter manager
-        // registration are operational (governance) steps, so no deploy-time wiring is needed.
+        // Timelock is immutable and matches the protocol delay, read off the Root in use rather than off the
+        // input: a kept Root keeps whatever delay governance left it. Per-pool stewards and MultiAdapter
+        // manager registration are operational (governance) steps, so no deploy-time wiring is needed.
         adapterFailover = AdapterFailover(
             submit(
                 "adapterFailover",
                 V3_3,
-                abi.encodePacked(type(AdapterFailover).creationCode, abi.encode(envoy, multiAdapter, uint64(DELAY)))
+                abi.encodePacked(
+                    type(AdapterFailover).creationCode, abi.encode(envoy, multiAdapter, uint64(root.delay()))
+                )
             )
         );
 
@@ -730,7 +773,8 @@ contract FullDeployer is GatedDeployer, Constants {
                 "tokenBridge",
                 V3_3,
                 abi.encodePacked(
-                    type(TokenBridge).creationCode, abi.encode(spoke, gateway, centrifugeId_, address(envoy), batcher)
+                    type(TokenBridge).creationCode,
+                    abi.encode(spoke, gateway, input.centrifugeId, address(envoy), batcher)
                 )
             )
         );

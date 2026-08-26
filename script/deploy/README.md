@@ -99,6 +99,46 @@ EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --si
     --rpc-url ethereum --ledger --sender <delegate-address> --slow --broadcast
 ```
 
+### Deploy onto a chain that already has a Root
+
+Nothing to pass: a launch keeps whatever `contracts.root` the network's config records, rather than standing
+a second contract holding the same authority beside it. The commands are the ordinary ones, and the entry
+survives the run unchanged — same address, same block number — since a `REPLACE` write only drops the
+contracts a run does not register. **To give a chain a fresh Root, delete `contracts.root` from
+`env/<environment>/<network>.json` first** — and a config with no `contracts` at all, which is what the anvil
+fixtures are, always gets one.
+
+Read off the config rather than an env var on purpose. Root is a constructor argument of nearly everything
+wired to it, so the two gate phases have to agree on it exactly — a file both of them read cannot differ
+between them the way an environment variable can, and disagreeing costs the whole commitment
+("Deployment does not match what was committed"). It is also why the anvil fixtures under `script/anvil/env/`
+hold the input half only: a chain config that describes no deployment cannot hand a rehearsal a Root it has no
+way to wire.
+
+The deployment is then **not finished**. The action batchers wire the protocol from their constructors, which
+works because a Root deployed alongside them wards them from its own — an existing Root wards nobody new, so
+the wards it grants and the addresses it endorses cannot be set while deploying, whatever signs the run. The
+run deploys a `RootFixes` for it instead and governance casts it over the ordinary timelock. Its address is
+recorded nowhere: like the action batchers it is deploy-time only, so it stays out of
+`env/<environment>/<network>.json`, which keeps to the contracts still part of the protocol. Both phases print
+it as their last line — the committing one carries the address across the rollback that discards the rest of
+its walk, so the follow-up is known before the deployment is signed. Keep that line:
+
+```bash
+ROOT=$(jq -r '.contracts.root.address' env/<environment>/<network>.json)
+ROOT_FIXES=<the address the run printed>
+
+# 1. schedule, from the guardian; 2. wait out root.delay(); 3. execute the rely; 4. cast, from anyone
+cast send $ROOT 'scheduleRely(address)' $ROOT_FIXES ...
+cast send $ROOT 'executeScheduledRely(address)' $ROOT_FIXES ...
+cast send $ROOT_FIXES 'cast()' ...
+```
+
+`cast()` is permissionless because the authority is the ward, not the caller: until Root grants it there is
+nothing it can do, and afterwards it does one fixed thing and gives the ward back. Until it has run, the
+protocol has no path from Root into the new contracts — no pausing, no recovery, no scheduled upgrades — and
+`spoke`, `asyncRequestManager`, `vaultRouter` and `tokenBridge` are unendorsed, so the vaults do not work.
+
 ### Resume an deploy phase that stopped partway
 
 ```bash

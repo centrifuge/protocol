@@ -293,6 +293,8 @@ contract EndToEndDeployment is Test {
                 txLimits: defaultTxLimits(),
                 protocolSafe: protocolSafe,
                 opsSafe: protocolSafe,
+                root: address(0),
+                delay: 0,
                 adapters: noAdaptersInput()
             }),
             address(deploy),
@@ -1074,8 +1076,6 @@ contract EndToEndUseCases is EndToEndFlows {
         h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
         h.protocolGuardian.cancelUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
         h.protocolGuardian.scheduleUpgrade{value: GAS}(s.centrifugeId, NEW_WARD, REFUND);
-
-        vm.warp(block.timestamp + deployA.DELAY() + 1000);
 
         vm.startPrank(ANY);
         s.root.executeScheduledRely(NEW_WARD);

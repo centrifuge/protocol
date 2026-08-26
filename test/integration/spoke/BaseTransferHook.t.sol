@@ -43,6 +43,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                 txLimits: defaultTxLimits(),
                 protocolSafe: ISafe(makeAddr("ProtocolSafe")),
                 opsSafe: ISafe(makeAddr("OpsSafe")),
+                root: address(0),
+                delay: 0,
                 adapters: noAdaptersInput()
             }),
             address(this),
