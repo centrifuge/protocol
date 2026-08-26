@@ -49,8 +49,10 @@ interface IHoldings {
         PoolId indexed, ShareClassId indexed scId, AssetId indexed assetId, uint128 amount, uint128 decreasedValue
     );
 
-    /// @notice Emitted when the pool-network deficit count changes
-    event UpdateDeficitCount(PoolId indexed poolId, uint16 indexed centrifugeId, uint32 count);
+    /// @notice Emitted when the share class-network deficit count changes
+    event UpdateDeficitCount(
+        PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint32 count
+    );
 
     /// @notice Emitted when the holding is updated
     event Update(
@@ -129,7 +131,7 @@ interface IHoldings {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @param centrifugeId The network this increase is reported for, used to bucket `deficitCount`
+    /// @param centrifugeId The network this increase is reported for, bucketing `deficitCount` with `scId`
     /// @param amount Amount to increase by
     /// @return value The value the holding has incremented
     function increase(PoolId poolId, ShareClassId scId, AssetId assetId, uint16 centrifugeId, uint128 amount)
@@ -148,7 +150,7 @@ interface IHoldings {
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param assetId The asset identifier
-    /// @param centrifugeId The network this decrease is reported for, used to bucket `deficitCount`
+    /// @param centrifugeId The network this decrease is reported for, bucketing `deficitCount` with `scId`
     /// @param amount Amount to decrease by
     /// @return value The value the holding has decremented
     function decrease(PoolId poolId, ShareClassId scId, AssetId assetId, uint16 centrifugeId, uint128 amount)
@@ -260,13 +262,17 @@ interface IHoldings {
         view
         returns (uint128 increasedAmount, uint128 decreasedAmount);
 
-    /// @notice Returns the number of holdings currently in deficit on a pool-network
+    /// @notice Returns the number of holdings currently in deficit on a share class-network
     /// @dev    Non-zero means at least one holding's amount is saturated at zero, misstating NAV. Snapshot hooks
-    ///         hold the last published price while this is non-zero.
+    ///         skip this share class-network while this is non-zero, which holds its NAV slice out of the hook
+    ///         rather than holding the pool's published price: a hook aggregating several networks still
+    ///         publishes on a sync from any of the others. Keyed per share class, so a deficit on one share
+    ///         class does not hold back another share class on the same network.
     /// @param poolId The pool identifier
+    /// @param scId The share class identifier
     /// @param centrifugeId The network identifier
     /// @return count The number of holdings in deficit
-    function deficitCount(PoolId poolId, uint16 centrifugeId) external view returns (uint32 count);
+    function deficitCount(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external view returns (uint32 count);
 
     /// @notice Returns the valuation method used for this holding
     /// @param poolId The pool identifier

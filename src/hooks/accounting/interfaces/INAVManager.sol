@@ -95,6 +95,7 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     error NetworkMismatch();
     error NotManager();
     error ValuationNotSet();
+    error NotDebitNormalAccount();
 
     //----------------------------------------------------------------------------------------------
     // Immutables
