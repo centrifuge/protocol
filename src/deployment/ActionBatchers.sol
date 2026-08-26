@@ -358,6 +358,7 @@ contract NonCoreActionBatcher {
 
         // File methods
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
+        report.refundEscrowFactory.file(bytes32("root"), root);
 
         report.asyncRequestManager.file("spoke", address(report.core.spoke));
         report.asyncRequestManager.file("spokeRegistry", address(report.core.spokeRegistry));

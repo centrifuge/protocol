@@ -523,6 +523,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(refundEscrowFactory.controller()), address(subsidyManager));
+        assertEq(refundEscrowFactory.root(), address(root));
     }
 
     function testFreezeOnly(address nonWard) public view {
