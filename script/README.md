@@ -16,7 +16,7 @@ version rather than following main.
 | **`setup/`** | Getting a machine or a CI job ready: `setup.sh` (tools), `load-secrets.sh` (Secret Manager → `.env`, and the masking that keeps secrets out of CI logs), `redact-secrets.sh` (before anything is uploaded), `add-gcp-secret.sh`. |
 | **`testnet/`** | Test data for a fresh deployment. See [`testnet/README.md`](testnet/README.md). |
 | **`checks/`** | Repo-wide checks CI enforces, each with a check mode and a fix mode: import hygiene (`fix_imports.py`), ward/test coverage (`check_ward_coverage.py`), the CLAUDE.md tree (`check_claude_tree.py`), the `foundry.toml` network tables that are derived from `env/*.json` (`check_foundry_networks.py`), and the gas benchmarks that regenerate `GasService` (`benchmarks.sh`). See [`checks/README.md`](checks/README.md). |
-| **`utils/`** | Shared Solidity helpers every script builds on — `ChainConfig`, `EnvConfig`, `JsonRegistry` — plus the bindings for the two factories a deployment goes through: `utils/createx/` for CreateX, `utils/gate/` for the DeployGate. Both hold only what a script needs to reach an externally deployed contract; `utils/gate/src` and `utils/gate/test` are the exception, and leave for the gate's own repository. |
+| **`utils/`** | Shared Solidity helpers every script builds on — `ChainConfig`, `EnvConfig`, `JsonRegistry` — plus what a deployment needs to reach the two factories it goes through. CreateX is `utils/createx/`, a copy of [createx-forge](https://github.com/radeksvarz/createx-forge)'s script files without their console.log lines. The DeployGate is a dependency instead, [create3-gate](https://github.com/centrifuge/create3-gate) in `lib/`, imported as `create3-gate/`; `remappings.txt` points its `DeployGateScript` at the CreateXScript copy above, so a script inheriting both it and `BaseDeployer` inherits one CreateXScript rather than two. `utils/GateProposal.s.sol` is what this repository adds on top of the gate: reaching it through a Safe, which the gate knows nothing about. |
 
 ## The usual paths
 
@@ -26,8 +26,8 @@ version rather than following main.
 
 # Deploying is plain forge — network detected from the RPC, signer passed explicitly:
 set -a; . ./.env; set +a
-EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' --rpc-url sepolia --private-key $PRIVATE_KEY --broadcast
-forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()'  --rpc-url sepolia --private-key $PRIVATE_KEY --broadcast --verify
+EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url sepolia --private-key $PRIVATE_KEY --broadcast
+forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()'  --rpc-url sepolia --private-key $PRIVATE_KEY --broadcast --verify
 
 ./script/anvil/anvil.sh                          # two local chains, deployed like mainnet
 

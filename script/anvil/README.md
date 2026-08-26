@@ -1,7 +1,7 @@
 # Local chains
 
 Two anvil chains with the protocol deployed on both, the way a real chain gets it: through the DeployGate,
-`validate()` and `execute()` as separate forge runs, then test data on top.
+`commit()` and `deploy()` as separate forge runs, then test data on top.
 
 ```bash
 ./script/anvil/anvil.sh

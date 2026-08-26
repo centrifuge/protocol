@@ -207,7 +207,7 @@ if [ "$ISSUES" -le 0 ]; then
     printf '%sEverything needed is in place.%s\n\n' "$GREEN" "$OFF"
     echo "Next:"
     echo "  ./script/setup/load-secrets.sh              # fetch secrets into .env"
-    echo "  EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' --rpc-url sepolia --broadcast"
+    echo "  EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url sepolia --broadcast"
     echo "  # ...see script/deploy/README.md for the full cookbook"
 else
     printf '%s%s issue(s) need attention.%s\n' "$RED" "$ISSUES" "$OFF"

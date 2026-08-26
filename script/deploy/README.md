@@ -35,8 +35,8 @@ set -a; . ./.env; set +a    # once per shell: forge loads .env for itself, not f
 export SUFFIX=vXYZ          # off mainnet, isolates the deployment onto its own addresses
 KEY="--private-key $PRIVATE_KEY"
 
-EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' --rpc-url sepolia $KEY --broadcast
-forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()'  --rpc-url sepolia $KEY --broadcast --verify
+EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url sepolia $KEY --broadcast
+forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()'  --rpc-url sepolia $KEY --broadcast --verify
 forge script script/testnet/TestData.s.sol --rpc-url <network> $KEY --broadcast # optional test data
 ```
 
@@ -45,13 +45,13 @@ deploys. There is no follow-up step and nothing to remember.
 
 ### Deploy the protocol (mainnet)
 
-On mainnet the **validator is the protocol Safe**. It is what every mainnet address derives from and it can
+On mainnet the **namespace is the protocol Safe's**. It is what every mainnet address derives from and it can
 never be replaced, so it has to outlive any single key — and it is at the same address on every chain the
-protocol runs on, which is what a validator has to be.
+protocol runs on, which is what a namespace has to be.
 
 A Safe cannot sign a forge broadcast, so the two phases are signed differently, and `LaunchDeployer` picks
-which by looking at the validator: a contract is proposed to, a key is broadcast from. On mainnet that makes
-`validate()` a **Safe proposal** the owners sign afterwards, and `execute()` an ordinary broadcast from an
+which by looking at the namespace: a contract is proposed to, a key is broadcast from. On mainnet that makes
+`commit()` a **Safe proposal** the owners sign afterwards, and `deploy()` an ordinary broadcast from an
 executor keystore. Nothing is lost by the split — an executor can only deploy what was already committed, and
 one transaction per contract is a long sequence to confirm on a device.
 
@@ -61,11 +61,11 @@ EXECUTOR="--account <keystore-name> --sender <executor-address> --slow"
 
 # The commitment, proposed to the Safe. Nothing is broadcast and no key is passed: the run walks the
 # deployment, prints the table, and posts the proposal for the Safe owners to sign and execute.
-# EXECUTORS is read by validate, which is what names them: the gate holds no executor outside a commitment
-EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' --rpc-url ethereum $PROPOSER
+# EXECUTORS is read by commit, which is what names them: the gate holds no executor outside a commitment
+EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url ethereum $PROPOSER
 
 # Once that proposal has executed on chain, an executor deploys what it committed
-forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()' --rpc-url ethereum $EXECUTOR --broadcast --verify
+forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()' --rpc-url ethereum $EXECUTOR --broadcast --verify
 ```
 
 The proposal is still signed on a Ledger, but by safe-utils over ffi rather than by forge, so **`--ffi` is
@@ -75,43 +75,40 @@ and `LEDGER_DERIVATION_PATH` overrides the default path. Pick the account with
 `cast wallet address --ledger --mnemonic-index <n>`.
 
 An executor key is imported once with `cast wallet import <keystore-name> --interactive`, and forge asks for
-its password on every run; the address it holds has to be one the validate phase named through `EXECUTORS`.
+its password on every run; the address it holds has to be one the commit phase named through `EXECUTORS`.
 Name that address in `--sender` as well: left to itself forge simulates as its own default sender, and a run
 that simulates as one account and broadcasts from another is how a salt or a namespace ends up belonging to
 the wrong one.
 
 The proposing run is the same walk as the testnet one, and prints the same table and digest, so what you
 rehearse on a testnet is what the Safe owners are shown. Only the last step differs, and only because the
-validator is a Safe. It also cannot bring a missing gate up beside the proposal — a run that both proposed and
+namespace is held by a Safe. It also cannot bring a missing gate up beside the proposal — a run that both proposed and
 broadcast would post the proposal over ffi and then fail to send the deferred transaction — so on a chain with
-no gate the gate's own deployment is batched into the same Safe transaction. `revoke()` follows the validator
-the same way; `execute()` never does.
+no gate the gate's own deployment is batched into the same Safe transaction. `revoke()` follows the namespace
+the same way; `deploy()` never does.
 
-The Safe can also name a **delegate** at any point (`ProposeSetDelegate` on the `live` branch, itself a Safe
-proposal) — an
-optional step that turns the validator-signed phases back into ordinary broadcasts: a run signed by a
-delegate is not proposed, it commits to the gate directly from its own key, `validate()` and `revoke()`
-alike — one transaction, no owner round-trip, which is also the fast path for dropping or replacing a
-commitment in a hurry. Runs signed by anyone else keep following the validator and end in a proposal.
+The Safe can also name a **delegate** at any point, through the gate's `setDelegate`, which turns the
+namespace-signed phases back into ordinary broadcasts: a run signed by a delegate is not proposed, it commits
+to the gate directly from its own key, `commit()` and `revoke()` alike — one transaction, no owner
+round-trip. Runs signed by anyone else keep following the namespace and end in a proposal. No branch ships a
+script for that call: the deployment does not need a delegate, and until it does, the Safe sends
+`setDelegate` through its own tooling.
 
 ```bash
-# Optional, once per chain: name a delegate (ProposeSetDelegate, on the `live` branch). Afterwards it signs
-# the phases as ordinary broadcasts
-
-EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'validate()' \
+EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' \
     --rpc-url ethereum --ledger --sender <delegate-address> --slow --broadcast
 ```
 
-### Resume an execute phase that stopped partway
+### Resume an deploy phase that stopped partway
 
 ```bash
-forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()' --rpc-url <network> $KEY --broadcast --resume
+forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()' --rpc-url <network> $KEY --broadcast --resume
 ```
 
-### If verification failed on the execute run
+### If verification failed on the deploy run
 
 ```bash
-forge script script/deploy/LaunchDeployer.s.sol --sig 'execute()' --rpc-url <network> --resume --verify
+forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()' --rpc-url <network> --resume --verify
 ```
 
 ### Local forks / every testnet
@@ -126,7 +123,7 @@ the local pair above.
 
 That matters for one reason worth knowing here. `LaunchDeployer` wires the adapters itself, from the action
 batchers, pointing each remote peer at the address its own adapter landed on — right only because CREATE3
-puts them at the same address on every chain given the same validator and `SUFFIX`. That holds only if every
+puts them at the same address on every chain given the same namespace and `SUFFIX`. That holds only if every
 connected network is deployed in the same run, which is why the run reads its network list out of the
 environment's connections file rather than being told one.
 
@@ -134,9 +131,9 @@ environment's connections file rather than being told one.
 
 Use `anvil.sh`. Dropping `--broadcast` to "simulate" against a real network does run: a chain with no gate at
 `DEPLOY_GATE_ADDRESS` gets one in the simulated state, so the walk completes and prints its table either way.
-What a dry run cannot rehearse is the signature — `validate()` checks the sender against the namespace it
-commits in, so it only passes for a sender the namespace answers to: the validator, when it is a key, or one
-of its delegates. Where the validator is a Safe and no delegate signs, the run ends in a proposal instead,
+What a dry run cannot rehearse is the signature — `commit()` checks the sender against the namespace it
+commits in, so it only passes for a sender the namespace answers to: the namespace, when it is a key, or one
+of its delegates. Where a Safe holds the namespace and no delegate signs, the run ends in a proposal instead,
 which needs a Ledger rather than a broadcast. `anvil.sh` sidesteps that: it brings up its own gate on a fork and rehearses the whole
 sequence, which is also what ci.yml runs on every pull request.
 
@@ -149,8 +146,8 @@ sequence, which is also what ci.yml runs on every pull request.
 
 | Variable | Meaning |
 |---|---|
-| `EXECUTORS` | Accounts allowed to run the execute phase. **Required** by `validate()`, at least one. Read nowhere else |
-| `VALIDATOR` | Namespace the addresses derive from. Off mainnet only, defaulting to the signer; pinned to the protocol Safe on mainnet. Two phases signed by different keys have to pass it to **both**, or the second reads another namespace |
+| `EXECUTORS` | Accounts allowed to run the deploy phase. **Required** by `commit()`, at least one. Read nowhere else |
+| `NAMESPACE` | Namespace the addresses derive from. Off mainnet only, defaulting to the signer; pinned to the protocol Safe on mainnet. Two phases signed by different keys have to pass it to **both**, or the second reads another namespace |
 | `LEDGER_DERIVATION_PATH` | Where on the Ledger the signer is. Optional, defaulting to the first account |
 | `SUFFIX` | Isolates a deployment onto its own addresses. Optional, and ignored on mainnet |
 | `PRIVATE_KEY` | The testnet key `.env` holds, for you to pass as `--private-key`. No script reads it |
@@ -160,77 +157,78 @@ sequence, which is also what ci.yml runs on every pull request.
 ## Deployments go through the DeployGate
 
 The protocol deployment is gated: the contracts are not deployed by the sender, they are deployed by a
-`DeployGate`, in two phases. A **validator** commits the `(salt, init code hash)` of every contract, and the
+`DeployGate` ([centrifuge/create3-gate](https://github.com/centrifuge/create3-gate), a dependency of this
+repository under `lib/`), in two phases. A **namespace** commits the `(salt, init code hash)` of every contract, and the
 executors allowed to deploy them, in a single transaction; any of those **executors** then deploys them one
 by one.
 
 | Step | Command | Signer | Transactions |
 |---|---|---|---|
-| Validate | `EXECUTORS=<addrs> forge script ... LaunchDeployer.s.sol --sig 'validate()' ...` | the validator — a key broadcasts it, a Safe is proposed to | **1**, whatever the contract count (~2.9M gas) |
-| Execute | `forge script ... LaunchDeployer.s.sol --sig 'execute()' ...` | an executor | one per contract |
-| Revoke | `forge script ... LaunchDeployer.s.sol --sig 'revoke()' ...` | the validator, same either way | 1, only to drop a commitment |
+| Commit | `EXECUTORS=<addrs> forge script ... LaunchDeployer.s.sol --sig 'commit()' ...` | the namespace — a key broadcasts it, a Safe is proposed to | **1**, whatever the contract count (~2.9M gas) |
+| Deploy | `forge script ... LaunchDeployer.s.sol --sig 'deploy()' ...` | an executor | one per contract |
+| Revoke | `forge script ... LaunchDeployer.s.sol --sig 'revoke()' ...` | the namespace, same either way | 1, only to drop a commitment |
 
 The phases are separate entry points and **always separate forge runs**, on every network — testnets, CI and
 anvil included; `run()` refuses to exist precisely so nobody runs both in one. That is how a deployment
-separates the two in time — sign the commitment, look at it, come back for the execute phase later — and it
-is the only thing that proves the two agree: the execute phase rebuilds every init code in a fresh process
-and has to land on exactly what the validate phase committed, so anything phase-dependent in a constructor
-argument (`msg.sender` is the classic) makes it abort with `NotValidated` instead of deploying something
+separates the two in time — sign the commitment, look at it, come back for the deploy phase later — and it
+is the only thing that proves the two agree: the deploy phase rebuilds every init code in a fresh process
+and has to land on exactly what the commit phase committed, so anything phase-dependent in a constructor
+argument (`msg.sender` is the classic) makes it abort with `NotCommitted` instead of deploying something
 else. The addresses are identical either way: the phases are about when things are signed for, never about
 where contracts land.
 
 ### Reading the commitment before signing it
 
-`validate` sends two `bytes32[]` arrays, which is nothing a hardware wallet can show you, so the phase prints
+`commit` sends two `bytes32[]` arrays, which is nothing a hardware wallet can show you, so the phase prints
 what it is about to commit to: one row per contract, and a digest of the whole set.
 
 ```
-Validator 0x2e234DAe75C793f67A35089C9d99245E1C58470b
+Namespace 0x2e234DAe75C793f67A35089C9d99245E1C58470b
 contract-version          address                                     initCodeHash
 root-v3.1                 0x3640891e8fe34b03c4f78E5f147BDBdD94946F29  0x50c5b849f3f7432f8b76dbd1c65791c...
 ...
-Validated 56 contracts in 1 transaction
+Committed 56 contracts in 1 transaction
 Commitment digest 0x3f7a2e0c6402c5b06d8599279a7c89798db91a210e14d244239908152224f594
 ```
 
 The table is generated by the run that builds the commitment, so on its own it only tells you what that run
 did — it cannot vouch for itself. What makes it worth having is that **a second person can reproduce it**: the
-validate phase deploys nothing, so anyone can run it against the same `--rpc-url` and `SUFFIX` **without
+commit phase deploys nothing, so anyone can run it against the same `--rpc-url` and `SUFFIX` **without
 `--broadcast`** and compare. Matching digests mean both machines built the same 56 contracts at the same
 addresses from the same code; if they differ, the table says which row moved. That catches the realistic
 failures — wrong network, wrong suffix, stale `out/`, an unexpected contract in the set, a local edit nobody
 mentioned.
 
-The commitment is also readable on chain afterwards: `validate` emits a single
-`Validate(validator, id, nonce, salts, initCodeHashes, executors)`, so the whole set reads back from one log.
-And since nothing is deployed until the execute phase, a commitment found to be wrong costs one re-validation,
-not a redeployment.
+The commitment is also readable on chain afterwards: `commit` emits a single
+`Commit(namespace, id, indexed nonce, term, deployableAt, salts, initCodeHashes, executors)`, so the whole set
+reads back from one log. And since nothing is deployed until the deploy phase, a commitment found to be wrong
+costs one re-commit, not a redeployment.
 
 Wiring is unaffected: the action batchers still do it, and they are deployed like every other contract.
 
 ### If a run stops halfway
 
-`validate` is a single transaction, so it either lands or it does not: if it did not, run it again. To revoke
+`commit` is a single transaction, so it either lands or it does not: if it did not, run it again. To revoke
 what a commitment allows, run it again as well: it starts a new generation, so whatever the new run does not
 mention becomes undeployable, and with no salts at all nothing is deployable. Dropping a *single* salt once
-part of the set is on chain means calling `validate` on the gate directly with the salts you still want —
+part of the set is on chain means calling `commit` on the gate directly with the salts you still want —
 `LaunchDeployer` walks the whole deployment, so it cannot rebuild a commitment whose addresses are taken.
-`execute` is one transaction per contract, so it can stop partway through, and the way to pick it up is
+`deploy` is one transaction per contract, so it can stop partway through, and the way to pick it up is
 `--resume`.
 
 Forge replays the broadcast sequence it saved instead of simulating the script again, so the transactions that
-never landed are sent exactly as they were, and the gate still holds their validations: `deploy` consumes one
+never landed are sent exactly as they were, and the gate still holds their commitments: `deploy` consumes one
 salt at a time, so the contracts that did not go through are untouched by the ones that did. It needs the
 executor's nonce to be where the interrupted run left it, and the `broadcast/` sequence file to still be there.
 
 Because each phase is its own entry point, forge keys their broadcasts separately —
-`broadcast/LaunchDeployer.s.sol/<chainId>/validate-latest.json` and `execute-latest.json` — so `--resume`
+`broadcast/LaunchDeployer.s.sol/<chainId>/commit-latest.json` and `deploy-latest.json` — so `--resume`
 always picks up the phase you name and cannot accidentally replay the other one. (That was a real hazard when
 both phases went through `run()` and shared a single `run-latest.json`.)
 
 What cannot be done is re-running a phase **from scratch** over a partial deployment. Without `--resume` the
-script is simulated again, and it aborts on the first contract whose validation was already spent
-(`Deployment does not match what was validated`). Re-validating does not get around that either: its local walk
+script is simulated again, and it aborts on the first contract whose commitment was already spent
+(`Deployment does not match what was committed`). Re-committing does not get around that either: its local walk
 redeploys the whole protocol, and those addresses are now taken, so CreateX reverts. So if the broadcast
 sequence is gone, the executor's nonce has moved, or the simulation itself is what failed, recovery means
 moving the deployment to fresh addresses — a new `SUFFIX` off mainnet, a version bump on it.
@@ -240,17 +238,17 @@ moving the deployment to fresh addresses — a new `SUFFIX` off mainnet, a versi
 A committed `(salt, init code)` pair leaves an executor no freedom. The salt fully determines the CREATE3
 address and the hash fully determines the code, so an executor can only put the intended code at the
 intended addresses, or revert. Authorizing several therefore costs no more trust than authorizing one: none of
-them can produce anything the validator did not commit to. Committing the init code alone would **not** be safe: the executor could then
-deploy validated code at an address of its choosing, consume the validation, and strand the intended address.
+them can produce anything the namespace did not commit to. Committing the init code alone would **not** be safe: the executor could then
+deploy committed code at an address of its choosing, consume the commitment, and strand the intended address.
 
 Deployment order is enforced outright: a commitment binds each contract to its position, and the gate keeps a
 cursor per commitment, so a contract deployed out of turn reverts rather than landing early. The wiring would
 catch it a second time — the action batchers wire from their constructors, and a call to a contract that does
 not exist yet reverts — but that is a consequence, not the mechanism.
 
-Neither does a superseded commitment linger. Every validation starts a new generation and only the live one can
-be deployed from, so a set the validator replaced cannot be spent afterwards — including the salts the replacement
-dropped, which would otherwise stay deployable and let an executor strand a canonical address. Validating
+Neither does a superseded commitment linger. Every commit starts a new generation and only the live one can
+be deployed from, so a set the namespace replaced cannot be spent afterwards — including the salts the replacement
+dropped, which would otherwise stay deployable and let an executor strand a canonical address. Committing
 with no salts at all is how a pending commitment is revoked outright, which is what `--sig 'revoke()'` sends.
 It reaches the gate on its own rather than walking the deployment, since a commitment worth revoking is
 usually one whose addresses are wrong or already half taken, and a walk over a taken address reverts inside
@@ -264,26 +262,27 @@ deployment makes sure CreateX is there. It takes no arguments and grants its dep
 nothing to configure and no order to get right. Everything else lives in a **namespace** inside the gate,
 named after an account. The gate has no roles of its own — no wards, no owner, no admin — only these two:
 
-- **validator** — the account every address derives from, alongside the gate and the salt. On mainnet it is
+- **namespace** — the account every address derives from, alongside the gate and the salt. On mainnet it is
   the protocol Safe (`PROTOCOL_SAFE`), which is the same address on all eleven mainnets and is the only
-  account that can plausibly outlive the deployment, since a validator can never be replaced. Elsewhere
-  `VALIDATOR` names it, defaulting to the sender, so two developers on one testnet stay out of each other's
+  account that can plausibly outlive the deployment, since a namespace can never be replaced. Elsewhere
+  `NAMESPACE` names it, defaulting to the sender, so two developers on one testnet stay out of each other's
   addresses without having to agree on anything. Two namespaces can neither reach nor block each other.
-- **delegates** — accounts the validator lets sign `validate` on its behalf, through
-  `setDelegate(delegatee, isValid)`. This is how a cold validator key can be the thing addresses derive from
-  while a warmer key signs the phase. The deployment no longer depends on one — a Safe validator is proposed
-  to instead, which needs no second account — but naming one stays open at any point as an optional step:
-  `ProposeSetDelegate` (on `live`) proposes the call, and a run signed by the delegate afterwards broadcasts to the gate
-  directly instead of being proposed. Delegation goes one way and one level deep: `setDelegate` always writes
+- **delegates** — accounts the namespace lets sign `commit` on its behalf, through
+  `setDelegate(delegatee, isValid)`. This is how a cold namespace key can be the thing addresses derive from
+  while a warmer key signs the phase. The deployment no longer depends on one — a Safe-held namespace is proposed
+  to instead, which needs no second account — but naming one stays open at any point as an optional step,
+  after which a run signed by the delegate broadcasts to the gate directly instead of being proposed. What a
+  delegate commits waits out the namespace's `setDelay`, and `clear` withdraws every delegation along with
+  everything they committed. Delegation goes one way and one level deep: `setDelegate` always writes
   to the *caller's own* namespace, so a delegate naming one names it in its own, and there is no call that
   takes a namespace from the account it is named after. A leaked delegate key can commit, and can be revoked
-  in one transaction; it can never be walked outwards or used to lock the validator out.
+  in one transaction; it can never be walked outwards or used to lock the namespace out.
 - **executors** — named *by* the commitment, in the same transaction, any member of which may `deploy` what
   the live commitment holds and nothing else. They are interchangeable: none is confined to part of the
   commitment, so the phase can be split between keys or picked up by another when one becomes unavailable, and
   the deployment that comes out is the same whoever signed which part.
 
-A validator can hold several commitments at once, told apart by an **id** it picks: committing under an id
+A namespace can hold several commitments at once, told apart by an **id** it picks: committing under an id
 that already holds one replaces it, committing under a fresh one leaves the rest alone. Each id carries its
 own generation and its own deployment cursor, so one commitment can be signed while another is still being
 executed. This deployment does not use that — `GatedDeployer` passes a fixed `DEFAULT_COMMITMENT_ID`, so committing
@@ -293,27 +292,33 @@ the same salt still point at the same contract, and whichever deploys first take
 Two things follow from that shape, and both are deliberate. Revoking a leaked **executor** key means
 committing again rather than sending one call — the commitment is replaced whole, executors included, and
 committing nothing revokes them along with the salts. Revoking a **delegate** is one call, since delegation
-sits beside the commitment rather than in it. But the **validator** itself cannot be replaced: it is what
-every address derives from, so there is deliberately no way to move a namespace to another account. That key
-is what has to be looked after.
+sits beside the commitment rather than in it, and `clear()` is the same call for all of them at once: it
+empties the namespace — every delegation, and every commitment made under any id — without needing to know
+which ids a leaked key used. Addresses are untouched by it, so what was going to be deployed still can be.
+`setDelay(seconds)` bounds a delegation before it is granted: what a delegate commits is not deployable until
+that long has passed, which is the window a `clear()` has to land in. What the namespace commits itself never
+waits. But the **namespace** itself cannot be replaced: it is what every address derives from, so there is
+deliberately no way to move a namespace to another account. That key is what has to be looked after.
 
 ### Addresses
 
-CreateX derives a CREATE3 address from its caller and the salt, and the caller is now the `DeployGate`, so:
+The gate performs CREATE3 itself — a CREATE2 proxy it deploys, whose only job is to `CREATE` the contract —
+so an address derives from the gate and from a salt of the gate's own making, `keccak256(namespace, salt)`:
 
 - Addresses differ from any deployment made before this contract existed, when the sender was the caller.
   Chains already running the protocol cannot be redeployed onto their current addresses.
-- Addresses stay equal across chains, and the gate is what enforces it rather than the script. It builds its
-  own CreateX salt, `bytes20(gate) ‖ 0x00 ‖ bytes11(keccak256(validator, salt))`, so a script cannot ask for
-  one that names another guardian — which would put the address outside the gate, where anyone could take it —
-  or one that turns the cross-chain redeploy protection on, which would fold the chain id in. Whatever 32
-  bytes a script passes, both properties hold.
+- Addresses stay equal across chains, and the gate is what enforces it rather than the script. The deployer
+  is the gate, and CREATE2 scopes the proxy to whoever deploys it, so no address the gate hands out is
+  reachable from outside it: handing the same salt to CreateX, or to any other deployer, lands somewhere
+  else. Nothing chain-specific enters the derivation, and the salt is a whole 32 bytes — nothing spent on a
+  guardian or a redeploy flag — so what separates two namespaces is the full width of a hash. Whatever 32
+  bytes a script passes, all of that holds.
 - The gate itself is at the same address on every chain, and **anyone** can put it there. Its salt names no
   sender and no chain id, so CreateX derives it from the salt alone. It is deployed through `deployCreate2`,
   not `deployCreate3`, which is what makes that safe: a CREATE2 address covers the init code, so the only
-  contract anyone can deploy at the gate's address is the gate. Everything the gate goes on to deploy uses
-  CREATE3, where the address ignores the init code, which is what keeps addresses still when a patch release
-  changes a contract.
+  contract anyone can deploy at the gate's address is the gate. That is the one transaction CreateX is needed
+  for — everything the gate goes on to deploy uses its own CREATE3, where the address ignores the init code,
+  which is what keeps addresses still when a patch release changes a contract.
 - The set deploys only in the order it was committed: a commitment binds each contract to its position, so an
   executor cannot deploy one before the contracts it is wired against have been. Order was the one thing left
   for it to choose, and it is not inert — a constructor reading a dependency the deployment itself wires would
@@ -333,41 +338,43 @@ CreateX derives a CREATE3 address from its caller and the salt, and the caller i
 
 ### Keys
 
-- The gate to deploy through is `DEPLOY_GATE_ADDRESS` in `script/utils/gate/DeployGate.d.sol`, the same on every
+- The gate to deploy through is `DEPLOY_GATE_ADDRESS` in `create3-gate/script/DeployGate.d.sol`, the same on every
   chain, so there is nothing to look up, nothing to pass by hand and no env file to keep in step with it.
   A chain that has no gate yet gets one from the run that needs it, so there is nothing to deploy first. The
   constant follows the gate's bytecode, so any change to `DeployGate.sol` — or to the compiler settings it is built
-  with — moves it; `testConstantsMatchTheBytecode` fails with the value to paste in when that happens.
+  with — moves it; `testConstantsMatchTheBytecode`, in the gate's own repository, fails with the value to put
+  into `DeployGate.d.sol` when that happens.
 - The gate's address depends on nothing but its code, so no key stands behind it and nothing has to run
-  first: `validate()` brings it up on a chain that has none, and finds it on a chain that has. Changing the
+  first: `commit()` brings it up on a chain that has none, and finds it on a chain that has. Changing the
   contract is what would move it, which is why its code is frozen once a chain has one.
 - Nobody can put other code at that address. The address is
   `keccak256(0xff ‖ CreateX ‖ keccak256(abi.encode(salt)) ‖ keccak256(initCode))[12:]`, so different init code
   is a different address; reaching the gate's from any other init code, factory or `CREATE` nonce means
   finding a 160-bit preimage. Two things narrow that to something worth checking rather than assuming:
   a constructor that reads state can return different runtime code from the same init code, which is why the
-  gate has no immutables and reads nothing — `isDeployGateDeployed` compares against `type(DeployGate).runtimeCode`, and
-  Solidity refusing that expression for a contract with immutables is what keeps it true. And the derivation
+  gate has no immutables and reads nothing — its own repository pins `DEPLOY_GATE_EXTCODEHASH` against
+  `type(DeployGate).runtimeCode`, and Solidity refusing that expression for a contract with immutables is what
+  keeps it true. And the derivation
   belongs to the chain: a chain that derives addresses its own way is the one place an address stops speaking
   for the code behind it. So every run that touches the gate checks its runtime code against
   `DEPLOY_GATE_EXTCODEHASH` before deploying through it, rather than trusting the address.
-- `VALIDATOR` is what needs the continuity instead. Every protocol address derives from it, so it has to be
+- `NAMESPACE` is what needs the continuity instead. Every protocol address derives from it, so it has to be
   the same account on every chain — which on mainnet is the protocol Safe, for exactly that reason. It never
   signs a phase from a key: it is proposed to, and its owners sign. There is no recovery if the
   Safe is lost, since nothing can commit in a namespace on its behalf, which is why it is a Safe and not a
   key.
-- `EXECUTORS` names the accounts allowed to run the execute phase, a comma-separated list read by the validate
-  phase, which grants them in the namespace: `EXECUTORS=0xabc...,0xdef... forge script ... --sig 'validate()'`. They can
-  be the validator's keys or keys with no privilege anywhere else. They are **part** of the commitment, so
+- `EXECUTORS` names the accounts allowed to run the deploy phase, a comma-separated list read by the commit
+  phase, which grants them in the namespace: `EXECUTORS=0xabc...,0xdef... forge script ... --sig 'commit()'`. They can
+  be the namespace's keys or keys with no privilege anywhere else. They are **part** of the commitment, so
   changing the set means committing again, and an executor holds no privilege beyond deploying what has been
-  committed. Required by `validate()` on every network, and at least one — naming nobody would sign a
-  commitment no key can spend, so it refuses rather than letting it through. `execute()` never reads it.
+  committed. Required by `commit()` on every network, and at least one — naming nobody would sign a
+  commitment no key can spend, so it refuses rather than letting it through. `deploy()` never reads it.
 - `SUFFIX` does **not** move the gate: one gate serves every deployment on a chain, and a suffix isolates a
-  deployment inside it, by salt, the way a validator isolates one from another. The isolation is of
-  addresses, not of the commitment slot: `GatedDeployer` pins a single id, so a validator holds one live
-  commitment whatever the suffix, and validating a new deployment replaces what the namespace still had
-  pending — what that one already executed stays deployed, what it had not needs validating again. Two
-  deployments in flight at once take two validators, which off mainnet is just two signers.
+  deployment inside it, by salt, the way a namespace isolates one from another. The isolation is of
+  addresses, not of the commitment slot: `GatedDeployer` pins a single id, so a namespace holds one live
+  commitment whatever the suffix, and committing a new deployment replaces what the namespace still had
+  pending — what that one already executed stays deployed, what it had not needs committing again. Two
+  deployments in flight at once take two namespaces, which off mainnet is just two signers.
 - The `DeployGate` holds **no** protocol permissions at any point, so it cannot touch a live deployment.
 
 ---
@@ -408,7 +415,7 @@ a cheatcode. The write goes through jq behind ffi, which also keeps the diff dow
 Making a new address readable back is: `register()` it in the deploy script, and add the field to
 `ContractsConfig` in `script/utils/EnvConfig.s.sol`.
 
-A run that deploys nothing (`validate()`) must not call `startDeploymentOutput()` /
+A run that deploys nothing (`commit()`) must not call `startDeploymentOutput()` /
 `saveDeploymentOutput()` at all. Registrations made during a walk that is rolled back with `vm.revertToState`
 disappear with it, since the registry keeps its state in storage.
 

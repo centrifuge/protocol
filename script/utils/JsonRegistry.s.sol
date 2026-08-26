@@ -96,9 +96,9 @@ contract JsonRegistry is Script {
     }
 
     /// @notice How many contracts this run has registered so far.
-    /// @dev    Worth asserting on: the validate phase registers addresses as it walks, and the state
+    /// @dev    Worth asserting on: the commit phase registers addresses as it walks, and the state
     ///         rollback that ends it discards them again — this contract's storage is rolled back with
-    ///         everything else — so after a gated deployment this equals what the execute phase deployed,
+    ///         everything else — so after a gated deployment this equals what the deploy phase deployed,
     ///         less the contracts submitted unreported.
     function registeredCount() public view returns (uint256) {
         return registeredNames.length;

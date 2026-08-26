@@ -12,4 +12,6 @@ setup-helpers/=lib/setup-helpers/src/
 src/=src/
 test/=test/
 createx-forge/=lib/createx-forge/
+create3-gate/=lib/create3-gate/
+lib/create3-gate/:createx-forge/script/=script/utils/createx/
 enso-weiroll/=lib/enso-weiroll/contracts/

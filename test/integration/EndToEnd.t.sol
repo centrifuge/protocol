@@ -285,7 +285,7 @@ contract EndToEndDeployment is Test {
         address[] memory executors = new address[](1);
         executors[0] = address(deploy);
 
-        // The deployer is the validator of its own namespace, and its own executor
+        // The deployer is the namespace of its own namespace, and its own executor
         deploy.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: localCentrifugeId,

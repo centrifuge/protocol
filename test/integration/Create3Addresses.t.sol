@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ICreateX} from "../../script/utils/createx/ICreateX.sol";
 import {BaseDeployer} from "../../script/deploy/BaseDeployer.s.sol";
+import {EnsureDeployGate} from "../../script/utils/GateProposal.s.sol";
 import {CREATEX_ADDRESS} from "../../script/utils/createx/CreateX.d.sol";
-import {EnsureDeployGate} from "../../script/utils/gate/DeployGateScript.sol";
 import {GatedDeployer, DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
     DEPLOY_GATE_SALT,
     DEPLOY_GATE_ADDRESS,
     DEPLOY_GATE_BYTECODE,
     DEPLOY_GATE_EXTCODEHASH
-} from "../../script/utils/gate/DeployGate.d.sol";
+} from "create3-gate/script/DeployGate.d.sol";
 
 import "forge-std/Test.sol";
 
@@ -69,9 +68,8 @@ contract Create3AddressesTest is Test, BaseDeployer {
     }
 }
 
-/// @dev The gate as this repository holds it: an address, a salt and a codehash, with no access to the
-///      contract behind them. What the constants are checked against lives with the contract, in
-///      script/utils/gate/test.
+/// @dev The gate as a deployment reaches it: an address, a salt and a codehash. What those are checked
+///      against lives with the contract, in lib/create3-gate.
 contract DeployGateAddressTest is Test, BaseDeployer {
     function setUp() public {
         _init("");
@@ -148,7 +146,9 @@ contract DeployGateAddressTest is Test, BaseDeployer {
     function testEnsureDeployGateDeploysAndStepsAside() public {
         assertEq(DEPLOY_GATE_ADDRESS.code.length, 0, "nothing there yet");
 
-        new EnsureDeployGate();
+        // The way the proposal posts it: through CreateX, which has to accept a carrier with no functions
+        address carrier = CreateX.deployCreate(type(EnsureDeployGate).creationCode);
+        assertGt(carrier.code.length, 0, "CreateX must accept the carrier");
         assertEq(DEPLOY_GATE_ADDRESS.codehash, DEPLOY_GATE_EXTCODEHASH, "brings the gate up");
 
         new EnsureDeployGate();
@@ -168,7 +168,7 @@ contract DeployGateAddressTest is Test, BaseDeployer {
 contract Create3GatedAddressesTest is Test, GatedDeployer {
     function setUp() public {
         // Nothing places the gate first: initialising the deployment is what brings it up
-        _initGated("", address(this), DeployPhase.Validate, address(this), _executors());
+        _initGated("", address(this), DeployPhase.Commit, address(this), _executors());
     }
 
     function _executors() internal view returns (address[] memory executors) {
@@ -181,8 +181,8 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
     }
 
     /// @dev `vm.expectRevert` only sees external calls
-    function initGated(string memory suffix_, address deployer_, DeployPhase phase, address validator_) external {
-        _initGated(suffix_, deployer_, phase, validator_, _executors());
+    function initGated(string memory suffix_, address deployer_, DeployPhase phase, address namespace_) external {
+        _initGated(suffix_, deployer_, phase, namespace_, _executors());
     }
 
     /// @dev `vm.expectRevert` only sees external calls
@@ -197,8 +197,8 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         this.deployDirectly();
     }
 
-    /// @dev What the validate phase does: walk it locally, carry the commitment out in memory, roll back
-    function queueAndValidate(uint256 value) external returns (address target) {
+    /// @dev What the commit phase does: walk it locally, carry the commitment out in memory, roll back
+    function queueAndCommit(uint256 value) external returns (address target) {
         uint256 snapshot = vm.snapshotState();
 
         target = submit("testContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(value)));
@@ -209,22 +209,12 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         _commit(salts, initCodeHashes);
     }
 
-    function execute(uint256 value) external returns (address) {
-        _initGated("", address(this), DeployPhase.Execute, address(this), _executors());
+    function deployIt(uint256 value) external returns (address) {
+        _initGated("", address(this), DeployPhase.Deploy, address(this), _executors());
         return submit("testContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(value)));
     }
 
     // The DeployGate address
-
-    function testDeployGateIsTheSaltGuardian() public view {
-        assertEq(
-            address(bytes20(deployGate.createXSalt(validator, _gatedSalt("testContract", "v3.1")))),
-            address(deployGate),
-            "DeployGate should guard the salts"
-        );
-        assertEq(deployer, address(this), "Deployer should stay the signer");
-        assertEq(validator, address(this), "the validator is what addresses derive from, alongside the gate");
-    }
 
     /// @dev Addresses follow the gate, not the signer, which is what keeps them equal across chains
     function testAddressesDoNotFollowTheSigner() public {
@@ -232,6 +222,8 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         address ungated = create3Address("testContract", "v3.1", address(this));
 
         assertTrue(ungated != throughGate, "deploying directly would land somewhere else entirely");
+        assertEq(deployer, address(this), "Deployer should stay the signer");
+        assertEq(namespace, address(this), "the namespace is what addresses derive from, alongside the gate");
     }
 
     /// @dev The whole point of the scheme: nothing chain-specific reaches a gated address, so the same
@@ -241,18 +233,18 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         address here = _preview("testContract", "v3.1");
 
         vm.chainId(block.chainid + 1);
-        _initGated("", address(this), DeployPhase.Validate, address(this), _executors());
+        _initGated("", address(this), DeployPhase.Commit, address(this), _executors());
 
         assertEq(_preview("testContract", "v3.1"), here, "the chain id must not reach a gated address");
     }
 
-    /// @dev One gate serves every deployment on a chain, so the validator is what keeps two of them apart
-    function testAddressesFollowTheValidator() public {
+    /// @dev One gate serves every deployment on a chain, so the namespace is what keeps two of them apart
+    function testAddressesFollowTheNamespace() public {
         address mine = _preview("testContract", "v3.1");
 
-        _initGated("", address(this), DeployPhase.Validate, makeAddr("anotherValidator"), _executors());
+        _initGated("", address(this), DeployPhase.Commit, makeAddr("anotherNamespace"), _executors());
 
-        assertTrue(_preview("testContract", "v3.1") != mine, "another validator, another address");
+        assertTrue(_preview("testContract", "v3.1") != mine, "another namespace, another address");
     }
 
     /// @dev A chain with no gate gets one, so a deployment needs nothing run before it. `setUp` is the
@@ -266,86 +258,71 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         vm.etch(DEPLOY_GATE_ADDRESS, address(new SimpleContract(1)).code);
 
         vm.expectRevert("Not the DeployGate: unexpected code at that address");
-        this.initGated("", address(this), DeployPhase.Validate, address(this));
+        this.initGated("", address(this), DeployPhase.Commit, address(this));
     }
 
-    function testGatingWithoutAValidatorFails() public {
-        vm.expectRevert("A validator is required to derive addresses");
-        this.initGated("", address(this), DeployPhase.Validate, address(0));
+    function testGatingWithoutANamespaceFails() public {
+        vm.expectRevert("A namespace is required to derive addresses");
+        this.initGated("", address(this), DeployPhase.Commit, address(0));
     }
 
     function testSuffixIsolatesGatedDeployments() public {
         address withoutSuffix = _preview("testContract", "v3.1");
 
-        _initGated("rev2", address(this), DeployPhase.Validate, address(this), _executors());
+        _initGated("rev2", address(this), DeployPhase.Commit, address(this), _executors());
 
         assertTrue(_preview("testContract", "v3.1") != withoutSuffix, "Suffix should move the addresses");
     }
 
-    // Validate, then execute
+    // Commit, then deploy
 
-    function testValidatePhaseDeploysNothing() public {
+    function testCommitPhaseDeploysNothing() public {
         address predicted = _preview("testContract", "v3.1");
-        address queued = this.queueAndValidate(42);
+        address queued = this.queueAndCommit(42);
 
         assertEq(queued, predicted, "Queued address does not match preview");
-        assertEq(predicted.code.length, 0, "validating should deploy nothing");
-        assertEq(validatedContracts, 1);
-        assertTrue(deployGate.validated(validator, DEFAULT_COMMITMENT_ID, _gatedSalt("testContract", "v3.1")) != 0);
+        assertEq(predicted.code.length, 0, "committing should deploy nothing");
+        assertEq(committedContracts, 1);
+        assertTrue(deployGate.committed(namespace, DEFAULT_COMMITMENT_ID, _gatedSalt("testContract", "v3.1")) != 0);
         assertTrue(
-            deployGate.isExecutor(validator, DEFAULT_COMMITMENT_ID, address(this)), "committing names the executors too"
+            deployGate.isExecutor(namespace, DEFAULT_COMMITMENT_ID, address(this)), "committing names the executors too"
         );
     }
 
-    function testExecutePhaseDeploysWhatWasValidated() public {
-        address predicted = this.queueAndValidate(42);
+    function testDeployPhaseDeploysWhatWasCommitted() public {
+        address predicted = this.queueAndCommit(42);
 
-        address deployed = this.execute(42);
+        address deployed = this.deployIt(42);
 
         assertEq(deployed, predicted, "the executor cannot move the address");
         assertEq(SimpleContract(predicted).value(), 42);
-        assertEq(executedContracts, 1);
+        assertEq(deployedContracts, 1);
         assertEq(
-            deployGate.validated(validator, DEFAULT_COMMITMENT_ID, _gatedSalt("testContract", "v3.1")),
+            deployGate.committed(namespace, DEFAULT_COMMITMENT_ID, _gatedSalt("testContract", "v3.1")),
             0,
-            "validation consumed"
+            "commitment consumed"
         );
     }
 
     /// @dev Caught in the script, before anything is broadcast
-    function testExecutePhaseRejectsAChangedInitCode() public {
-        this.queueAndValidate(42);
+    function testDeployPhaseRejectsAChangedInitCode() public {
+        this.queueAndCommit(42);
 
-        vm.expectRevert("Deployment does not match what was validated, validate again");
-        this.execute(43);
+        vm.expectRevert("Deployment does not match what was committed, commit again");
+        this.deployIt(43);
     }
 
     /// @dev Nothing is ever deployed over, and nothing already deployed is reused. Rerunning a commitment
-    ///      that went through hits its spent validation, so recovering a partial execute means moving the
+    ///      that went through hits its spent commitment, so recovering a partial deploy means moving the
     ///      suffix or the version: an earlier release's contracts are warded by its batchers, which denied
     ///      themselves, so a later run could never wire them.
-    function testExecutePhaseRefusesToRedeploy() public {
-        address predicted = this.queueAndValidate(1);
-        this.execute(1);
+    function testDeployPhaseRefusesToRedeploy() public {
+        address predicted = this.queueAndCommit(1);
+        this.deployIt(1);
 
-        vm.expectRevert("Deployment does not match what was validated, validate again");
-        this.execute(1);
+        vm.expectRevert("Deployment does not match what was committed, commit again");
+        this.deployIt(1);
 
         assertEq(SimpleContract(predicted).value(), 1, "what was deployed should stay untouched");
-    }
-
-    /// @dev And when the validation is still live, because the address was taken by something else, CreateX
-    ///      is the one that refuses
-    function testExecutePhaseRefusesAnAddressTakenByAnotherDeployment() public {
-        address predicted = this.queueAndValidate(1);
-
-        bytes32 createXSalt = deployGate.createXSalt(validator, _gatedSalt("testContract", "v3.1"));
-
-        vm.prank(address(deployGate));
-        CreateX.deployCreate3(createXSalt, abi.encodePacked(type(SimpleContract).creationCode, abi.encode(7)));
-        assertGt(predicted.code.length, 0, "the address should be taken");
-
-        vm.expectRevert(abi.encodeWithSelector(ICreateX.FailedContractCreation.selector, address(CreateX)));
-        this.execute(1);
     }
 }

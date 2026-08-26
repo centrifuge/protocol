@@ -37,7 +37,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
         address[] memory executors = new address[](1);
         executors[0] = address(this);
 
-        // Deployment: this contract is the validator of its own namespace, and its own executor
+        // Deployment: this contract is the namespace of its own namespace, and its own executor
         super.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,

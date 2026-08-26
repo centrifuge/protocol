@@ -5,6 +5,7 @@ hide empty members
 class JsonRegistry << (S, motivation) >>
 class CreateXScript << (S, motivation) >>
 class DeployGateScript << (S, motivation) >>
+class GateProposalScript << (S, motivation) >>
 
 class BaseDeployer << (S, motivation) >>
 class GatedDeployer << (S, motivation) >>
@@ -15,9 +16,9 @@ class FullDeployer  << (S, application) >> {
     + function deployFull()
 }
 class LaunchDeployer  << (S, application) >> {
-    + function validate()
+    + function commit()
     + function revoke()
-    + function execute()
+    + function deploy()
 }
 
 class CoreActionBatcher << (C, implementation) >>
@@ -27,16 +28,17 @@ class AdapterActionBatcher << (C, implementation) >>
 class DeployerInput << (S,strategy) JsonConfig >>
 
 enum DeployPhase {
-    Validate
-    Execute
+    Commit
+    Deploy
 }
 
 BaseDeployer -up-|> JsonRegistry
 BaseDeployer -up-|> CreateXScript
 DeployGateScript -up-|> CreateXScript
+GateProposalScript -up-|> DeployGateScript
 
 GatedDeployer --up-|> BaseDeployer
-GatedDeployer --up-|> DeployGateScript
+GatedDeployer --up-|> GateProposalScript
 FullDeployer -up-|> GatedDeployer
 LaunchDeployer -up-|> FullDeployer
 
@@ -50,6 +52,7 @@ FullDeployer ...> NonCoreActionBatcher
 FullDeployer ...> AdapterActionBatcher
 
 note right of JsonRegistry: Utilities to write in the env files
+note left of DeployGateScript: From the create3-gate dependency
 note right of BaseDeployer: Base utilities to use create3\n in the project
 note right of GatedDeployer: Helpers to use DeployGate
 note right of FullDeployer: Used in integration tests

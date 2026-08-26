@@ -196,16 +196,16 @@ contract FullDeployer is GatedDeployer, Constants {
     AdapterActionBatcher public adapterBatcher;
 
     /// @dev Runs both phases back to back, in one process. For tests only: a real deployment gives each phase
-    ///      its own run, which is what proves the execute phase rebuilds exactly what validate committed.
+    ///      its own run, which is what proves the deploy phase rebuilds exactly what the commit phase committed.
     ///      FullDeploymentPhasedTest is what covers the phases apart.
     function deployFullBothPhases(
         DeployerInput memory input,
         address deployer_,
-        address validator_,
+        address namespace_,
         address[] memory executors_
     ) public {
-        deployFull(input, deployer_, DeployPhase.Validate, validator_, executors_);
-        deployFull(input, deployer_, DeployPhase.Execute, validator_, executors_);
+        deployFull(input, deployer_, DeployPhase.Commit, namespace_, executors_);
+        deployFull(input, deployer_, DeployPhase.Deploy, namespace_, executors_);
     }
 
     /// @dev Deploys every contract through a DeployGate, so that the admin signs a single transaction whatever
@@ -215,19 +215,19 @@ contract FullDeployer is GatedDeployer, Constants {
         DeployerInput memory input,
         address deployer_,
         DeployPhase phase,
-        address validator_,
+        address namespace_,
         address[] memory executors_
     ) public {
-        _initGated(input.suffix, deployer_, phase, validator_, executors_);
+        _initGated(input.suffix, deployer_, phase, namespace_, executors_);
 
-        // Validating deploys the whole protocol locally, at the addresses it will really occupy, since only
+        // Committing deploys the whole protocol locally, at the addresses it will really occupy, since only
         // running the init code reveals the runtime code to commit to, and constructors that wire their
         // dependencies need to find them. That is then rolled back, to leave the addresses free for the
         // executor: the commitment is carried across in memory, which a rollback does not touch.
         //
         // Everything the walk put in storage does go, this script's own included, which is what keeps the
-        // addresses it registered out of the deployment manifest: only the execute phase reports any.
-        if (phase == DeployPhase.Validate) {
+        // addresses it registered out of the deployment manifest: only the deploy phase reports any.
+        if (phase == DeployPhase.Commit) {
             bool bracketed = vm.isContext(VmSafe.ForgeContext.ScriptGroup) && !proposing;
             if (bracketed) vm.stopBroadcast();
 

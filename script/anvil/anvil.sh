@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Brings up two local chains and deploys the protocol on both, exactly the way a real chain gets it: through
-# the DeployGate, validate and execute as two separate forge runs, then test data on top. The deploy scripts
+# the DeployGate, commit and deploy as two separate forge runs, then test data on top. The deploy scripts
 # write their addresses and block numbers into the chain's config themselves, so there is no recording step.
 #
 #   ./script/anvil/anvil.sh
@@ -103,10 +103,10 @@ deploy_chain() {
     CHAIN="$1"
 
     export PRIVATE_KEY="$DEPLOYER_KEY"
-    say "LaunchDeployer: validate ($CHAIN)"
-    EXECUTORS="$DEPLOYER" forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'validate()'
-    say "LaunchDeployer: execute ($CHAIN)"
-    forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'execute()'
+    say "LaunchDeployer: commit ($CHAIN)"
+    EXECUTORS="$DEPLOYER" forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'commit()'
+    say "LaunchDeployer: deploy ($CHAIN)"
+    forge_deploy script/deploy/LaunchDeployer.s.sol LaunchDeployer --sig 'deploy()'
 
     say "Test data ($CHAIN)"
     export PRIVATE_KEY="$ADMIN_KEY"

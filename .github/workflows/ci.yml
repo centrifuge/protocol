@@ -126,8 +126,8 @@ jobs:
   #     - name: Run Halmos symbolic tests
   #       run: halmos --contract TestMessageLibIdentities --function test
 
-  # Deploys the protocol on two local chains the way a real chain gets it: through the DeployGate, validate
-  # and execute as separate runs, then test data. Needs no credentials and no network — the chains are bare
+  # Deploys the protocol on two local chains the way a real chain gets it: through the DeployGate, commit
+  # and deploy as separate runs, then test data. Needs no credentials and no network — the chains are bare
   # anvil rather than forks, so this job carries no secrets and cannot be blocked by a rate limit
   anvil-deploy:
     runs-on: ubuntu-latest
