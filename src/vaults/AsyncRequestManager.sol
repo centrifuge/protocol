@@ -347,7 +347,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         uint128 sharesUp = _assetToShareAmount(vault_, assets_, state.depositPrice, MathLib.Rounding.Up);
         uint128 sharesDown = _assetToShareAmount(vault_, assets_, state.depositPrice, MathLib.Rounding.Down);
         shares = uint256(sharesDown);
-        _processDeposit(state, sharesUp, sharesDown, vault_, receiver);
+        _processDeposit(state, sharesUp, sharesDown, vault_, receiver, controller);
     }
 
     /// @inheritdoc IDepositManager
@@ -362,7 +362,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         uint128 shares_ = shares.toUint128();
 
         assets = uint256(_shareToAssetAmount(vault_, shares_, state.depositPrice, MathLib.Rounding.Up));
-        _processDeposit(state, shares_, shares_, vault_, receiver);
+        _processDeposit(state, shares_, shares_, vault_, receiver, controller);
     }
 
     function _processDeposit(
@@ -370,7 +370,8 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         uint128 sharesUp,
         uint128 sharesDown,
         IBaseVault vault_,
-        address receiver
+        address receiver,
+        address controller
     ) internal {
         require(sharesUp <= state.maxMint, ExceedsDepositLimits());
         state.maxMint = state.maxMint - sharesUp;
@@ -378,7 +379,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         if (sharesDown > 0) {
             VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault_));
 
-            // NOTE: Assumes restrictions check of receiver to be done in the share transfer
+            // The share transfer checks the receiver, not the controller. Mirrors {maxMint}.
+            require(_canTransfer(vault_, _escrow(vault_), controller, sharesDown), TransferNotAllowed());
+
             spoke.withdrawShares(vaultDetails.poolId, vaultDetails.scId, receiver, sharesDown);
         }
     }
@@ -506,7 +509,9 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
         if (shares > 0) {
             VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault_));
 
-            // NOTE: Assumes restrictions check of receiver to be done in the share transfer
+            // Same reasoning as {_processDeposit}.
+            require(_canTransfer(vault_, _escrow(vault_), controller, shares), TransferNotAllowed());
+
             spoke.withdrawShares(vaultDetails.poolId, vaultDetails.scId, receiver, shares.toUint128());
         }
     }
@@ -574,11 +579,13 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     /// @inheritdoc IAsyncDepositManager
     function claimableCancelDepositRequest(IBaseVault vault_, address user) public view returns (uint256 assets) {
         assets = investments[vault_][user].claimableCancelDepositRequest;
+        if (!_canTransfer(vault_, user, address(0), convertToShares(vault_, assets))) return 0;
     }
 
     /// @inheritdoc IAsyncRedeemManager
     function claimableCancelRedeemRequest(IBaseVault vault_, address user) public view returns (uint256 shares) {
         shares = investments[vault_][user].claimableCancelRedeemRequest;
+        if (!_canTransfer(vault_, _escrow(vault_), user, shares)) return 0;
     }
 
     /// @inheritdoc IBaseRequestManager

@@ -26,7 +26,8 @@ interface IDepositManager {
     /// @dev    The assets required to fulfill the deposit are already locked in escrow upon calling requestDeposit.
     ///         The shares required to fulfill the deposit have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
-    ///         Receiver has to pass all the share token restrictions in order to receive the shares.
+    ///         Both the owner and the receiver have to pass all the share token restrictions: the owner
+    ///         has to pass them for the claimed amount as well (mirrors `maxMint`).
     function deposit(IBaseVault vault, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
@@ -38,7 +39,8 @@ interface IDepositManager {
     /// @dev    The assets required to fulfill the mint are already locked in escrow upon calling requestDeposit.
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
-    ///         Receiver has to pass all the share token restrictions in order to receive the shares.
+    ///         Both the owner and the receiver have to pass all the share token restrictions: the owner
+    ///         has to pass them for the claimed amount as well (mirrors `maxMint`).
     function mint(IBaseVault vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
@@ -97,7 +99,8 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     function pendingCancelDepositRequest(IBaseVault vault, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has claimable deposit request cancellation and returns the total claim
-    ///         value in assets.
+    ///         value in assets. Returns 0 while the share token restrictions block the user, matching what
+    ///         {claimCancelDepositRequest} would do.
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
@@ -184,7 +187,8 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     ///         Shares are transferred from the escrow to the receiver.
     /// @dev    The shares required to fulfill the claim have already been reserved for the owner in escrow on
     ///         fulfillRedeemRequest with non-zero cancelled share amount value.
-    ///         Receiver has to pass all the share token restrictions in order to receive the shares.
+    ///         Both the owner and the receiver have to pass all the share token restrictions: the owner
+    ///         has to pass them for the claimed amount as well (mirrors `claimableCancelRedeemRequest`).
     function claimCancelRedeemRequest(IBaseVault vault, address receiver, address owner)
         external
         returns (uint256 shares);
@@ -196,7 +200,8 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     function pendingCancelRedeemRequest(IBaseVault vault, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has claimable redeem request cancellation and returns the total claim
-    ///         value in shares.
+    ///         value in shares. Returns 0 while the share token restrictions block the escrow-to-user leg,
+    ///         matching what {claimCancelRedeemRequest} would do.
     function claimableCancelRedeemRequest(IBaseVault vault, address user) external view returns (uint256 shares);
 }
 

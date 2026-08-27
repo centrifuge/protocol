@@ -36,6 +36,16 @@ interface ISupervisor {
 
     /// @notice Cancel a pending Hub authorization (sentinel veto). Callable by any sentinel. A sentinel
     ///         cannot cancel the authorization of their own removal when multiple sentinels exist.
+    /// @dev    At a single sentinel that guard is skipped: the set cannot empty itself ({LastSentinel}),
+    ///         so replacing a lone sentinel needs an `AddSentinel` first, which that sentinel can veto
+    ///         every time it is re-scheduled. Installing a different policy does not break the loop: the
+    ///         {IHubRegistry} nonce bump only voids the authorizations already pending, and the veto is
+    ///         keyed off the same policy and nonce as the authorization it cancels, so the next
+    ///         `AddSentinel` is vetoable again. Recovery is a Root ward doing one of two things.
+    ///         {IHub.setPolicy} with the zero policy, since a ward skips enforcement and {IHub} calls into
+    ///         a policy only when one is installed, so `AddSentinel` then runs synchronously with no
+    ///         authorization to veto. Or {IHubRegistry.updateManager} dropping the Supervisor as a pool
+    ///         manager, which makes its {cancelAuthorization} fail the Hub's manager check.
     /// @param data The exact Hub calldata that was authorized.
     function cancelAuthorization(bytes calldata data) external;
 

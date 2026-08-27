@@ -82,7 +82,7 @@ contract Supervisor is ISupervisor, IManagerCallFromHub {
     }
 
     /// @dev Reverts if `data` is a `Hub.managerCall` targeting this Supervisor that removes `sender` as a
-    ///      sentinel. Non-matching payloads pass through to preserve the veto.
+    ///      sentinel. Non-matching payloads pass through to preserve the veto, `AddSentinel` included.
     function _checkNotSelfRemoval(bytes calldata data, address sender) private view {
         (bytes4 selector, bytes calldata args) = data.decodeCall();
         if (selector != IHub.managerCall.selector) return;
