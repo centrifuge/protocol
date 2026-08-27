@@ -14,14 +14,6 @@ import "forge-std/Test.sol";
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {ESCROW_HOOK_ID} from "../../../src/token/interfaces/ITransferHook.sol";
 
-contract MockPoolEscrow {
-    PoolId public immutable poolId;
-
-    constructor(PoolId poolId_) {
-        poolId = poolId_;
-    }
-}
-
 contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
     uint256 constant GAS = IntegrationConstants.INTEGRATION_DEFAULT_SUBSIDY;
@@ -52,13 +44,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             executors
         );
 
-        MockPoolEscrow mockPoolEscrow = new MockPoolEscrow(TEST_POOL_ID);
-        poolEscrow = address(mockPoolEscrow);
-        vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(bytes4(keccak256("escrow(uint64)")), TEST_POOL_ID),
-            abi.encode(poolEscrow)
-        );
+        vm.prank(address(spokeHandler));
+        poolEscrow = address(poolEscrowFactory.newEscrow(TEST_POOL_ID));
 
         vm.startPrank(address(protocolGuardian.safe()));
         correctHook = new FullRestrictions(
@@ -68,8 +55,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             address(spoke),
             address(spokeHandler),
             address(protocolGuardian.safe()),
-            address(poolEscrowFactory),
-            poolEscrow
+            address(poolEscrowFactory)
         );
         vm.stopPrank();
     }

@@ -57,13 +57,8 @@ contract TestableBaseTransferHook is BaseTransferHook {
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_,
-        address poolEscrow_
-    )
-        BaseTransferHook(
-            root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
-        )
-    {}
+        address poolEscrowProvider_
+    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_) {}
 
     function checkERC20Transfer(
         address from,
@@ -136,8 +131,7 @@ contract BaseTransferHookTestBase is Test {
             spoke,
             crosschainSource,
             deployer,
-            address(mockPoolEscrowProvider),
-            address(0) // Multi-pool mode
+            address(mockPoolEscrowProvider)
         );
 
         mockShareToken = new MockShareToken();
@@ -211,8 +205,7 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
             spoke,
             spoke, // Same as spoke - should fail
             deployer,
-            address(mockPoolEscrowProvider),
-            address(0)
+            address(mockPoolEscrowProvider)
         );
     }
 }
@@ -720,8 +713,7 @@ contract BaseTransferHookTestFuzz is BaseTransferHookTestBase {
     }
 }
 
-contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase {
-    TestableBaseTransferHook hookWithFastPath;
+contract BaseTransferHookTestPoolEscrowResolution is BaseTransferHookTestBase {
     MockPoolEscrow otherPoolEscrow;
     address otherEscrowAddr;
 
@@ -731,48 +723,20 @@ contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase 
         otherPoolEscrow = new MockPoolEscrow(PoolId.wrap(2));
         otherEscrowAddr = address(otherPoolEscrow);
         mockPoolEscrowProvider.setEscrow(PoolId.wrap(2), otherEscrowAddr);
-
-        vm.prank(deployer);
-        hookWithFastPath = new TestableBaseTransferHook(
-            address(mockRoot),
-            envoy,
-            address(mockSpoke),
-            spoke,
-            crosschainSource,
-            deployer,
-            address(mockPoolEscrowProvider),
-            poolEscrow
-        );
     }
 
-    function testFastPathRecognizesConfiguredEscrow() public view {
-        assertTrue(hookWithFastPath.isPoolEscrow(poolEscrow), "fast path should recognize configured poolEscrow");
+    function testRecognizesFactoryEscrow() public view {
+        assertTrue(hook.isPoolEscrow(poolEscrow), "escrow registered in poolEscrowProvider must be recognized");
+        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "every registered escrow must be recognized, not just one");
     }
 
-    function testFastPathRejectsOtherAddress(address random) public view {
-        vm.assume(random != address(poolEscrow));
-
-        assertFalse(
-            hookWithFastPath.isPoolEscrow(random),
-            "fast path should reject address that doesn't match configured poolEscrow"
-        );
-        assertFalse(hookWithFastPath.isPoolEscrow(otherEscrowAddr), "fast path should otherEscrowAddr");
-    }
-
-    function testMultiPoolRecognizesFactoryEscrow() public view {
-        assertTrue(hook.isPoolEscrow(poolEscrow), "multi-pool mode should recognize escrow via poolEscrowProvider");
-    }
-
-    function testMultiPoolRejectsNonFactoryEscrow(address random) public view {
+    function testRejectsNonFactoryEscrow(address random) public view {
         vm.assume(random != address(poolEscrow) && random != otherEscrowAddr);
 
-        assertFalse(
-            hook.isPoolEscrow(random), "multi-pool mode should reject escrow not registered in poolEscrowProvider"
-        );
-        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "multi-pool mode should not reject otherEscrowAddr");
+        assertFalse(hook.isPoolEscrow(random), "escrow not registered in poolEscrowProvider must be rejected");
     }
 
-    function testMultiPoolRejectsSelfDeclaredEscrow() public {
+    function testRejectsSelfDeclaredEscrow() public {
         MockPoolEscrow impostor = new MockPoolEscrow(TEST_POOL_ID);
         assertFalse(hook.isPoolEscrow(address(impostor)), "self-declared poolId must not grant escrow status");
     }

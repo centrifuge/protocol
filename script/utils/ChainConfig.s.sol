@@ -5,11 +5,12 @@ import {EnvConnections, Connection} from "./ConnectionsConfig.s.sol";
 
 import "forge-std/Vm.sol";
 
+import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
+import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
+
 // Deploy-time types, here because their builders are: `adapterConnections()` and
 // `buildLayerZeroConfigParams()` each have exactly one caller, `LaunchDeployer`, which stays on the base
 // branch — so these belong here, not on `live`
-import {AdapterConnections} from "../../src/deployment/ActionBatchers.sol";
-import {UlnConfig, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 

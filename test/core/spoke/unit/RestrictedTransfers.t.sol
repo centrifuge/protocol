@@ -31,8 +31,7 @@ contract FullRestrictionsTest is Test {
             makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
-            address(new MockPoolEscrowProvider()),
-            address(0) // Multi-pool mode
+            address(new MockPoolEscrowProvider())
         );
         token.file("hook", address(fullRestrictionsHook));
     }

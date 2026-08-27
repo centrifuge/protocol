@@ -2,6 +2,9 @@
   "lib/chimera": {
     "rev": "d5cf52bc5bbf75f988f8aada23fd12d0bcf7798a"
   },
+  "lib/create3-gate": {
+    "rev": "0665d63f27673c2b5b9ab2008c49ff9404d41b12"
+  },
   "lib/createx-forge": {
     "rev": "1d5ed80fabe164421228d7ce0fd5c7f3e3010300"
   },

@@ -40,16 +40,13 @@ interface IBaseTransferHook is ITransferHook {
     /// @notice Root authority that manages ward permissions and timelocked upgrades
     function root() external view returns (IRoot);
 
-    /// @notice Pre-configured escrow address for single-pool hook deployments (address(0) if multi-pool)
-    function poolEscrow() external view returns (address);
-
     /// @notice Address that originates cross-chain share transfers (SpokeHandler on this chain)
     function crosschainSource() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function spoke() external view returns (ISpoke);
 
-    /// @notice Factory that maps pool IDs to escrow addresses for multi-pool hook deployments
+    /// @notice Factory that maps pool IDs to escrow addresses
     function poolEscrowProvider() external view returns (IPoolEscrowProvider);
 
     /// @notice Whether an address has manager permissions for a specific share token
@@ -59,7 +56,7 @@ interface IBaseTransferHook is ITransferHook {
     // Transfer type classification
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Whether the address is a pool escrow (checks both pre-configured and factory-deployed)
+    /// @notice Whether the address is a pool escrow deployed by the pool escrow factory
     function isPoolEscrow(address addr) external view returns (bool);
 
     /// @notice True when `from` is zero-address and `to` is not the pool escrow or cross-chain source (mint to user/vault)

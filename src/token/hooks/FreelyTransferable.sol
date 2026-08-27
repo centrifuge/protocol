@@ -18,13 +18,8 @@ contract FreelyTransferable is BaseTransferHook {
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_,
-        address poolEscrow_
-    )
-        BaseTransferHook(
-            root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_
-        )
-    {}
+        address poolEscrowProvider_
+    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(

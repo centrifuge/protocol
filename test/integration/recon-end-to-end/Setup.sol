@@ -218,8 +218,7 @@ abstract contract Setup is
             address(spoke),
             address(spokeHandler), // crosschainSource_
             address(this),
-            address(poolEscrowFactory),
-            address(0) // poolEscrow_
+            address(poolEscrowFactory)
         );
 
         messageDispatcher = new MessageDispatcher(

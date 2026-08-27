@@ -46,7 +46,6 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
     IRoot public immutable root;
     address public immutable envoy;
     ISpokeRegistry public immutable spokeRegistry;
-    address public immutable poolEscrow;
     address public immutable crosschainSource;
     ISpoke public immutable spoke;
     IPoolEscrowProvider public immutable poolEscrowProvider;
@@ -60,8 +59,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_,
-        address poolEscrow_
+        address poolEscrowProvider_
     ) Auth(deployer) {
         require(spoke_ != crosschainSource_, InvalidInputs());
 
@@ -71,7 +69,6 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         spoke = ISpoke(spoke_);
         crosschainSource = crosschainSource_;
         poolEscrowProvider = IPoolEscrowProvider(poolEscrowProvider_);
-        poolEscrow = poolEscrow_;
     }
 
     /// @dev Check if the msg.sender is ward or a manager
@@ -123,9 +120,6 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         returns (bool);
 
     function isPoolEscrow(address addr) public view returns (bool) {
-        // Fast path: single-pool optimization
-        if (poolEscrow != address(0)) return addr == poolEscrow;
-
         return !poolEscrowProvider.poolId(addr).isNull();
     }
 

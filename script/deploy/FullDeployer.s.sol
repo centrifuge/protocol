@@ -581,8 +581,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory),
-                        address(0)
+                        address(poolEscrowFactory)
                     )
                 )
             )
@@ -601,8 +600,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory),
-                        address(0)
+                        address(poolEscrowFactory)
                     )
                 )
             )
@@ -621,8 +619,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory),
-                        address(0)
+                        address(poolEscrowFactory)
                     )
                 )
             )
@@ -641,8 +638,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory),
-                        address(0)
+                        address(poolEscrowFactory)
                     )
                 )
             )

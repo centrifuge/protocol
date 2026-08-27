@@ -110,7 +110,7 @@ contract GasService is IGasService {
         notifyShareMetadata = _gasValue(199980);
         initiateTransferShares = _gasValue(369980);
         executeTransferShares = _gasValue(254802);
-        updateRestriction = _gasValue(214596);
+        updateRestriction = _gasValue(214546);
         managerCallFromHub = _gasValue(376469);
         requestCallback = _gasValue(465157); // approve deposit case
         updateVaultDeployAndLink = _gasValue(2870035);
@@ -121,8 +121,8 @@ contract GasService is IGasService {
         authorizeSpokeCall = _gasValue(184741);
         unauthorizeSpokeCall = _gasValue(162402);
         updateManager = _gasValue(178827);
-        updateAssets = _gasValue(391814);
-        updateShares = _gasValue(265303);
+        updateAssets = _gasValue(391915);
+        updateShares = _gasValue(265324);
         managerCallFromSpoke = _gasValue(151429);
     }
 
