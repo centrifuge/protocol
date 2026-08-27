@@ -158,6 +158,11 @@ jobs:
 
 
   check-benchmarks:
+    # `pull_request` here carries no branch filter, so this fires on PRs into the release branches too —
+    # where `src/` is byte-identical to main and the benchmark can only reach the same numbers. Skipped
+    # there rather than spending the run: it is the most expensive job in the file, and the release
+    # branches enforce that byte-identity themselves.
+    if: github.event_name == 'push' || github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
