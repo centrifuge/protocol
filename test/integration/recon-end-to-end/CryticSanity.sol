@@ -496,19 +496,20 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
         uint16 centrifugeId = spokeRegistry.vaultDetails(address(vault)).assetId.centrifugeId();
 
         hub_updateAssets(100, true);
         property_deficitCountMatchesHoldings();
-        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "no deficit after increase");
+        eq(uint256(holdings.deficitCount(poolId, scId, centrifugeId)), 0, "no deficit after increase");
 
         hub_updateAssets(150, false); // over-decrease
         property_deficitCountMatchesHoldings();
-        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 1, "deficit after over-decrease");
+        eq(uint256(holdings.deficitCount(poolId, scId, centrifugeId)), 1, "deficit after over-decrease");
 
         hub_updateAssets(50, true); // refill to equality
         property_deficitCountMatchesHoldings();
-        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "deficit cleared after refill");
+        eq(uint256(holdings.deficitCount(poolId, scId, centrifugeId)), 0, "deficit cleared after refill");
     }
 
     /// @dev Over-reserve then flush is the only fuzzer path making `property_deficitCountMatchesHoldings` non-vacuous
@@ -523,22 +524,23 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
 
         IBaseVault vault = IBaseVault(_getVault());
         PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
         uint16 centrifugeId = spokeRegistry.vaultDetails(address(vault)).assetId.centrifugeId();
 
         balanceSheet_deposit(0, 100e18);
         balanceSheet_submitQueuedAssets(0);
         property_deficitCountMatchesHoldings();
-        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "no deficit after deposit flush");
+        eq(uint256(holdings.deficitCount(poolId, scId, centrifugeId)), 0, "no deficit after deposit flush");
 
         balanceSheet_overReserve_clamped(0);
         balanceSheet_submitQueuedAssets(0);
         property_deficitCountMatchesHoldings();
-        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 1, "deficit after over-reserve flush");
+        eq(uint256(holdings.deficitCount(poolId, scId, centrifugeId)), 1, "deficit after over-reserve flush");
 
         balanceSheet_deposit(0, 500e18);
         balanceSheet_submitQueuedAssets(0);
         property_deficitCountMatchesHoldings();
-        eq(uint256(holdings.deficitCount(poolId, centrifugeId)), 0, "deficit cleared after queue refill");
+        eq(uint256(holdings.deficitCount(poolId, scId, centrifugeId)), 0, "deficit cleared after queue refill");
     }
 
     /// @dev Pins why `hub_updateAssets` is reproducer-only: a direct hub write advances

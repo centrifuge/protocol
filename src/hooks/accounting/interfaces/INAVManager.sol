@@ -29,6 +29,11 @@ enum NAVAccount {
 /// @notice Interface for receiving net asset value (NAV) update callbacks
 interface INAVHook {
     /// @notice Callback when there is a new net asset value (NAV) on a specific network.
+    /// @dev    A network's slice of the aggregate only advances on its own sync, so a network whose sync is being
+    ///         skipped ({INAVManager} holds it while the pool-network is in deficit) keeps contributing its last
+    ///         consistent slice, and a sync from any other network still republishes the price. Its NAV and
+    ///         issuance are frozen together, so the aggregate stays coherent, but it is stale in that network's
+    ///         share of it.
     /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param centrifugeId The Centrifuge ID of the network
@@ -75,7 +80,13 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     event InitializeLiability(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event SetAccountMetadata(PoolId indexed poolId, AccountId indexed account, bytes metadata);
     event Sync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
-    event SkipSync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint32 deficitCount);
+    event SkipSync(
+        PoolId indexed poolId,
+        ShareClassId indexed scId,
+        uint16 indexed centrifugeId,
+        uint32 deficitCount,
+        uint32 networkDeficitCount
+    );
     event Transfer(
         PoolId indexed poolId,
         ShareClassId scId,
@@ -95,6 +106,7 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     error NetworkMismatch();
     error NotManager();
     error ValuationNotSet();
+    error NotDebitNormalAccount();
 
     //----------------------------------------------------------------------------------------------
     // Immutables

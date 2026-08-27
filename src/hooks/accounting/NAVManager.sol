@@ -142,13 +142,22 @@ contract NAVManager is INAVManager {
 
     /// @dev Creates only `accounts[0]`, the per-asset debit account; the other slots are per-network
     ///      accounts already created in `_initializeNetwork` and reused across holdings.
+    ///      Keyed by asset alone, so a second share class over the same asset reuses the account instead of
+    ///      reverting `AccountExists`, and both holdings debit the one account that keeps pool-wide NAV whole.
+    ///      Reuse is gated on debit-normal, so a credit-normal account is never adopted.
     function _createHolding(PoolId poolId, ShareClassId scId, AssetId assetId, AccountId[4] memory accounts) private {
         require(initialized[poolId][assetId.centrifugeId()], NotInitialized());
 
         IValuation valuation = defaultValuation[poolId];
         require(address(valuation) != address(0), ValuationNotSet());
 
-        hub.createAccount(poolId, accounts[0], true);
+        if (!accounting.exists(poolId, accounts[0])) {
+            hub.createAccount(poolId, accounts[0], true);
+        } else {
+            (,, bool isDebitNormal,,) = accounting.accounts(poolId, accounts[0]);
+            require(isDebitNormal, NotDebitNormalAccount());
+        }
+
         hub.initializeHolding(poolId, scId, assetId, valuation, accounts);
     }
 
@@ -160,11 +169,17 @@ contract NAVManager is INAVManager {
     function onSync(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external {
         require(msg.sender == address(holdings), NotAuthorized());
 
-        // While the pool-network is in deficit, hold the last published price by skipping silently (never
-        // reverting) and resume once the deficit clears. Gate precedes the `navHook` check.
-        uint32 deficitCount = holdings.deficitCount(poolId, centrifugeId);
-        if (deficitCount != 0) {
-            emit SkipSync(poolId, scId, centrifugeId, deficitCount);
+        // While the pool-network carries any deficit its NAV misstates the holdings, so skip silently (never
+        // reverting) and resume once it clears. The rollup gates, not the share class-network count, because
+        // `netAssetValue` reads accounts every share class on the network shares. Only this network's slice is
+        // held, not the pool's price: other networks keep publishing. Gate precedes the `navHook` check.
+        uint32 networkDeficitCount = holdings.networkDeficitCount(poolId, centrifugeId);
+        if (networkDeficitCount != 0) {
+            // Both counts, so the skip is attributable: the share class-network count says whether this share
+            // class is itself misstated or is only held by a sibling's deficit.
+            emit SkipSync(
+                poolId, scId, centrifugeId, holdings.deficitCount(poolId, scId, centrifugeId), networkDeficitCount
+            );
             return;
         }
 

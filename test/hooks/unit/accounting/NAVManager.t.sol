@@ -68,8 +68,10 @@ contract NAVManagerTest is Test {
 
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.snapshot.selector), abi.encode(false, uint64(0)));
         vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector), abi.encode(uint32(0)));
+        vm.mockCall(holdings, abi.encodeWithSelector(IHoldings.networkDeficitCount.selector), abi.encode(uint32(0)));
 
         vm.mockCall(accounting, abi.encodeWithSelector(IAccounting.accountValue.selector), abi.encode(true, uint128(0)));
+        _mockNoAccounts();
 
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset1), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", asset2), abi.encode(6));
@@ -81,6 +83,29 @@ contract NAVManagerTest is Test {
 
     function _deployManager() internal {
         navManager = new NAVManager(IHub(hub), envoy);
+    }
+
+    /// @dev Default for every account: none exists yet, which is what makes `_createHolding` create it.
+    function _mockNoAccounts() internal {
+        vm.mockCall(address(accounting), abi.encodeWithSelector(IAccounting.exists.selector), abi.encode(false));
+        vm.mockCall(
+            address(accounting),
+            abi.encodeWithSelector(IAccounting.accounts.selector),
+            abi.encode(uint128(0), uint128(0), false, uint64(0), bytes(""))
+        );
+    }
+
+    /// @dev Marks one existing account, bound to `(POOL_A, account)` so a test cannot pass on a probe of some
+    ///      other account: the reuse and the credit-normal rejection both hinge on which id is read.
+    function _mockAccount(AccountId account, bool isDebitNormal) internal {
+        vm.mockCall(
+            address(accounting), abi.encodeWithSelector(IAccounting.exists.selector, POOL_A, account), abi.encode(true)
+        );
+        vm.mockCall(
+            address(accounting),
+            abi.encodeWithSelector(IAccounting.accounts.selector, POOL_A, account),
+            abi.encode(uint128(0), uint128(0), isDebitNormal, uint64(block.timestamp), bytes(""))
+        );
     }
 
     function _mockAccountValue(AccountId accountId, uint128 value, bool isPositive) internal {
@@ -321,18 +346,83 @@ contract NAVManagerHoldingInitializationTest is NAVManagerTest {
         navManager.fromHub(POOL_B, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset1));
     }
 
-    function testInitializeHoldingSameAssetTwice() public {
+    /// @dev A pool's assets are shared across its share classes, so a second share class over the same asset
+    ///      reuses the asset account the first one created instead of reverting `AccountExists`. Both holdings
+    ///      then debit the one shared account, which is what keeps the pool-wide NAV whole.
+    function testInitializeHoldingSameAssetTwiceReusesAccount() public {
         _initializeHolding(POOL_A, SC_1, asset1, mockValuation);
 
         AccountId expectedAssetAccount = withAssetId(asset1, uint16(NAVAccount.Asset));
+        _mockAccount(expectedAssetAccount, true); // asset account now exists, debit-normal
 
         vm.expectCall(
-            address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true)
+            address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedAssetAccount, true), 0
         );
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(
+                IHub.initializeHolding.selector,
+                POOL_A,
+                SC_2,
+                asset1,
+                mockValuation,
+                _expectedHoldingAccounts(
+                    expectedAssetAccount,
+                    navManager.equityAccount(CENTRIFUGE_ID_1),
+                    navManager.gainAccount(CENTRIFUGE_ID_1),
+                    navManager.lossAccount(CENTRIFUGE_ID_1)
+                )
+            )
+        );
+
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.InitializeHolding(POOL_A, SC_2, asset1);
 
         _initializeHolding(POOL_A, SC_2, asset1, mockValuation);
 
         assertEq(navManager.assetAccount(asset1).raw(), expectedAssetAccount.raw());
+    }
+
+    /// @dev Reuse is only for a debit-normal account: an existing credit-normal account at the same id must
+    ///      never be adopted as the holding's debit slot.
+    function testInitializeHoldingRejectsCreditNormalAccount() public {
+        _mockAccount(withAssetId(asset1, uint16(NAVAccount.Asset)), false);
+
+        vm.prank(envoy);
+        vm.expectRevert(INAVManager.NotDebitNormalAccount.selector);
+        navManager.fromHub(POOL_A, abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), SC_1, asset1));
+    }
+
+    /// @dev Same reuse on the liability path, whose debit slot is the per-asset expense account.
+    function testInitializeLiabilitySameAssetTwiceReusesAccount() public {
+        _initializeLiability(POOL_A, SC_1, asset1, mockValuation);
+
+        AccountId expectedExpenseAccount = withAssetId(asset1, uint16(NAVAccount.Expense));
+        AccountId expectedLiabilityAccount = navManager.liabilityAccount(CENTRIFUGE_ID_1);
+        _mockAccount(expectedExpenseAccount, true);
+
+        vm.expectCall(
+            address(hub), abi.encodeWithSelector(IHub.createAccount.selector, POOL_A, expectedExpenseAccount, true), 0
+        );
+        vm.expectCall(
+            address(hub),
+            abi.encodeWithSelector(
+                IHub.initializeHolding.selector,
+                POOL_A,
+                SC_2,
+                asset1,
+                mockValuation,
+                // A liability reuses its single account for the credit slot and both value slots.
+                _expectedHoldingAccounts(
+                    expectedExpenseAccount, expectedLiabilityAccount, expectedLiabilityAccount, expectedLiabilityAccount
+                )
+            )
+        );
+
+        vm.expectEmit(true, true, false, true);
+        emit INAVManager.InitializeLiability(POOL_A, SC_2, asset1);
+
+        _initializeLiability(POOL_A, SC_2, asset1, mockValuation);
     }
 }
 
@@ -576,21 +666,35 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
     }
 
-    function _mockDeficitCount(uint16 centrifugeId, uint32 count) internal {
+    /// @dev The gate reads the pool-network rollup, so that is what a skip test has to move. Bound to
+    ///      `(POOL_A, centrifugeId)`: a gate reading some other network's count would not be caught otherwise.
+    function _mockNetworkDeficitCount(uint16 centrifugeId, uint32 count) internal {
         vm.mockCall(
-            holdings, abi.encodeWithSelector(IHoldings.deficitCount.selector, POOL_A, centrifugeId), abi.encode(count)
+            holdings,
+            abi.encodeWithSelector(IHoldings.networkDeficitCount.selector, POOL_A, centrifugeId),
+            abi.encode(count)
+        );
+    }
+
+    /// @dev The per-share-class count is reporting only. Setting it must never move the gate.
+    function _mockDeficitCount(ShareClassId scId, uint16 centrifugeId, uint32 count) internal {
+        vm.mockCall(
+            holdings,
+            abi.encodeWithSelector(IHoldings.deficitCount.selector, POOL_A, scId, centrifugeId),
+            abi.encode(count)
         );
     }
 
     /// @dev In deficit, onSync skips silently and leaves the NAV hook untouched.
     function testOnSyncSkippedWhileDeficit() public {
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
-        _mockDeficitCount(CENTRIFUGE_ID_1, 2);
+        _mockDeficitCount(SC_1, CENTRIFUGE_ID_1, 2);
+        _mockNetworkDeficitCount(CENTRIFUGE_ID_1, 2);
 
         vm.expectCall(address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector), 0);
 
         vm.expectEmit(true, true, true, true);
-        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 2);
+        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 2, 2);
 
         vm.prank(holdings);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
@@ -599,10 +703,11 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
     /// @dev Gate precedes the navHook check, so it can't revert on an unset hook.
     function testOnSyncSkippedEvenWithoutNAVHook() public {
         _setNAVHook(POOL_A, INAVHook(address(0)));
-        _mockDeficitCount(CENTRIFUGE_ID_1, 1);
+        _mockDeficitCount(SC_1, CENTRIFUGE_ID_1, 1);
+        _mockNetworkDeficitCount(CENTRIFUGE_ID_1, 1);
 
         vm.expectEmit(true, true, true, true);
-        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 1);
+        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 1, 1);
 
         vm.prank(holdings);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
@@ -611,7 +716,7 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
     /// @dev Price resumes updating once the deficit count returns to zero.
     function testOnSyncResumesWhenDeficitClears() public {
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
-        _mockDeficitCount(CENTRIFUGE_ID_1, 0);
+        _mockNetworkDeficitCount(CENTRIFUGE_ID_1, 0);
 
         vm.expectCall(
             address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector, POOL_A, SC_1, CENTRIFUGE_ID_1, 1000)
@@ -619,6 +724,26 @@ contract NAVManagerOnSyncTest is NAVManagerTest {
 
         vm.expectEmit(true, true, false, true);
         emit INAVManager.Sync(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
+
+        vm.prank(holdings);
+        navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);
+    }
+
+    /// @dev The gate has to cover what it publishes. `netAssetValue` reads the network's equity/gain/loss/
+    ///      liability accounts, which every share class on that network debits into, so a deficit under one
+    ///      share class misstates the figure a sync on a *different* share class would publish. Gating on the
+    ///      per-share-class count would let that sync through with a contaminated NAV.
+    function testOnSyncSkippedWhenAnotherShareClassIsInDeficit() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 1000, true);
+        _mockDeficitCount(SC_1, CENTRIFUGE_ID_1, 0); // the syncing share class looks clean
+        _mockDeficitCount(SC_2, CENTRIFUGE_ID_1, 1); // the deficit sits in its sibling
+        _mockNetworkDeficitCount(CENTRIFUGE_ID_1, 1); // the rollup still carries it
+
+        vm.expectCall(address(navHook), abi.encodeWithSelector(INAVHook.onUpdate.selector), 0);
+
+        vm.expectEmit(true, true, true, true);
+        // The event attributes the skip: this share class is clean, a sibling's deficit is holding it.
+        emit INAVManager.SkipSync(POOL_A, SC_1, CENTRIFUGE_ID_1, 0, 1);
 
         vm.prank(holdings);
         navManager.onSync(POOL_A, SC_1, CENTRIFUGE_ID_1);

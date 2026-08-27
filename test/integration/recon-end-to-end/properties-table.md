@@ -73,9 +73,10 @@ Status column: ✅ holds under fuzzing · ❌ known to break, see `.claude/docs/
 | 67a | property_epoch_pointer_ordering | BRM epoch pointers: issueEpoch <= depositEpoch and revokeEpoch <= redeemEpoch, always (EW5) | ✅ |
 | 68 | property_decrease_valuation_no_increase_in_accountValue | account.totalDebit and account.totalCredit is always less than uint128(type(int128).max) | ✅ |
 | 69 | property_decrease_valuation_no_increase_in_accountValue | Any decrease in valuation should not result in an increase in accountValue | ✅ |
-| 70 | property_accounting_and_holdings_soundness | Value of Holdings == accountValue(Asset) | ✅ |
+| 70 | property_accounting_and_holdings_soundness | accountValue(assetAccount(assetId)) >= sum over share classes of holdings.value(poolId, scId, assetId): one asset account is shared by every share class holding that asset | ✅ |
 | 70a | property_accounting_books_balance | Per pool, sum of account totalDebit equals sum of totalCredit (double-entry, lock()-enforced) (EW2) | ✅ |
-| 70b | property_deficitCountMatchesHoldings | deficitCount(pool, network) equals the number of holdings with decreasedAmount > increasedAmount, recomputed from holdingAmounts | ✅ |
+| 70b | property_deficitCountMatchesHoldings | deficitCount(pool, share class, network) equals the number of holdings with decreasedAmount > increasedAmount, recomputed from holdingAmounts | ✅ |
+| 70c | property_deficitCountMatchesHoldings | networkDeficitCount(pool, network) equals the sum of deficitCount over the network's share classes: the rollup a snapshot hook gates on never drifts from what it rolls up | ✅ |
 | 71 | property_user_cannot_mutate_pending_redeem | A user cannot mutate their pending redeem amount if the epoch has not advanced | ✅ |
 | 72 | property_additions_dont_cause_ppfs_loss | operations which increase deposits/shares don't decrease PPS | ✅ |
 | 73 | property_removals_dont_cause_ppfs_loss | operations which remove deposits/shares don't decrease PPS | ✅ |

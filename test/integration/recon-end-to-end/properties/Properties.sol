@@ -826,18 +826,26 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     }
 
     /// @dev Property: Value of Holdings == accountValue(Asset)
+    /// @dev One asset account is shared by every share class holding that asset, so the bound is against the
+    ///      sum over share classes, not one of them. Comparing a single share class would pass trivially on a
+    ///      tranched pool while the shared account carried the others' value too.
     function property_accounting_and_holdings_soundness() public {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
+        ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+
+        uint256 holdingsValue;
+        for (uint256 s; s < shareClasses.length; s++) {
+            if (!holdings.isInitialized(poolId, shareClasses[s], assetId)) continue;
+            holdingsValue += holdings.value(poolId, shareClasses[s], assetId);
+        }
 
         // The holding's own account is always the AmountDebit slot (asset/expense side)
-        AccountId accountId = holdings.accountId(poolId, scId, assetId, uint8(AccountKind.AmountDebit));
+        AccountId accountId = holdings.accountId(poolId, vault.scId(), assetId, uint8(AccountKind.AmountDebit));
         (, uint128 accountValue) = accounting.accountValue(poolId, accountId);
-        uint128 holdingsValue = holdings.value(poolId, scId, assetId);
 
-        gte(accountValue, holdingsValue, "Holdings value contained in Accounting");
+        gte(uint256(accountValue), holdingsValue, "Holdings value contained in Accounting");
     }
 
     /// @dev Property (double-entry books): per pool, sum(totalDebit) == sum(totalCredit) across accounts
@@ -863,37 +871,64 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         }
     }
 
-    /// @dev `deficitCount(poolId, centrifugeId)` must equal the number of holdings on that pool-network with
-    ///      `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts`. Regression guard for
-    ///      the deficit-gate crossing logic in `Holdings.increase/decrease`. The NAV-hook gate itself isn't
-    ///      observable here (snapshot-hook layer not wired into this harness); covered by NAVManager tests.
+    /// @dev `deficitCount(poolId, scId, centrifugeId)` must equal the number of holdings on that share
+    ///      class-network with `decreasedAmount > increasedAmount`, recomputed directly from `holdingAmounts`.
+    ///      Regression guard for the deficit-gate crossing logic in `Holdings.increase/decrease`, and for the
+    ///      per-share-class keying: a deficit must never be counted against a sibling share class. The NAV-hook
+    ///      gate itself isn't observable here (snapshot-hook layer not wired into this harness); covered by
+    ///      NAVManager tests.
     function property_deficitCountMatchesHoldings() public {
         PoolId[] memory pools = _getPools();
         AssetId[] memory assetIds = _getAssetIds();
 
         for (uint256 p; p < pools.length; p++) {
+            ShareClassId[] memory shareClasses = _getPoolShareClasses(pools[p]);
+
             for (uint256 a; a < assetIds.length; a++) {
+                // Networks repeat across assets, so assert once per network rather than once per asset.
+                if (!_isFirstAssetOfNetwork(assetIds, a)) continue;
                 uint16 centrifugeId = assetIds[a].centrifugeId();
+
+                uint256 networkCount;
+                for (uint256 s; s < shareClasses.length; s++) {
+                    uint256 count = _countDeficitHoldings(pools[p], shareClasses[s], centrifugeId);
+                    networkCount += count;
+                    eq(
+                        uint256(holdings.deficitCount(pools[p], shareClasses[s], centrifugeId)),
+                        count,
+                        "deficitCount != holdings in deficit"
+                    );
+                }
+
                 eq(
-                    uint256(holdings.deficitCount(pools[p], centrifugeId)),
-                    _countDeficitHoldings(pools[p], centrifugeId),
-                    "deficitCount != holdings in deficit"
+                    uint256(holdings.networkDeficitCount(pools[p], centrifugeId)),
+                    networkCount,
+                    "networkDeficitCount != sum over share classes"
                 );
             }
         }
     }
 
-    /// @dev Counts holdings in deficit for a pool-network across its share classes and assets.
-    function _countDeficitHoldings(PoolId poolId, uint16 centrifugeId) internal view returns (uint256 count) {
-        ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
+    /// @dev True when `index` is the first asset carrying its network, so a per-network assertion runs once.
+    function _isFirstAssetOfNetwork(AssetId[] memory assetIds, uint256 index) internal pure returns (bool) {
+        for (uint256 a; a < index; a++) {
+            if (assetIds[a].centrifugeId() == assetIds[index].centrifugeId()) return false;
+        }
+        return true;
+    }
+
+    /// @dev Counts holdings in deficit for a share class-network across its assets.
+    function _countDeficitHoldings(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
+        internal
+        view
+        returns (uint256 count)
+    {
         AssetId[] memory assetIds = _getAssetIds();
 
-        for (uint256 s; s < shareClasses.length; s++) {
-            for (uint256 a; a < assetIds.length; a++) {
-                if (assetIds[a].centrifugeId() != centrifugeId) continue;
-                (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, shareClasses[s], assetIds[a]);
-                if (decreased > increased) count++;
-            }
+        for (uint256 a; a < assetIds.length; a++) {
+            if (assetIds[a].centrifugeId() != centrifugeId) continue;
+            (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, scId, assetIds[a]);
+            if (decreased > increased) count++;
         }
     }
 
