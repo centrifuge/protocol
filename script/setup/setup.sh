@@ -206,8 +206,11 @@ echo
 if [ "$ISSUES" -le 0 ]; then
     printf '%sEverything needed is in place.%s\n\n' "$GREEN" "$OFF"
     echo "Next:"
-    echo "  ./script/setup/load-secrets.sh              # fetch secrets into .env"
-    echo "  EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url sepolia --broadcast"
+    # Ships with the deployment configs, so a checkout of main has no such file and gets no such step
+    if [ -x "$ROOT/script/setup/load-secrets.sh" ]; then
+        echo "  ./script/setup/load-secrets.sh              # fetch secrets into .env"
+    fi
+    echo "  EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url <network> --broadcast"
     echo "  # ...see script/deploy/README.md for the full cookbook"
 else
     printf '%s%s issue(s) need attention.%s\n' "$RED" "$ISSUES" "$OFF"

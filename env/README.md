@@ -5,9 +5,11 @@ What a chain is, and what is deployed on it. One file per network, filed under t
 ```
 env/
 ├── <environment>/
-│   ├── <network>.json     # one per network — chain id, admins, deploy namespace, adapters, addresses
-│   └── connections.json   # which networks are wired to which, and through which adapters
-└── spell/                 # governance spells, archived after execution
+│   ├── <network>.json         # one per network — chain id, admins, deploy namespace, adapters, addresses
+│   └── connections.json       # which networks are wired to which, and through which adapters
+├── spell/                     # governance spells, archived after execution
+├── connections_viewer.html    # draws one environment's connections.json as a graph
+└── connections_viewer.sh      # serves env/ and opens the viewer: ./env/connections_viewer.sh [environment] [port]
 ```
 
 Which environments are populated depends on the branch. Deployment configs — `testnet/` and `mainnet/` —
@@ -27,9 +29,9 @@ canonical addresses are the id-less ones, but nothing keeps a rev off it. Where 
 chain, a run says which it means with `DEPLOY_ENVIRONMENT=testnet-rev2`; with only one, the chain id still
 answers on its own.
 
-The network is named by the file, not by the path: `sepolia` lives
-at `env/testnet/sepolia.json` and is still reached as `--rpc-url sepolia`. `Chains.pathOf` resolves one to
-the other, and `env/anvil-<id>/<network>.json` — written by `script/anvil/anvil.sh` from its fixtures,
+The network is named by the file, not by the path: a chain `<network>` lives at
+`env/<environment>/<network>.json` and is still reached as `--rpc-url <network>`. `Chains.pathOf` resolves one
+to the other, and `env/anvil-<id>/<network>.json` — written by `script/anvil/anvil.sh` from its fixtures,
 gitignored — is where a local run records itself.
 
 ## Connections
@@ -45,6 +47,10 @@ Anything that needs the list asks that function: the deploy and wiring scripts c
 the live branch's `deploy-testnet.sh` entrypoint derives its network matrix from the same file with jq,
 mirroring what the function
 does so the two cannot disagree.
+
+`connections_viewer.html` is the other copy, and the warning above is why it is worth naming: it
+re-implements the rule in JavaScript to draw the graph, so it can drift. Nothing deploys from it — it
+reads `connections.json` and renders, never writes — but a change to how rules resolve belongs in both.
 
 ## Schema
 
@@ -69,8 +75,8 @@ Named groups of networks, reusable in connection rules:
 
 ```json
 "aliases": {
-    "ALL": ["ethereum", "base", "arbitrum", "plume"],
-    "L2s": ["base", "arbitrum", "optimism"]
+    "ALL": ["A", "B", "C", "D"],
+    "L2s": ["B", "C", "D"]
 }
 ```
 
@@ -85,7 +91,7 @@ Each rule defines a pair of sides, the adapters used between them, and the quoru
 | Format | Meaning | Example |
 |--------|---------|---------|
 | `"ALIAS"` | Reference to an alias | `"ALL"` |
-| `["net1", "net2"]` | Literal list of networks | `["pharos", "monad"]` |
+| `["net1", "net2"]` | Literal list of networks | `["C", "D"]` |
 
 The two sides are permuted (cartesian product), creating a connection for every pair across them. For example, `[["A", "B"], ["C", "D"]]` produces connections: (A,C), (A,D), (B,C), (B,D). Matching is also symmetric: both the A-to-B and B-to-A directions are covered.
 
@@ -107,20 +113,20 @@ Rules are evaluated in order. **The last matching rule wins**, allowing general 
         "threshold": 2
     },
     {
-        "chains": [["pharos"], "ALL"],
+        "chains": [["D"], "ALL"],
         "adapters": ["layerZero"],
         "threshold": 1
     }
 ]
 ```
 
-Here, pharos connects to every other network via layerZero only (threshold 1), while all other pairs use both axelar and layerZero (threshold 2).
+Here, D connects to every other network via layerZero only (threshold 1), while all other pairs use both axelar and layerZero (threshold 2).
 
 To disable connections for a network, override with an empty adapters array:
 
 ```json
 {
-    "chains": [["hyper-evm-testnet"], "ALL"],
+    "chains": [["D"], "ALL"],
     "adapters": [],
     "threshold": 0
 }
@@ -128,30 +134,34 @@ To disable connections for a network, override with an empty adapters array:
 
 ## Examples
 
-**Mainnet** - all networks connected via axelar + layerZero, pharos overridden to layerZero only:
+Which networks an environment holds is deployment data, so these use placeholder names; the real files sit
+beside the configs they connect, and `./env/connections_viewer.sh <environment>` draws one.
+
+**Everything connected, one network on a single adapter** - all pairs via axelar + layerZero, D overridden to
+layerZero only:
 
 ```json
 {
     "aliases": {
-        "ALL": ["ethereum", "base", "arbitrum", "plume", "avalanche", "bnb-smart-chain", "hyper-evm", "optimism", "monad", "pharos"]
+        "ALL": ["A", "B", "C", "D"]
     },
     "connections": [
         { "chains": ["ALL", "ALL"], "adapters": ["axelar", "layerZero"], "threshold": 2 },
-        { "chains": [["pharos"], "ALL"], "adapters": ["layerZero"], "threshold": 1 }
+        { "chains": [["D"], "ALL"], "adapters": ["layerZero"], "threshold": 1 }
     ]
 }
 ```
 
-**Testnet** - all networks connected via 3 adapters, hyper-evm-testnet disconnected:
+**One network disconnected** - all pairs via three adapters, D cut off:
 
 ```json
 {
     "aliases": {
-        "ALL": ["sepolia", "arbitrum-sepolia", "base-sepolia", "hyper-evm-testnet"]
+        "ALL": ["A", "B", "C", "D"]
     },
     "connections": [
         { "chains": ["ALL", "ALL"], "adapters": ["axelar", "layerZero", "chainlink"], "threshold": 1 },
-        { "chains": [["hyper-evm-testnet"], "ALL"], "adapters": [], "threshold": 0 }
+        { "chains": [["D"], "ALL"], "adapters": [], "threshold": 0 }
     ]
 }
 ```

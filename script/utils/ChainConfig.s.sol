@@ -46,15 +46,15 @@ struct NetworkConfig {
     string deploymentId;
     uint8 batchLimit;
     // `.network.baseRpcUrl` is deliberately not here: the RPC URL a script connects with comes from
-    // foundry.toml's [rpc_endpoints], which check_foundry_networks.py derives from that field. Parsing it
-    // again would be a second way to build the same URL, and the two would drift
+    // foundry.toml's [rpc_endpoints], which check_foundry_networks.py derives from that field, alongside the
+    // configs. Parsing it again would be a second way to build the same URL, and the two would drift
     //
     // Two explorer URLs, because they are two different services. `verifierUrl` is where source is SUBMITTED
     // for verification — for the Blockscout-family explorers that is a write-only endpoint that rejects
     // every read. `explorerApiUrl` is where chain data is READ back, which is what the verification flow
     // asks when checking whether a contract is verified already. They coincide on Etherscan, and on
     // Blockscout instances exposing an Etherscan-compatible /api, which is why one field served both for so
-    // long; they diverge on SocialScan, whose verification endpoint answers "the action is error" to reads
+    // long; they diverge on explorers whose verification endpoint rejects every read
     string verifier;
     string verifierUrl;
     string explorerApiUrl;
@@ -243,7 +243,7 @@ library Chains {
         string memory scope = _scope();
         string[] memory roots = configRoots();
         for (uint256 i; i < roots.length; i++) {
-            if (!_inScope(roots[i], scope)) continue;
+            if (!inScope(roots[i], scope)) continue;
 
             string memory nested = string.concat(roots[i], network, ".json");
             if (!_readable(nested)) continue;
@@ -262,10 +262,12 @@ library Chains {
         revert(string.concat("No env config named ", network, ": expected env/<environment>/", network, ".json"));
     }
 
-    /// @dev The one root a run is confined to, or nothing. `DEPLOY_ENVIRONMENT` is what a run says when a
+    /// @dev The environment a run is confined to, or nothing. `DEPLOY_ENVIRONMENT` is what a run says when a
     ///      chain is described more than once — `env/testnet/` beside `env/testnet-rev2/` — and needs to
-    ///      name which of the two it means. Unset until that happens. Read and checked once per walk, not
-    ///      once per root.
+    ///      name which of the two it means. Unset until that happens. It settles that one question and no
+    ///      other: the directories of *other* base environments stay readable, so `DEPLOY_ENVIRONMENT=
+    ///      testnet-rev2` hides `env/testnet/` and leaves `env/mainnet/` where it was. Read and checked once
+    ///      per walk, not once per root.
     ///
     ///      A value naming no directory under `env/` is refused rather than left to filter every root out —
     ///      the run would otherwise fail on "no config for this chain" with the cause sitting in the
@@ -275,19 +277,29 @@ library Chains {
         string memory only = vm.envOr("DEPLOY_ENVIRONMENT", string(""));
         if (bytes(only).length == 0) return "";
 
-        string memory scope = string.concat("env/", only, "/");
         require(
-            isEnvironment(baseEnvironmentOf(only)) && entriesOf(scope).length > 0,
+            isEnvironment(baseEnvironmentOf(only)) && entriesOf(string.concat("env/", only, "/")).length > 0,
             string.concat("DEPLOY_ENVIRONMENT=", only, " names no directory under env/: unset it, or point it at one")
         );
-        return scope;
+        return only;
     }
 
-    /// @dev Whether a root is in the scope `_scope()` answered. The fixtures stay in scope either way: they
-    ///      are the template a local run's copy shadows
-    function _inScope(string memory root, string memory scope) private pure returns (bool) {
+    /// @notice Whether a root is in the scope `_scope()` answered: every root of another base environment, and
+    ///         of this one only the directory named. The fixtures stay in scope either way: they are the
+    ///         template a local run's copy shadows.
+    /// @dev    Internal rather than private for the table test in `ChainConfig.t.sol`: it decides which
+    ///         deployment's addresses a run reads, and the environment variable it answers for is process-wide,
+    ///         so the rule is checked as the pure function it is rather than through `pathOf`
+    function inScope(string memory root, string memory scope) internal pure returns (bool) {
         if (bytes(scope).length == 0 || vm.indexOf(root, FIXTURE_ROOT) == 0) return true;
-        return vm.indexOf(root, scope) == 0;
+
+        // `env/testnet-rev2/` → `testnet-rev2`: the segment after `env/`, not everything that is not `env/` —
+        // `vm.replace` strips every occurrence, and an id may end in `env`
+        string memory environment = vm.split(root, "/")[1];
+        if (keccak256(bytes(baseEnvironmentOf(environment))) != keccak256(bytes(baseEnvironmentOf(scope)))) {
+            return true;
+        }
+        return keccak256(bytes(environment)) == keccak256(bytes(scope));
     }
 
     /// @dev Whether two hits for one name are the sanctioned pair: a run's copy under `env/anvil-<id>/` and
@@ -413,7 +425,7 @@ library Chains {
         string memory scope = _scope();
         string[] memory roots = configRoots();
         for (uint256 r; r < roots.length; r++) {
-            if (!_inScope(roots[r], scope)) continue;
+            if (!inScope(roots[r], scope)) continue;
 
             Vm.DirEntry[] memory entries = entriesOf(roots[r]);
             for (uint256 i; i < entries.length; i++) {
@@ -427,7 +439,7 @@ library Chains {
                 if (vm.parseJsonUint(json, ".network.chainId") != block.chainid) continue;
 
                 // The directory a config sits in restates its own `.network.environment`, so the name is
-                // just the file: `sepolia`, whether it is filed under testnet/ or copied in as a fixture
+                // just the file: `local-a`, whether it is filed under an environment or copied in as a fixture
                 string memory here = vm.replace(vm.replace(path, roots[r], ""), ".json", "");
 
                 // A second answer is not a tie to break: one of them is a deployment the run did not mean,
@@ -442,7 +454,9 @@ library Chains {
                             foundAt,
                             " and ",
                             path,
-                            ": pass DEPLOY_ENVIRONMENT=<environment> to say which deployment this run is for"
+                            ": pass DEPLOY_ENVIRONMENT=<environment> to say which deployment this run is for.",
+                            " That tells apart deployments of one environment only; if these two are of",
+                            " different environments, one of the configs is wrong"
                         )
                     );
                 }
@@ -458,8 +472,8 @@ library Chains {
                 "No env config for chain ",
                 vm.toString(block.chainid),
                 ": add env/<environment>/<network>.json naming that chainId (the environment must be one",
-                " environments() lists), and point --rpc-url at it. A set DEPLOY_ENVIRONMENT confines the search to",
-                " that one directory"
+                " environments() lists), and point --rpc-url at it. A set DEPLOY_ENVIRONMENT hides only the other",
+                " deployments of its own environment; every other environment stays in the search"
             )
         );
     }

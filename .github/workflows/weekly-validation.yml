@@ -124,9 +124,9 @@ jobs:
           {
             echo "body<<CI_SUMMARY_EOF"
             for f in failures/failure-*/summary.md; do
-              # any >=20-char path segment in a URL: covers Alchemy (/v2/KEY), Plume (rpc.plume.org/KEY)
-              # and Pharos (/pharos/mainnet/KEY) shapes; masking an explorer-link address too is the safe
-              # direction, and bare addresses in the log text are untouched
+              # any >=20-char path segment in a URL: covers every keyed-RPC shape in use, the key being the
+              # last segment whatever prefix the provider puts before it; masking an explorer-link address too
+              # is the safe direction, and bare addresses in the log text are untouched
               sed -E 's#(://[^[:space:]]*/)[A-Za-z0-9_-]{20,}#\1[REDACTED]#g' "$f"
               echo
             done

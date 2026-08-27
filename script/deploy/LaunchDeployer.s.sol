@@ -18,7 +18,6 @@ import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import "forge-std/Script.sol";
 
 import {REPLACE} from "../utils/JsonRegistry.s.sol";
-import {PROTOCOL_SAFE, OPS_SAFE} from "../utils/Admin.s.sol";
 import {ChainConfig, Chains} from "../utils/ChainConfig.s.sol";
 
 /// @notice Launches the protocol through the DeployGate, one run per phase:
@@ -124,27 +123,27 @@ contract LaunchDeployer is FullDeployer {
             })
         });
 
-        // Hardcoded admins to double-check a correct mainnet deployment.
-        if (config.network.isMainnet() && committing) {
-            require(address(input.protocolSafe) == PROTOCOL_SAFE, "wrong safe admin");
-            require(address(input.opsSafe) == OPS_SAFE, "wrong ops admin");
-        }
-
         address[] memory executors;
         if (committing) {
             executors = vm.envAddress("EXECUTORS", ",");
             require(executors.length > 0, "EXECUTORS must name at least one account");
+
+            // The guardians have no wards: a wrong admin on a fresh chain is unrecoverable
+            if (config.network.isMainnet()) {
+                require(config.network.protocolAdmin.isSafeAccount(), "mainnet protocolAdmin is not a Safe");
+                require(config.network.opsAdmin.isSafeAccount(), "mainnet opsAdmin is not a Safe");
+                require(config.network.protocolAdmin != config.network.opsAdmin, "mainnet admins coincide");
+            }
         }
 
         deployFull(input, phase, config.network.namespace, executors);
 
-        // And the same on what the deployment produced, which the check above cannot speak for
-        if (config.network.isMainnet() && !committing) {
-            require(address(protocolGuardian.safe()) == PROTOCOL_SAFE, "wrong safe admin");
-            require(address(opsGuardian.opsSafe()) == OPS_SAFE, "wrong ops admin");
+        // The deployment wired what the config asked for
+        if (!committing) {
+            require(address(protocolGuardian.safe()) == config.network.protocolAdmin, "wrong safe admin");
+            require(address(opsGuardian.opsSafe()) == config.network.opsAdmin, "wrong ops admin");
+            saveDeploymentOutput(Chains.pathOf(config.network.name));
         }
-
-        if (!committing) saveDeploymentOutput(Chains.pathOf(config.network.name));
 
         if (broadcasting) vm.stopBroadcast();
 

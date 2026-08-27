@@ -21,8 +21,10 @@ a forge command — bringing up local forks, which needs anvil processes — has
 ```bash
 ./script/setup/setup.sh           # tools: git, jq, curl, Foundry, gcloud
 gcloud auth login                 # needs access to the centrifuge-production-x project
-./script/setup/load-secrets.sh    # API keys + testnet deployer key -> .env
 ```
+
+Then, where the deployment configs are, `./script/setup/load-secrets.sh` puts the API keys and the testnet
+deployer key into `.env`. It ships with those configs, so main — which has none — has no such file.
 
 ---
 
@@ -34,13 +36,13 @@ gcloud auth login                 # needs access to the centrifuge-production-x 
 set -a; . ./.env; set +a    # once per shell: forge loads .env for itself, not for your shell
 KEY="--private-key $PRIVATE_KEY"
 
-EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url sepolia $KEY --broadcast
-forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()'  --rpc-url sepolia $KEY --broadcast --verify
+EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url <network> $KEY --broadcast
+forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()'  --rpc-url <network> $KEY --broadcast --verify
 forge script script/testnet/TestData.s.sol --rpc-url <network> $KEY --broadcast # optional test data
 ```
 
-`LaunchDeployer` writes the addresses, versions and block numbers into `env/testnet/sepolia.json` itself, as it
-deploys. There is no follow-up step and nothing to remember.
+`LaunchDeployer` writes the addresses, versions and block numbers into `env/<environment>/<network>.json` itself,
+as it deploys. There is no follow-up step and nothing to remember.
 
 ### Deploy the protocol (mainnet)
 
@@ -189,16 +191,18 @@ sequence, which is also what ci.yml runs on every pull request.
 
 ### Network quirks
 
-- **base-sepolia**: add `--gas-price 100000000000 --slow`, or receipts stay pending forever.
 - **CI**: always add `--slow` — one transaction at a time costs minutes, a nonce race costs a redeploy.
+
+Per-chain quirks — a chain that needs an explicit `--gas-price`, or anything else true of one network and
+not the rest — are deployment data, kept beside the configs.
 
 ### Environment variables
 
 | Variable | Meaning |
 |---|---|
-| `DEPLOY_ENVIRONMENT` | Which deployment to read, when a chain is described by more than one — `env/testnet/` beside `env/testnet-rev2/`. Unnecessary until that happens, and the run fails naming both candidates rather than picking one |
+| `DEPLOY_ENVIRONMENT` | Which deployment to read, when a chain is described by more than one — `env/testnet/` beside `env/testnet-rev2/`. Unnecessary until that happens, and the run fails naming both candidates rather than picking one. It hides only the other deployments of its own environment: under `DEPLOY_ENVIRONMENT=testnet-rev2`, `env/mainnet/` is still read. A value naming no directory under `env/` is refused |
 | `EXECUTORS` | Accounts allowed to run the deploy phase. **Required** by `commit()`, at least one. Read nowhere else |
-| `LEDGER_DERIVATION_PATH` | Where on the Ledger the signer is. Optional, defaulting to the first account |
+| `LEDGER_DERIVATION_PATH` | Where on the Ledger the signer is. Defaults to the first account (`m/44'/60'/0'/0/0`), which is only a default: the Safe accepts a proposal from an owner or proposer, and the one you hold may sit at another path. Check before the run that it names such an account: `cast wallet address --ledger --mnemonic-derivation-path <path>` is exactly what the run asks the device. A proposal from any other is refused by the transaction service, so the cost of a wrong path is a rerun, not a bad commitment |
 | `PRIVATE_KEY` | The testnet key `.env` holds, for you to pass as `--private-key`. No script reads it |
 
 ---
@@ -472,17 +476,14 @@ disappear with it, since the registry keeps its state in storage.
 
 ## Secrets
 
-`./script/setup/load-secrets.sh` fetches them from Google Secret Manager into `.env`, keeping any value
-already present; `./script/setup/add-gcp-secret.sh` adds or rotates one. See `script/setup/` and the
-"Keeping secrets out of CI logs" section below for what is masked where.
+Secrets are fetched from Google Secret Manager into `.env` by `script/setup/load-secrets.sh`, and added or
+rotated with `script/setup/add-gcp-secret.sh`. Both ship with the deployment configs, since the keys they hold
+are the networks' and the deployments that spend them are theirs — main, carrying no configs, reaches no
+network: it has no `[etherscan]` entries, interpolates no API key, and its only chains are the two bare anvil
+aliases. Which secret becomes which variable is documented beside the configs.
 
-| Secret name | Becomes | Used for |
-|-------------|---------|----------|
-| `protocol-etherscan-api` | `ETHERSCAN_API_KEY` | `--verify`, and the explorer lookups the verification flow makes |
-| `protocol-alchemy-api` | `ALCHEMY_API_KEY` | RPC for every Alchemy-hosted network |
-| `protocol-plume-api` | `PLUME_API_KEY` | RPC for Plume |
-| `protocol-pharos-api` | `PHAROS_API_KEY` | RPC for Pharos (via Zan) |
-| `protocol-testnet-private-key` | `PRIVATE_KEY` | Testnet signer. Never used on mainnet |
+What is masked where is below, and that half is main's, because it is a property of the runner rather than
+of any network.
 
 ## Keeping secrets out of CI logs
 
@@ -494,8 +495,10 @@ produces. Two mechanisms cover that, and they cover different things.
   runner (`::add-mask::`) whenever `GITHUB_ACTIONS` is set. Any workflow that calls it is covered without
   doing anything.
 - **Files** are not covered by masking, which only rewrites the log stream. Anything uploaded as an artifact
-  goes through `./script/setup/redact-secrets.sh` first; `weekly-validation.yml` does this before uploading
-  its forge output, whose `report-failures` job pastes that output into a GitHub issue.
+  goes through `./script/setup/redact-secrets.sh` first. `weekly-validation.yml` here is a trigger: the live
+  branch's entrypoint redacts its forge output before writing it where the upload step reads, and the
+  `report-failures` job that pastes that output into a GitHub issue masks anything shaped like a keyed RPC URL
+  again, as defence in depth.
 
 Two details worth knowing:
 
@@ -503,8 +506,8 @@ Two details worth knowing:
   `--verify` reads `[etherscan]`, both resolved by forge internally. The local chains carry none at all —
   `script/anvil/anvil.sh` starts bare anvil, no fork, no URL, no key, and its `anvil-*.log` is gitignored.
 
-GitHub only auto-masks `${{ secrets.* }}`. These values come from Secret Manager at runtime, so nothing masks
-them unless `load-secrets.sh` does.
+GitHub only auto-masks `${{ secrets.* }}`. Values from Secret Manager arrive at runtime, so nothing masks
+them unless the loader does.
 
 ---
 
@@ -516,18 +519,10 @@ network, API key interpolated from the environment; **verification keys live nex
 `[etherscan]`. The command line and Solidity reach the same endpoint through the same alias (`--rpc-url
 <network>` / `vm.rpcUrl(<network>)`).
 
-`env/<environment>/<network>.json` is the source of truth for all of it. The two `foundry.toml` tables are derived from it,
-because forge's Rust side cannot read the env files, so **adding a network is one edit plus one command**:
-
-```bash
-# write env/<environment>/<network>.json, then
-python3 script/checks/check_foundry_networks.py --fix
-```
-
-That regenerates both tables — the RPC URL from `.network.baseRpcUrl` plus the right `${..._API_KEY}` for
-whatever it points at, and the explorer entry from `.network.chainId` and `.network.verifierUrl`. CI runs the
-same check without `--fix`, so a table that drifts from the env files fails there rather than surfacing later
-as a confusing forge error or a verification failure mid-deployment.
+`env/<environment>/<network>.json` is the source of truth for all of it. The two `foundry.toml` tables are
+derived from it, because forge's Rust side cannot read the env files, so **adding a network is one edit plus
+one command** — `check_foundry_networks.py --fix`, which ships beside the deployment configs it derives
+from. Main's tables hold nothing but the two anvil aliases, written by hand.
 
 `.network.baseRpcUrl` feeds that generator and nothing else — deliberately. Solidity does not parse it, and
 no shell script composes a URL from it: everything goes through the alias, so there is one way to reach a
@@ -545,11 +540,10 @@ A network can name **two** explorer endpoints, because on some chains they are t
 Both default to Etherscan's multichain v2 endpoint for the network's chain id, so most networks set neither.
 Set `verifierUrl` when verification goes somewhere else; set `explorerApiUrl` only when reads do.
 
-They coincide on Etherscan, and on Blockscout instances exposing an Etherscan-compatible `/api` — plume sets
-both to the same URL because its explorer serves both *and* it is not on Etherscan v2, so the default would
-not work. They diverge on SocialScan: monad and pharos point `verifierUrl` at a `command_api/contract`
-endpoint that accepts submissions and rejects every read with `"the action is error"`, so leaving their
-`explorerApiUrl` unset sends reads to Etherscan v2 instead.
+They coincide on Etherscan, and on Blockscout instances exposing an Etherscan-compatible `/api`. They
+diverge where an explorer's submission endpoint rejects reads, which is why the two fields exist at all.
+Which chains are in which case is a property of the deployment, so the roll call lives with the configs on
+the live branch.
 
 Getting this wrong is quiet rather than loud: nothing fails, the verification run just reports every
 contract on the chain as unverified and re-submits it.
@@ -557,29 +551,14 @@ contract on the chain as unverified and re-submits it.
 ### Chains that verify somewhere other than Etherscan
 
 `.network.verifier` names the verifier forge is told to use, and it has to be one forge knows:
-`etherscan`, `sourcify` or `blockscout`. Everything else in this repo leaves it unset and goes to Etherscan.
+`etherscan`, `sourcify` or `blockscout`. A config that leaves it unset goes to Etherscan.
 
-- **plume, monad, pharos** name `blockscout`, whose `/api` speaks the Etherscan dialect, so `[etherscan]`
-  carries them and `--verify` needs no extra flag.
-- **x-layer** (196) verifies through **Sourcify**, which covers the chain and takes no API key. Its explorer
-  is OKLink, which forge cannot drive: OKLink wants its key in an `Ok-Access-Key` header, and `[etherscan]`
-  only puts one in the query string — it answers `Ok-Access-Key can not be blank` either way, and we hold no
-  OKLink key. So `check_foundry_networks.py` writes no `[etherscan]` entry for x-layer (see
-  `NON_ETHERSCAN_VERIFIERS`), and **that absence is the mechanism**: finding no Etherscan key for the chain,
-  forge falls back to Sourcify on its own — `Attempting to verify on Sourcify`. A plain `--verify` is
-  therefore right on x-layer, and naming it (`--verifier sourcify --verifier-url https://sourcify.dev/server`)
-  only makes the fallback explicit. The verification run passes those two from `.network.verifier` and
-  `.network.verifierUrl` already.
+Where a chain has no `[etherscan]` entry, that absence *is* the mechanism: finding no key for the chain,
+forge falls back to the verifier named on the command line. So `check_foundry_networks.py` omitting an entry
+and `--verifier` naming one are two halves of the same decision — see `NON_ETHERSCAN_VERIFIERS` there. Which
+chains need that, and which explorers cannot answer a verification read at all, is deployment data,
+documented beside the configs.
 
-  An entry pointing at Etherscan would be worse than none: forge would aim at a chain Etherscan does not
-  serve instead of at the verifier that works.
-
-Reading verification back is a separate question, and two chains have no endpoint for it: Etherscan v2
-serves neither 196 nor 1672 (`Missing or unsupported chainid parameter`), and SocialScan's pharos API
-answers `the action is error` to a `getsourcecode` read on its `command_api` and `Not Found` on every other
-path tried. So on those two, "is it verified already?" always answers no and the verification run
-re-submits — wasteful, not wrong. Sourcify covers both chains if we ever want to read from it too, but its
-API is not Etherscan-shaped, so that is a change to the verification script rather than a URL.
 ### What a run does to `env/<environment>/<network>.json`
 
 Every deploy script records what it deployed, and the write is a **merge**: a contract the run does not

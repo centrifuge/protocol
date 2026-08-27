@@ -209,16 +209,3 @@ jobs:
       - name: Check ward coverage
         run: python3 script/checks/check_ward_coverage.py
 
-  foundry-networks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-
-      # foundry.toml's [rpc_endpoints] and [etherscan] are derived from env/*.json; this fails if they drifted
-      - name: Check foundry.toml network tables
-        run: python3 script/checks/check_foundry_networks.py

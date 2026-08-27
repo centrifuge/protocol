@@ -11,16 +11,18 @@ again. Nothing here talks to a chain — every one of them reads the repository 
 | `fix_imports.py` | Solidity imports are relative, ordered and actually used | `--check-order`, `--check-relative`, `--check-unused`, `--test-roundtrip` | `--organize`, `--fix-unused` |
 | `check_ward_coverage.py` | every `file()` target has a matching `rely()` in the deployer, and every ward grant has a test asserting it | (default) | — fix by hand |
 | `check_claude_tree.py` | every path listed in the CLAUDE.md directory tree still exists | (default) | `--fix` |
-| `check_foundry_networks.py` | `foundry.toml`'s `[rpc_endpoints]` and `[etherscan]` still match `env/*.json`, which they are derived from | (default) | `--fix` |
 | `benchmarks.sh` | the gas limits in `GasService` match a fresh benchmark run | `check` | `apply` |
 
 ```bash
 python3 script/checks/fix_imports.py --organize        # before opening a PR
 python3 script/checks/check_ward_coverage.py           # after changing permissions
 python3 script/checks/check_claude_tree.py --fix       # after moving files around
-python3 script/checks/check_foundry_networks.py --fix  # after adding or editing env/<environment>/<network>.json
 ./script/checks/benchmarks.sh apply                    # after changing message handling
 ```
+
+`check_foundry_networks.py` ships with the deployment configs it derives from: `foundry.toml`'s
+`[rpc_endpoints]` and `[etherscan]` come out of those, so a branch carrying none — main, whose only chains are
+the two anvil fixtures, written by hand — carries no checker and no CI job for it either.
 
 There is deliberately **no** check that the testnet deployment covers every connected network. It reads its
 matrix out of the connections file at run time, so the two cannot drift and there is nothing to

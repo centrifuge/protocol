@@ -185,6 +185,33 @@ contract ChainConfigDeploymentIdTest is ChainConfigBase {
         assertEq(Chains.deploymentIdOf("testnet-rev-2"), "rev-2", "the id may hold dashes of its own");
     }
 
+    /// @dev `DEPLOY_ENVIRONMENT` settles one question — which of several deployments of one base environment a
+    ///      run means — and no other: the roots of every other base environment stay readable, and the
+    ///      fixtures always do, being the template a local run's copy shadows. Table-tested as the pure
+    ///      function it is: the variable it answers for is process-wide, so setting it in a test would race
+    ///      every other test that walks the roots.
+    function test_scopeHidesOnlyTheSiblingDeploymentsOfItsOwnEnvironment() public pure {
+        // Unset: nothing is hidden
+        assertTrue(Chains.inScope("env/testnet/", ""));
+        assertTrue(Chains.inScope("env/mainnet/", ""));
+
+        // Named: the directory itself, every other base environment, and the fixtures stay
+        assertTrue(Chains.inScope("env/testnet-rev2/", "testnet-rev2"));
+        assertTrue(Chains.inScope("env/mainnet/", "testnet-rev2"), "another base environment is not narrowed");
+        assertTrue(Chains.inScope("env/anvil-1787683343/", "testnet-rev2"), "nor is a local run's copy");
+        assertTrue(Chains.inScope(Chains.FIXTURE_ROOT, "testnet-rev2"), "the fixtures are always in scope");
+
+        // Named: the siblings under the same base environment go, in both directions
+        assertFalse(Chains.inScope("env/testnet/", "testnet-rev2"), "the canonical deployment is a sibling");
+        assertFalse(Chains.inScope("env/testnet-rev2/", "testnet"), "and so is a rev, seen from it");
+        assertFalse(Chains.inScope("env/anvil-1787683343/", "anvil-1787683344"), "two local runs are siblings");
+
+        // The environment is the path segment after `env/`, whatever the id is made of
+        assertTrue(Chains.inScope("env/testnet-env/", "testnet-env"), "an id may end in `env`");
+        assertTrue(Chains.inScope("env/testnet-rev-2/", "testnet-rev-2"), "or hold dashes of its own");
+        assertFalse(Chains.inScope("env/testnet-rev-2/", "testnet-rev"), "and a prefix of it is not it");
+    }
+
     /// @dev What policy reads: mainnet is mainnet however many deployments it holds
     function test_baseEnvironmentIsTheHeadOfIt() public pure {
         assertEq(Chains.baseEnvironmentOf("testnet"), "testnet");
@@ -199,7 +226,7 @@ contract ChainConfigDeploymentIdTest is ChainConfigBase {
             '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
             '"opsAdmin":"0x0000000000000000000000000000000000000002",'
             '"namespace":"0x0000000000000000000000000000000000000003"}}',
-            "sepolia"
+            "somewhere"
         );
 
         assertEq(config.network.environment, "testnet-rev2");
@@ -272,12 +299,13 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
         assertGe(_configNames().length, 2, "the config walk is blind: check fs_permissions for the roots");
     }
 
-    /// @dev The name is the key a run reaches a chain by, `--rpc-url sepolia`, and it may resolve to more
-    ///      than one config: `env/testnet/sepolia.json` beside `env/testnet-rev2/sepolia.json` is what a
+    /// @dev The name is the key a run reaches a chain by, `--rpc-url <network>`, and it may resolve to more
+    ///      than one config: `env/testnet/<network>.json` beside `env/testnet-rev2/<network>.json` is what a
     ///      second deployment of a chain looks like, and `DEPLOY_ENVIRONMENT` is how a run picks between them. That
-    ///      only holds while every config of one name describes one chain — a testnet acquiring a config
-    ///      named like a mainnet (`monad`, say) would make `DEPLOY_ENVIRONMENT` pick between chains, not between
-    ///      deployments, and one wrong value away from reading the other chain's admins and addresses.
+    ///      only holds while every config of one name describes one chain: `DEPLOY_ENVIRONMENT` tells apart the
+    ///      deployments of one environment and nothing else, so a testnet acquiring a config named like one of
+    ///      a mainnet's would leave the name unresolvable — `pathOf` reverts as ambiguous under every value —
+    ///      and with it every remote-config read the connections make. Fail-closed, and this is what says why.
     ///      `_configNames()` deduplicates by name — deliberately, for the anvil copy — which is exactly why
     ///      this test walks the roots itself: the dedupe would hide the collision this exists to catch.
     function test_aNameResolvesToOneChain() public view {
@@ -390,7 +418,7 @@ contract ChainDetectTest is ChainConfigBase {
             bytes(
                 "No env config for chain 123456789: add env/<environment>/<network>.json naming that chainId"
                 " (the environment must be one environments() lists), and point --rpc-url at it. A set DEPLOY_ENVIRONMENT"
-                " confines the search to that one directory"
+                " hides only the other deployments of its own environment; every other environment stays in the search"
             )
         );
         this.detect();

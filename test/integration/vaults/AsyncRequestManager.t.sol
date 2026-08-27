@@ -6,7 +6,6 @@ import {VaultBaseTest as BaseTest} from "./VaultBaseTest.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
-
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
