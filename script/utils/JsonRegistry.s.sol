@@ -21,7 +21,7 @@ bool constant REPLACE = true;
 ///         `startBlock`. Nothing has to be filled in afterwards and nothing else reads the chain to do it.
 ///
 ///         Writing happens during forge's simulation pass, before the broadcast lands. For the addresses
-///         that is exact — they are deterministic, CREATE3 from the gate, the salt and `SUFFIX`, so what is
+///         that is exact — they are deterministic, CREATE3 from the gate, the salt and the deployment id, so what is
 ///         written is what will be deployed, including after a later `--resume`. For the block numbers it is
 ///         an underestimate: `block.number` here is the block the script *read*, and the transactions land a
 ///         few blocks later (measured: 1 on a local fork, up to ~183 on a fast chain). That is deliberate and
@@ -64,8 +64,10 @@ contract JsonRegistry is Script {
         "        version: (if .value.version != \"\" then .value.version else ($old.version // null) end)"
         "       } | if .version == null then del(.version) else . end))))" " | (if ($new | has(\"root\"))"
         "    then .deploymentInfo[\"deploy:protocol\"] = ((.deploymentInfo[\"deploy:protocol\"] // {})"
-        "           + {gitCommit: $gitCommit, timestamp: $timestamp, suffix: $suffix})"
-        "         | ([.contracts[] | .blockNumber | select(. != null)] | min) as $earliest"
+        "           + {gitCommit: $gitCommit, timestamp: $timestamp}"
+        // The deployment a record belongs to is the environment the config declares, so recording it here
+        // would be the same string twice. Older records named it `suffix`, which goes with the rest
+        "           | del(.suffix))" "         | ([.contracts[] | .blockNumber | select(. != null)] | min) as $earliest"
         "         | if $earliest != null then .deploymentInfo[\"deploy:protocol\"].startBlock = $earliest else . end"
         "    else . end)";
 
@@ -130,22 +132,18 @@ contract JsonRegistry is Script {
     ///        that this file stays free of the env-parsing stack — the deployer stack it belongs to is
     ///        mirrored publicly and `ChainConfig` is not.
     ///
-    /// @dev   Records no suffix, which is right for a script that deploys with `new`: its addresses come
-    ///        from the sender and its nonce, so there is no salt for a suffix to be part of. `BaseDeployer`
-    ///        overrides this with the suffix its salts were actually built from — never the environment,
-    ///        which a mainnet run deliberately ignores.
-    function saveDeploymentOutput(string memory path) public virtual {
-        _saveDeploymentOutput(path, "");
+    function saveDeploymentOutput(string memory path) public {
+        _saveDeploymentOutput(path);
     }
 
     bool private replacesDeployment;
 
-    function _saveDeploymentOutput(string memory path, string memory suffix) internal {
+    function _saveDeploymentOutput(string memory path) internal {
         if (registeredNames.length == 0) return;
 
         // A deployment records itself under env/, never anywhere else. `Chains.pathOf` resolves by probing
-        // and falls through to the checked-in fixtures under script/anvil/env/ when env/anvil/ has not been
-        // seeded — a LaunchDeployer run started without anvil.sh would otherwise merge its addresses into a
+        // and falls through to the checked-in fixtures under script/anvil/env/ when no run has copied them
+        // into an env/ directory yet — a LaunchDeployer run started without anvil.sh would otherwise merge its addresses into a
         // tracked fixture, which describes two chains and never a deployment. The write goes through ffi,
         // which `fs_permissions` does not bind, so the guard has to live here.
         require(vm.indexOf(path, "env/") == 0, "a deployment records itself under env/");
@@ -162,7 +160,6 @@ contract JsonRegistry is Script {
         // whatever a deploy script chose to name its contracts and tag its salts. The git and date calls are
         // quoted for the same reason — jq's `--arg` then escapes each into JSON, so nothing here has to.
         vm.setEnv("REGISTRY_CONTRACTS", contracts);
-        vm.setEnv("REGISTRY_SUFFIX", suffix);
 
         _sh(
             string.concat(
@@ -172,7 +169,6 @@ contract JsonRegistry is Script {
                 vm.toString(block.number),
                 " --arg gitCommit \"$(git rev-parse --short HEAD)\"",
                 " --arg timestamp \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"",
-                " --arg suffix \"$REGISTRY_SUFFIX\"",
                 " '",
                 MERGE,
                 "' '",

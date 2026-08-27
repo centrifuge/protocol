@@ -17,7 +17,10 @@ lcov.info
 recon.json
 **/*.log
 **/anvil/*.log
-# Written by script/anvil/anvil.sh from the fixtures next to it
+# Written by script/anvil/anvil.sh from the fixtures next to it, one directory per run. env/anvil/ is where
+# runs recorded themselves before the id was in the directory name; anvil.sh removes it, and it stays
+# ignored so a checkout that has not run it since is not left with an untracked directory
+env/anvil-*/
 env/anvil/
 **/*.bak
 ## Recon Separate Configs

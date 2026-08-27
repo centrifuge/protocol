@@ -6,6 +6,17 @@ import "forge-std/Script.sol";
 import {JsonRegistry} from "../utils/JsonRegistry.s.sol";
 import {CreateXScript} from "../utils/createx/CreateXScript.sol";
 
+/// @dev What kind of account a run is signed as, which decides how it is signed: a key signs a forge
+///      broadcast, a Safe cannot and is proposed to instead. A contract is taken to be a Safe, there being
+///      nothing else a sender could be here. Code starting 0xef is the one exception: EIP-3541 keeps it
+///      undeployable, so it can only be an EIP-7702 delegation, behind which a key still signs
+library AccountLib {
+    function isSafeAccount(address account) internal view returns (bool) {
+        bytes memory code = account.code;
+        return code.length > 0 && code[0] != 0xef;
+    }
+}
+
 contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     /// @dev Every version the deployment maintains, since a version is part of the salt and therefore of the
     ///      address. A contract keeps the version it was first deployed at, so that a release which does not
@@ -20,25 +31,25 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
     string internal constant V3_3 = "v3.3";
     string internal constant V_LATEST = V3_3;
 
-    string internal suffix;
+    string internal deploymentId;
     bool private initialized;
 
-    function _init(string memory suffix_) internal {
+    function _init(string memory deploymentId_) internal {
         setUpCreateXFactory();
 
-        suffix = suffix_;
+        deploymentId = deploymentId_;
         initialized = true;
     }
 
-    /// @dev What the suffix turns a version into. The suffix is what isolates a deployment from the one that
+    /// @dev What the deployment id turns a version into. The id is what isolates a deployment from the one that
     ///      shares its version, so it belongs to every salt the deployment builds, gated or not.
     function _versionHash(string memory version) internal view returns (bytes32) {
         require(initialized, "BaseDeployer::_init() must be called!");
 
-        bytes memory compoundedVersion = bytes(string.concat(version, "-", suffix));
-        require(compoundedVersion.length <= 32, "Version + suffix is too large");
+        bytes memory compoundedVersion = bytes(string.concat(version, "-", deploymentId));
+        require(compoundedVersion.length <= 32, "Version + deploymentId is too large");
 
-        return bytes(suffix).length > 0 ? bytes32(compoundedVersion) : bytes32(bytes(version));
+        return bytes(deploymentId).length > 0 ? bytes32(compoundedVersion) : bytes32(bytes(version));
     }
 
     /// @dev The salt `deployer_` has to pass to CreateX to deploy the contract at its deterministic address.
@@ -59,23 +70,18 @@ contract BaseDeployer is Script, JsonRegistry, CreateXScript {
         return bytes32(abi.encodePacked(bytes20(deployer_), bytes1(0x0), bytes11(baseHash)));
     }
 
-    /// @dev What every address in this run was salted with is this contract's state, so the record cannot
-    ///      disagree with the addresses: a mainnet run is initialised with `""` whatever `SUFFIX` holds, and
-    ///      that is what lands in the config.
-    function saveDeploymentOutput(string memory path) public override {
-        _saveDeploymentOutput(path, suffix);
-    }
-
     /// @dev Salt for a contract the deployment does not report, labeled so that it is named in traces.
     ///      The version must match the one used at initial deployment to reuse existing addresses.
-    ///      Use the suffix (instead of changing the version) to create isolated fresh deployments.
+    ///      Use the deployment id (instead of changing the version) to create isolated fresh deployments.
     function unreportedSalt(string memory contractName, string memory contractVersion, address deployer_)
         internal
         returns (bytes32 salt)
     {
         salt = _makeSalt(contractName, contractVersion, deployer_);
 
-        vm.label(computeCreate3Address(salt, deployer_), string.concat(contractName, "-", contractVersion, "-", suffix));
+        vm.label(
+            computeCreate3Address(salt, deployer_), string.concat(contractName, "-", contractVersion, "-", deploymentId)
+        );
     }
 
     /// @dev Same, for a contract the deployment reports, which is what puts it in the deployment manifest and,

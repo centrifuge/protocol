@@ -23,7 +23,8 @@ import "forge-std/Test.sol";
 contract ChainConfigDvnParsingTest is Test {
     string constant NETWORK = '"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
         '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
-        '"opsAdmin":"0x0000000000000000000000000000000000000002"}';
+        '"opsAdmin":"0x0000000000000000000000000000000000000002",'
+        '"namespace":"0x0000000000000000000000000000000000000003"}';
 
     string constant LZ_HEAD = '"adapters":{"layerZero":{"deploy":true,'
         '"endpoint":"0x00000000000000000000000000000000000000E1","layerZeroEid":40001,"blockConfirmations":1,';

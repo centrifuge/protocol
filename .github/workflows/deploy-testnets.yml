@@ -27,8 +27,8 @@ on:
         description: "Branch holding the deployment (default: live-v3.3)"
         required: false
         default: "live-v3.3"
-      suffix:
-        description: "Salt suffix for isolated deployments (e.g. PR-123), 27 chars at most. Leave empty for canonical versioned addresses."
+      deploymentId:
+        description: "Isolates the deployment onto its own addresses (e.g. PR-123), 27 chars at most: the branch's ci-script deploys it as environment testnet-<id>, from env/testnet-<id>/ configs it derives from env/testnet/. Leave empty for the canonical addresses under env/testnet/."
         required: false
         type: string
         default: "TEST"
@@ -88,7 +88,7 @@ jobs:
 
       - run: .github/ci-scripts/deploy-testnet.sh run "${{ matrix.target }}"
         env:
-          SUFFIX_INPUT: ${{ inputs.suffix }}
+          DEPLOYMENT_ID_INPUT: ${{ inputs.deploymentId }}
 
       - if: always()
         uses: actions/upload-artifact@v4

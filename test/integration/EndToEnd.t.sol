@@ -289,7 +289,7 @@ contract EndToEndDeployment is Test {
         deploy.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: localCentrifugeId,
-                suffix: string(abi.encodePacked(localCentrifugeId)),
+                deploymentId: string(abi.encodePacked(localCentrifugeId)),
                 txLimits: defaultTxLimits(),
                 protocolSafe: protocolSafe,
                 opsSafe: protocolSafe,
@@ -297,7 +297,6 @@ contract EndToEndDeployment is Test {
                 delay: 0,
                 adapters: noAdaptersInput()
             }),
-            address(deploy),
             address(deploy),
             executors
         );

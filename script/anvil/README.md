@@ -36,18 +36,18 @@ $ jq -c 'keys' script/anvil/env/local-a.json
 ["adapters","network"]
 ```
 
-A run copies them into `env/anvil/` and deploys against the copies. That copy is what *creates* the output
+A run copies them into `env/anvil-<id>/` and deploys against the copies. That copy is what *creates* the output
 config: `LaunchDeployer` merges its addresses into the chain half sitting there, and `TestData` loads the
 result. Without it there would be no complete config for the run to produce — writing a contracts-only file
 would fail the chain-half parse on the next read.
 
-`env/anvil/` is gitignored, so the run's record stays out of the tree, and these fixtures come out of a
-deployment byte-identical. That separation is not about churn in the addresses: with a fixed `SUFFIX` the
+`env/anvil-*/` is gitignored, so the run's record stays out of the tree, and these fixtures come out of a
+deployment byte-identical. That separation is not about churn in the addresses: with a fixed `deploymentId` the
 addresses are reproducible to the byte. It is about the rest — `timestamp` moves every run and `blockNumber`
 is whatever block the deploy landed in — because a deployment record is about one run, and these files are
 not.
 
-Both directories are `Chains.configRoots()` entries, `env/anvil/` first, which is why a run reads its own
+Both directories are `Chains.configRoots()` entries, and a run's own copy wins over the fixture, which is why it reads its own
 output and a fresh clone still finds two chains for the schema tests to walk.
 
 | | |

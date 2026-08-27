@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseDeployer} from "../../script/deploy/BaseDeployer.s.sol";
 import {EnsureDeployGate} from "../../script/utils/GateProposal.s.sol";
 import {CREATEX_ADDRESS} from "../../script/utils/createx/CreateX.d.sol";
+import {BaseDeployer, AccountLib} from "../../script/deploy/BaseDeployer.s.sol";
 import {GatedDeployer, DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
     DEPLOY_GATE_SALT,
@@ -38,7 +38,7 @@ contract Create3AddressesTest is Test, BaseDeployer {
         assertEq(SimpleContract(deployed).value(), 42);
     }
 
-    function testPreviewMatchesCreate3WithSuffix() public {
+    function testPreviewMatchesCreate3WithDeploymentId() public {
         _init("rev2");
 
         address predicted = create3Address("testContract", "v3.1", address(this));
@@ -47,17 +47,17 @@ contract Create3AddressesTest is Test, BaseDeployer {
             abi.encodePacked(type(SimpleContract).creationCode, abi.encode(99))
         );
 
-        assertEq(deployed, predicted, "CREATE3 address does not match preview with suffix");
+        assertEq(deployed, predicted, "CREATE3 address does not match preview with a deployment id");
         assertEq(SimpleContract(deployed).value(), 99);
     }
 
-    function testSuffixProducesDifferentAddress() public {
-        address withoutSuffix = create3Address("testContract", "v3.1", address(this));
+    function testDeploymentIdProducesDifferentAddress() public {
+        address withoutId = create3Address("testContract", "v3.1", address(this));
 
         _init("rev2");
-        address withSuffix = create3Address("testContract", "v3.1", address(this));
+        address withId = create3Address("testContract", "v3.1", address(this));
 
-        assertTrue(withoutSuffix != withSuffix, "Suffix should produce a different address");
+        assertTrue(withoutId != withId, "A deployment id should produce a different address");
     }
 
     function testDifferentDeployersProduceDifferentAddresses() public {
@@ -166,9 +166,11 @@ contract DeployGateAddressTest is Test, BaseDeployer {
 }
 
 contract Create3GatedAddressesTest is Test, GatedDeployer {
+    using AccountLib for address;
+
     function setUp() public {
         // Nothing places the gate first: initialising the deployment is what brings it up
-        _initGated("", address(this), DeployPhase.Commit, address(this), _executors());
+        _initGated("", DeployPhase.Commit, address(this), _executors());
     }
 
     function _executors() internal view returns (address[] memory executors) {
@@ -181,8 +183,22 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
     }
 
     /// @dev `vm.expectRevert` only sees external calls
-    function initGated(string memory suffix_, address deployer_, DeployPhase phase, address namespace_) external {
-        _initGated(suffix_, deployer_, phase, namespace_, _executors());
+    function initGated(string memory deploymentId_, DeployPhase phase, address namespace_) external {
+        _initGated(deploymentId_, phase, namespace_, _executors());
+    }
+
+    /// @dev How the acting account is reached follows from what it is: a key is broadcast from, a contract
+    ///      is a Safe and is proposed to, and code under EIP-7702 is still a key
+    function testASafeAccountIsAContractButNotADelegation() public {
+        address key = makeAddr("key");
+        address safe = makeAddr("safe");
+        address delegated = makeAddr("delegated");
+        vm.etch(safe, hex"6001");
+        vm.etch(delegated, abi.encodePacked(hex"ef0100", key));
+
+        assertFalse(key.isSafeAccount(), "a key broadcasts");
+        assertTrue(safe.isSafeAccount(), "a contract is proposed to");
+        assertFalse(delegated.isSafeAccount(), "an EIP-7702 delegation still has a key behind it");
     }
 
     /// @dev `vm.expectRevert` only sees external calls
@@ -210,7 +226,7 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
     }
 
     function deployIt(uint256 value) external returns (address) {
-        _initGated("", address(this), DeployPhase.Deploy, address(this), _executors());
+        _initGated("", DeployPhase.Deploy, address(this), _executors());
         return submit("testContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(value)));
     }
 
@@ -222,7 +238,6 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         address ungated = create3Address("testContract", "v3.1", address(this));
 
         assertTrue(ungated != throughGate, "deploying directly would land somewhere else entirely");
-        assertEq(deployer, address(this), "Deployer should stay the signer");
         assertEq(namespace, address(this), "the namespace is what addresses derive from, alongside the gate");
     }
 
@@ -233,7 +248,7 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         address here = _preview("testContract", "v3.1");
 
         vm.chainId(block.chainid + 1);
-        _initGated("", address(this), DeployPhase.Commit, address(this), _executors());
+        _initGated("", DeployPhase.Commit, address(this), _executors());
 
         assertEq(_preview("testContract", "v3.1"), here, "the chain id must not reach a gated address");
     }
@@ -242,7 +257,7 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
     function testAddressesFollowTheNamespace() public {
         address mine = _preview("testContract", "v3.1");
 
-        _initGated("", address(this), DeployPhase.Commit, makeAddr("anotherNamespace"), _executors());
+        _initGated("", DeployPhase.Commit, makeAddr("anotherNamespace"), _executors());
 
         assertTrue(_preview("testContract", "v3.1") != mine, "another namespace, another address");
     }
@@ -258,20 +273,20 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         vm.etch(DEPLOY_GATE_ADDRESS, address(new SimpleContract(1)).code);
 
         vm.expectRevert("Not the DeployGate: unexpected code at that address");
-        this.initGated("", address(this), DeployPhase.Commit, address(this));
+        this.initGated("", DeployPhase.Commit, address(this));
     }
 
     function testGatingWithoutANamespaceFails() public {
         vm.expectRevert("A namespace is required to derive addresses");
-        this.initGated("", address(this), DeployPhase.Commit, address(0));
+        this.initGated("", DeployPhase.Commit, address(0));
     }
 
-    function testSuffixIsolatesGatedDeployments() public {
-        address withoutSuffix = _preview("testContract", "v3.1");
+    function testDeploymentIdIsolatesGatedDeployments() public {
+        address withoutId = _preview("testContract", "v3.1");
 
-        _initGated("rev2", address(this), DeployPhase.Commit, address(this), _executors());
+        _initGated("rev2", DeployPhase.Commit, address(this), _executors());
 
-        assertTrue(_preview("testContract", "v3.1") != withoutSuffix, "Suffix should move the addresses");
+        assertTrue(_preview("testContract", "v3.1") != withoutId, "The deployment id should move the addresses");
     }
 
     // Commit, then deploy
@@ -314,7 +329,7 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
 
     /// @dev Nothing is ever deployed over, and nothing already deployed is reused. Rerunning a commitment
     ///      that went through hits its spent commitment, so recovering a partial deploy means moving the
-    ///      suffix or the version: an earlier release's contracts are warded by its batchers, which denied
+    ///      deployment id or the version: an earlier release's contracts are warded by its batchers, which denied
     ///      themselves, so a later run could never wire them.
     function testDeployPhaseRefusesToRedeploy() public {
         address predicted = this.queueAndCommit(1);

@@ -5,7 +5,7 @@ What a chain is, and what is deployed on it. One file per network, filed under t
 ```
 env/
 ├── <environment>/
-│   ├── <network>.json     # one per network — chain id, admins, adapter config, deployed addresses
+│   ├── <network>.json     # one per network — chain id, admins, deploy namespace, adapters, addresses
 │   └── connections.json   # which networks are wired to which, and through which adapters
 └── spell/                 # governance spells, archived after execution
 ```
@@ -16,9 +16,20 @@ base branch carries none, and its only chains are the anvil pair described by th
 `script/anvil/env/`.
 
 The directory restates what a config's own `.network.environment` says, so a glob can pick out one
-environment without opening every file. The network is named by the file, not by the path: `sepolia` lives
+environment without opening every file — and, because it is restated, the two are checked against each
+other on every read: a directory renamed without its configs fails loudly instead of quietly moving every
+address that chain deploys to.
+
+An environment may carry a **deployment id** after its name — `env/testnet-rev2/` beside `env/testnet/` —
+which is a second deployment of the same chains, at its own addresses and with its own record. The id is
+the part of the name after the first `-`, and it is folded into every salt. `mainnet` is no exception — its
+canonical addresses are the id-less ones, but nothing keeps a rev off it. Where two environments describe one
+chain, a run says which it means with `DEPLOY_ENVIRONMENT=testnet-rev2`; with only one, the chain id still
+answers on its own.
+
+The network is named by the file, not by the path: `sepolia` lives
 at `env/testnet/sepolia.json` and is still reached as `--rpc-url sepolia`. `Chains.pathOf` resolves one to
-the other, and `env/anvil/<network>.json` — written by `script/anvil/anvil.sh` from its fixtures,
+the other, and `env/anvil-<id>/<network>.json` — written by `script/anvil/anvil.sh` from its fixtures,
 gitignored — is where a local run records itself.
 
 ## Connections

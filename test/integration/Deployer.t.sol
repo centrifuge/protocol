@@ -72,7 +72,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
 
         // Both phases in one go, through a gate this contract administers and executes
         _bootstrap();
-        deployFullBothPhases(_input(""), address(this), namespace_, _executors(address(this)));
+        deployFullBothPhases(_input(""), namespace_, _executors(address(this)));
     }
 
     /// @dev The gate is brought up by the deployment itself, so there is nothing to place first. This
@@ -87,10 +87,10 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
         executors[0] = executor_;
     }
 
-    function _input(string memory suffix_) internal view returns (DeployerInput memory) {
+    function _input(string memory deploymentId_) internal view returns (DeployerInput memory) {
         return DeployerInput({
             centrifugeId: centrifugeId_,
-            suffix: suffix_,
+            deploymentId: deploymentId_,
             txLimits: defaultTxLimits(),
             protocolSafe: ADMIN_SAFE,
             opsSafe: OPS_SAFE,
@@ -1141,14 +1141,14 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
         _deploy(phase, "");
     }
 
-    function _deploy(DeployPhase phase, string memory suffix_) internal {
+    function _deploy(DeployPhase phase, string memory deploymentId_) internal {
         if (phase == DeployPhase.Commit) {
-            deployFull(_input(suffix_), address(this), phase, namespace_, _executors(EXECUTOR));
+            deployFull(_input(deploymentId_), phase, namespace_, _executors(EXECUTOR));
             return;
         }
 
         vm.startPrank(EXECUTOR);
-        deployFull(_input(suffix_), EXECUTOR, phase, namespace_, _executors(EXECUTOR));
+        deployFull(_input(deploymentId_), phase, namespace_, _executors(EXECUTOR));
         vm.stopPrank();
     }
 
@@ -1206,7 +1206,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
         this.deployUncommitted();
     }
 
-    /// @dev The same protocol under another suffix, through the same gate: nothing here was ever committed
+    /// @dev The same protocol under another deployment id, through the same gate: nothing here was ever committed
     function deployUncommitted() external {
         _deploy(DeployPhase.Deploy, "uncommitted");
     }

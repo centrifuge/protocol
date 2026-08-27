@@ -32,7 +32,6 @@ gcloud auth login                 # needs access to the centrifuge-production-x 
 
 ```bash
 set -a; . ./.env; set +a    # once per shell: forge loads .env for itself, not for your shell
-export SUFFIX=vXYZ          # off mainnet, isolates the deployment onto its own addresses
 KEY="--private-key $PRIVATE_KEY"
 
 EXECUTORS=<address> forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url sepolia $KEY --broadcast
@@ -45,23 +44,38 @@ deploys. There is no follow-up step and nothing to remember.
 
 ### Deploy the protocol (mainnet)
 
-On mainnet the **namespace is the protocol Safe's**. It is what every mainnet address derives from and it can
-never be replaced, so it has to outlive any single key — and it is at the same address on every chain the
-protocol runs on, which is what a namespace has to be.
+On mainnet the namespace comes from the config, `network.namespace`, like every other thing about the chain.
+It is what every mainnet address derives from and it can never be replaced, so it has to outlive any single
+key and be the same account on every chain the protocol runs on. Which account that is — a Safe, a Ledger
+that delegates to a Safe, a key that delegates to another — is the config's and the gate's business, not this
+script's: `LaunchDeployer` supports any of those arrangements without knowing which one it is in.
 
-A Safe cannot sign a forge broadcast, so the two phases are signed differently, and `LaunchDeployer` picks
-which by looking at the namespace: a contract is proposed to, a key is broadcast from. On mainnet that makes
-`commit()` a **Safe proposal** the owners sign afterwards, and `deploy()` an ordinary broadcast from an
-executor keystore. Nothing is lost by the split — an executor can only deploy what was already committed, and
-one transaction per contract is a long sequence to confirm on a device.
+Each phase **acts as `--sender`**, and how the phase is signed follows from what that account is. Deploying,
+it is an executor key. Committing, it is the namespace or a delegate the namespace named through the gate's
+`setDelegate`: a key is broadcast from; a Safe cannot sign a forge broadcast, so it is **proposed to** instead,
+and the proposal is signed by whoever holds the Ledger, an owner or a proposer of the Safe — the run asks the
+device for that account, so nothing names it. `commit()` checks the sender against the gate before anything is
+signed; whether the Ledger's account may propose is the Safe transaction service's call, once the proposal is
+posted. `deploy()` is an ordinary broadcast from an executor keystore whatever committed: an
+executor can only deploy what was already committed, and one transaction per contract is a long sequence to
+confirm on a device.
+
+**Committing from a key** — the namespace, or a delegate it named — is one signed transaction:
 
 ```bash
-PROPOSER="--sender <safe-owner-address> --ffi"
+EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' \
+    --rpc-url ethereum --ledger --sender <namespace-or-delegate-address> --slow --broadcast
+```
+
+**Committing from a Safe** — one that holds the namespace, or one the namespace delegated to — ends in a
+proposal its owners sign and execute afterwards. Nothing is broadcast and no key is passed: the run walks the
+deployment, prints the table, and posts the proposal.
+
+```bash
+PROPOSER="--sender <safe-address> --ffi"
 EXECUTOR="--account <keystore-name> --sender <executor-address> --slow"
 
-# The commitment, proposed to the Safe. Nothing is broadcast and no key is passed: the run walks the
-# deployment, prints the table, and posts the proposal for the Safe owners to sign and execute.
-# EXECUTORS is read by commit, which is what names them: the gate holds no executor outside a commitment
+# The Safe holds the namespace or was delegated to by it; the Ledger holds one of its owners or proposers
 EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' --rpc-url ethereum $PROPOSER
 
 # Once that proposal has executed on chain, an executor deploys what it committed
@@ -69,10 +83,10 @@ forge script script/deploy/LaunchDeployer.s.sol --sig 'deploy()' --rpc-url ether
 ```
 
 The proposal is still signed on a Ledger, but by safe-utils over ffi rather than by forge, so **`--ffi` is
-required and `--ledger` must not be passed**: forge would hold the device transport and the ffi signing call
-would then fail. `--sender` has to be the address the Ledger derives — the proposal is rejected otherwise —
-and `LEDGER_DERIVATION_PATH` overrides the default path. Pick the account with
-`cast wallet address --ledger --mnemonic-index <n>`.
+required and `--ledger` must not be passed**: forge would hold the device transport and the ffi calls would
+then fail. The run reads the signer's address off the device (`cast wallet address --ledger`) and posts the
+proposal as it, so the two can never disagree; `LEDGER_DERIVATION_PATH` says where on the device that account
+sits when it is not the first one.
 
 An executor key is imported once with `cast wallet import <keystore-name> --interactive`, and forge asks for
 its password on every run; the address it holds has to be one the commit phase named through `EXECUTORS`.
@@ -80,24 +94,20 @@ Name that address in `--sender` as well: left to itself forge simulates as its o
 that simulates as one account and broadcasts from another is how a salt or a namespace ends up belonging to
 the wrong one.
 
-The proposing run is the same walk as the testnet one, and prints the same table and digest, so what you
+The proposing run is the same walk as the broadcast one, and prints the same table and digest, so what you
 rehearse on a testnet is what the Safe owners are shown. Only the last step differs, and only because the
-namespace is held by a Safe. It also cannot bring a missing gate up beside the proposal — a run that both proposed and
+committing account is a Safe. It also cannot bring a missing gate up beside the proposal — a run that both proposed and
 broadcast would post the proposal over ffi and then fail to send the deferred transaction — so on a chain with
-no gate the gate's own deployment is batched into the same Safe transaction. `revoke()` follows the namespace
-the same way; `deploy()` never does.
+no gate the gate's own deployment is batched into the same Safe transaction. On such a chain only the namespace
+can commit, there being no gate yet for a delegate to be named in. `revoke()` acts as the same account
+`commit()` would; `deploy()` never does.
 
-The Safe can also name a **delegate** at any point, through the gate's `setDelegate`, which turns the
-namespace-signed phases back into ordinary broadcasts: a run signed by a delegate is not proposed, it commits
-to the gate directly from its own key, `commit()` and `revoke()` alike — one transaction, no owner
-round-trip. Runs signed by anyone else keep following the namespace and end in a proposal. No branch ships a
-script for that call: the deployment does not need a delegate, and until it does, the Safe sends
-`setDelegate` through its own tooling.
-
-```bash
-EXECUTORS=0xabc...,0xdef... forge script script/deploy/LaunchDeployer.s.sol --sig 'commit()' \
-    --rpc-url ethereum --ledger --sender <delegate-address> --slow --broadcast
-```
+**Delegates** are named at any point through the gate's `setDelegate`, by the namespace, and change nothing
+about the deployment except who may sign its commit phase: a Safe that delegates to a key turns the proposal
+into a plain broadcast, a Ledger that delegates to a Safe turns the broadcast into a proposal, and what a
+delegate commits waits out the namespace's `setDelay` before it can be deployed. No branch ships a script for
+that call: the deployment does not need a delegate, and until it does, the namespace sends `setDelegate`
+through its own tooling.
 
 ### Deploy onto a chain that already has a Root
 
@@ -163,7 +173,7 @@ the local pair above.
 
 That matters for one reason worth knowing here. `LaunchDeployer` wires the adapters itself, from the action
 batchers, pointing each remote peer at the address its own adapter landed on — right only because CREATE3
-puts them at the same address on every chain given the same namespace and `SUFFIX`. That holds only if every
+puts them at the same address on every chain given the same namespace and deployment id. That holds only if every
 connected network is deployed in the same run, which is why the run reads its network list out of the
 environment's connections file rather than being told one.
 
@@ -172,9 +182,9 @@ environment's connections file rather than being told one.
 Use `anvil.sh`. Dropping `--broadcast` to "simulate" against a real network does run: a chain with no gate at
 `DEPLOY_GATE_ADDRESS` gets one in the simulated state, so the walk completes and prints its table either way.
 What a dry run cannot rehearse is the signature — `commit()` checks the sender against the namespace it
-commits in, so it only passes for a sender the namespace answers to: the namespace, when it is a key, or one
-of its delegates. Where a Safe holds the namespace and no delegate signs, the run ends in a proposal instead,
-which needs a Ledger rather than a broadcast. `anvil.sh` sidesteps that: it brings up its own gate on a fork and rehearses the whole
+commits in, so it only passes for the namespace or one of its delegates; and a Safe sender ends in a proposal
+instead, which needs a Ledger rather than a broadcast — and there is no dry run of a proposal: the run posts
+it over ffi as soon as it is signed, `--broadcast` or not. `anvil.sh` sidesteps that: it brings up its own gate on a fork and rehearses the whole
 sequence, which is also what ci.yml runs on every pull request.
 
 ### Network quirks
@@ -186,10 +196,9 @@ sequence, which is also what ci.yml runs on every pull request.
 
 | Variable | Meaning |
 |---|---|
+| `DEPLOY_ENVIRONMENT` | Which deployment to read, when a chain is described by more than one — `env/testnet/` beside `env/testnet-rev2/`. Unnecessary until that happens, and the run fails naming both candidates rather than picking one |
 | `EXECUTORS` | Accounts allowed to run the deploy phase. **Required** by `commit()`, at least one. Read nowhere else |
-| `NAMESPACE` | Namespace the addresses derive from. Off mainnet only, defaulting to the signer; pinned to the protocol Safe on mainnet. Two phases signed by different keys have to pass it to **both**, or the second reads another namespace |
 | `LEDGER_DERIVATION_PATH` | Where on the Ledger the signer is. Optional, defaulting to the first account |
-| `SUFFIX` | Isolates a deployment onto its own addresses. Optional, and ignored on mainnet |
 | `PRIVATE_KEY` | The testnet key `.env` holds, for you to pass as `--private-key`. No script reads it |
 
 ---
@@ -204,9 +213,9 @@ by one.
 
 | Step | Command | Signer | Transactions |
 |---|---|---|---|
-| Commit | `EXECUTORS=<addrs> forge script ... LaunchDeployer.s.sol --sig 'commit()' ...` | the namespace — a key broadcasts it, a Safe is proposed to | **1**, whatever the contract count (~2.9M gas) |
+| Commit | `EXECUTORS=<addrs> forge script ... LaunchDeployer.s.sol --sig 'commit()' ...` | the namespace or a delegate of it — a key broadcasts it, a Safe is proposed to | **1**, whatever the contract count (~2.9M gas) |
 | Deploy | `forge script ... LaunchDeployer.s.sol --sig 'deploy()' ...` | an executor | one per contract |
-| Revoke | `forge script ... LaunchDeployer.s.sol --sig 'revoke()' ...` | the namespace, same either way | 1, only to drop a commitment |
+| Revoke | `forge script ... LaunchDeployer.s.sol --sig 'revoke()' ...` | the same as `commit()` | 1, only to drop a commitment |
 
 The phases are separate entry points and **always separate forge runs**, on every network — testnets, CI and
 anvil included; `run()` refuses to exist precisely so nobody runs both in one. That is how a deployment
@@ -233,10 +242,10 @@ Commitment digest 0x3f7a2e0c6402c5b06d8599279a7c89798db91a210e14d244239908152224
 
 The table is generated by the run that builds the commitment, so on its own it only tells you what that run
 did — it cannot vouch for itself. What makes it worth having is that **a second person can reproduce it**: the
-commit phase deploys nothing, so anyone can run it against the same `--rpc-url` and `SUFFIX` **without
+commit phase deploys nothing, so anyone can run it against the same `--rpc-url` and config **without
 `--broadcast`** and compare. Matching digests mean both machines built the same 56 contracts at the same
 addresses from the same code; if they differ, the table says which row moved. That catches the realistic
-failures — wrong network, wrong suffix, stale `out/`, an unexpected contract in the set, a local edit nobody
+failures — wrong network, wrong deployment id, stale `out/`, an unexpected contract in the set, a local edit nobody
 mentioned.
 
 The commitment is also readable on chain afterwards: `commit` emits a single
@@ -271,7 +280,7 @@ script is simulated again, and it aborts on the first contract whose commitment 
 (`Deployment does not match what was committed`). Re-committing does not get around that either: its local walk
 redeploys the whole protocol, and those addresses are now taken, so CreateX reverts. So if the broadcast
 sequence is gone, the executor's nonce has moved, or the simulation itself is what failed, recovery means
-moving the deployment to fresh addresses — a new `SUFFIX` off mainnet, a version bump on it.
+moving the deployment to fresh addresses — a new `env/<environment>-<id>/`, or a version bump.
 
 ### Why the executors need no trust
 
@@ -302,16 +311,16 @@ deployment makes sure CreateX is there. It takes no arguments and grants its dep
 nothing to configure and no order to get right. Everything else lives in a **namespace** inside the gate,
 named after an account. The gate has no roles of its own — no wards, no owner, no admin — only these two:
 
-- **namespace** — the account every address derives from, alongside the gate and the salt. On mainnet it is
-  the protocol Safe (`PROTOCOL_SAFE`), which is the same address on all eleven mainnets and is the only
-  account that can plausibly outlive the deployment, since a namespace can never be replaced. Elsewhere
-  `NAMESPACE` names it, defaulting to the sender, so two developers on one testnet stay out of each other's
-  addresses without having to agree on anything. Two namespaces can neither reach nor block each other.
+- **namespace** — the account every address derives from, alongside the gate and the salt. `network.namespace`
+  in the chain's config names it, and it is mandatory there: a namespace can never be replaced, so a run that
+  guessed it would put a whole protocol at addresses nobody meant. What kind of account it is — a Safe, a
+  Ledger, a testnet key — is the config's business; two chains configured with two namespaces stay out of
+  each other's addresses. Two namespaces can neither reach nor block each other.
 - **delegates** — accounts the namespace lets sign `commit` on its behalf, through
   `setDelegate(delegatee, isValid)`. This is how a cold namespace key can be the thing addresses derive from
-  while a warmer key signs the phase. The deployment no longer depends on one — a Safe-held namespace is proposed
-  to instead, which needs no second account — but naming one stays open at any point as an optional step,
-  after which a run signed by the delegate broadcasts to the gate directly instead of being proposed. What a
+  while another account signs the phase — a warmer key, or a Safe whose owners do. The deployment does not
+  depend on one, but naming one stays open at any point as an optional step, after which a run commits as
+  the delegate — broadcast from it when it is a key, proposed to it when it is a Safe. What a
   delegate commits waits out the namespace's `setDelay`, and `clear` withdraws every delegation along with
   everything they committed. Delegation goes one way and one level deep: `setDelegate` always writes
   to the *caller's own* namespace, so a delegate naming one names it in its own, and there is no call that
@@ -398,21 +407,21 @@ so an address derives from the gate and from a salt of the gate's own making, `k
   belongs to the chain: a chain that derives addresses its own way is the one place an address stops speaking
   for the code behind it. So every run that touches the gate checks its runtime code against
   `DEPLOY_GATE_EXTCODEHASH` before deploying through it, rather than trusting the address.
-- `NAMESPACE` is what needs the continuity instead. Every protocol address derives from it, so it has to be
-  the same account on every chain — which on mainnet is the protocol Safe, for exactly that reason. It never
-  signs a phase from a key: it is proposed to, and its owners sign. There is no recovery if the
-  Safe is lost, since nothing can commit in a namespace on its behalf, which is why it is a Safe and not a
-  key.
+- `network.namespace` is what needs the continuity instead. Every protocol address derives from it, so it has
+  to be the same account on every chain, and there is no recovery if it is lost, since nothing can commit in a
+  namespace on its behalf — a delegate commits *for* it and only while it says so. Whether that account is a
+  Safe or a key kept cold behind a delegate is a choice the scripts take no side on. Changing the field moves
+  every address the chain would deploy to, so it is set once, when the config is written.
 - `EXECUTORS` names the accounts allowed to run the deploy phase, a comma-separated list read by the commit
   phase, which grants them in the namespace: `EXECUTORS=0xabc...,0xdef... forge script ... --sig 'commit()'`. They can
   be the namespace's keys or keys with no privilege anywhere else. They are **part** of the commitment, so
   changing the set means committing again, and an executor holds no privilege beyond deploying what has been
   committed. Required by `commit()` on every network, and at least one — naming nobody would sign a
   commitment no key can spend, so it refuses rather than letting it through. `deploy()` never reads it.
-- `SUFFIX` does **not** move the gate: one gate serves every deployment on a chain, and a suffix isolates a
+- A deployment id does **not** move the gate: one gate serves every deployment on a chain, and an id isolates a
   deployment inside it, by salt, the way a namespace isolates one from another. The isolation is of
   addresses, not of the commitment slot: `GatedDeployer` pins a single id, so a namespace holds one live
-  commitment whatever the suffix, and committing a new deployment replaces what the namespace still had
+  commitment whatever the id, and committing a new deployment replaces what the namespace still had
   pending — what that one already executed stays deployed, what it had not needs committing again. Two
   deployments in flight at once take two namespaces, which off mainnet is just two signers.
 - The `DeployGate` holds **no** protocol permissions at any point, so it cannot touch a live deployment.
@@ -434,7 +443,7 @@ indexer starting after one of them would miss its history.
 ### On the block numbers being approximate
 
 The write happens during forge's simulation pass, before the broadcast lands. For addresses that is exact —
-they are deterministic, CREATE3 from the gate, the salt and `SUFFIX`, so what is written is what will be
+they are deterministic, CREATE3 from the gate, the salt and the deployment id, so what is written is what will be
 deployed, including after a later `--resume`.
 
 For block numbers it is an **underestimate**: `block.number` during simulation is the block the script read,

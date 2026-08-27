@@ -31,7 +31,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         super.deployFullBothPhases(
             DeployerInput({
                 centrifugeId: LOCAL_CENTRIFUGE_ID,
-                suffix: "",
+                deploymentId: "",
                 txLimits: defaultTxLimits(),
                 protocolSafe: ISafe(makeAddr("ProtocolSafe")),
                 opsSafe: ISafe(makeAddr("OpsSafe")),
@@ -39,7 +39,6 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
                 delay: 0,
                 adapters: noAdaptersInput()
             }),
-            address(this),
             address(this),
             executors
         );

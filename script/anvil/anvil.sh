@@ -12,9 +12,9 @@
 # `FullDeployer` requires before it will deploy an adapter against them. Those are stubbed below.
 #
 # The chain configs are the fixtures next to this script, and they hold the input half only: network and
-# adapters, no contracts. Copying them into env/anvil/ is what creates the output config a run produces —
+# adapters, no contracts. Copying them into env/anvil-<id>/ is what creates the output config a run produces —
 # LaunchDeployer merges its addresses into the chain half sitting there, and TestData loads the result back.
-# env/anvil/ is gitignored, so the record of a run stays out of the tree and the fixtures stay a description
+# env/anvil-*/ is gitignored, so the record of a run stays out of the tree and the fixtures stay a description
 # of two chains, never of a deployment.
 #
 # Ports: 8545 (local-a, chain 31337) and 8546 (local-b, chain 31338).
@@ -25,7 +25,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 # Anvil's first two accounts. The deployer signs the protocol; the admin is what the guardians are given,
-# and is what env/anvil/*.json names as protocolAdmin and opsAdmin
+# and is what env/anvil-<id>/*.json names as protocolAdmin and opsAdmin
 DEPLOYER_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 DEPLOYER=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 ADMIN_KEY=0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
@@ -93,7 +93,7 @@ stub_endpoints() {
 
     for addr in $(jq -r '.adapters | to_entries[] | .value
         | (.gateway // empty), (.gasService // empty), (.endpoint // empty), (.ccipRouter // empty), (.mailbox // empty)
-    ' "env/anvil/$1.json"); do
+    ' "$ENV_DIR/$1.json"); do
         cast rpc anvil_setCode "$addr" "$STUB" --rpc-url "http://localhost:$port" >/dev/null
     done
     ok "CreateX and the endpoints placed on $1"
@@ -115,16 +115,26 @@ deploy_chain() {
     ok "$CHAIN deployed"
 }
 
-# A fresh salt each time, so repeated runs do not land on addresses the last one took
-export SUFFIX="${SUFFIX:-anvil-$(date +%s)}"
-say "Suffix $SUFFIX"
+# A fresh salt each time, so repeated runs do not land on addresses the last one took. The id reaches the
+# scripts as the environment the copied configs declare, `anvil-<id>` naming both the directory and them
+ENVIRONMENT="anvil-${DEPLOYMENT_ID:-$(date +%s)}"
+say "Environment $ENVIRONMENT"
 
 pkill anvil 2>/dev/null && sleep 1 || true
 
 # Every config first: LaunchDeployer loads each network it connects to, so they all have to be in place
 # before the first one is deployed
-mkdir -p env/anvil
-cp script/anvil/env/*.json env/anvil/
+# One directory per run, named after the deployment it holds — `env/anvil-<id>/` — so the id reaches the
+# scripts as the environment the configs declare. Earlier runs go: two of them would describe one chain
+# twice, and a chain id would stop naming a single deployment. `env/anvil/` is where runs recorded
+# themselves before the id was in the name, and left there it is a second description of the same chains
+rm -rf env/anvil env/anvil-*
+ENV_DIR="env/$ENVIRONMENT"
+mkdir -p "$ENV_DIR"
+for fixture in script/anvil/env/*.json; do
+    jq --arg env "$ENVIRONMENT" 'if .network then .network.environment = $env else . end' \
+        "$fixture" > "$ENV_DIR/$(basename "$fixture")"
+done
 
 for chain in $CHAINS; do start_chain "$chain"; done
 for chain in $CHAINS; do stub_endpoints "$chain"; done

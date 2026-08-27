@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseDeployer} from "./BaseDeployer.s.sol";
-
-import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+import {BaseDeployer, AccountLib} from "./BaseDeployer.s.sol";
 
 import {DEPLOY_GATE_ADDRESS} from "create3-gate/script/DeployGate.d.sol";
 
@@ -24,12 +22,17 @@ enum DeployPhase {
 /// @notice Deploys through a DeployGate instead of directly: an admin commits what may be deployed, in a
 ///         single transaction, and the executor it named then deploys it.
 contract GatedDeployer is BaseDeployer, GateProposalScript {
+    using AccountLib for address;
+
     /// @dev The gate lets a namespace hold several commitments at once. This deployment wants one, so it
     ///      pins an id and committing again always replaces what came before. Reaches no address.
     bytes32 internal constant DEFAULT_COMMITMENT_ID = bytes32(uint256(1));
 
-    /// @dev Account signing the run. Not the one addresses derive from, which is the gate and the namespace
-    address public deployer;
+    /// @dev The account addresses derive from, alongside the gate and the salt. Not the one a phase acts as:
+    ///      that is always `msg.sender` — committing, the namespace or a delegate it named; deploying, an
+    ///      executor. A key acts by broadcasting; a Safe acts by having the call proposed to it, signed by
+    ///      the owner on the Ledger. Nothing here cares which the caller arranged: a Ledger namespace
+    ///      delegating to a Safe is as good as a Safe delegating to a key
     address public namespace;
 
     /// @dev Whether a script is behind the run, rather than a test. It is what tells the two apart where
@@ -37,10 +40,10 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
     ///      and prints its table once per fixture, so it neither reports nor proposes.
     bool internal scripting;
 
-    /// @dev Whether the call the phase ends in is proposed to the namespace's Safe rather than broadcast,
-    ///      which follows from the namespace itself: see `proposes`. Such a run broadcasts nothing at all,
-    ///      because the proposal is posted over ffi the moment it is signed while a broadcast is deferred to
-    ///      the end of the run, so a run doing both would post the proposal and then fail to send.
+    /// @dev Whether the call the phase ends in is proposed to the sender rather than broadcast from it, which
+    ///      is whether the sender is a Safe. Such a run broadcasts nothing at all, because the proposal is
+    ///      posted over ffi the moment it is signed while a broadcast is deferred to the end of the run, so
+    ///      a run doing both would post the proposal and then fail to send.
     bool internal proposing;
 
     DeployPhase internal deployPhase;
@@ -56,20 +59,15 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
     ///      chains and lets the two phases be signed by different accounts.
     /// @param namespace_ Account whose namespace in the gate the deployment lives in. Addresses derive from
     ///        it alongside the salt, so it has to be the same account on every chain. The commit phase is
-    ///        signed by it or by one of its delegates, and the deploy phase needs none of its key
+    ///        made in its name, by it or by one of its delegates — whichever `--sender` is, a key that
+    ///        broadcasts or a Safe that is proposed to — and the deploy phase needs none of its key
     /// @param executors_ Accounts the commit phase names as allowed to run the deploy phase. They need no
     ///        privilege anywhere else, and none has to be the namespace. Part of the commitment, so
     ///        replacing one means committing again
-    function _initGated(
-        string memory suffix_,
-        address deployer_,
-        DeployPhase phase,
-        address namespace_,
-        address[] memory executors_
-    ) internal {
-        _init(suffix_);
-
-        deployer = deployer_;
+    function _initGated(string memory deploymentId_, DeployPhase phase, address namespace_, address[] memory executors_)
+        internal
+    {
+        _init(deploymentId_);
 
         require(namespace_ != address(0), "A namespace is required to derive addresses");
 
@@ -78,7 +76,7 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         deployPhase = phase;
 
         scripting = vm.isContext(VmSafe.ForgeContext.ScriptGroup);
-        proposing = scripting && phase == DeployPhase.Commit && proposes(namespace_);
+        proposing = scripting && phase == DeployPhase.Commit && msg.sender.isSafeAccount();
 
         // A proposing run brings no gate up itself — the deployment rides in its proposal — so the chain
         // stays readable for `_commitToGate` to build that proposal from; the walk gets a simulated gate
@@ -86,21 +84,24 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         // deployed for real, as the transaction before the commitment's own
         if (!proposing) setUpDeployGate();
 
-        // Fails a wrong sender at once rather than at the very end of the run, where the gate — or the Safe
-        // transaction service, after the Ledger has already signed — would reject it anyway. One staticcall
-        // against the registry that enforces it for real, so this can never disagree with it: who may send
-        // the phase is decided there, and here it is only reported early
+        // Fails a wrong sender at once rather than at the very end of the run, where the gate would reject
+        // it anyway. One staticcall against the registry that enforces it for real, so this can never
+        // disagree with it: who may commit is decided by the gate, and here it is only reported early. A
+        // chain with no gate yet holds no delegates, so there only the namespace commits.
+        //
+        // `--sender` is the account the phase acts as, a Safe included: a proposing run broadcasts nothing,
+        // so forge takes any address there, and the owner or proposer who signs is whoever holds the Ledger
+        // — the Safe transaction service is what checks that account may propose, once it is posted.
         if (scripting && phase == DeployPhase.Commit) {
             require(
-                proposing
-                    ? ISafe(namespace_).isOwner(msg.sender)
-                    : msg.sender == namespace_ || deployGate.isDelegate(namespace_, msg.sender),
-                "Not the namespace, one of its delegates, nor an owner of its Safe: pass a --sender the namespace answers to"
+                msg.sender == namespace_ || (isDeployGateDeployed() && deployGate.isDelegate(namespace_, msg.sender)),
+                "Not the namespace nor one of its delegates: pass a --sender the namespace answers to"
             );
         }
 
         if (phase == DeployPhase.Commit && scripting) {
             console.log("Namespace %s", vm.toString(namespace_));
+            if (msg.sender != namespace_) console.log("Committing as %s", vm.toString(msg.sender));
             console.log(string.concat(_pad("contract-version", 26), _pad("address", 44), "initCodeHash"));
         }
 
@@ -159,7 +160,7 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
     function gatedAddress(string memory contractName, string memory version) public returns (address target) {
         target = deployGate.addressOf(namespace, _gatedSalt(contractName, version));
 
-        vm.label(target, string.concat(contractName, "-", version, "-", suffix));
+        vm.label(target, string.concat(contractName, "-", version, "-", deploymentId));
     }
 
     /// @notice Same, for a contract the deployment reports, which is what puts it in `env/<environment>/<network>.json`.
@@ -293,32 +294,10 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         _commitToGate(new bytes32[](0), new bytes32[](0), new address[](0));
     }
 
-    /// @notice Whether a namespace is reached by proposing to it rather than by broadcasting from it. A
-    ///         contract is taken to be a Safe: it cannot sign a forge broadcast, so there is nothing else it
-    ///         could be here, and a key is the only thing that can. A Safe that named the signing key as its
-    ///         delegate is not proposed to either — the delegate broadcasts to the gate directly, which is
-    ///         what delegation is for.
-    /// @dev    Read from the namespace and the sender rather than passed in, so that no run can pick the
-    ///         wrong one: the broadcast path cannot sign for a Safe, and the proposing path has no Safe to
-    ///         post to. A chain without its gate holds no delegates, so there the Safe is always proposed
-    ///         to, carrying the gate up itself.
-    ///
-    ///         Code starting 0xef is the one exception to code meaning a Safe: EIP-3541 keeps it
-    ///         undeployable, so it can only be an EIP-7702 delegation, and under a delegation there is still
-    ///         a key that signs its own broadcast
-    function proposes(address namespace_) public view returns (bool) {
-        if (isDeployGateDeployed() && IDeployGate(DEPLOY_GATE_ADDRESS).isDelegate(namespace_, msg.sender)) {
-            return false;
-        }
-
-        bytes memory code = namespace_.code;
-        return code.length > 0 && code[0] != 0xef;
-    }
-
-    /// @dev The one call a namespace ever makes, and the only place a phase reaches the gate to change
-    ///      anything. A key signs it as a transaction; a Safe is handed the same call as a proposal its
-    ///      owners sign afterwards, through `proposeGateCall`, which is also what brings the gate itself up
-    ///      on a chain that has none — nothing else in a proposing run is broadcast
+    /// @dev The one call made in a namespace's name, and the only place a phase reaches the gate to change
+    ///      anything. Made as the sender: a key signs it as a transaction; a Safe is handed the same call as
+    ///      a proposal its owners sign afterwards, through `proposeGateCall`, which is also what brings the
+    ///      gate itself up on a chain that has none — nothing else in a proposing run is broadcast
     function _commitToGate(bytes32[] memory salts, bytes32[] memory initCodeHashes, address[] memory executors_)
         internal
     {
@@ -328,7 +307,7 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         }
 
         proposeGateCall(
-            namespace,
+            msg.sender,
             abi.encodeCall(IDeployGate.commit, (namespace, DEFAULT_COMMITMENT_ID, salts, initCodeHashes, executors_))
         );
     }

@@ -36,21 +36,50 @@ contract EnsureDeployGate {
 }
 
 /// @title  GateProposalScript
-/// @notice Reaches the DeployGate through a Safe, for a namespace held by one: the call the owners sign,
-///         with the gate's own deployment riding in the same batch on a chain that has none.
+/// @notice Reaches the DeployGate through a Safe — one that holds a namespace, or one a namespace named as
+///         its delegate: the call the owners sign, with the gate's own deployment riding in the same batch on
+///         a chain that has none.
 ///
 /// @dev    What this repository adds to the gate's own `DeployGateScript`, which comes from the gate's
 ///         repository as a dependency (`lib/create3-gate`, imported as `create3-gate/`) rather than being
-///         copied into this one: holding a namespace through a Safe is how *this* protocol does it, not something
+///         copied into this one: reaching the gate from a Safe is how *this* protocol does it, not something
 ///         the gate knows about. A script that only deploys through a gate inherits DeployGateScript;
-///         a script that has to get a call *into* a Safe-held namespace inherits this one.
+///         a script that has to get a call into the gate *from a Safe* inherits this one.
 abstract contract GateProposalScript is DeployGateScript {
     using Safe for *;
 
     Safe.Client private proposalSafe;
+    address private ledgerSigner;
+
+    /// @notice The account on the Ledger, at `LEDGER_DERIVATION_PATH`: the owner or proposer a proposal is
+    ///         signed by, which the Safe transaction service requires as the proposal's `sender`.
+    /// @dev    Asked of the device rather than passed in, so that `--sender` is free to be the Safe the run
+    ///         acts as and the two can never disagree — a proposal whose sender is not its signer is what
+    ///         the service rejects. Whether that account may propose is the service's decision, not made
+    ///         here. Read once per run: the device answers slowly
+    function ledgerAddress() internal returns (address) {
+        if (ledgerSigner != address(0)) return ledgerSigner;
+
+        string[] memory inputs = new string[](6);
+        inputs[0] = "cast";
+        inputs[1] = "wallet";
+        inputs[2] = "address";
+        inputs[3] = "--ledger";
+        inputs[4] = "--mnemonic-derivation-path";
+        inputs[5] = ledgerDerivationPath();
+
+        bytes memory out = vm.ffi(inputs);
+        require(
+            out.length == 20, "cast wallet address --ledger did not answer with an address: is the Ledger connected?"
+        );
+
+        ledgerSigner = address(bytes20(out));
+        return ledgerSigner;
+    }
 
     /// @notice Proposes one call to the gate through a Safe, with the gate's own deployment riding in the
     ///         same batch on a chain that has none. The single way a Safe reaches the gate, whatever the call.
+    ///         Signed by the Ledger, as the owner it holds: see `ledgerAddress`.
     /// @dev    The proposal is posted over ffi the moment it is signed, while a broadcast is deferred to the
     ///         end of the run, so a run calling this must broadcast nothing — it would post the proposal and
     ///         then fail to send. The batch carries `EnsureDeployGate` rather than the gate's deployment
@@ -75,6 +104,6 @@ abstract contract GateProposalScript is DeployGateScript {
         calls[targets.length - 1] = gateCall;
 
         proposalSafe.initialize(safe_);
-        proposalSafe.proposeTransactions(targets, calls, msg.sender, ledgerDerivationPath());
+        proposalSafe.proposeTransactions(targets, calls, ledgerAddress(), ledgerDerivationPath());
     }
 }

@@ -20,7 +20,7 @@ import "forge-std/Test.sol";
 /// @dev    Configs come from the roots `Chains.configRoots()` names, so this covers whatever the branch
 ///         holds: two anvil fixtures here, every real network on `live`, and both without either side
 ///         being edited. Names are deduplicated with the first root winning, because a local run copies the
-///         fixtures into `env/anvil/` and both copies then describe the same chain.
+///         fixtures into `env/anvil-<id>/` and both copies then describe the same chain.
 ///
 ///         Not everything under those roots describes a chain — the connections files parse fine and name
 ///         none — so the chainId key is what tells them apart. That is the one filter `Chains.detect()`
@@ -79,12 +79,14 @@ contract ChainConfigTest is ChainConfigBase {
     ///      whatever this does not say
     string constant MINIMAL = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
         '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
-        '"opsAdmin":"0x0000000000000000000000000000000000000002"}}';
+        '"opsAdmin":"0x0000000000000000000000000000000000000002",'
+        '"namespace":"0x0000000000000000000000000000000000000003"}}';
 
     /// @dev The same, naming a verification endpoint that answers nothing but submissions
     string constant WITH_VERIFIER = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
         '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
         '"opsAdmin":"0x0000000000000000000000000000000000000002",'
+        '"namespace":"0x0000000000000000000000000000000000000003",'
         '"verifier":"etherscan","verifierUrl":"https://write-only.example/api"}}';
 
     /// @dev A `.contracts` section with the Root in it, and a neighbour, so the lookup has to pick one
@@ -138,7 +140,7 @@ contract ChainConfigTest is ChainConfigBase {
     /// @dev The fields with no default are required outright: a config missing one has to fail where it is
     ///      read, not deploy against a zero
     function test_parseRequiresTheFieldsWithoutDefaults() public {
-        string[5] memory required = ["chainId", "environment", "centrifugeId", "protocolAdmin", "opsAdmin"];
+        string[6] memory required = ["chainId", "environment", "centrifugeId", "protocolAdmin", "opsAdmin", "namespace"];
 
         for (uint256 i; i < required.length; i++) {
             // Renamed rather than cut out, so the JSON stays JSON and it is the key that is gone
@@ -173,7 +175,75 @@ contract ChainConfigTest is ChainConfigBase {
 ///      mistake here does not fail — it silently deploys against another chain's addresses. Every config is
 ///      matched by its own chain id, which also covers the path filter: a manifest under env/latest/ or a
 ///      connections file mistaken for a config would answer the wrong name, or none at all.
+contract ChainConfigDeploymentIdTest is ChainConfigBase {
+    /// @dev The environment names the directory a config sits in, and a deployment id is the part of that
+    ///      name after the first `-`: one string, two readings, so the two can never disagree
+    function test_deploymentIdIsTheTailOfTheEnvironment() public pure {
+        assertEq(Chains.deploymentIdOf("testnet"), "", "the canonical deployment carries no id");
+        assertEq(Chains.deploymentIdOf("testnet-rev2"), "rev2");
+        assertEq(Chains.deploymentIdOf("anvil-1787683343"), "1787683343");
+        assertEq(Chains.deploymentIdOf("testnet-rev-2"), "rev-2", "the id may hold dashes of its own");
+    }
+
+    /// @dev What policy reads: mainnet is mainnet however many deployments it holds
+    function test_baseEnvironmentIsTheHeadOfIt() public pure {
+        assertEq(Chains.baseEnvironmentOf("testnet"), "testnet");
+        assertEq(Chains.baseEnvironmentOf("testnet-rev2"), "testnet");
+        assertEq(Chains.baseEnvironmentOf("anvil-1787683343"), "anvil");
+    }
+
+    /// @dev A parsed config carries the id its environment names, without a field of its own to disagree
+    function test_parseDerivesTheDeploymentId() public pure {
+        ChainConfig memory config = Chains.parse(
+            '{"network":{"chainId":424242,"environment":"testnet-rev2","centrifugeId":31,'
+            '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+            '"opsAdmin":"0x0000000000000000000000000000000000000002",'
+            '"namespace":"0x0000000000000000000000000000000000000003"}}',
+            "sepolia"
+        );
+
+        assertEq(config.network.environment, "testnet-rev2");
+        assertEq(config.network.deploymentId, "rev2");
+        assertFalse(config.network.isMainnet(), "a testnet rev is not mainnet");
+    }
+}
+
 contract ChainConfigDirectoryTest is ChainConfigBase {
+    /// @dev Every config states the directory it sits in, so the pair can be checked on every read: a
+    ///      directory renamed without the field, or a rev copied without editing it, would otherwise move
+    ///      every address the chain deploys to and say nothing about it
+    function test_everyConfigRestatesItsDirectory() public view {
+        string[] memory names = _configNames();
+
+        for (uint256 i; i < names.length; i++) {
+            string memory path = Chains.pathOf(names[i]);
+            if (vm.indexOf(path, Chains.FIXTURE_ROOT) == 0) continue;
+
+            ChainConfig memory config = Chains.load(names[i]);
+            assertEq(path, string.concat("env/", config.network.environment, "/", names[i], ".json"), names[i]);
+        }
+    }
+
+    /// @dev A directory under `env/` is an environment `Chains.environments()` names, with or without a
+    ///      deployment id after it, or the spell archive. `configRoots()` leaves anything else out rather
+    ///      than failing on it, so a typo — `env/tesnet-rev2/` — would otherwise be a directory of configs no
+    ///      run can reach, failing only as "no config for this chain"; this is what makes it fail by name.
+    function test_everyDirectoryUnderEnvIsAnEnvironment() public view {
+        Vm.DirEntry[] memory entries = Chains.entriesOf("env/");
+
+        for (uint256 i; i < entries.length; i++) {
+            if (!entries[i].isDir) continue;
+
+            string memory name = _fileName(entries[i].path);
+            if (keccak256(bytes(name)) == keccak256("spell")) continue;
+
+            assertTrue(
+                Chains.isEnvironment(Chains.baseEnvironmentOf(name)),
+                string.concat("env/", name, "/ is named after no environment Chains.environments() lists")
+            );
+        }
+    }
+
     /// @dev Every field a script reads off the chain half is required, so a config that parses is a config a
     ///      deployment can be pointed at. Vacuous on a branch holding no configs, which is the point: the
     ///      rule belongs with the parser, the configs it is applied to belong with the deployments.
@@ -189,6 +259,7 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
             assertGt(bytes(config.network.environment).length, 0, names[i]);
             assertNotEq(config.network.protocolAdmin, address(0), names[i]);
             assertNotEq(config.network.opsAdmin, address(0), names[i]);
+            assertNotEq(config.network.namespace, address(0), names[i]);
             assertGt(bytes(config.network.explorerApiUrl).length, 0, names[i]);
         }
     }
@@ -201,13 +272,15 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
         assertGe(_configNames().length, 2, "the config walk is blind: check fs_permissions for the roots");
     }
 
-    /// @dev The name is `pathOf`'s primary key across environments, so it must be unique across them: a
-    ///      testnet acquiring a config named like a mainnet (`monad`, say) would be one `pathOf` ambiguity
-    ///      revert away from reading the wrong chain's addresses. `_configNames()` deduplicates by name —
-    ///      deliberately, for the anvil copy — which is exactly why this test walks the roots itself: the
-    ///      dedupe would hide the collision this exists to catch. The anvil copy over its fixture is the
-    ///      one sanctioned duplicate.
-    function test_networkNamesAreUniqueAcrossEnvironments() public view {
+    /// @dev The name is the key a run reaches a chain by, `--rpc-url sepolia`, and it may resolve to more
+    ///      than one config: `env/testnet/sepolia.json` beside `env/testnet-rev2/sepolia.json` is what a
+    ///      second deployment of a chain looks like, and `DEPLOY_ENVIRONMENT` is how a run picks between them. That
+    ///      only holds while every config of one name describes one chain — a testnet acquiring a config
+    ///      named like a mainnet (`monad`, say) would make `DEPLOY_ENVIRONMENT` pick between chains, not between
+    ///      deployments, and one wrong value away from reading the other chain's admins and addresses.
+    ///      `_configNames()` deduplicates by name — deliberately, for the anvil copy — which is exactly why
+    ///      this test walks the roots itself: the dedupe would hide the collision this exists to catch.
+    function test_aNameResolvesToOneChain() public view {
         string[] memory roots = Chains.configRoots();
 
         for (uint256 i; i < roots.length; i++) {
@@ -217,22 +290,22 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
                 if (entries[e].isDir || !_isConfig(entries[e].path)) continue;
 
                 for (uint256 j = i + 1; j < roots.length; j++) {
-                    bool sanctioned = _isAnvilPair(roots[i], roots[j]);
                     string memory name = _fileName(entries[e].path);
                     string memory twin = string.concat(roots[j], name);
+                    if (!_exists(twin)) continue;
 
-                    assertTrue(
-                        sanctioned || !_exists(twin),
-                        string.concat(name, " exists under both ", roots[i], " and ", roots[j])
+                    assertEq(
+                        _chainIdOf(entries[e].path),
+                        _chainIdOf(twin),
+                        string.concat(name, " names two chains: ", roots[i], " and ", roots[j])
                     );
                 }
             }
         }
     }
 
-    function _isAnvilPair(string memory a, string memory b) private pure returns (bool) {
-        return keccak256(bytes(a)) == keccak256(bytes("env/anvil/"))
-            && keccak256(bytes(b)) == keccak256(bytes("script/anvil/env/"));
+    function _chainIdOf(string memory path) private view returns (uint256) {
+        return vm.parseJsonUint(vm.readFile(path), ".network.chainId");
     }
 
     function _isConfig(string memory path) private view returns (bool) {
@@ -316,7 +389,8 @@ contract ChainDetectTest is ChainConfigBase {
         vm.expectRevert(
             bytes(
                 "No env config for chain 123456789: add env/<environment>/<network>.json naming that chainId"
-                " (the environment must be one configRoots() lists), and point --rpc-url at it"
+                " (the environment must be one environments() lists), and point --rpc-url at it. A set DEPLOY_ENVIRONMENT"
+                " confines the search to that one directory"
             )
         );
         this.detect();

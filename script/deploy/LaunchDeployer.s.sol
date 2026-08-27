@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {AccountLib} from "./BaseDeployer.s.sol";
 import {DeployPhase} from "./GatedDeployer.s.sol";
 import {
     DeployerInput,
@@ -29,7 +30,14 @@ import {ChainConfig, Chains} from "../utils/ChainConfig.s.sol";
 ///         PRIVATE_KEY in .env; on mainnet the admin signs the commit with `--ledger --sender <addr> --slow`
 ///         and an executor signs the deploy with `--account <name> --sender <addr> --slow`. The deploy phase
 ///         records what it deployed into env/<environment>/<network>.json itself.
+///
+///         Each phase acts as `--sender`. Deploying, that is an executor key. Committing, it is the namespace
+///         or a delegate of it, and how the phase is signed follows from what that account is: a key
+///         broadcasts, a Safe is proposed to — signed by the owner on the Ledger, which the run asks the
+///         device for. Nothing here assumes which the namespace is or which its delegates are.
 contract LaunchDeployer is FullDeployer {
+    using AccountLib for address;
+
     uint256 public constant MAINNET_DELAY = 48 hours;
 
     /// @notice Commits the whole deployment to the gate: the single transaction the admin signs.
@@ -42,14 +50,13 @@ contract LaunchDeployer is FullDeployer {
     ///         nothing. What a commitment already deployed stays deployed: this is not a rollback
     function revoke() public {
         ChainConfig memory config = Chains.load();
-        address namespace_ = _namespace(config);
 
-        // A Safe-held namespace is proposed to instead, and a proposing run broadcasts nothing
-        bool broadcasting = !proposes(namespace_);
+        // A Safe is proposed to instead, and a proposing run broadcasts nothing
+        bool broadcasting = !msg.sender.isSafeAccount();
         if (broadcasting) vm.startBroadcast();
 
-        // The suffix only shapes salts, and revoking commits none
-        _initGated("", msg.sender, DeployPhase.Commit, namespace_, new address[](0));
+        // The deployment id only shapes salts, and revoking commits none
+        _initGated("", DeployPhase.Commit, config.network.namespace, new address[](0));
         _revokeCommitment();
 
         if (broadcasting) vm.stopBroadcast();
@@ -73,19 +80,11 @@ contract LaunchDeployer is FullDeployer {
         );
     }
 
-    /// @dev A namespace can never be replaced, so on mainnet it is the Safe rather than a key, and it
-    ///      delegates to whichever one signs the phase. Off mainnet, the signer keeps to its own addresses
-    function _namespace(ChainConfig memory config) internal view returns (address) {
-        return config.network.isMainnet() ? PROTOCOL_SAFE : vm.envOr("NAMESPACE", msg.sender);
-    }
-
     function _launch(DeployPhase phase) internal {
-        bool committing = phase == DeployPhase.Commit;
-
         ChainConfig memory config = Chains.load();
-        // Only committing is the namespace's own call; deploying is signed by an executor key either way
-        bool broadcasting = !committing || !proposes(_namespace(config));
 
+        bool committing = phase == DeployPhase.Commit;
+        bool broadcasting = !committing || !msg.sender.isSafeAccount();
         if (broadcasting) vm.startBroadcast();
 
         // Committing deploys nothing, so it reports nothing: the manifest belongs to the phase that deploys.
@@ -95,7 +94,7 @@ contract LaunchDeployer is FullDeployer {
 
         DeployerInput memory input = DeployerInput({
             centrifugeId: config.network.centrifugeId,
-            suffix: config.network.isMainnet() ? "" : vm.envOr("SUFFIX", string("")),
+            deploymentId: config.network.deploymentId,
             txLimits: config.network.buildBatchLimits(),
             protocolSafe: ISafe(config.network.protocolAdmin),
             opsSafe: ISafe(config.network.opsAdmin),
@@ -125,7 +124,7 @@ contract LaunchDeployer is FullDeployer {
             })
         });
 
-        // Hardcoded admins to double-check a correct mainnet deployment
+        // Hardcoded admins to double-check a correct mainnet deployment.
         if (config.network.isMainnet() && committing) {
             require(address(input.protocolSafe) == PROTOCOL_SAFE, "wrong safe admin");
             require(address(input.opsSafe) == OPS_SAFE, "wrong ops admin");
@@ -137,7 +136,7 @@ contract LaunchDeployer is FullDeployer {
             require(executors.length > 0, "EXECUTORS must name at least one account");
         }
 
-        deployFull(input, msg.sender, phase, _namespace(config), executors);
+        deployFull(input, phase, config.network.namespace, executors);
 
         // And the same on what the deployment produced, which the check above cannot speak for
         if (config.network.isMainnet() && !committing) {

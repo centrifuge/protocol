@@ -41,7 +41,7 @@ ENV_DIR = REPO_ROOT / "env"
 API_KEYS = (("alchemy", "ALCHEMY_API_KEY"), ("plume", "PLUME_API_KEY"), ("pharos", "PHAROS_API_KEY"))
 
 # Not derived from a config field: the local chains script/anvil/anvil.sh brings up answer on fixed ports,
-# and nothing in env/anvil/*.json says which. Everything else about them is derived like any other network.
+# and nothing in env/anvil-<id>/*.json says which. Everything else about them is derived like any other network.
 LOCAL_CHAINS = {"local-a": "http://localhost:8545", "local-b": "http://localhost:8546"}
 
 # The local chains are described by fixtures next to the script that brings them up, not under env/: env/
@@ -69,15 +69,30 @@ def networks() -> list[tuple[str, dict]]:
     Configs are filed under the environment they declare, so the directory is not part of the name: the
     alias a run reaches with `--rpc-url` is the network, not the path. Anything under env/ that is not a
     chain — the connections files, and env/spell/ — has no `network` key and drops out here.
+
+    One network can be described by several configs, `env/testnet/sepolia.json` beside
+    `env/testnet-rev2/sepolia.json`, which are two deployments of one chain. Both tables are about the
+    chain and not about what is deployed on it, so the canonical description of a network — the one under
+    the id-less directory — wins and the rest are skipped: they say the same thing about the chain, and a
+    run reaches either through one alias. (A plain sort would put `mainnet-rev2/` before `mainnet/`, `-`
+    sorting before `/`, which is why the id-less directories are ordered first explicitly.)
     """
     found = []
-    for path in sorted(ENV_DIR.glob("*/*.json")) + sorted(ANVIL_FIXTURES.glob("*.json")):
+    seen = set()
+    configs = sorted(ENV_DIR.glob("*/*.json"), key=lambda p: ("-" in p.parent.name, p))
+    for path in configs + sorted(ANVIL_FIXTURES.glob("*.json")):
         config = json.loads(path.read_text())
-        if "network" not in config:
+        if "network" not in config or path.stem in seen:
             continue
+        seen.add(path.stem)
         found.append((path.stem, config["network"]))
 
-    return sorted(found, key=lambda item: (item[1].get("environment") != "mainnet", item[0]))
+    return sorted(found, key=lambda item: (base_environment(item[1]) != "mainnet", item[0]))
+
+
+def base_environment(network: dict) -> str:
+    """The environment a config belongs to, whatever deployment id it carries: `testnet-rev2` is testnet."""
+    return network.get("environment", "").split("-", 1)[0]
 
 
 def rpc_url(network: dict) -> str:
@@ -113,7 +128,7 @@ def expected_tables() -> tuple[dict[str, str], dict[str, dict]]:
 
 def render(rpc: dict[str, str], etherscan: dict[str, dict]) -> tuple[str, str]:
     """The body of each table, without its header, matching how the file is grouped by hand."""
-    by_env = {name: net.get("environment") for name, net in networks()}
+    by_env = {name: base_environment(net) for name, net in networks()}
 
     def grouped(names, line):
         out = []

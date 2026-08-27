@@ -3,7 +3,7 @@
 Seeding a deployment with something to exercise. Run everything from the repository root.
 
 Networks are named, not URLs: `--rpc-url local-a` resolves through `foundry.toml` `[rpc_endpoints]`, and the
-script reads `env/anvil/local-a.json` because that config names the chain id the RPC answers with.
+script reads `env/anvil-<id>/local-a.json` because that config names the chain id the RPC answers with.
 
 The base branch's only chains are the local pair `script/anvil/anvil.sh` brings up, which need no secrets.
 Running this against a chain that outlives the process is done from `live`, where those configs are.

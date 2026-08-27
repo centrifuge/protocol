@@ -26,11 +26,24 @@ library GraphQLConstants {
 
 struct NetworkConfig {
     uint256 chainId;
+    // The directory this config sits in, restated: `testnet`, or `testnet-rev2` for a second deployment of
+    // the same chains beside the first. `deploymentId` below is the part after the first `-`, and
+    // `baseEnvironment()` the part before it — the two are derived from this one string, never stated apart
     string environment;
     string name;
     uint16 centrifugeId;
     address protocolAdmin;
     address opsAdmin;
+    // Account whose namespace in the DeployGate the deployment lives in, which every address on this chain
+    // derives from alongside the salt. Mandatory: it can never be replaced, and a run that guessed it
+    // wrong would deploy a whole protocol at addresses nobody meant. It is not the protocol admin — the
+    // two answer different questions, and a chain is free to point them at different accounts
+    address namespace;
+    // Which deployment this is, among the several one namespace could put on this chain. Derived from
+    // `environment`, never parsed: empty for the canonical one, and folded into every version otherwise, so
+    // two deployments under two ids occupy two disjoint sets of addresses. Mainnet is no exception — the
+    // canonical deployment there is the id-less one, but nothing here keeps a rev off it
+    string deploymentId;
     uint8 batchLimit;
     // `.network.baseRpcUrl` is deliberately not here: the RPC URL a script connects with comes from
     // foundry.toml's [rpc_endpoints], which check_foundry_networks.py derives from that field. Parsing it
@@ -101,23 +114,80 @@ library Chains {
     ///
     /// @dev    One per `.network.environment`, plus the fixtures describing the local chains
     ///         `script/anvil/anvil.sh` brings up — those are checked in beside the script that uses them
-    ///         and copied into `env/anvil/` for a run, so both places hold configs and the copy wins.
+    ///         and copied into `env/anvil-<id>/` for a run, so both places hold configs and the copy wins.
+    ///         Which base names a directory may carry is `environments()`.
+    function configRoots() internal view returns (string[] memory roots) {
+        Vm.DirEntry[] memory entries = entriesOf("env/");
+
+        uint256 found;
+        string[] memory all = new string[](entries.length + 1);
+        for (uint256 i; i < entries.length; i++) {
+            if (!entries[i].isDir) continue;
+
+            string memory dir = vm.replace(entries[i].path, string.concat(vm.projectRoot(), "/"), "");
+            // `env/spell/` is the executed-spell archive, not an environment
+            if (!isEnvironment(baseEnvironmentOf(_basename(dir)))) continue;
+
+            all[found++] = string.concat(dir, "/");
+        }
+
+        all[found++] = FIXTURE_ROOT;
+
+        roots = new string[](found);
+        for (uint256 i; i < found; i++) {
+            roots[i] = all[i];
+        }
+    }
+
+    /// @notice The environments a directory under `env/` may be named after, before its deployment id.
     ///
-    ///         `mainnet` and `testnet` are populated only on the `live` branch: those deployments are made
+    /// @dev    `mainnet` and `testnet` are populated only on the `live` branch: those deployments are made
     ///         from there, and their configs live with them. They are listed here regardless, because what
     ///         a config *is* belongs to the schema and which directories carry one is the branch's
-    ///         business — a reader that only knew the environments its own branch deploys to would be a
-    ///         reader `live` has to change to use.
-    function configRoots() internal pure returns (string[] memory roots) {
-        roots = new string[](4);
-        roots[0] = "env/mainnet/";
-        roots[1] = "env/testnet/";
-        roots[2] = "env/anvil/";
-        roots[3] = "script/anvil/env/";
+    ///         business. Validating against the list is what keeps a typo — `env/tesnet-rev2/` — from
+    ///         quietly becoming an environment of its own: `configRoots()` leaves such a directory out, and
+    ///         `ChainConfigDirectoryTest` is what turns one that is checked in into a failure.
+    function environments() internal pure returns (string[] memory names) {
+        names = new string[](3);
+        names[0] = "mainnet";
+        names[1] = "testnet";
+        names[2] = FIXTURE_ENVIRONMENT;
+    }
+
+    /// @notice Whether a base environment is one `environments()` lists
+    function isEnvironment(string memory base) internal pure returns (bool) {
+        string[] memory names = environments();
+        for (uint256 i; i < names.length; i++) {
+            if (keccak256(bytes(names[i])) == keccak256(bytes(base))) return true;
+        }
+        return false;
+    }
+
+    function _slice(string memory value, uint256 from, uint256 to) private pure returns (string memory) {
+        bytes memory raw = bytes(value);
+        bytes memory out = new bytes(to - from);
+        for (uint256 i; i < out.length; i++) {
+            out[i] = raw[from + i];
+        }
+        return string(out);
+    }
+
+    /// @dev Last path segment, the directory's own name
+    function _basename(string memory path) private pure returns (string memory) {
+        string[] memory parts = vm.split(path, "/");
+        return parts[parts.length - 1];
     }
 
     /// @dev What `vm.indexOf` answers when the key is not in the string
     uint256 private constant NOT_FOUND = type(uint256).max;
+
+    /// @dev The local chains' fixtures, the one config root that is not an environment directory: they are
+    ///      the template `anvil.sh` copies into `env/anvil-<id>/` for a run, so they are read when no run
+    ///      has copied them yet and shadowed by the copy when one has
+    string internal constant FIXTURE_ROOT = "script/anvil/env/";
+
+    /// @dev The environment the fixtures declare, and the base of the one a local run's copies declare
+    string internal constant FIXTURE_ENVIRONMENT = "anvil";
 
     /// @notice Loads the config of the chain the run is pointed at, resolved by chain id: every network
     ///         config names its chainId and they are unique, so `--rpc-url <network>` is the only input a
@@ -130,7 +200,29 @@ library Chains {
     ///         own. (`pathOf` probes by reading, so the winning file is read twice end to end — measured at
     ///         well under a percent of the gas limit across a full deployer walk, and left that way.)
     function jsonOf(string memory network) internal view returns (string memory) {
-        return vm.readFile(pathOf(network));
+        string memory path = pathOf(network);
+        string memory json = vm.readFile(path);
+
+        _assertDirectoryRestatesTheEnvironment(path, json);
+
+        return json;
+    }
+
+    /// @dev A config's `.network.environment` names the directory it sits in, deployment id and all, so the
+    ///      two can be checked against each other on every read — which is the whole point of stating it
+    ///      twice. Renaming a directory without editing the field, or copying a rev without editing it,
+    ///      would otherwise move every address the chain deploys to and say nothing. The fixtures are
+    ///      exempt: they are a template, not a deployment, and live outside `env/` for that reason.
+    function _assertDirectoryRestatesTheEnvironment(string memory path, string memory json) private pure {
+        if (vm.indexOf(path, FIXTURE_ROOT) == 0) return;
+
+        string memory environment = vm.parseJsonString(json, ".network.environment");
+        string memory expected = string.concat("env/", environment, "/");
+
+        require(
+            vm.indexOf(path, expected) == 0,
+            string.concat("Config at ", path, " says it belongs to environment ", environment)
+        );
     }
 
     /// @notice Where a network's config lives, which is `env/<environment>/<network>.json` — the directory
@@ -146,16 +238,22 @@ library Chains {
         // first hit is only taken after the remaining roots are checked, because a name present in two
         // environments would otherwise silently answer with the wrong chain's admins and addresses —
         // `detect()` warns that exact mistake does not fail. The one sanctioned shadow is a local run's
-        // copy in env/anvil/ over the fixture it was copied from, which are two files describing one chain.
+        // copy in env/anvil-<id>/ over the fixture it was copied from, which are two files describing one chain.
         string memory found;
+        string memory scope = _scope();
         string[] memory roots = configRoots();
         for (uint256 i; i < roots.length; i++) {
+            if (!_inScope(roots[i], scope)) continue;
+
             string memory nested = string.concat(roots[i], network, ".json");
             if (!_readable(nested)) continue;
 
             if (bytes(found).length == 0) {
                 found = nested;
-            } else if (!_isAnvilShadow(found, nested)) {
+            } else if (_isFixtureShadow(found, nested)) {
+                // The run's own copy answers, never the template it came from, whichever was seen first
+                if (vm.indexOf(found, FIXTURE_ROOT) == 0) found = nested;
+            } else {
                 revert(string.concat("Ambiguous network name ", network, ": ", found, " and ", nested));
             }
         }
@@ -164,10 +262,52 @@ library Chains {
         revert(string.concat("No env config named ", network, ": expected env/<environment>/", network, ".json"));
     }
 
-    /// @dev Whether two hits for one name are the sanctioned pair: the run's copy under env/anvil/ and the
-    ///      fixture under script/anvil/env/ it was copied from. Root order fixes which is which.
-    function _isAnvilShadow(string memory first, string memory second) private pure returns (bool) {
-        return vm.indexOf(first, "env/anvil/") == 0 && vm.indexOf(second, "script/anvil/env/") == 0;
+    /// @dev The one root a run is confined to, or nothing. `DEPLOY_ENVIRONMENT` is what a run says when a
+    ///      chain is described more than once — `env/testnet/` beside `env/testnet-rev2/` — and needs to
+    ///      name which of the two it means. Unset until that happens. Read and checked once per walk, not
+    ///      once per root.
+    ///
+    ///      A value naming no directory under `env/` is refused rather than left to filter every root out —
+    ///      the run would otherwise fail on "no config for this chain" with the cause sitting in the
+    ///      environment. (Named `DEPLOY_ENVIRONMENT` and not `ENVIRONMENT` for the same reason: the shorter
+    ///      one is what shells and CI runners export for their own purposes, and it would trip this.)
+    function _scope() private view returns (string memory) {
+        string memory only = vm.envOr("DEPLOY_ENVIRONMENT", string(""));
+        if (bytes(only).length == 0) return "";
+
+        string memory scope = string.concat("env/", only, "/");
+        require(
+            isEnvironment(baseEnvironmentOf(only)) && entriesOf(scope).length > 0,
+            string.concat("DEPLOY_ENVIRONMENT=", only, " names no directory under env/: unset it, or point it at one")
+        );
+        return scope;
+    }
+
+    /// @dev Whether a root is in the scope `_scope()` answered. The fixtures stay in scope either way: they
+    ///      are the template a local run's copy shadows
+    function _inScope(string memory root, string memory scope) private pure returns (bool) {
+        if (bytes(scope).length == 0 || vm.indexOf(root, FIXTURE_ROOT) == 0) return true;
+        return vm.indexOf(root, scope) == 0;
+    }
+
+    /// @dev Whether two hits for one name are the sanctioned pair: a run's copy under `env/anvil-<id>/` and
+    ///      the fixture under `script/anvil/env/` it was copied from, in either order — `configRoots()`
+    ///      lists the directories as the filesystem hands them over, so neither comes first reliably. Only
+    ///      a local run's directory may shadow a fixture: a config of the same name under any other
+    ///      environment is a real collision, and is reported as one.
+    function _isFixtureShadow(string memory first, string memory second) private pure returns (bool) {
+        if (vm.indexOf(first, FIXTURE_ROOT) == 0) return _isLocalRun(second);
+        if (vm.indexOf(second, FIXTURE_ROOT) == 0) return _isLocalRun(first);
+        return false;
+    }
+
+    /// @dev Whether a config path sits in a local run's directory, `env/anvil-<id>/<network>.json`: the
+    ///      environment the fixtures declare, whatever id the run added to it
+    function _isLocalRun(string memory path) private pure returns (bool) {
+        string[] memory parts = vm.split(path, "/");
+        if (parts.length < 3 || keccak256(bytes(parts[0])) != keccak256("env")) return false;
+
+        return keccak256(bytes(baseEnvironmentOf(parts[1]))) == keccak256(bytes(FIXTURE_ENVIRONMENT));
     }
 
     /// @notice Where an environment's connections file lives, beside the configs it connects.
@@ -194,7 +334,7 @@ library Chains {
         revert(string.concat("No connections file for environment ", environment));
     }
 
-    /// @notice What a config root holds, or nothing when the root is not there — `env/anvil/` exists only
+    /// @notice What a config root holds, or nothing when the root is not there — `env/anvil-<id>/` exists only
     ///         after a local run, and `env/testnet/` only on the branch that owns those deployments.
     function entriesOf(string memory root) internal view returns (Vm.DirEntry[] memory) {
         try vm.readDir(root) returns (Vm.DirEntry[] memory entries) {
@@ -222,7 +362,27 @@ library Chains {
     function parse(string memory json, string memory network) internal pure returns (ChainConfig memory config) {
         config.network = _parseNetworkConfig(json);
         config.network.name = network;
+        config.network.deploymentId = deploymentIdOf(config.network.environment);
         config.adapters = _parseAdaptersConfig(json);
+    }
+
+    /// @notice What an environment names beyond the base one: `testnet-rev2` is `rev2`, `testnet` is
+    ///         nothing. Split at the first `-`, so an id may hold as many as it likes.
+    function deploymentIdOf(string memory environment) internal pure returns (string memory) {
+        uint256 dash = vm.indexOf(environment, "-");
+        if (dash == NOT_FOUND) return "";
+
+        return _slice(environment, dash + 1, bytes(environment).length);
+    }
+
+    /// @notice The environment a deployment belongs to whatever id it carries: `testnet-rev2` is `testnet`.
+    ///         What decides policy — mainnet is mainnet however many deployments it holds — while the whole
+    ///         string decides where the config lives.
+    function baseEnvironmentOf(string memory environment) internal pure returns (string memory) {
+        uint256 dash = vm.indexOf(environment, "-");
+        if (dash == NOT_FOUND) return environment;
+
+        return _slice(environment, 0, dash);
     }
 
     /// @notice The `Root` a config records under `.contracts`, or zero where it records none.
@@ -236,7 +396,7 @@ library Chains {
     }
 
     /// @notice The network name `block.chainid` belongs to. Walks every root `configRoots()` names — so a
-    ///         local run's copies under env/anvil/ and the fixtures they came from are both reachable — and
+    ///         local run's copies under env/anvil-<id>/ and the fixtures they came from are both reachable — and
     ///         skips anything that is not a network config (the connections files carry no chainId).
     ///
     /// @dev    There is deliberately no override: the chain the RPC points at is the single source of truth,
@@ -247,8 +407,14 @@ library Chains {
         // readDir answers with absolute paths; everything below reasons relative to the project root
         string memory root = string.concat(vm.projectRoot(), "/");
 
+        string memory name;
+        string memory foundAt;
+
+        string memory scope = _scope();
         string[] memory roots = configRoots();
         for (uint256 r; r < roots.length; r++) {
+            if (!_inScope(roots[r], scope)) continue;
+
             Vm.DirEntry[] memory entries = entriesOf(roots[r]);
             for (uint256 i; i < entries.length; i++) {
                 if (entries[i].isDir) continue;
@@ -262,16 +428,38 @@ library Chains {
 
                 // The directory a config sits in restates its own `.network.environment`, so the name is
                 // just the file: `sepolia`, whether it is filed under testnet/ or copied in as a fixture
-                return vm.replace(vm.replace(path, roots[r], ""), ".json", "");
+                string memory here = vm.replace(vm.replace(path, roots[r], ""), ".json", "");
+
+                // A second answer is not a tie to break: one of them is a deployment the run did not mean,
+                // and picking either silently is how a rev gets deployed over. The fixtures are the one
+                // sanctioned pair, being the template a run's own copy came from
+                if (bytes(foundAt).length != 0 && !_isFixtureShadow(foundAt, path)) {
+                    revert(
+                        string.concat(
+                            "Chain ",
+                            vm.toString(block.chainid),
+                            " is described by ",
+                            foundAt,
+                            " and ",
+                            path,
+                            ": pass DEPLOY_ENVIRONMENT=<environment> to say which deployment this run is for"
+                        )
+                    );
+                }
+
+                if (bytes(foundAt).length == 0) (name, foundAt) = (here, path);
             }
         }
+
+        if (bytes(foundAt).length != 0) return name;
 
         revert(
             string.concat(
                 "No env config for chain ",
                 vm.toString(block.chainid),
                 ": add env/<environment>/<network>.json naming that chainId (the environment must be one",
-                " configRoots() lists), and point --rpc-url at it"
+                " environments() lists), and point --rpc-url at it. A set DEPLOY_ENVIRONMENT confines the search to",
+                " that one directory"
             )
         );
     }
@@ -291,6 +479,7 @@ library Chains {
         config.centrifugeId = uint16(vm.parseJsonUint(json, ".network.centrifugeId"));
         config.protocolAdmin = vm.parseJsonAddress(json, ".network.protocolAdmin");
         config.opsAdmin = vm.parseJsonAddress(json, ".network.opsAdmin");
+        config.namespace = vm.parseJsonAddress(json, ".network.namespace");
 
         try vm.parseJsonUint(json, ".network.batchLimit") returns (uint256 val) {
             config.batchLimit = uint8(val);
@@ -561,7 +750,7 @@ library NetworkConfigLib {
     }
 
     function isMainnet(NetworkConfig memory config) internal pure returns (bool) {
-        return keccak256(bytes(config.environment)) == keccak256("mainnet");
+        return keccak256(bytes(Chains.baseEnvironmentOf(config.environment))) == keccak256("mainnet");
     }
 
     /// @dev Live-branch consumer only (see `GraphQLConstants`)
