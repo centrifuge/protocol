@@ -20,6 +20,7 @@ QueueManager --> ISpoke
 QueueManager --> ISnapshotQueue
 ShareManager -up-|> IManagerCallFromHub
 ShareManager --> ISpoke
+ShareManager --> ISpokeRegistry
 Envoy --> IManagerCallFromHub
 
 OnchainPMFactory ..> "n" OnchainPM : deploys

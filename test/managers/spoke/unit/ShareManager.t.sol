@@ -73,10 +73,22 @@ contract ShareManagerFromHubFailureTests is ShareManagerTest {
         vm.prank(envoy);
         manager.fromHub(POOL_A, abi.encode(uint8(99), SC_1, CastLib.toBytes32(investor), uint128(1)));
     }
+
+    function testEmptyAmount(uint8 kind) public {
+        vm.assume(kind <= uint8(type(IShareManager.ManagerCall).max));
+
+        vm.expectRevert(IShareManager.EmptyAmount.selector);
+        vm.prank(envoy);
+        manager.fromHub(POOL_A, _payload(IShareManager.ManagerCall(kind), SC_1, investor, 0));
+    }
 }
 
 contract ShareManagerIssueTests is ShareManagerTest {
     function testIssue(uint64 poolId, uint128 shares) public {
+        shares = uint128(bound(shares, 1, type(uint128).max));
+
+        vm.expectEmit();
+        emit IShareManager.Issue(PoolId.wrap(poolId), SC_1, investor, shares);
         vm.expectCall(
             address(spoke), abi.encodeWithSelector(ISpoke.issue.selector, PoolId.wrap(poolId), SC_1, investor, shares)
         );
@@ -88,15 +100,17 @@ contract ShareManagerIssueTests is ShareManagerTest {
 
 contract ShareManagerRevokeTests is ShareManagerTest {
     function testRevoke(uint128 shares) public {
+        shares = uint128(bound(shares, 1, type(uint128).max));
+
+        vm.expectEmit();
+        emit IShareManager.Revoke(POOL_A, SC_1, investor, shares);
         vm.expectCall(
             address(spoke),
             abi.encodeWithSelector(
                 ISpoke.transferSharesFrom.selector, POOL_A, SC_1, investor, investor, address(manager), uint256(shares)
             )
         );
-        vm.expectCall(
-            address(share), abi.encodeWithSelector(IERC20.approve.selector, address(spoke), type(uint256).max)
-        );
+        vm.expectCall(address(share), abi.encodeWithSelector(IERC20.approve.selector, address(spoke), uint256(shares)));
         vm.expectCall(address(spoke), abi.encodeWithSelector(ISpoke.revoke.selector, POOL_A, SC_1, shares));
 
         vm.prank(envoy);

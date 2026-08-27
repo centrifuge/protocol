@@ -38,17 +38,22 @@ contract ShareManager is IShareManager {
         (uint8 kindValue, ShareClassId scId, bytes32 accountAddress, uint128 shares) =
             abi.decode(payload, (uint8, ShareClassId, bytes32, uint128));
         require(kindValue <= uint8(type(ManagerCall).max), UnknownManagerCall());
+        require(shares != 0, EmptyAmount());
         address account = accountAddress.toAddress();
 
         ManagerCall kind = ManagerCall(kindValue);
         if (kind == ManagerCall.Issue) {
             spoke.issue(poolId, scId, account, shares);
+
+            emit Issue(poolId, scId, account, shares);
         } else if (kind == ManagerCall.Revoke) {
             address token = address(spokeRegistry.shareToken(poolId, scId));
 
             spoke.transferSharesFrom(poolId, scId, account, account, address(this), shares);
-            SafeTransferLib.safeApprove(token, address(spoke), type(uint256).max);
+            SafeTransferLib.safeApprove(token, address(spoke), shares);
             spoke.revoke(poolId, scId, shares);
+
+            emit Revoke(poolId, scId, account, shares);
         }
     }
 }

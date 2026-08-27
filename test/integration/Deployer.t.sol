@@ -615,6 +615,9 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(shareManager.envoy()), address(envoy));
         assertEq(address(shareManager.spoke()), address(spoke));
         assertEq(address(shareManager.spokeRegistry()), address(spokeRegistry));
+
+        // root endorsements
+        assertEq(root.endorsed(address(shareManager)), true);
     }
 
     function testQueueManager() public view {
@@ -1255,6 +1258,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
         assertFalse(root.endorsed(address(spoke)), "spoke endorsed");
         assertFalse(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
+        assertFalse(root.endorsed(address(shareManager)), "shareManager endorsed");
     }
 
     /// @dev What the batchers left, done under a ward governance grants through the ordinary timelock
@@ -1275,6 +1279,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
+        assertTrue(root.endorsed(address(shareManager)), "shareManager endorsed");
 
         // And it gives the ward back, as the batchers do
         assertTrue(rootFixes.done());

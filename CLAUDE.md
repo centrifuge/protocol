@@ -82,6 +82,7 @@ src/
 │   │   └── AdapterFailover.sol # Per-pool steward timelock for proposing new adapter sets
 │   └── spoke/
 │       ├── QueueManager.sol # Queue automation
+│       ├── ShareManager.sol # Hub-driven share issuance & revocation
 │       ├── OnOffRamp.sol    # On/off-ramp with accounting token support
 │       ├── AccountingToken.sol # ERC-6909 tracking in-flight requests/liabilities
 │       ├── FlashLoanHelper.sol # Aave V3 flash loan bridge for OnchainPM

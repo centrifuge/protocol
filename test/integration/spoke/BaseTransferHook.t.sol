@@ -250,13 +250,14 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         vm.assume(
             notEndorsed != address(spoke) && notEndorsed != address(asyncRequestManager)
                 && notEndorsed != address(vaultRouter) && notEndorsed != address(tokenBridge)
-                && notEndorsed != poolEscrow
+                && notEndorsed != address(shareManager) && notEndorsed != poolEscrow
         );
 
         assertTrue(root.endorsed(address(spoke)), "spoke must be endorsed");
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager must be endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter must be endorsed");
         assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge must be endorsed");
+        assertTrue(root.endorsed(address(shareManager)), "shareManager must be endorsed");
 
         assertFalse(root.endorsed(poolEscrow));
         assertFalse(root.endorsed(notEndorsed));

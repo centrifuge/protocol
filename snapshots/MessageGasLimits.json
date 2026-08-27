@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1787821953,
+  "BENCHMARKING_RUN_ID": 1787823755,
   "scheduleUpgrade": 137119,
   "cancelUpgrade": 117612,
   "registerAsset": 144115,
@@ -22,7 +22,7 @@
   "updateAssets": 367025,
   "updateShares": 240346,
   "updateManager": 153827,
-  "managerCallFromHub": 351469,
+  "managerCallFromHub": 354129,
   "managerCallFromSpoke": 126429,
   "authorizeSpokeCall": 159741,
   "unauthorizeSpokeCall": 137402

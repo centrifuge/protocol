@@ -390,6 +390,12 @@ contract NonCoreActionBatcher {
             report.core.root.endorse(address(report.asyncRequestManager));
             report.core.root.endorse(address(report.vaultRouter));
             report.core.root.endorse(address(report.tokenBridge));
+            // The ShareManager needs it to pull shares on the revoke path, and it is safe to grant: its only
+            // entrypoint is the envoy-gated `fromHub`, so every call matured through the hub policy, and it
+            // holds nothing between calls. What it cannot do is give the endorsement back for a stray token:
+            // `fromHub` carries only a `poolId`, so the contract has no way to tell which pool an arbitrary
+            // token belongs to, and anything sent here needs administrative recovery instead
+            report.core.root.endorse(address(report.shareManager));
         }
 
         // Revoke batcher permissions
