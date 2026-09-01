@@ -33,6 +33,12 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
     uint48 constant POLICY_DELAY = 1 days;
     uint48 constant POLICY_EXPIRY = 7 days;
     uint48 constant POLICY_ESCALATION = 7 days;
+    uint128 constant POLICY_PRICE_CAP = 5e17; // absolute per-update
+    uint128 constant POLICY_PRICE_RATE = 1e15; // per second
+
+    // `IHub.updateSharePrice` is overloaded; this is the no-timestamp one, whose calldata (and so authId)
+    // is stable across the authorization delay.
+    bytes4 constant UPDATE_SHARE_PRICE = bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128)"));
 
     address immutable operator = makeAddr("operator");
     address immutable mockUpdater = makeAddr("mockUpdater");
@@ -441,6 +447,79 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.prank(address(hub));
         guarded.enforce(POOL_A, FM, badCall);
         assertEq(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, badCall)), 0, "authorization consumed");
+    }
+
+    // ─── share-price guard ─────────────────────────────────────────────────────
+
+    function _priceGuardedPolicy() internal returns (StdHubPolicy) {
+        return StdHubPolicy(
+            address(
+                policyFactory.newHubPolicy(
+                    IStdHubPolicy.Config({
+                        delay: POLICY_DELAY,
+                        expiry: POLICY_EXPIRY,
+                        escalation: POLICY_ESCALATION,
+                        maxAbsolutePriceDelta: POLICY_PRICE_CAP,
+                        thresholdPerSecond: POLICY_PRICE_RATE,
+                        maxBrmPriceDeviation: type(uint128).max,
+                        onchainAccounting: false,
+                        navManager: address(0),
+                        simplePriceManager: address(0),
+                        requestManager: address(batchRequestManager),
+                        bridgingHook: address(0),
+                        oracleValuation: address(0),
+                        allowlist: new IStdHubPolicy.Entry[](0)
+                    })
+                )
+            )
+        );
+    }
+
+    /// @notice A share class's price slot starts fully uninitialized, so a first computed price of 0 is a
+    ///         no-op against the stored price while still being a real commit. Against the live
+    ///         ShareClassManager this asserts both halves of the invariant the mocked unit test cannot:
+    ///         the Hub really wrote the zero price (`computedAt` moves off zero) AND the policy anchored
+    ///         its baseline on it, so the recovery move off zero is guarded rather than inheriting the
+    ///         unguarded first-update slot. Recovery is then the ordinary authorize -> mature -> execute path.
+    function testZeroFirstSharePriceCommitsAndAnchorsBaseline() public {
+        StdHubPolicy guarded = _priceGuardedPolicy();
+        vm.prank(address(root));
+        hub.setPolicy(POOL_A, guarded);
+
+        // Nothing committed and no baseline: the price slot really is (0, 0).
+        (D18 price, uint64 computedAt) = shareClassManager.pricePoolPerShare(POOL_A, SC_1);
+        assertEq(price.raw(), 0, "price slot uninitialized");
+        assertEq(computedAt, 0, "computedAt slot uninitialized");
+        assertEq(guarded.lastPriceUpdate(POOL_A, SC_1), 0, "no baseline yet");
+
+        // The first update is in policy. Committing 0 leaves `price` untouched but moves `computedAt` off
+        // zero, so the Hub did commit it, and the policy must anchor on it anyway.
+        vm.prank(FM);
+        hub.updateSharePrice(POOL_A, SC_1, D18.wrap(0));
+        (price, computedAt) = shareClassManager.pricePoolPerShare(POOL_A, SC_1);
+        assertEq(price.raw(), 0, "zero price committed");
+        assertEq(computedAt, block.timestamp, "committed price is live: computedAt != 0");
+        assertEq(guarded.lastPriceUpdate(POOL_A, SC_1), block.timestamp, "baseline anchored on the no-op");
+
+        // A day on, the move off zero is bounded by the absolute cap (delta 1e18 >= 5e17) rather than
+        // waved through as the instance's first update.
+        skip(1 days);
+        bytes memory recovery = abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, D18.wrap(1e18));
+        assertEq(guarded.authorizationDelay(POOL_A, FM, recovery), POLICY_DELAY, "recovery is out of policy");
+        vm.prank(FM);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        hub.updateSharePrice(POOL_A, SC_1, D18.wrap(1e18));
+
+        // Authorized and matured, the same call goes through and re-anchors the baseline.
+        vm.prank(operator);
+        hub.initiateAuthorization(POOL_A, recovery);
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        hub.updateSharePrice(POOL_A, SC_1, D18.wrap(1e18));
+        (price,) = shareClassManager.pricePoolPerShare(POOL_A, SC_1);
+        assertEq(price.raw(), 1e18, "recovered off zero");
+        assertEq(guarded.lastPriceUpdate(POOL_A, SC_1), block.timestamp, "baseline re-anchored");
+        assertEq(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, recovery)), 0, "authorization consumed");
     }
 
     /// @notice A NAVManager admin action (`setNAVHook`) routed through `hub.managerCall` is out of policy

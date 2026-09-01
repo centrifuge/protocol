@@ -137,11 +137,17 @@ contract StdHubPolicy is IStdHubPolicy {
 
         // Anchor the share-price baseline to this executed update (never from authorize/cancel), so the
         // rate guard measures from actual price changes. Re-committing the committed price is not a move:
-        // leaving the baseline alone stops no-op recomputes from tightening the guard.
+        // leaving the baseline alone stops no-op recomputes from tightening the guard. The very first
+        // executed update always anchors, even when it re-commits the stored price, so the unguarded first
+        // update can't be spent on a no-op (a fresh share class reads back 0) and leave the guard unarmed.
+        // On a policy change someone can permissionlessly commit the current price (NAVManager.updateHoldingValue
+        // is open), anchoring the baseline at that block and narrowing the accepted deviation for the next move.
         if (_isSharePriceUpdate(selector)) {
             (, ShareClassId scId, D18 newPrice) = abi.decode(payload[:96], (PoolId, ShareClassId, D18));
             (D18 lastPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
-            if (newPrice.raw() != lastPrice.raw()) lastPriceUpdate[poolId][scId] = uint64(block.timestamp);
+            if (newPrice.raw() != lastPrice.raw() || lastPriceUpdate[poolId][scId] == 0) {
+                lastPriceUpdate[poolId][scId] = uint64(block.timestamp);
+            }
         }
     }
 
@@ -332,8 +338,10 @@ contract StdHubPolicy is IStdHubPolicy {
 
     /// @dev Out of policy if the single move exceeds `maxAbsolutePriceDelta` or the move/second since the
     ///      last executed update exceeds `thresholdPerSecond` (same-block updates are forced out of policy
-    ///      to stop chunking). First update per share class is unguarded, as is a re-commit of the
-    ///      committed price (no move to bound); `computedAt` is ignored.
+    ///      to stop chunking). First update per share class under this policy instance is unguarded, as is
+    ///      a re-commit of the committed price (no move to bound); `computedAt` is ignored. {enforce}
+    ///      anchors the baseline on that first update either way, so the unguarded slot is spent once and
+    ///      not by a no-op.
     function _checkSharePrice(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
         if (thresholdPerSecond == 0 && maxAbsolutePriceDelta == 0) return 0;
 

@@ -555,6 +555,51 @@ contract StdHubPolicyTest is Test {
         assertEq(policy.authorizationDelay(POOL_A, manager, _priceCallWithTimestamp(1e18)), 0);
     }
 
+    function testZeroFirstPriceUpdateAnchorsBaseline() public {
+        // A fresh share class reads back price 0, so committing a computed 0 PPS is a no-op against the
+        // uninitialized slot. It is still the executed first update, so it must anchor the baseline.
+        _mockCommittedPrice(0);
+        vm.prank(address(hub));
+        policy.enforce(POOL_A, manager, _priceCallWithTimestamp(0));
+        assertEq(policy.lastPriceUpdate(POOL_A, SC_A), block.timestamp);
+
+        // With the baseline armed the move off zero is bounded like any other. Skip past the same-block
+        // rule so it is the absolute cap (delta 100e18 >= CAP) doing the classifying, not `elapsed == 0`.
+        skip(1e9);
+        bytes memory recovery = _priceCallWithTimestamp(100e18);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        policy.enforce(POOL_A, manager, recovery);
+
+        // Being guarded is not a dead end: the pool recovers off zero through authorize -> mature -> execute,
+        // and that executed move re-anchors the baseline.
+        hubRegistry.initiateAuthorization(POOL_A, manager, recovery);
+        skip(DELAY);
+        vm.prank(address(hub));
+        policy.enforce(POOL_A, manager, recovery);
+        assertEq(policy.lastPriceUpdate(POOL_A, SC_A), block.timestamp);
+    }
+
+    function testFirstPriceUpdateOnFreshPolicyAnchorsEvenOnNoOp() public {
+        // A replacement policy starts with no baseline while the pool's committed price survives in the
+        // share class manager. Its first executed update can be a no-op recommit; it must still anchor, so
+        // the next real move is guarded instead of inheriting the unguarded first-update slot. Deployed
+        // directly rather than through the factory so it is a second instance of the very same config.
+        StdHubPolicy fresh = new StdHubPolicy(hub, multiAdapter, scm, _config(CAP, RATE, false, address(0), address(0)));
+        hubRegistry.setPolicy(POOL_A, fresh);
+        _mockCommittedPrice(1e18);
+
+        vm.prank(address(hub));
+        fresh.enforce(POOL_A, manager, _priceCallWithTimestamp(1e18));
+        assertEq(fresh.lastPriceUpdate(POOL_A, SC_A), block.timestamp);
+
+        // delta 1e18 >= CAP (5e17): out of policy despite the generous elapsed time.
+        skip(1e9);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        fresh.enforce(POOL_A, manager, _priceCallWithTimestamp(2e18));
+    }
+
     function testRateGuardMeasuresFromLastActualMove() public {
         _baseline(1e18);
         skip(100);
@@ -1051,6 +1096,24 @@ contract StdHubPolicyTest is Test {
         skip(1);
         vm.prank(address(hub));
         policy_.enforce(POOL_A, PRICE, _priceCall(uint128(1e18 + uint256(RATE) * 101 - 1)));
+    }
+
+    function testOnchainPriceManagerZeroFirstUpdateAnchorsBaseline() public {
+        StdHubPolicy policy_ = _onchainPolicy();
+        hubRegistry.setPolicy(POOL_A, policy_);
+
+        // Zero NAV against nonzero issuance makes the SimplePriceManager compute a 0 PPS, matching the
+        // fresh share class's uninitialized price. The executed update must still anchor the baseline.
+        _mockCommittedPrice(0);
+        vm.prank(address(hub));
+        policy_.enforce(POOL_A, PRICE, _priceCall(0));
+        assertEq(policy_.lastPriceUpdate(POOL_A, SC_A), block.timestamp);
+
+        // Recovering off zero is a 100e18 move in the same block: out of policy, needs an authorization.
+        _mockCommittedPrice(0);
+        vm.expectRevert(IHubRegistry.Unauthorized.selector);
+        vm.prank(address(hub));
+        policy_.enforce(POOL_A, PRICE, _priceCall(100e18));
     }
 
     function testOnchainPriceManagerOutOfPolicyCanBePreauthorized() public {
