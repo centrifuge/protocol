@@ -108,7 +108,7 @@ contract GasService is IGasService {
         notifyPricePoolPerShare = _gasValue(177813);
         notifyPricePoolPerAsset = _gasValue(184348);
         notifyShareMetadata = _gasValue(199980);
-        initiateTransferShares = _gasValue(370002);
+        initiateTransferShares = _gasValue(370859);
         executeTransferShares = _gasValue(254802);
         updateRestriction = _gasValue(214546);
         managerCallFromHub = _gasValue(379129);
@@ -122,7 +122,7 @@ contract GasService is IGasService {
         unauthorizeSpokeCall = _gasValue(162402);
         updateManager = _gasValue(178827);
         updateAssets = _gasValue(392025);
-        updateShares = _gasValue(265346);
+        updateShares = _gasValue(265719);
         managerCallFromSpoke = _gasValue(151429);
     }
 

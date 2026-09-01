@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
-import {IShareClassManager, ShareClassMetadata, Price, IssuancePerNetwork} from "./interfaces/IShareClassManager.sol";
+import {IShareClassManager, ShareClassMetadata, Price, IssuanceCounters} from "./interfaces/IShareClassManager.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -18,10 +18,11 @@ contract ShareClassManager is Auth, IShareClassManager {
     mapping(bytes32 salt => bool) public salts;
     mapping(PoolId => uint32) public shareClassCount;
     mapping(PoolId => mapping(ShareClassId => bool)) public shareClassIds;
-    mapping(PoolId => mapping(ShareClassId => uint128)) public totalIssuance;
     mapping(PoolId => mapping(ShareClassId => Price)) public pricePoolPerShare;
+    mapping(PoolId => mapping(ShareClassId => uint32)) public negativeNetworkCount;
     mapping(PoolId => mapping(ShareClassId => ShareClassMetadata)) public metadata;
-    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => IssuancePerNetwork))) public
+    mapping(PoolId => mapping(ShareClassId => IssuanceCounters)) public issuanceAcrossNetworks;
+    mapping(PoolId => mapping(ShareClassId => mapping(uint16 centrifugeId => IssuanceCounters))) public
         issuancePerNetwork;
 
     constructor(IHubRegistry hubRegistry_, address deployer) Auth(deployer) {
@@ -90,18 +91,21 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        IssuancePerNetwork storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
+        IssuanceCounters storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
+        IssuanceCounters storage total = issuanceAcrossNetworks[poolId][scId_];
+        bool wasNegative = ipn.revocations > ipn.issuances;
 
         if (isIssuance) {
             ipn.issuances += amount;
-            totalIssuance[poolId][scId_] += amount;
+            total.issuances += amount;
+            emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
         } else {
             ipn.revocations += amount;
-            totalIssuance[poolId][scId_] -= amount;
+            total.revocations += amount;
+            emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
         }
 
-        if (isIssuance) emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
-        else emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
+        _updateNegativeCount(poolId, scId_, centrifugeId, wasNegative, ipn.revocations > ipn.issuances);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -125,14 +129,37 @@ contract ShareClassManager is Auth, IShareClassManager {
 
     /// @inheritdoc IShareClassManager
     function issuance(PoolId poolId, ShareClassId scId_, uint16 centrifugeId) public view returns (uint128) {
-        IssuancePerNetwork storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
+        IssuanceCounters storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
         require(ipn.issuances >= ipn.revocations, NegativeIssuance());
         return ipn.issuances - ipn.revocations;
+    }
+
+    /// @inheritdoc IShareClassManager
+    function totalIssuance(PoolId poolId, ShareClassId scId_) public view returns (uint128) {
+        IssuanceCounters storage total = issuanceAcrossNetworks[poolId][scId_];
+        require(total.issuances >= total.revocations, NegativeIssuance());
+        return total.issuances - total.revocations;
     }
 
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
+
+    /// @dev Moves the count of networks that have revoked more than they have reported issuing, on a crossing
+    ///      in either direction; no-op otherwise. Every change to any network's counters comes through
+    ///      `updateShares`, so this is the one place a crossing can be seen.
+    function _updateNegativeCount(
+        PoolId poolId,
+        ShareClassId scId_,
+        uint16 centrifugeId,
+        bool wasNegative,
+        bool isNegative
+    ) internal {
+        if (wasNegative == isNegative) return;
+
+        uint32 count = isNegative ? ++negativeNetworkCount[poolId][scId_] : --negativeNetworkCount[poolId][scId_];
+        emit UpdateNegativeNetworkCount(poolId, scId_, centrifugeId, count);
+    }
 
     function _updateMetadata(PoolId poolId, ShareClassId scId_, string calldata name, string calldata symbol)
         internal

@@ -24,8 +24,8 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     bytes4 constant UPDATE_SHARE_PRICE = bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128)"));
 
     // Logical network IDs for NAV segregation — not actual deployed chains
-    uint16 constant CHAIN_CP = 5;
-    uint16 constant CHAIN_CV = 6;
+    uint16 constant NETWORK_A = 5;
+    uint16 constant NETWORK_B = 6;
 
     PoolId POOL_A;
     ShareClassId scId;
@@ -33,10 +33,10 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     address manager = makeAddr("manager");
     address FM = makeAddr("FM");
 
-    AssetId asset1 = newAssetId(CHAIN_CV, 1);
-    AssetId asset2 = newAssetId(CHAIN_CV, 2);
-    AssetId asset3 = newAssetId(CHAIN_CP, 1);
-    AssetId liabilityAsset = newAssetId(CHAIN_CP, 2);
+    AssetId asset1 = newAssetId(NETWORK_B, 1);
+    AssetId asset2 = newAssetId(NETWORK_B, 2);
+    AssetId asset3 = newAssetId(NETWORK_A, 1);
+    AssetId liabilityAsset = newAssetId(NETWORK_A, 2);
     // differing decimals to test conversion
     uint8 asset1Decimals = 6;
     uint8 asset2Decimals = 12;
@@ -100,8 +100,8 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
     }
 
     function _testInitializeAndUpdate() internal {
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CP));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), NETWORK_A));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), NETWORK_B));
 
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset2));
@@ -109,26 +109,26 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeLiability), scId, liabilityAsset));
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), true, false, 1);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset2, uint128(2300 * 10 ** asset2Decimals), true, false, 1);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
-        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 3300e18, true, true, 2);
+        hubHandler.updateShares(NETWORK_B, POOL_A, scId, 3300e18, true, true, 2);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_A, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
 
         vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, scId, d18(1, 1)));
         vm.prank(address(messageDispatcher));
-        hubHandler.updateShares(CHAIN_CP, POOL_A, scId, 500e18, true, true, 1);
+        hubHandler.updateShares(NETWORK_A, POOL_A, scId, 500e18, true, true, 1);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         assertEq(navHub, 500e18);
@@ -156,14 +156,14 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         );
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
         (bool spokeGainIsPositive, uint128 spokeGain) =
-            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
-        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+            accounting.accountValue(POOL_A, navManager.gainAccount(NETWORK_B));
+        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(NETWORK_A));
 
         assertEq(spokeGain, 100e18);
         assertTrue(spokeGainIsPositive);
@@ -217,13 +217,13 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
 
         vm.prank(address(root));
         hubHandler.initiateTransferShares{value: 0.1 ether}(
-            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32(0), bytes32("receiver"), sharesTransferred, 0, manager
+            NETWORK_A, NETWORK_B, POOL_A, scId, bytes32(0), bytes32("receiver"), sharesTransferred, 0, manager
         );
 
         (uint128 navHub2, uint128 issuanceHub, uint128 transferredInHub, uint128 transferredOutHub,,) =
-            simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+            simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
         (uint128 navSpoke2, uint128 issuanceSpoke, uint128 transferredInSpoke, uint128 transferredOutSpoke,,) =
-            simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+            simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV and issuance should remain unchanged until next onUpdate
@@ -238,15 +238,15 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         assertEq(globalIssuance, 3800e18);
 
         vm.prank(address(navManager));
-        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CP, 500e18);
+        simplePriceManager.onUpdate(POOL_A, scId, NETWORK_A, 500e18);
 
         vm.prank(address(navManager));
-        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CV, 3300e18);
+        simplePriceManager.onUpdate(POOL_A, scId, NETWORK_B, 3300e18);
 
         (navHub2, issuanceHub, transferredInHub, transferredOutHub,,) =
-            simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
+            simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
         (navSpoke2, issuanceSpoke, transferredInSpoke, transferredOutSpoke,,) =
-            simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+            simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         assertEq(issuanceHub, 370e18); // 500 - 130
@@ -270,12 +270,12 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         );
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, true, true, 2);
+        hubHandler.updateAssets(NETWORK_A, POOL_A, scId, liabilityAsset, 50e18, true, true, 2);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // Liability reduces the NAV
@@ -293,16 +293,16 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         // current average price (assetAmountValue / assetAmount). The liability is decreased in full
         // (50e18 of 50e18), so its value is fully released regardless of pro-rata math.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, liabilityAsset, 50e18, false, false, 3);
+        hubHandler.updateAssets(NETWORK_A, POOL_A, scId, liabilityAsset, 50e18, false, false, 3);
         // asset3 holds 500 units valued at 500e18 (average price 1:1). Removing 100 of 500 units takes
         // 100/500 = 1/5 of the value, i.e. 100e18, regardless of the asset's current spot price.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), false, true, 4);
+        hubHandler.updateAssets(NETWORK_A, POOL_A, scId, asset3, uint128(100 * 10 ** asset3Decimals), false, true, 4);
 
-        navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
-        (navHub2, issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CP);
-        (navSpoke2, issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (navHub2, issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (navSpoke2, issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         (globalNAV, globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // Liability fully released (+50e18) but asset3 lost 100e18 of pro-rata value: net -50e18 vs.
@@ -329,12 +329,12 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
         (bool spokeGainIsPositive, uint128 spokeGain) =
-            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
-        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+            accounting.accountValue(POOL_A, navManager.gainAccount(NETWORK_B));
+        (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(NETWORK_A));
         (bool spokeEquityIsPositive, uint128 spokeEquityBefore) =
-            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CV));
+            accounting.accountValue(POOL_A, navManager.equityAccount(NETWORK_B));
         (bool hubEquityIsPositive, uint128 hubEquityBefore) =
-            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CP));
+            accounting.accountValue(POOL_A, navManager.equityAccount(NETWORK_A));
 
         assertEq(spokeGain, 100e18);
         assertTrue(spokeGainIsPositive);
@@ -345,32 +345,32 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         assertEq(hubEquityBefore, 500e18);
         assertTrue(hubEquityIsPositive);
 
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), CHAIN_CV));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), NETWORK_B));
 
         (bool spokeGainIsPositiveAfter, uint128 spokeGainAfter) =
-            accounting.accountValue(POOL_A, navManager.gainAccount(CHAIN_CV));
+            accounting.accountValue(POOL_A, navManager.gainAccount(NETWORK_B));
         (bool spokeEquityIsPositiveAfter, uint128 spokeEquityAfter) =
-            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CV));
+            accounting.accountValue(POOL_A, navManager.equityAccount(NETWORK_B));
 
         assertEq(spokeGainAfter, 0);
         assertTrue(spokeGainIsPositiveAfter);
         assertEq(spokeEquityAfter, spokeEquityBefore + spokeGain);
         assertTrue(spokeEquityIsPositiveAfter);
 
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), CHAIN_CP));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.CloseGainLoss), NETWORK_A));
 
         (bool hubLossIsPositiveAfter, uint128 hubLossAfter) =
-            accounting.accountValue(POOL_A, navManager.lossAccount(CHAIN_CP));
+            accounting.accountValue(POOL_A, navManager.lossAccount(NETWORK_A));
         (bool hubEquityIsPositiveAfter, uint128 hubEquityAfter) =
-            accounting.accountValue(POOL_A, navManager.equityAccount(CHAIN_CP));
+            accounting.accountValue(POOL_A, navManager.equityAccount(NETWORK_A));
 
         assertEq(hubLossAfter, 0);
         assertTrue(hubLossIsPositiveAfter);
         assertEq(hubEquityAfter, hubEquityBefore - hubLoss);
         assertTrue(hubEquityIsPositiveAfter);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, CHAIN_CP);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, CHAIN_CV);
+        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
 
         assertEq(navHub, 250e18);
         assertEq(navSpoke, 3400e18);
@@ -382,20 +382,20 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         // calling SimplePriceManager.onUpdate causes ShareClassManager.issuance() to revert with NegativeIssuance.
         // This blocks NAV updates for the pool until submitQueuedShares with snapshot = true is called from the Spoke on the source network.
 
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CP));
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), NETWORK_A));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), NETWORK_B));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset3));
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CP, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_A, POOL_A, scId, asset3, uint128(500 * 10 ** asset3Decimals), true, false, 0);
 
         // Issue shares only to destination network to have some global issuance
         vm.prank(address(messageDispatcher));
-        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 200e18, true, true, 0);
+        hubHandler.updateShares(NETWORK_B, POOL_A, scId, 200e18, true, true, 0);
 
         vm.prank(address(root));
         hubHandler.initiateTransferShares{value: 0.1 ether}(
-            CHAIN_CP, CHAIN_CV, POOL_A, scId, bytes32(0), bytes32("receiver"), 100e18, 0, manager
+            NETWORK_A, NETWORK_B, POOL_A, scId, bytes32(0), bytes32("receiver"), 100e18, 0, manager
         );
 
         // issuance is -100 on source network after transfer
@@ -403,7 +403,7 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
 
         vm.expectRevert(abi.encodeWithSelector(IShareClassManager.NegativeIssuance.selector));
         vm.prank(address(navManager));
-        simplePriceManager.onUpdate(POOL_A, scId, CHAIN_CP, 500e18);
+        simplePriceManager.onUpdate(POOL_A, scId, NETWORK_A, 500e18);
     }
 }
 
@@ -414,32 +414,32 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
     function testDeficitFreezesAndResumesPrice() public {
         _testInitializeAndUpdate();
 
-        // Baseline: CHAIN_CV at 3300e18, no deficit.
-        (uint128 navBefore, uint128 issuanceBefore,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        // Baseline: NETWORK_B at 3300e18, no deficit.
+        (uint128 navBefore, uint128 issuanceBefore,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navBefore, 3300e18);
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 0);
+        assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 0);
 
         // Over-decrease asset1 by 1500: holding saturates at zero, network enters deficit; onSync must
         // skip, not revert.
         vm.expectEmit(true, true, true, true);
-        emit INAVManager.SkipSync(POOL_A, scId, CHAIN_CV, 1, 1);
+        emit INAVManager.SkipSync(POOL_A, scId, NETWORK_B, 1, 1);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), false, true, 3);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), false, true, 3);
 
         // Gate engaged: live NAV reflects the shortfall, but the published price is held.
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 1);
-        assertEq(navManager.netAssetValue(POOL_A, CHAIN_CV), 2300e18); // live: equity down 1000e18
-        (uint128 navDuring, uint128 issuanceDuring,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 1);
+        assertEq(navManager.netAssetValue(POOL_A, NETWORK_B), 2300e18); // live: equity down 1000e18
+        (uint128 navDuring, uint128 issuanceDuring,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navDuring, navBefore); // frozen at last good
         assertEq(issuanceDuring, issuanceBefore);
 
         // Refill asset1 by 1500: holding positive again, deficit clears, trailing snapshot resumes pricing.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
 
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 0);
-        (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 0);
+        (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navAfter, 3300e18); // 1000 - 1500 + 1500 = 1000 asset1 restored -> NAV back to 3300e18
         assertEq(issuanceAfter, issuanceBefore);
     }
@@ -533,7 +533,7 @@ contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
             hub.addShareClass(POOL_A, "Junior Share Class", "JSC", bytes32(bytes8(POOL_A.raw())) | bytes32(uint256(2)));
         valuation.setPrice(POOL_A, scId2, asset1, d18(1, 1));
 
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), NETWORK_B));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId2, asset1));
 
@@ -548,10 +548,10 @@ contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
         // Each class reports its own inflow, both journal into the shared account, so the pool-wide NAV
         // counts both. Snapshots stay open so the (single-class) price hook is not driven here.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId2, asset1, uint128(500 * 10 ** asset1Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId2, asset1, uint128(500 * 10 ** asset1Decimals), true, false, 0);
 
         // Assert the debit side too, not just the resulting NAV: the point of the reuse is that both inflows
         // land in one account, and a NAV that happened to be right over two separate accounts would not show it.
@@ -559,7 +559,7 @@ contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
         assertTrue(isPositive);
         assertEq(assetValue, 1500e18, "both inflows must sum in the one shared asset account");
 
-        assertEq(navManager.netAssetValue(POOL_A, CHAIN_CV), 1500e18, "junior inflow must count towards pool NAV");
+        assertEq(navManager.netAssetValue(POOL_A, NETWORK_B), 1500e18, "junior inflow must count towards pool NAV");
     }
 
     /// @dev The deficit gate covers the whole pool-network, so a junior over-decrease holds the senior sync
@@ -570,41 +570,41 @@ contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
             hub.addShareClass(POOL_A, "Junior Share Class", "JSC", bytes32(bytes8(POOL_A.raw())) | bytes32(uint256(2)));
         valuation.setPrice(POOL_A, scId2, asset1, d18(1, 1));
 
-        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), CHAIN_CV));
+        _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeNetwork), NETWORK_B));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId, asset1));
         _navManagerCall(abi.encode(uint8(INAVManager.ManagerCall.InitializeHolding), scId2, asset1));
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1000 * 10 ** asset1Decimals), true, false, 0);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId2, asset1, uint128(500 * 10 ** asset1Decimals), true, false, 0);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId2, asset1, uint128(500 * 10 ** asset1Decimals), true, false, 0);
 
         // A clean senior snapshot publishes the pool-wide NAV, which is the value the gate has to hold.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateShares(CHAIN_CV, POOL_A, scId, 1500e18, true, true, 1);
+        hubHandler.updateShares(NETWORK_B, POOL_A, scId, 1500e18, true, true, 1);
 
-        (uint128 navBefore,,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 navBefore,,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navBefore, 1500e18, "the clean senior sync publishes both classes' inflows");
 
         // Junior over-decreases: 800 out against 500 held, so 300 is carried and its amount saturates at zero.
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId2, asset1, uint128(800 * 10 ** asset1Decimals), false, false, 1);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId2, asset1, uint128(800 * 10 ** asset1Decimals), false, false, 1);
 
-        assertEq(holdings.deficitCount(POOL_A, scId2, CHAIN_CV), 1, "the deficit is reported under the junior");
-        assertEq(holdings.deficitCount(POOL_A, scId, CHAIN_CV), 0, "the senior's own count stays clean");
-        assertEq(holdings.networkDeficitCount(POOL_A, CHAIN_CV), 1, "the rollup carries it for the whole network");
+        assertEq(holdings.deficitCount(POOL_A, scId2, NETWORK_B), 1, "the deficit is reported under the junior");
+        assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 0, "the senior's own count stays clean");
+        assertEq(holdings.networkDeficitCount(POOL_A, NETWORK_B), 1, "the rollup carries it for the whole network");
 
         // The junior's 500 was journalled out of the shared account, so the live NAV is now misstated: the
         // senior's next snapshot would publish that, which is what the rollup gate holds back.
-        assertEq(navManager.netAssetValue(POOL_A, CHAIN_CV), 1000e18, "live NAV carries the junior's shortfall");
+        assertEq(navManager.netAssetValue(POOL_A, NETWORK_B), 1000e18, "live NAV carries the junior's shortfall");
 
         vm.expectEmit();
-        emit INAVManager.SkipSync(POOL_A, scId, CHAIN_CV, 0, 1);
+        emit INAVManager.SkipSync(POOL_A, scId, NETWORK_B, 0, 1);
         vm.prank(address(messageDispatcher));
-        hubHandler.updateAssets(CHAIN_CV, POOL_A, scId, asset1, uint128(1 * 10 ** asset1Decimals), true, true, 2);
+        hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1 * 10 ** asset1Decimals), true, true, 2);
 
-        (uint128 navAfter,,,,,) = simplePriceManager.networkMetrics(POOL_A, CHAIN_CV);
+        (uint128 navAfter,,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navAfter, navBefore, "the senior sync is held, so the published NAV stays pre-deficit");
     }
 }
