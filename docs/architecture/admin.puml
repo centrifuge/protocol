@@ -3,28 +3,36 @@ title Admin
 hide empty members
 
 skinparam linetype ortho
-skinparam nodesep 120
+skinparam nodesep 100
 skinparam ranksep 50
 
 package core {
     interface IGateway
     interface IMultiAdapter
-    interface IRootMessageSender
-    interface IHub
+    interface IScheduleAuthMessageSender
+    interface ICreatePool
     interface IAuth
 }
+
+package bridge {
+    interface ITokenBridge
+}
+
+interface IAdapterWiring
 
 class OpsGuardian
 class ProtocolGuardian
 class Root
 
-OpsGuardian --> IMultiAdapter : initAdapters/wire
-OpsGuardian --> IHub : createPool
+OpsGuardian --> IMultiAdapter : blockSession/setAdapters
+OpsGuardian --> IGateway : setGasService
+OpsGuardian --> IAdapterWiring : wire
+OpsGuardian --> ICreatePool : createPool
+OpsGuardian --> ITokenBridge : fileTokenBridgeCentrifugeId
 
-ProtocolGuardian --> Root : relyContract
-ProtocolGuardian --> IGateway : blockOutgoing
-ProtocolGuardian --> IMultiAdapter : setAdapters/wire
-ProtocolGuardian -right-> IRootMessageSender : recoverTokens/scheduleUpgrade
+ProtocolGuardian --> Root : scheduleRely
+ProtocolGuardian -right-> IScheduleAuthMessageSender : scheduleUpgrade
+ProtocolGuardian --> ITokenBridge : fileTokenBridgeRelayer
 
 Root .[dotted].> IAuth
 

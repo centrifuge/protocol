@@ -1,0 +1,51 @@
+{
+  "network": {
+    "chainId": 421614,
+    "environment": "testnet",
+    "centrifugeId": 3,
+    "network": "arbitrum",
+    "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "namespace": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "baseRpcUrl": "https://arb-sepolia.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "axelar": {
+      "axelarId": "arbitrum-sepolia",
+      "gateway": "0xe1cE95479C84e9809269227C7F8524aE051Ae77a",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "deploy": true
+    },
+    "layerZero": {
+      "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "layerZeroEid": 40231,
+      "deploy": true,
+      "blockConfirmations": 5,
+      "requiredDVNs": [
+        "0x53f488E93b4f1b60E8E83aa374dBe1780A1EE8a8"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
+    },
+    "chainlink": {
+      "chainSelector": 3478487238524512106,
+      "ccipRouter": "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
+      "blockNumber": 237622348,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "24032569",
+      "timestamp": "2026-01-28T15:42:39Z",
+      "suffix": "rev2",
+      "startBlock": 237622348
+    }
+  }
+}

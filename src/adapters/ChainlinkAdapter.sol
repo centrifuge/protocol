@@ -21,9 +21,19 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  Chainlink Adapter
 /// @notice Routing contract that integrates with Chainlink CCIP
+/// @dev    Replay protection is enforced by the CCIP stack (Router/OffRamp),
+///         which tracks message IDs and prevents duplicate delivery.
 contract ChainlinkAdapter is Auth, IChainlinkAdapter {
-    /// @dev Cost of executing `ccipReceive()` except entrypoint.handle()
-    uint256 public constant RECEIVE_COST = 4000;
+    /// @dev Cost of executing `ccipReceive()` except entrypoint.handle(), reserved per destination chain.
+    ///      Covers 1 cold SLOAD (single-slot `sources` struct) + 1 cold CALL (entrypoint) at 4_700, plus
+    ///      a flat 5_300 for dispatch, calldata decode, mapping hash, memory and call setup.
+    uint256 public constant DEFAULT_RECEIVE_COST = 10_000;
+
+    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
+    // Monad reprices cold storage access (2100→8100) and cold account access (2600→10100) per its
+    // published opcode schedule (docs.monad.xyz), putting those same two accesses at 18_200 => +13_500
+    // over DEFAULT, wrapper allowance unchanged. Mirrors GasService's per-chain reserve.
+    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 13_500;
 
     IRouterClient public immutable ccipRouter;
     IMessageHandler public immutable entrypoint;
@@ -37,7 +47,7 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Administration
+    // Network wiring
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IAdapterWiring
@@ -46,11 +56,6 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         sources[chainSelector] = ChainlinkSource(centrifugeId, adapter);
         destinations[centrifugeId] = ChainlinkDestination(chainSelector, adapter);
         emit Wire(centrifugeId, chainSelector, adapter);
-    }
-
-    /// @inheritdoc IAdapterWiring
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return destinations[centrifugeId].chainSelector != 0;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -85,7 +90,7 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         require(destination.chainSelector != 0, UnknownChainId());
 
         adapterData = ccipRouter.ccipSend{value: msg.value}(
-            destination.chainSelector, _createMessage(destination, payload, gasLimit)
+            destination.chainSelector, _createMessage(destination, payload, gasLimit + _receiveCost(centrifugeId))
         );
     }
 
@@ -94,7 +99,15 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         ChainlinkDestination memory destination = destinations[centrifugeId];
         require(destination.chainSelector != 0, UnknownChainId());
 
-        return ccipRouter.getFee(destination.chainSelector, _createMessage(destination, payload, gasLimit));
+        return ccipRouter.getFee(
+            destination.chainSelector, _createMessage(destination, payload, gasLimit + _receiveCost(centrifugeId))
+        );
+    }
+
+    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
+    ///      repricing needs a larger reserve than other chains.
+    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
+        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
     }
 
     function _createMessage(ChainlinkDestination memory destination, bytes calldata payload, uint256 gasLimit)
@@ -107,9 +120,7 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
             data: payload,
             tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0),
-            extraArgs: _argsToBytes(
-                IClient.GenericExtraArgsV2({gasLimit: gasLimit + RECEIVE_COST, allowOutOfOrderExecution: true})
-            )
+            extraArgs: _argsToBytes(IClient.GenericExtraArgsV2({gasLimit: gasLimit, allowOutOfOrderExecution: true}))
         });
     }
 

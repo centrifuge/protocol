@@ -3,11 +3,13 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {RedemptionRestrictions} from "../../../src/hooks/RedemptionRestrictions.sol";
+import {RedemptionRestrictions} from "../../../src/token/hooks/RedemptionRestrictions.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest} from "../vaults/VaultBaseTest.sol";
 
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract RedemptionRestrictionsTest is BaseTest {
     using CastLib for *;
@@ -15,8 +17,9 @@ contract RedemptionRestrictionsTest is BaseTest {
     function testRedemptionRestrictionsHook(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(redemptionRestrictionsHook), bytes16(bytes("1")), address(erc20), 0);
+        (, address vault_, uint128 assetId) = deployVault(
+            asyncVaultFactory, 6, address(redemptionRestrictionsHook), bytes16(bytes("1")), address(erc20), 0
+        );
         AsyncVault vault = AsyncVault(vault_);
         RedemptionRestrictions hook = RedemptionRestrictions(redemptionRestrictionsHook);
         IShareToken shareToken = IShareToken(address(vault.share()));

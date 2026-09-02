@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1220" height="1000" viewBox="0 0 1220 1000" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="1" y="1" width="1218" height="998" rx="16" fill="#ffffff" stroke="#ececec" stroke-width="1"/>
+  <text x="48" y="76" font-size="30" font-weight="bold" fill="#17202a">Messaging</text>
+
+  <g transform="translate(-180,0)">
+
+  <!-- groups -->
+  <g fill="#eef0f2">
+    <rect x="368" y="104" width="110" height="40" rx="12"/>
+    <rect x="368" y="120" width="934" height="170" rx="14"/>
+  </g>
+  <text x="400" y="164" font-size="21" font-weight="bold" fill="#1f2a37">core</text>
+
+  <!-- edges -->
+  <g fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round">
+    <!-- Hub -> MessageDispatcher -->
+    <path d="M480,252 V420" marker-end="url(#arrow)"/>
+    <!-- Spoke -> MessageDispatcher -->
+    <path d="M660,252 V420" marker-end="url(#arrow)"/>
+
+    <!-- MessageDispatcher -> HubHandler / SpokeHandler (local delivery, shared spine) -->
+    <path d="M680,455 H740 Q760,455 760,435 V344 Q760,324 780,324 H820 Q840,324 840,304 V252" marker-end="url(#arrow)"/>
+    <path d="M680,455 H740 Q760,455 760,435 V344 Q760,324 780,324 H1040 Q1060,324 1060,304 V252" marker-end="url(#arrow)"/>
+
+    <!-- MessageProcessor -> HubHandler / SpokeHandler (shared spine, routed over the top) -->
+    <path d="M1140,455 H1320 Q1340,455 1340,435 V116 Q1340,96 1320,96 H915 Q895,96 895,116 V182" marker-end="url(#arrow)"/>
+    <path d="M1140,455 H1320 Q1340,455 1340,435 V116 Q1340,96 1320,96 H1175 Q1155,96 1155,116 V182" marker-end="url(#arrow)"/>
+
+    <!-- MessageDispatcher -> Gateway -->
+    <path d="M400,490 V595 Q400,615 420,615 H620" marker-end="url(#arrow)"/>
+    <!-- Gateway -> MessageProcessor -->
+    <path d="M860,615 H1040 Q1060,615 1060,595 V490" marker-end="url(#arrow)"/>
+
+    <!-- Gateway <-> MultiAdapter -->
+    <path d="M700,650 V720" marker-end="url(#arrow)"/>
+    <path d="M780,720 V650" marker-end="url(#arrow)"/>
+
+    <!-- MultiAdapter <-> n IAdapter -->
+    <path d="M700,790 V860" marker-end="url(#arrow)"/>
+    <path d="M780,860 V790" marker-end="url(#arrow)"/>
+  </g>
+  <text x="852" y="280" font-size="16" fill="#3d4753">local</text>
+  <text x="1072" y="280" font-size="16" fill="#3d4753">local</text>
+  <text x="684" y="846" font-size="16" fill="#3d4753" text-anchor="middle">n</text>
+
+  <!-- nodes -->
+  <g>
+    <!-- core members -->
+    <rect x="400" y="182" width="160" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="434" cy="217" r="17" fill="#fbe6b0"/>
+    <text x="434" y="217" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="464" y="217" font-size="21" fill="#1f2a37" dominant-baseline="central">Hub</text>
+
+    <rect x="580" y="182" width="160" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="614" cy="217" r="17" fill="#fbe6b0"/>
+    <text x="614" y="217" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="644" y="217" font-size="21" fill="#1f2a37" dominant-baseline="central">Spoke</text>
+
+    <rect x="780" y="182" width="230" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="814" cy="217" r="17" fill="#fbe6b0"/>
+    <text x="814" y="217" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="844" y="217" font-size="21" fill="#1f2a37" dominant-baseline="central">HubHandler</text>
+
+    <rect x="1040" y="182" width="230" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="1074" cy="217" r="17" fill="#fbe6b0"/>
+    <text x="1074" y="217" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1104" y="217" font-size="21" fill="#1f2a37" dominant-baseline="central">SpokeHandler</text>
+
+    <!-- messaging members -->
+    <rect x="340" y="420" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="374" cy="455" r="17" fill="#fbe6b0"/>
+    <text x="374" y="455" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="404" y="455" font-size="21" fill="#1f2a37" dominant-baseline="central">MessageDispatcher</text>
+
+    <rect x="800" y="420" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="834" cy="455" r="17" fill="#fbe6b0"/>
+    <text x="834" y="455" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="864" y="455" font-size="21" fill="#1f2a37" dominant-baseline="central">MessageProcessor</text>
+
+    <rect x="620" y="580" width="240" height="70" rx="10" fill="#fde9b8"/>
+    <circle cx="654" cy="615" r="17" fill="#fbd77a"/>
+    <text x="654" y="615" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="684" y="615" font-size="21" fill="#1f2a37" dominant-baseline="central">Gateway</text>
+
+    <rect x="620" y="720" width="240" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="654" cy="755" r="17" fill="#fbe6b0"/>
+    <text x="654" y="755" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="684" y="755" font-size="21" fill="#1f2a37" dominant-baseline="central">MultiAdapter</text>
+
+    <rect x="620" y="860" width="240" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="654" cy="895" r="17" fill="#d6f3d2"/>
+    <text x="654" y="895" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="684" y="895" font-size="21" fill="#1f2a37" dominant-baseline="central">IAdapter</text>
+  </g>
+  </g>
+</svg>

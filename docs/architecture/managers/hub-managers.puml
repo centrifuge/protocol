@@ -6,11 +6,16 @@ skinparam linetype ortho
 
 package core {
     class Holdings
+    class Envoy
+    interface IHub
     interface ISnapshotHook
+    interface IManagerCallFromHub
+    interface IManagerCallFromSpoke
 }
 
 class NAVManager
 class SimplePriceManager
+class Supervisor
 interface INAVHook
 
 NAVManager -down-> INAVHook
@@ -18,13 +23,21 @@ SimplePriceManager -up-|> INAVHook
 NAVManager -left-|> ISnapshotHook
 Holdings .up[dotted].> ISnapshotHook
 
+NAVManager -up-|> IManagerCallFromHub
+NAVManager -up-|> IManagerCallFromSpoke
+Supervisor -up-|> IManagerCallFromHub
+Envoy --> IManagerCallFromHub
+Envoy --> IManagerCallFromSpoke
+
+Supervisor --> IHub
+
 note left of NAVManager
   Abstracts holding management
   and accounting of net asset value (NAV)
 end note
 
 note left of SimplePriceManager
-  Calculates the share price 
+  Calculates the share price
   for single-share class pools
   based on NAV and total shares
 end note
@@ -33,6 +46,12 @@ note top of ISnapshotHook
   Hook called when a spoke
   is in a snapshot state
   or when shares are transferred
+end note
+
+note top of Supervisor
+  Per-pool sentinel registry;
+  sentinels can veto pending
+  authorizations within delay window
 end note
 
 @enduml

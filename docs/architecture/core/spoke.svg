@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2562" height="745" viewBox="0 0 2562 745" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="1" y="1" width="2560" height="743" rx="16" fill="#ffffff" stroke="#ececec" stroke-width="1"/>
+  <text x="48" y="76" font-size="30" font-weight="bold" fill="#17202a">Spoke</text>
+
+  <g transform="translate(0,-100)">
+
+  <!-- groups -->
+  <g fill="#eef0f2">
+    <rect x="98" y="237" width="124" height="40" rx="12"/>
+    <rect x="98" y="253" width="394" height="230" rx="14"/>
+    <rect x="1748" y="157" width="110" height="40" rx="12"/>
+    <rect x="1748" y="173" width="754" height="484" rx="14"/>
+  </g>
+  <text x="130" y="297" font-size="21" font-weight="bold" fill="#1f2a37">messaging</text>
+  <text x="1780" y="217" font-size="21" font-weight="bold" fill="#1f2a37">token</text>
+
+  <!-- edges -->
+  <g fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round">
+    <!-- Spoke fan-out: one spine, branching up and down -->
+    <path d="M800,350 H820 Q840,350 840,330 V290 Q840,270 860,270 H940" marker-end="url(#arrow)"/>
+    <path d="M800,350 H940" marker-end="url(#arrow)"/>
+    <path d="M800,350 H820 Q840,350 840,370 V410 Q840,430 860,430 H940" marker-end="url(#arrow)"/>
+    <path d="M800,350 H820 Q840,350 840,370 V570 Q840,590 860,590 H940" marker-end="url(#arrow)"/>
+
+    <!-- Spoke -> IPolicy (may call) -->
+    <path d="M680,385 V475" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <!-- Spoke -> IMessageDispatcher -->
+    <path d="M560,350 H460" marker-end="url(#arrow)"/>
+    <!-- IMessageProcessor -> SpokeHandler -->
+    <path d="M460,430 H480 Q500,430 500,450 V650 Q500,670 520,670 H560" marker-end="url(#arrow)"/>
+
+    <!-- SpokeHandler -> SpokeRegistry -->
+    <path d="M800,690 H960 Q980,690 980,670 V625" marker-end="url(#arrow)"/>
+    <!-- SpokeHandler -> PoolEscrowFactory -->
+    <path d="M800,650 H860 Q880,650 880,630 V540 Q880,520 900,520 H1000 Q1020,520 1020,500 V465" marker-end="url(#arrow)"/>
+    <!-- SpokeHandler -> IRegistrar -->
+    <path d="M700,705 V730 Q700,750 720,750 H1380" marker-end="url(#arrow)"/>
+
+    <!-- SpokeRegistry -> n ShareToken -->
+    <path d="M1150,555 V520 Q1150,500 1170,500 H1700 Q1720,500 1720,480 V290 Q1720,270 1740,270 H1780" marker-end="url(#arrow)"/>
+    <!-- PoolEscrowFactory creates n PoolEscrow -->
+    <path d="M1280,430 H1380" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+
+    <!-- ShareTokenRegistrar creates n ShareToken -->
+    <path d="M1940,555 V305" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <!-- ShareTokenRegistrar -> IRegistrar -->
+    <path d="M1840,625 V730 Q1840,750 1820,750 H1700" marker-end="url(#arrow)"/>
+    <!-- ShareToken -> ITransferHook -->
+    <path d="M2100,270 H2220" marker-end="url(#arrow)"/>
+  </g>
+  <text x="1758" y="252" font-size="16" fill="#3d4753" text-anchor="middle">n</text>
+  <text x="1356" y="418" font-size="16" fill="#3d4753" text-anchor="middle">n</text>
+  <text x="1962" y="430" font-size="16" fill="#3d4753" text-anchor="middle">n</text>
+
+  <!-- nodes -->
+  <g>
+    <!-- messaging members -->
+    <rect x="130" y="315" width="330" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="164" cy="350" r="17" fill="#d6f3d2"/>
+    <text x="164" y="350" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="194" y="350" font-size="21" fill="#1f2a37" dominant-baseline="central">IMessageDispatcher</text>
+
+    <rect x="130" y="395" width="330" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="164" cy="430" r="17" fill="#d6f3d2"/>
+    <text x="164" y="430" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="194" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">IMessageProcessor</text>
+
+    <!-- Spoke (focus) -->
+    <rect x="560" y="315" width="240" height="70" rx="10" fill="#fde9b8"/>
+    <circle cx="594" cy="350" r="17" fill="#fbd77a"/>
+    <text x="594" y="350" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="624" y="350" font-size="21" fill="#1f2a37" dominant-baseline="central">Spoke</text>
+
+    <rect x="560" y="475" width="240" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="594" cy="510" r="17" fill="#d6f3d2"/>
+    <text x="594" y="510" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="624" y="510" font-size="21" fill="#1f2a37" dominant-baseline="central">IPolicy</text>
+
+    <rect x="560" y="635" width="240" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="594" cy="670" r="17" fill="#fbe6b0"/>
+    <text x="594" y="670" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="624" y="670" font-size="21" fill="#1f2a37" dominant-baseline="central">SpokeHandler</text>
+
+    <!-- Spoke's collaborators -->
+    <rect x="940" y="235" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="974" cy="270" r="17" fill="#d6f3d2"/>
+    <text x="974" y="270" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="1004" y="270" font-size="21" fill="#1f2a37" dominant-baseline="central">ISpokeRequestManager</text>
+
+    <rect x="940" y="315" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="974" cy="350" r="17" fill="#fbe6b0"/>
+    <text x="974" y="350" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1004" y="350" font-size="21" fill="#1f2a37" dominant-baseline="central">SnapshotQueue</text>
+
+    <rect x="940" y="395" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="974" cy="430" r="17" fill="#fbe6b0"/>
+    <text x="974" y="430" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1004" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">PoolEscrowFactory</text>
+
+    <rect x="940" y="555" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="974" cy="590" r="17" fill="#fbe6b0"/>
+    <text x="974" y="590" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1004" y="590" font-size="21" fill="#1f2a37" dominant-baseline="central">SpokeRegistry</text>
+
+    <!-- downstream -->
+    <rect x="1380" y="395" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1414" cy="430" r="17" fill="#fbe6b0"/>
+    <text x="1414" y="430" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1444" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">PoolEscrow</text>
+
+    <rect x="1380" y="715" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1414" cy="750" r="17" fill="#d6f3d2"/>
+    <text x="1414" y="750" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="1444" y="750" font-size="21" fill="#1f2a37" dominant-baseline="central">IRegistrar</text>
+
+    <!-- token members -->
+    <rect x="1780" y="235" width="320" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="1814" cy="270" r="17" fill="#fbe6b0"/>
+    <text x="1814" y="270" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1844" y="270" font-size="21" fill="#1f2a37" dominant-baseline="central">ShareToken</text>
+
+    <rect x="1780" y="555" width="320" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="1814" cy="590" r="17" fill="#fbe6b0"/>
+    <text x="1814" y="590" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1844" y="590" font-size="21" fill="#1f2a37" dominant-baseline="central">ShareTokenRegistrar</text>
+
+    <rect x="2220" y="235" width="250" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="2254" cy="270" r="17" fill="#d6f3d2"/>
+    <text x="2254" y="270" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="2284" y="270" font-size="21" fill="#1f2a37" dominant-baseline="central">ITransferHook</text>
+  </g>
+  </g>
+</svg>

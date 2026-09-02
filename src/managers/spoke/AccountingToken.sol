@@ -9,7 +9,7 @@ import {IERC6909ExclOperator, IERC6909MetadataExt} from "../../misc/interfaces/I
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  AccountingToken
 /// @notice ERC-6909 multi-token representing in-flight async requests and cross-chain liabilities.
@@ -22,14 +22,14 @@ contract AccountingToken is IAccountingToken {
 
     uint256 private constant LIABILITY_BIT = 1 << 255;
 
-    address public immutable contractUpdater;
+    address public immutable envoy;
 
     mapping(PoolId poolId => mapping(address who => bool)) public minters;
     mapping(address owner => mapping(uint256 tokenId => uint256)) public balanceOf;
     mapping(address owner => mapping(address spender => mapping(uint256 tokenId => uint256))) public allowance;
 
-    constructor(address contractUpdater_) {
-        contractUpdater = contractUpdater_;
+    constructor(address envoy_) {
+        envoy = envoy_;
     }
 
     modifier onlyMinter(uint256 id) {
@@ -41,9 +41,10 @@ contract AccountingToken is IAccountingToken {
     // Owner actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId, bytes calldata payload) external {
-        require(msg.sender == contractUpdater, NotAuthorized());
+    /// @inheritdoc IManagerCallFromHub
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
         (bytes32 who, bool canMint) = abi.decode(payload, (bytes32, bool));
         address minter = who.toAddress();
         minters[poolId][minter] = canMint;

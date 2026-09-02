@@ -1,21 +1,26 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "./VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest} from "./VaultBaseTest.sol";
 
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+
 contract OperatorTest is BaseTest {
     function testDepositAsOperator(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: across request->approve the gross asset-queue accumulator reaches
+        // 2x the deposit (noteDeposit +amount at request, unreserve +amount at approval) for a net +amount,
+        // so a single deposit near MAX_UINT128 overflows the uint128 accumulator.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -78,7 +83,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -154,10 +159,14 @@ contract OperatorTest is BaseTest {
 
     function testRedeemAsOperator(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
+        // Bounded to MAX_UINT128 / 4: this test calls deposit() twice with `amount` (once to fund the redeem,
+        // once more after resetting the operator), and each deposit's request->approve lifecycle pushes the
+        // gross asset-queue deposits accumulator up by 2x the amount (noteDeposit +amount, then unreserve
+        // +amount again on approval), so two deposits reach 4x amount in the uint128 accumulator.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 4));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address investor = makeAddr("investor");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);
@@ -211,7 +220,7 @@ contract OperatorTest is BaseTest {
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         (address controller, uint256 controllerPk) = makeAddrAndKey("controller");
         address operator = makeAddr("operator");
         AsyncVault vault = AsyncVault(vault_);

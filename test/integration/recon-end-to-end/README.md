@@ -27,7 +27,7 @@ For info on the general structure of the test suite, refer to the section of the
 
 This tester deploys the Hub and Spoke on the same chain (using a `MockGateway` that stubs out cross-chain message sending) allowing full testing of the logic by the fuzzer end-to-end.
 
-The primary contracts with target functions exposed in this tester are `AsyncVault`, `SyncDepositVault`, `Spoke`, `ShareToken`, `FullRestrictions`, `Hub`, `BalanceSheet`, `SyncManager`, `DoomsdayTargets` and `ManagerTargets`.
+The primary contracts with target functions exposed in this tester are `AsyncVault`, `SyncDepositVault`, `Spoke`, `ShareToken`, `FullRestrictions`, `Hub`, `SyncManager`, `DoomsdayTargets` and `ManagerTargets`.
 
 > Note: cross-chain interactions are not tested. 
 

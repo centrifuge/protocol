@@ -1,0 +1,56 @@
+{
+  "network": {
+    "chainId": 1,
+    "environment": "mainnet",
+    "centrifugeId": 1,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://eth-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+      "layerZeroEid": 30101,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x373a6E5c0C4E89E24819f00AA37ea370917AAfF4",
+        "0xa4fE5A5B9A846458a70Cd0748228aED3bF65c2cd"
+      ],
+      "optionalDVNs": [
+        "0x06559EE34D85a88317Bf0bfE307444116c631b67",
+        "0x3a4636E9AB975d28d3Af808b4e1c9fd936374E30",
+        "0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "axelar": {
+      "axelarId": "Ethereum",
+      "gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 5009297550715157269,
+      "ccipRouter": "0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
+      "blockNumber": 22924235,
+      "version": "3"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "c89c55ff6",
+      "timestamp": "2026-01-26T13:27:30Z",
+      "suffix": "",
+      "startBlock": 24319298
+    }
+  }
+}

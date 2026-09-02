@@ -17,20 +17,33 @@ import {BalanceSheetTargets} from "./targets/BalanceSheetTargets.sol";
 import {D18} from "../../../src/misc/types/D18.sol";
 
 import {AssetId} from "../../../src/core/types/AssetId.sol";
-import {ShareToken} from "../../../src/core/spoke/ShareToken.sol";
 import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
-import {AccountType} from "../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {IValuation} from "../../../src/core/hub/interfaces/IValuation.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 
 import {MockERC20} from "@recon/MockERC20.sol";
+import {ShareToken} from "../../../src/token/ShareToken.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 // Dependencies
 
 // Component
+
+/// @dev Local account-role taxonomy, used only to derive distinct account IDs for the fuzzer.
+///      Maps onto core settlement slots ({AccountKind}) inside hub_initializeHolding/Liability.
+enum AccountType {
+    // AccountId(0) is the protocol's unset-slot sentinel and cannot be a real account
+    // (Accounting.createAccount rejects it), so harness account ids start at 1.
+    Unset,
+    Asset,
+    Equity,
+    Loss,
+    Gain,
+    Expense,
+    Liability
+}
 
 abstract contract TargetFunctions is
     BaseTargetFunctions,
@@ -104,7 +117,10 @@ abstract contract TargetFunctions is
 
         // NOTE END TEMPORARY
 
-        decimals = uint8(between(decimals, 6, 24));
+        // Match the protocol's registerAsset bounds [0, 18]. The old upper bound of 24 was dead: the real
+        // spoke.registerAsset enforces MAX_DECIMALS = 18, so 19-24 always reverted TooManyDecimals and wasted
+        // fuzzer cycles. The lower bound now exercises 0-5 decimals after the [2,18] -> [0,18] relaxation.
+        decimals = uint8(between(decimals, 0, 18));
 
         // 1. Deploy new token and register it as an asset
         _newAsset(decimals);
@@ -117,14 +133,14 @@ abstract contract TargetFunctions is
         // 2. Deploy new pool and register it
         {
             _poolId = newPoolId(CENTRIFUGE_CHAIN_ID, uint48(POOL_ID_COUNTER));
-            hub_createPool(_poolId.raw(), _getActor(), _getAssetId().raw());
+            _hub_createPool(_poolId.raw(), _getActor(), _getAssetId().raw());
 
             spoke_addPool();
 
             // Register managers for this pool
-            balanceSheet.updateManager(_poolId, address(asyncRequestManager), true);
-            balanceSheet.updateManager(_poolId, address(syncManager), true);
-            balanceSheet.updateManager(_poolId, address(this), true);
+            spokeRegistry.updateManager(_poolId, address(asyncRequestManager), true);
+            spokeRegistry.updateManager(_poolId, address(syncManager), true);
+            spokeRegistry.updateManager(_poolId, address(this), true);
 
             POOL_ID_COUNTER++;
         }
@@ -137,15 +153,22 @@ abstract contract TargetFunctions is
 
             hub_addShareClass(salt);
 
-            spoke_addShareClass(uint128(_scId), 18);
+            // Share decimals must equal pool decimals: BatchRequestManager.shareToAssetAmount assumes it
+            spoke_addShareClass(uint128(_scId), decimals);
             ShareToken(_getShareToken()).rely(address(spoke));
-            ShareToken(_getShareToken()).rely(address(balanceSheet));
+            ShareToken(_getShareToken()).rely(address(spoke));
         }
 
         // 4. Create accounts and holding/liability
         {
             IValuation valuation =
                 isIdentityValuation ? IValuation(address(identityValuation)) : IValuation(address(transientValuation));
+
+            // The hub values the holding immediately on initialize (Holdings.update -> valuation.getQuote), so
+            // MockValuation needs a price set beforehand; IdentityValuation always returns 1.0 and needs no setup.
+            if (!isIdentityValuation) {
+                transientValuation.setPrice(_poolId, ShareClassId.wrap(_scId), _getAssetId(), D18.wrap(1e18));
+            }
 
             hub_createAccount(uint32(AccountType.Asset), isDebitNormal);
             hub_createAccount(uint32(AccountType.Equity), isDebitNormal);
@@ -176,16 +199,14 @@ abstract contract TargetFunctions is
             hub_setRequestManager(_getPool().raw(), _scId, _getAssetId().raw(), address(asyncRequestManager));
 
             // Update balance sheet manager for async request manager
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(asyncRequestManager), true);
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(syncManager), true);
-            hub_updateBalanceSheetManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(this), true); // register admin actor as a balance sheet manager
+            hub_updateSpokeManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(asyncRequestManager), true);
+            hub_updateSpokeManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(syncManager), true);
+            hub_updateSpokeManager(CENTRIFUGE_CHAIN_ID, _getPool().raw(), address(this), true); // register admin actor as a balance sheet manager
         }
 
-        // 5. Deploy new vault and register it
+        // 5. Deploy new vault and register it (DeployAndLink atomically)
         {
-            spoke_deployVault(isAsyncVault);
-
-            spoke_linkVault(address(_getVault()));
+            spoke_deployAndLinkVault(isAsyncVault);
 
             asyncRequestManager.rely(address(_getVault()));
         }
@@ -193,7 +214,7 @@ abstract contract TargetFunctions is
         // 6. Set max reserve for sync vaults to maximum value to allow unlimited deposits (instead of default zero
         // max deposit)
         if (!isAsyncVault) {
-            (address asset, uint256 tokenId) = spoke.idToAsset(_getAssetId());
+            (address asset, uint256 tokenId) = spokeRegistry.idToAsset(_getAssetId());
             syncManager.setMaxReserve(_getPool(), _getShareClassId(), asset, tokenId, type(uint128).max);
         }
 
@@ -233,6 +254,8 @@ abstract contract TargetFunctions is
     function shortcut_deposit_sync(uint256 assets, uint128 navPerShare) public {
         IBaseVault vault = _getVault();
 
+        navPerShare = _clampToPriceBand(navPerShare);
+
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), navPerShare);
 
@@ -246,6 +269,8 @@ abstract contract TargetFunctions is
 
     function shortcut_mint_sync(uint256 shares, uint128 navPerShare) public {
         IBaseVault vault = _getVault();
+
+        navPerShare = _clampToPriceBand(navPerShare);
 
         transientValuation_setPrice_clamped(navPerShare);
         hub_updateSharePrice(vault.poolId().raw(), uint128(vault.scId().raw()), navPerShare);
@@ -266,7 +291,11 @@ abstract contract TargetFunctions is
         uint256 toEntropy
     ) public {
         // Request 2x amount to ensure sufficient pending after claiming the approved amount
-        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount
+        // This prevents assertion failures in hub_notifyDeposit when pending delta < payment amount.
+        // Bound to half the balance first: a raw uint256 draw overflows `amount * 2` and reverts the
+        // whole shortcut, and the 2x request only outlives the claim while it stays funded.
+        amount = amount % (_getTokenAndBalanceForVault() / 2 + 1);
+
         shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
 
         uint32 depositEpoch = batchRequestManager.nowDepositEpoch(_getPool(), _getShareClassId(), _getAssetId());
@@ -275,6 +304,26 @@ abstract contract TargetFunctions is
 
         hub_notifyDeposit(MAX_CLAIMS);
         vault_deposit(amount);
+    }
+
+    /// @dev Stops before the claim to leave a notified, unclaimed position, else the vault_max* properties stay dark
+    function shortcut_deposit_and_notify(
+        uint64 pricePoolPerShare,
+        uint128 priceValuation,
+        uint256 amount,
+        uint128 navPerShare,
+        uint256 toEntropy
+    ) public {
+        // Bound to half the balance: a raw uint256 draw overflows `amount * 2`, and the 2x request must stay
+        // funded for pending to survive the approval.
+        amount = amount % (_getTokenAndBalanceForVault() / 2 + 1);
+
+        shortcut_request_deposit(pricePoolPerShare, priceValuation, amount * 2, toEntropy);
+
+        uint32 depositEpoch = batchRequestManager.nowDepositEpoch(_getPool(), _getShareClassId(), _getAssetId());
+        shortcut_approve_and_issue_shares_safe(uint128(amount), depositEpoch, navPerShare);
+
+        hub_notifyDeposit(_maxDepositClaims());
     }
 
     function shortcut_deposit_and_cancel(
@@ -371,6 +420,12 @@ abstract contract TargetFunctions is
         shortcut_claim_withdrawal(shares, toEntropy);
     }
 
+    /// @dev Redeem twin of shortcut_deposit_and_notify: leaves a non-zero max for vault_maxWithdraw/maxRedeem
+    function shortcut_redeem_and_notify(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
+        shortcut_queue_redemption(shares, navPerShare, toEntropy);
+        hub_notifyRedeem(_maxRedeemClaims());
+    }
+
     function shortcut_withdraw_and_claim_clamped(uint256 shares, uint128 navPerShare, uint256 toEntropy) public {
         // clamp with share balance here because the maxRedeem is only updated after notifyRedeem
         shares %= (MockERC20(address(_getVault().share())).balanceOf(_getActor()) + 1);
@@ -437,6 +492,30 @@ abstract contract TargetFunctions is
         vault_claimCancelRedeemRequest(toEntropy);
     }
 
+    /// @dev property_assetShareProportionalityWithdrawals needs a manager withdrawal AND a revoke on the same
+    ///      (pool, share class, asset), in that order: balanceSheet_revoke only accumulates revoked shares once
+    ///      balanceSheet_withdraw has flagged the asset as tracked. The fuzzer never produced that conjunction,
+    ///      leaving all three of the property's bounds unevaluated.
+    /// @dev The share leg is the share-equivalent of the asset leg, so both the deposit- and withdrawal-side
+    ///      proportionality properties hold by construction. Taking `shares` as an independent fuzzer input instead
+    ///      made them fail on the shortcut's own arithmetic rather than on protocol behaviour.
+    /// @dev Allowances go through the existing `asset_approve`/`token_approve` handlers rather than a local
+    ///      `vm.prank`, so the shortcut carries no cheatcode dependency onto the fuzzer entry path.
+    function shortcut_manager_withdraw_and_revoke(uint128 assetAmount) public {
+        IBaseVault vault = _getVault();
+
+        assetAmount = uint128(uint256(assetAmount) % (MockERC20(vault.asset()).balanceOf(_getActor()) + 1));
+        uint128 shares = uint128(vault.convertToShares(assetAmount));
+
+        asset_approve(address(spoke), assetAmount);
+        balanceSheet_deposit(0, assetAmount);
+        balanceSheet_issue(shares);
+
+        balanceSheet_withdraw(0, assetAmount);
+        token_approve(address(spoke), shares);
+        balanceSheet_revoke(shares);
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // POOL ADMIN SHORTCUTS
     // ═══════════════════════════════════════════════════════════════
@@ -498,6 +577,8 @@ abstract contract TargetFunctions is
     // set the price of the asset in the transient valuation for a given pool
     function transientValuation_setPrice_clamped(uint128 price) public {
         AssetId assetId = _getAssetId();
+
+        price = _clampToPriceBand(price);
 
         transientValuation_setPrice(assetId, _getAssetId(), price);
     }

@@ -1,0 +1,39 @@
+{
+  "network": {
+    "chainId": 998,
+    "environment": "testnet",
+    "centrifugeId": 9,
+    "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "namespace": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "baseRpcUrl": "https://hyperliquid-testnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0xf9e1815F151024bDE4B7C10BAC10e8Ba9F6b53E1",
+      "layerZeroEid": 40362,
+      "deploy": true,
+      "blockConfirmations": 5,
+      "requiredDVNs": [
+        "0x91E698871030D0e1b6c9268C20bB57E2720618Dd"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
+      "blockNumber": 43580306,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "24032569",
+      "timestamp": "2026-01-21T07:45:00Z",
+      "suffix": "rev2",
+      "startBlock": 43580306
+    }
+  }
+}

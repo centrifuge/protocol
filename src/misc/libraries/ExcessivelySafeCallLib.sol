@@ -29,10 +29,7 @@ library ExcessivelySafeCallLib {
         uint256 _toCopy;
         bool _success;
         bytes memory _returnData = new bytes(_maxCopy);
-        // dispatch message to recipient
-        // by assembly calling "handle" function
-        // we call via assembly to avoid memcopying a very large returndata
-        // returned by a malicious contract
+        // Call via assembly to avoid memcopying a very large returndata returned by a malicious contract
         assembly {
             _success := call(
                 _gas, // gas
@@ -43,7 +40,7 @@ library ExcessivelySafeCallLib {
                 0, // outloc
                 0 // outlen
             )
-            // limit our copy to 256 bytes
+            // limit our copy to _maxCopy bytes
             _toCopy := returndatasize()
             if gt(_toCopy, _maxCopy) {
                 _toCopy := _maxCopy

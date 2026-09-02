@@ -6,17 +6,20 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../../../src/misc/libraries/BitmapLib.sol";
 
+import {MockPoolEscrowProvider} from "../../core/mocks/MockPoolEscrowProvider.sol";
+
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
 
-import {IFreezable} from "../../../src/hooks/interfaces/IFreezable.sol";
-import {BaseTransferHook} from "../../../src/hooks/BaseTransferHook.sol";
-import {IMemberlist} from "../../../src/hooks/interfaces/IMemberlist.sol";
-import {IBaseTransferHook} from "../../../src/hooks/interfaces/IBaseTransferHook.sol";
-import {UpdateRestrictionMessageLib} from "../../../src/hooks/libraries/UpdateRestrictionMessageLib.sol";
+import {IFreezable} from "../../../src/token/hooks/interfaces/IFreezable.sol";
+import {BaseTransferHook} from "../../../src/token/hooks/BaseTransferHook.sol";
+import {IMemberlist} from "../../../src/token/hooks/interfaces/IMemberlist.sol";
+import {IBaseTransferHook} from "../../../src/token/hooks/interfaces/IBaseTransferHook.sol";
+import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
 import "forge-std/Test.sol";
+
+import {ITransferHook, HookData, ESCROW_HOOK_ID} from "../../../src/token/interfaces/ITransferHook.sol";
 
 contract MockRoot {
     mapping(address => bool) public endorsed;
@@ -44,30 +47,18 @@ contract MockPoolEscrow {
     }
 }
 
-contract MockPoolEscrowProvider {
-    mapping(uint64 => address) public escrows;
-
-    function setEscrow(PoolId poolId, address escrowAddress) external {
-        escrows[poolId.raw()] = escrowAddress;
-    }
-
-    function escrow(PoolId poolId) external view returns (address) {
-        return escrows[poolId.raw()];
-    }
-}
-
 contract TestableBaseTransferHook is BaseTransferHook {
     using BitmapLib for *;
 
     constructor(
         address root_,
+        address envoy_,
+        address spokeRegistry_,
         address spoke_,
-        address balanceSheet_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_,
-        address poolEscrow_
-    ) BaseTransferHook(root_, spoke_, balanceSheet_, crosschainSource_, deployer, poolEscrowProvider_, poolEscrow_) {}
+        address poolEscrowProvider_
+    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_) {}
 
     function checkERC20Transfer(
         address from,
@@ -102,8 +93,9 @@ contract BaseTransferHookTestBase is Test {
     MockPoolEscrowProvider mockPoolEscrowProvider;
 
     address deployer = makeAddr("deployer");
+    address envoy = makeAddr("envoy");
     address crosschainSource = makeAddr("crosschainSource");
-    address balanceSheet = makeAddr("balanceSheet");
+    address spoke = makeAddr("spoke");
     address poolEscrow;
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
@@ -134,12 +126,12 @@ contract BaseTransferHookTestBase is Test {
         vm.prank(deployer);
         hook = new TestableBaseTransferHook(
             address(mockRoot),
+            envoy,
             address(mockSpoke),
-            balanceSheet,
+            spoke,
             crosschainSource,
             deployer,
-            address(mockPoolEscrowProvider),
-            address(0) // Multi-pool mode
+            address(mockPoolEscrowProvider)
         );
 
         mockShareToken = new MockShareToken();
@@ -155,7 +147,7 @@ contract BaseTransferHookTestBase is Test {
 
     function _setEndorsedUsers() internal {
         mockRoot.setEndorsed(endorsedUser, true);
-        mockRoot.setEndorsed(balanceSheet, true);
+        mockRoot.setEndorsed(spoke, true);
         mockRoot.setEndorsed(poolEscrow, true);
         mockRoot.setEndorsed(crosschainSource, true);
     }
@@ -198,7 +190,7 @@ contract BaseTransferHookTestBase is Test {
 contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
     function testConstructor() public view {
         assertEq(address(hook.root()), address(mockRoot));
-        assertEq(address(hook.balanceSheet()), balanceSheet);
+        assertEq(address(hook.spoke()), spoke);
         assertEq(hook.crosschainSource(), crosschainSource);
         assertEq(hook.FREEZE_BIT(), 0);
     }
@@ -208,12 +200,12 @@ contract BaseTransferHookTestConstructor is BaseTransferHookTestBase {
         vm.prank(deployer);
         new TestableBaseTransferHook(
             address(mockRoot),
+            envoy,
             address(mockSpoke),
-            balanceSheet,
-            balanceSheet, // Same as balanceSheet - should fail
+            spoke,
+            spoke, // Same as spoke - should fail
             deployer,
-            address(mockPoolEscrowProvider),
-            address(0)
+            address(mockPoolEscrowProvider)
         );
     }
 }
@@ -251,14 +243,14 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
     }
 
     function testIsRedeemFulfillment() public view {
-        assertTrue(hook.isRedeemFulfillment(balanceSheet, address(0)));
+        assertTrue(hook.isRedeemFulfillment(spoke, address(0)));
         assertFalse(hook.isRedeemFulfillment(user1, address(0)));
-        assertFalse(hook.isRedeemFulfillment(balanceSheet, user1));
+        assertFalse(hook.isRedeemFulfillment(spoke, user1));
     }
 
     function testIsRedeemClaimOrRevocation() public view {
         assertTrue(hook.isRedeemClaimOrRevocation(user1, address(0)));
-        assertFalse(hook.isRedeemClaimOrRevocation(balanceSheet, address(0)));
+        assertFalse(hook.isRedeemClaimOrRevocation(spoke, address(0)));
         assertFalse(hook.isRedeemClaimOrRevocation(crosschainSource, address(0)));
         assertFalse(hook.isRedeemClaimOrRevocation(user1, user2));
     }
@@ -613,14 +605,14 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
 
     function testUnknownTrustedCall() public {
         // Create payload with invalid enum value
-        bytes memory invalidPayload = abi.encode(uint8(255), bytes32(0), false);
+        bytes memory invalidPayload = abi.encode(SC_1.raw(), uint8(255), bytes32(0), false);
 
         vm.expectRevert(IBaseTransferHook.UnknownTrustedCall.selector);
-        vm.prank(deployer);
-        hook.trustedCall(POOL_A, SC_1, invalidPayload);
+        vm.prank(envoy);
+        hook.fromHub(POOL_A, invalidPayload);
     }
 
-    function testTrustedCallUpdateManagerSuccess() public {
+    function testFromHubUpdateManagerSuccess() public {
         // Mock the share token to exist
         vm.mockCall(
             address(mockSpoke),
@@ -629,18 +621,19 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         );
 
         address managerAddress = makeAddr("manager");
-        bytes memory payload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
 
-        vm.prank(deployer);
+        vm.prank(envoy);
         vm.expectEmit();
         emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, true);
-        hook.trustedCall(POOL_A, SC_1, payload);
+        hook.fromHub(POOL_A, payload);
 
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
     }
 
-    function testTrustedCallUpdateManagerDisable() public {
+    function testFromHubUpdateManagerDisable() public {
         // Mock the share token to exist
         vm.mockCall(
             address(mockSpoke),
@@ -651,25 +644,27 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         address managerAddress = makeAddr("manager");
 
         // First enable
-        bytes memory enablePayload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
-        vm.prank(deployer);
+        bytes memory enablePayload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
+        vm.prank(envoy);
         vm.expectEmit();
         emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, true);
-        hook.trustedCall(POOL_A, SC_1, enablePayload);
+        hook.fromHub(POOL_A, enablePayload);
         assertTrue(hook.manager(address(mockShareToken), managerAddress));
 
         // Then disable
-        bytes memory disablePayload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), false);
-        vm.prank(deployer);
+        bytes memory disablePayload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), false
+        );
+        vm.prank(envoy);
         vm.expectEmit();
         emit IBaseTransferHook.UpdateHookManager(address(mockShareToken), managerAddress, false);
-        hook.trustedCall(POOL_A, SC_1, disablePayload);
+        hook.fromHub(POOL_A, disablePayload);
         assertFalse(hook.manager(address(mockShareToken), managerAddress));
     }
 
-    function testTrustedCallShareTokenDoesNotExist() public {
+    function testFromHubShareTokenDoesNotExist() public {
         // Mock the share token to NOT exist (return address(0))
         vm.mockCall(
             address(mockSpoke),
@@ -678,28 +673,24 @@ contract BaseTransferHookTestTrustedCall is BaseTransferHookTestBase {
         );
 
         address managerAddress = makeAddr("manager");
-        bytes memory payload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
-
-        vm.expectRevert(BaseTransferHook.ShareTokenDoesNotExist.selector);
-        vm.prank(deployer);
-        hook.trustedCall(POOL_A, SC_1, payload);
-    }
-
-    function testTrustedCallUnauthorized() public {
-        vm.mockCall(
-            address(mockSpoke),
-            abi.encodeWithSelector(bytes4(keccak256("shareToken(uint64,bytes16)")), POOL_A.raw(), SC_1.raw()),
-            abi.encode(address(mockShareToken))
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
         );
 
-        address managerAddress = makeAddr("manager");
-        bytes memory payload =
-            abi.encode(uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true);
+        vm.expectRevert(BaseTransferHook.ShareTokenDoesNotExist.selector);
+        vm.prank(envoy);
+        hook.fromHub(POOL_A, payload);
+    }
 
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        vm.prank(user1); // Not authorized
-        hook.trustedCall(POOL_A, SC_1, payload);
+    function testFromHubNotEnvoy() public {
+        address managerAddress = makeAddr("manager");
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IBaseTransferHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
+
+        vm.expectRevert(IBaseTransferHook.NotEnvoy.selector);
+        vm.prank(user1); // Not the envoy
+        hook.fromHub(POOL_A, payload);
     }
 }
 
@@ -722,8 +713,7 @@ contract BaseTransferHookTestFuzz is BaseTransferHookTestBase {
     }
 }
 
-contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase {
-    TestableBaseTransferHook hookWithFastPath;
+contract BaseTransferHookTestPoolEscrowResolution is BaseTransferHookTestBase {
     MockPoolEscrow otherPoolEscrow;
     address otherEscrowAddr;
 
@@ -733,43 +723,21 @@ contract BaseTransferHookTestPoolEscrowOptimization is BaseTransferHookTestBase 
         otherPoolEscrow = new MockPoolEscrow(PoolId.wrap(2));
         otherEscrowAddr = address(otherPoolEscrow);
         mockPoolEscrowProvider.setEscrow(PoolId.wrap(2), otherEscrowAddr);
-
-        vm.prank(deployer);
-        hookWithFastPath = new TestableBaseTransferHook(
-            address(mockRoot),
-            address(mockSpoke),
-            balanceSheet,
-            crosschainSource,
-            deployer,
-            address(mockPoolEscrowProvider),
-            poolEscrow
-        );
     }
 
-    function testFastPathRecognizesConfiguredEscrow() public view {
-        assertTrue(hookWithFastPath.isPoolEscrow(poolEscrow), "fast path should recognize configured poolEscrow");
+    function testRecognizesFactoryEscrow() public view {
+        assertTrue(hook.isPoolEscrow(poolEscrow), "escrow registered in poolEscrowProvider must be recognized");
+        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "every registered escrow must be recognized, not just one");
     }
 
-    function testFastPathRejectsOtherAddress(address random) public view {
-        vm.assume(random != address(poolEscrow));
-
-        assertFalse(
-            hookWithFastPath.isPoolEscrow(random),
-            "fast path should reject address that doesn't match configured poolEscrow"
-        );
-        assertFalse(hookWithFastPath.isPoolEscrow(otherEscrowAddr), "fast path should otherEscrowAddr");
-    }
-
-    function testMultiPoolRecognizesFactoryEscrow() public view {
-        assertTrue(hook.isPoolEscrow(poolEscrow), "multi-pool mode should recognize escrow via poolEscrowProvider");
-    }
-
-    function testMultiPoolRejectsNonFactoryEscrow(address random) public view {
+    function testRejectsNonFactoryEscrow(address random) public view {
         vm.assume(random != address(poolEscrow) && random != otherEscrowAddr);
 
-        assertFalse(
-            hook.isPoolEscrow(random), "multi-pool mode should reject escrow not registered in poolEscrowProvider"
-        );
-        assertTrue(hook.isPoolEscrow(otherEscrowAddr), "multi-pool mode should not reject otherEscrowAddr");
+        assertFalse(hook.isPoolEscrow(random), "escrow not registered in poolEscrowProvider must be rejected");
+    }
+
+    function testRejectsSelfDeclaredEscrow() public {
+        MockPoolEscrow impostor = new MockPoolEscrow(TEST_POOL_ID);
+        assertFalse(hook.isPoolEscrow(address(impostor)), "self-declared poolId must not grant escrow status");
     }
 }

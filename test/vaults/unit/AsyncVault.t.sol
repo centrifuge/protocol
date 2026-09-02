@@ -15,13 +15,14 @@ import {
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 
 import "forge-std/Test.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract MockShareToken {
     function decimals() external pure returns (uint8) {

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AssetId, AsyncVault, VaultBaseTest as BaseTest, ERC20, IShareToken, VaultKind} from "./VaultBaseTest.sol";
+import {AssetId, AsyncVault, VaultBaseTest as BaseTest, ERC20} from "./VaultBaseTest.sol";
 
 import {D18} from "../../../src/misc/types/D18.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract DepositRedeem is BaseTest {
     function testPartialDepositAndRedeemExecutions(bytes16 scId) public {
@@ -12,7 +14,7 @@ contract DepositRedeem is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
 
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1e18, uint64(block.timestamp));
@@ -38,7 +40,7 @@ contract DepositRedeem is BaseTest {
         vault.requestDeposit(investmentAmount, self, self);
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
-        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId); // retrieve assetId
+        AssetId assetId = spokeRegistry.assetToId(address(asset), erc20TokenId); // retrieve assetId
         uint128 assets = 50000000; // 50 * 10**6
         uint128 firstSharePayout = 35714285714285714285; // 50 * 10**18 / 1.4, rounded down
         centrifugeChain.isFulfilledDepositRequest(
@@ -71,7 +73,7 @@ contract DepositRedeem is BaseTest {
 
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId);
+        AssetId assetId = spokeRegistry.assetToId(address(asset), erc20TokenId);
         uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalShares);

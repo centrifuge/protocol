@@ -19,7 +19,7 @@ contract AccountingTokenTest is Test {
     PoolId constant POOL_B = PoolId.wrap(2);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
 
     AccountingToken token;
 
@@ -38,15 +38,15 @@ contract AccountingTokenTest is Test {
     }
 
     function setUp() public virtual {
-        token = new AccountingToken(contractUpdater);
+        token = new AccountingToken(envoy);
 
         tokenIdA = token.toTokenId(POOL_A, asset, false);
         tokenIdB = token.toTokenId(POOL_B, asset, false);
 
         // Register minters via trustedCall
-        vm.startPrank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minterA), true));
-        token.trustedCall(POOL_B, SC_1, abi.encode(_toBytes32(minterB), true));
+        vm.startPrank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(minterA), true));
+        token.fromHub(POOL_B, abi.encode(_toBytes32(minterB), true));
         vm.stopPrank();
     }
 
@@ -61,7 +61,7 @@ contract AccountingTokenTest is Test {
 
 contract AccountingTokenConstructorTest is AccountingTokenTest {
     function testConstructor() public view {
-        assertEq(token.contractUpdater(), contractUpdater);
+        assertEq(token.envoy(), envoy);
     }
 }
 
@@ -116,17 +116,17 @@ contract AccountingTokenAccessControlTest is AccountingTokenTest {
 
 contract AccountingTokenTrustedCallTest is AccountingTokenTest {
     function testTrustedCallOnlyCallableByContractUpdater() public {
-        vm.expectRevert(IAccountingToken.NotAuthorized.selector);
+        vm.expectRevert(IAccountingToken.NotEnvoy.selector);
         vm.prank(user);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(user), true));
+        token.fromHub(POOL_A, abi.encode(_toBytes32(user), true));
     }
 
     function testTrustedCallEnablesMinter() public {
         address newMinter = makeAddr("newMinter");
         assertFalse(token.minters(POOL_A, newMinter));
 
-        vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(newMinter), true));
+        vm.prank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(newMinter), true));
 
         assertTrue(token.minters(POOL_A, newMinter));
     }
@@ -134,8 +134,8 @@ contract AccountingTokenTrustedCallTest is AccountingTokenTest {
     function testTrustedCallDisablesMinter() public {
         assertTrue(token.minters(POOL_A, minterA));
 
-        vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minterA), false));
+        vm.prank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(minterA), false));
 
         assertFalse(token.minters(POOL_A, minterA));
     }
@@ -146,14 +146,14 @@ contract AccountingTokenTrustedCallTest is AccountingTokenTest {
         vm.expectEmit();
         emit IAccountingToken.UpdateMinter(POOL_A, newMinter, true);
 
-        vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(newMinter), true));
+        vm.prank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(newMinter), true));
     }
 
     function testDisabledMinterCannotMint() public {
         // Disable minterA
-        vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minterA), false));
+        vm.prank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(minterA), false));
 
         vm.expectRevert(IAccountingToken.NotMinter.selector);
         vm.prank(minterA);
@@ -394,7 +394,7 @@ contract AccountingTokenMinterIntegrationTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
     ShareClassId constant SC_1 = ShareClassId.wrap(bytes16("sc1"));
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     AccountingToken token;
 
     function _toBytes32(address addr) internal pure returns (bytes32) {
@@ -402,7 +402,7 @@ contract AccountingTokenMinterIntegrationTest is Test {
     }
 
     function setUp() public {
-        token = new AccountingToken(contractUpdater);
+        token = new AccountingToken(envoy);
     }
 
     function testTrustedCallRegisteredMinterCanMint() public {
@@ -411,8 +411,8 @@ contract AccountingTokenMinterIntegrationTest is Test {
         uint256 tokenId = token.toTokenId(POOL_A, asset_, false);
         address user_ = makeAddr("user");
 
-        vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minter), true));
+        vm.prank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(minter), true));
 
         vm.prank(minter);
         token.mint(user_, tokenId, 100e18, SC_1);
@@ -426,8 +426,8 @@ contract AccountingTokenMinterIntegrationTest is Test {
         uint256 tokenId = token.toTokenId(POOL_A, asset_, false);
         address user_ = makeAddr("user");
 
-        vm.prank(contractUpdater);
-        token.trustedCall(POOL_A, SC_1, abi.encode(_toBytes32(minter), true));
+        vm.prank(envoy);
+        token.fromHub(POOL_A, abi.encode(_toBytes32(minter), true));
 
         vm.prank(minter);
         token.mint(user_, tokenId, 100e18, SC_1);

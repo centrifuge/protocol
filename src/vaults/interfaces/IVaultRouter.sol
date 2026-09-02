@@ -4,15 +4,16 @@ pragma solidity >=0.5.0;
 import {IBaseVault} from "./IBaseVault.sol";
 import {IAsyncVault} from "./IAsyncVault.sol";
 
+import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
+
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IVaultRegistry} from "../../core/spoke/interfaces/IVaultRegistry.sol";
-import {IBatchedMulticall} from "../../core/utils/interfaces/IBatchedMulticall.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {BaseSyncDepositVault} from "../BaseVaults.sol";
 
-interface IVaultRouter is IBatchedMulticall {
+interface IVaultRouter is IMulticall {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -49,9 +50,6 @@ interface IVaultRouter is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Check `IERC7540Deposit.requestDeposit`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
-    ///
     /// @param  vault The vault to deposit into
     /// @param  amount Check @param IERC7540Deposit.requestDeposit.assets
     /// @param  controller Check @param IERC7540Deposit.requestDeposit.controller
@@ -59,9 +57,6 @@ interface IVaultRouter is IBatchedMulticall {
     function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Check `IERC4626.deposit`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
-    ///
     /// @param  vault The vault to deposit into
     /// @param  assets Check @param IERC4626.deposit.assets
     /// @param  receiver Check @param IERC4626.deposit.receiver
@@ -75,9 +70,6 @@ interface IVaultRouter is IBatchedMulticall {
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable;
 
     /// @notice Check `IERC7887Deposit.cancelDepositRequest`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
-    ///
     /// @param  vault The vault where the deposit was initiated
     function cancelDepositRequest(IAsyncVault vault) external payable;
 
@@ -93,9 +85,6 @@ interface IVaultRouter is IBatchedMulticall {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Check `IERC7540Redeem.requestRedeem`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
-    ///
     /// @param  vault The vault to deposit into
     /// @param  amount Check @param IERC7540Redeem.requestRedeem.shares
     /// @param  controller Check @param IERC7540Redeem.requestRedeem.controller
@@ -112,9 +101,6 @@ interface IVaultRouter is IBatchedMulticall {
     function claimRedeem(IBaseVault vault, address receiver, address controller) external payable;
 
     /// @notice Check `IERC7887Redeem.cancelRedeemRequest`.
-    /// @dev    This adds a mandatory prepayment for all the costs that will incur during the transaction.
-    ///         The caller must call `VaultRouter.estimate` to get estimates how much the deposit will cost.
-    ///
     /// @param  vault The vault where the deposit was initiated
     function cancelRedeemRequest(IAsyncVault vault) external payable;
 
@@ -129,8 +115,11 @@ interface IVaultRouter is IBatchedMulticall {
     // Cross-chain transfers
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Intended to be used in a batch with `deposit` or `claimRedeem`,
-    ///         with `receiver=address(this)`
+    /// @notice Intended to be used in a batch with `deposit` or `claimDeposit`.
+    ///         The preceding vault call's `receiver` must be set to `address(this)` (the router),
+    ///         not this function's `receiver` parameter (which is the destination bytes32 address on the
+    ///         remote chain). `owner` must be either `msg.sender` or `address(this)` (the router itself,
+    ///         for the batched case where the router holds the shares as an intermediate step).
     function crosschainTransferShares(
         BaseSyncDepositVault vault,
         uint128 shares,
@@ -171,6 +160,6 @@ interface IVaultRouter is IBatchedMulticall {
     /// @notice Spoke-side entry point for this chain's pool and share class operations
     function spoke() external view returns (ISpoke);
 
-    /// @notice Maps (poolId, scId, asset) tuples to deployed vault addresses
-    function vaultRegistry() external view returns (IVaultRegistry);
+    /// @notice Stores pool, share class, asset, price and vault state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
 }

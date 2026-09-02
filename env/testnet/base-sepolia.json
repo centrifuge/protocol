@@ -1,0 +1,50 @@
+{
+  "network": {
+    "chainId": 84532,
+    "environment": "testnet",
+    "centrifugeId": 2,
+    "protocolAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "opsAdmin": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "namespace": "0xc1A929CBc122Ddb8794287D05Bf890E41f23c8cb",
+    "baseRpcUrl": "https://base-sepolia.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "axelar": {
+      "axelarId": "base-sepolia",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "deploy": true
+    },
+    "layerZero": {
+      "endpoint": "0x6EDCE65403992e310A62460808c4b910D972f10f",
+      "layerZeroEid": 40245,
+      "deploy": true,
+      "blockConfirmations": 5,
+      "requiredDVNs": [
+        "0xe1a12515F9AB2764b887bF60B923Ca494EBbB2d6"
+      ],
+      "optionalDVNs": [],
+      "optionalDVNThreshold": 0
+    },
+    "chainlink": {
+      "chainSelector": 10344971235874465080,
+      "ccipRouter": "0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
+      "blockNumber": 36922347,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "24032569",
+      "timestamp": "2026-01-28T15:09:27Z",
+      "suffix": "rev2",
+      "startBlock": 36922347
+    }
+  }
+}

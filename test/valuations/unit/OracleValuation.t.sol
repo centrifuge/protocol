@@ -5,9 +5,9 @@ import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {IHub} from "../../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {OracleValuation} from "../../../src/valuations/OracleValuation.sol";
@@ -32,11 +32,10 @@ contract OracleValuationTest is Test {
 
     address hub = address(new IsContract());
     address hubRegistry = address(new IsContract());
-    address contractUpdater = address(new IsContract());
-    address poolManager = makeAddr("poolManager");
+    address envoy = makeAddr("envoy");
     address feeder = makeAddr("feeder");
     address notFeeder = makeAddr("notFeeder");
-    address notManager = makeAddr("notManager");
+    address notDispatcher = makeAddr("notDispatcher");
 
     OracleValuation valuation;
 
@@ -46,17 +45,6 @@ contract OracleValuationTest is Test {
     }
 
     function _setupMocks() internal {
-        // Mock hubRegistry.manager() calls
-        vm.mockCall(
-            hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_A, poolManager), abi.encode(true)
-        );
-        vm.mockCall(
-            hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_B, poolManager), abi.encode(true)
-        );
-        vm.mockCall(
-            hubRegistry, abi.encodeWithSelector(IHubRegistry.manager.selector, POOL_A, notManager), abi.encode(false)
-        );
-
         // Mock hubRegistry.decimals() calls using function signatures
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", C6), abi.encode(6));
         vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", C18), abi.encode(18));
@@ -71,12 +59,17 @@ contract OracleValuationTest is Test {
     }
 
     function _deployValuation() internal {
-        valuation = new OracleValuation(IHub(hub), IHubRegistry(hubRegistry), contractUpdater);
+        valuation = new OracleValuation(IHub(hub), IHubRegistry(hubRegistry), envoy);
+    }
+
+    /// @dev Drives feeder management through `fromHub` as the Envoy would.
+    function _updateFeeder(PoolId poolId, uint16 centrifugeId, bytes32 feeder_, bool canFeed) internal {
+        vm.prank(envoy);
+        valuation.fromHub(poolId, abi.encode(centrifugeId, feeder_, canFeed));
     }
 
     function _enableFeeder(PoolId poolId, address feeder_) internal {
-        vm.prank(poolManager);
-        valuation.updateFeeder(poolId, 0, feeder_.toBytes32(), true);
+        _updateFeeder(poolId, 0, feeder_.toBytes32(), true);
     }
 
     function _setPrice(PoolId poolId, ShareClassId scId, AssetId assetId, D18 price) internal {
@@ -89,7 +82,7 @@ contract OracleValuationConstructorTests is OracleValuationTest {
     function testConstructorSetsImmutables() public view {
         assertEq(address(valuation.hub()), hub);
         assertEq(address(valuation.hubRegistry()), hubRegistry);
-        assertEq(valuation.contractUpdater(), contractUpdater);
+        assertEq(valuation.envoy(), envoy);
     }
 }
 
@@ -98,37 +91,39 @@ contract OracleValuationUpdateFeederTests is OracleValuationTest {
         vm.expectEmit(true, true, true, true);
         emit IOracleValuation.UpdateFeeder(POOL_A, 0, feeder.toBytes32(), true);
 
-        vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
+        _updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
 
         assertTrue(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
     }
 
     function testUpdateFeederDisable() public {
         // First enable
-        vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
+        _updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
         assertTrue(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
 
         // Then disable
-        vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), false);
+        _updateFeeder(POOL_A, 0, feeder.toBytes32(), false);
         assertFalse(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
     }
 
-    function testUpdateFeederNotHubManager() public {
-        vm.expectRevert(IOracleValuation.NotHubManager.selector);
-        vm.prank(notManager);
-        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
+    function testFromHubNotDispatcher() public {
+        vm.expectRevert(IOracleValuation.NotEnvoy.selector);
+        vm.prank(notDispatcher);
+        valuation.fromHub(POOL_A, abi.encode(uint16(0), feeder.toBytes32(), true));
+    }
+
+    function testFromHubUnexpectedValue() public {
+        vm.deal(envoy, 1 ether);
+        vm.expectRevert(IOracleValuation.UnexpectedValue.selector);
+        vm.prank(envoy);
+        valuation.fromHub{value: 1}(POOL_A, abi.encode(uint16(0), feeder.toBytes32(), true));
     }
 
     function testUpdateFeederMultipleFeeders() public {
         address feeder2 = makeAddr("feeder2");
 
-        vm.startPrank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
-        valuation.updateFeeder(POOL_A, 0, feeder2.toBytes32(), true);
-        vm.stopPrank();
+        _updateFeeder(POOL_A, 0, feeder.toBytes32(), true);
+        _updateFeeder(POOL_A, 0, feeder2.toBytes32(), true);
 
         assertTrue(valuation.feeder(POOL_A, 0, feeder.toBytes32()));
         assertTrue(valuation.feeder(POOL_A, 0, feeder2.toBytes32()));
@@ -149,7 +144,7 @@ contract OracleValuationSetPriceTests is OracleValuationTest {
 
         _setPrice(POOL_A, SC_1, C6, price);
 
-        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), price.raw());
         assertTrue(isValid);
     }
@@ -162,7 +157,7 @@ contract OracleValuationSetPriceTests is OracleValuationTest {
 
         _setPrice(POOL_A, SC_1, C6, zeroPrice);
 
-        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), 0);
         assertTrue(isValid); // Should be valid even with zero price
     }
@@ -181,13 +176,13 @@ contract OracleValuationSetPriceTests is OracleValuationTest {
 
         // Set first price
         _setPrice(POOL_A, SC_1, C6, price1);
-        (D18 storedValue1, bool isValid1) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue1, bool isValid1,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue1.raw(), price1.raw());
         assertTrue(isValid1);
 
         // Update with second price
         _setPrice(POOL_A, SC_1, C6, price2);
-        (D18 storedValue2, bool isValid2) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue2, bool isValid2,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue2.raw(), price2.raw());
         assertTrue(isValid2);
     }
@@ -287,6 +282,40 @@ contract OracleValuationGetQuoteTests is OracleValuationTest {
     }
 }
 
+contract OracleValuationZeroDecimalsTests is OracleValuationTest {
+    AssetId constant C0 = AssetId.wrap(100); // decimals mocked to 0
+    PoolId constant POOL_C0 = PoolId.wrap(200); // currency decimals mocked to 0
+
+    function setUp() public override {
+        super.setUp();
+        vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint128)", C0), abi.encode(0));
+        vm.mockCall(hubRegistry, abi.encodeWithSignature("decimals(uint64)", POOL_C0), abi.encode(0));
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_C0, SC_1, C0), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_B, SC_1, C0), abi.encode());
+        vm.mockCall(hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_C0, SC_1, C18), abi.encode());
+        _enableFeeder(POOL_C0, feeder);
+        _enableFeeder(POOL_B, feeder);
+    }
+
+    // 0-decimal asset into a 0-decimal pool: equal-decimals branch, price applied with no scaling.
+    function testGetQuoteZeroDecAssetZeroDecPool() public {
+        _setPrice(POOL_C0, SC_1, C0, d18(1.5e18));
+        assertEq(valuation.getQuote(POOL_C0, SC_1, C0, 100), 150);
+    }
+
+    // 0-decimal asset into an 18-decimal pool: 1 whole unit becomes 1e18 fine units, exponent-safe.
+    function testGetQuoteZeroDecAssetFinePool() public {
+        _setPrice(POOL_B, SC_1, C0, d18(1e18));
+        assertEq(valuation.getQuote(POOL_B, SC_1, C0, 1), 1e18);
+    }
+
+    // 18-decimal asset into a 0-decimal pool: 1.0 fine unit rounds to 1 whole unit.
+    function testGetQuoteFineAssetZeroDecPool() public {
+        _setPrice(POOL_C0, SC_1, C18, d18(1e18));
+        assertEq(valuation.getQuote(POOL_C0, SC_1, C18, 1e18), 1);
+    }
+}
+
 contract OracleValuationMultiAssetTests is OracleValuationTest {
     function setUp() public override {
         super.setUp();
@@ -302,8 +331,8 @@ contract OracleValuationMultiAssetTests is OracleValuationTest {
         _setPrice(POOL_A, SC_1, C18, priceC18);
 
         // Verify both prices are stored correctly
-        (D18 storedPriceC6, bool isValidC6) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
-        (D18 storedPriceC18, bool isValidC18) = valuation.pricePoolPerAsset(POOL_A, SC_1, C18);
+        (D18 storedPriceC6, bool isValidC6,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPriceC18, bool isValidC18,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C18);
 
         assertEq(storedPriceC6.raw(), priceC6.raw());
         assertTrue(isValidC6);
@@ -320,8 +349,8 @@ contract OracleValuationMultiAssetTests is OracleValuationTest {
         _setPrice(POOL_A, SC_2, C6, priceSC2);
 
         // Verify both prices are stored correctly
-        (D18 storedPriceSC1, bool isValidSC1) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
-        (D18 storedPriceSC2, bool isValidSC2) = valuation.pricePoolPerAsset(POOL_A, SC_2, C6);
+        (D18 storedPriceSC1, bool isValidSC1,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPriceSC2, bool isValidSC2,) = valuation.pricePoolPerAsset(POOL_A, SC_2, C6);
 
         assertEq(storedPriceSC1.raw(), priceSC1.raw());
         assertTrue(isValidSC1);
@@ -340,8 +369,8 @@ contract OracleValuationMultiAssetTests is OracleValuationTest {
         _setPrice(POOL_B, SC_1, C6, pricePoolB);
 
         // Verify both prices are stored correctly
-        (D18 storedPriceA, bool isValidA) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
-        (D18 storedPriceB, bool isValidB) = valuation.pricePoolPerAsset(POOL_B, SC_1, C6);
+        (D18 storedPriceA, bool isValidA,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPriceB, bool isValidB,) = valuation.pricePoolPerAsset(POOL_B, SC_1, C6);
 
         assertEq(storedPriceA.raw(), pricePoolA.raw());
         assertTrue(isValidA);
@@ -364,7 +393,7 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
 
         _setPrice(POOL_A, SC_1, C6, maxPrice);
 
-        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
         assertEq(storedValue.raw(), maxPrice.raw());
         assertTrue(isValid);
     }
@@ -374,10 +403,8 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
         address feeder3 = makeAddr("feeder3");
 
         // Enable multiple feeders
-        vm.startPrank(poolManager);
-        valuation.updateFeeder(POOL_A, 0, feeder2.toBytes32(), true);
-        valuation.updateFeeder(POOL_A, 0, feeder3.toBytes32(), true);
-        vm.stopPrank();
+        _updateFeeder(POOL_A, 0, feeder2.toBytes32(), true);
+        _updateFeeder(POOL_A, 0, feeder3.toBytes32(), true);
 
         // All feeders should be able to set prices
         D18 price1 = d18(1.0e18);
@@ -394,9 +421,9 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
         valuation.setPrice(POOL_A, SC_2, C6, price3);
 
         // Verify all prices were set
-        (D18 storedPrice1,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
-        (D18 storedPrice2,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C18);
-        (D18 storedPrice3,) = valuation.pricePoolPerAsset(POOL_A, SC_2, C6);
+        (D18 storedPrice1,,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedPrice2,,) = valuation.pricePoolPerAsset(POOL_A, SC_1, C18);
+        (D18 storedPrice3,,) = valuation.pricePoolPerAsset(POOL_A, SC_2, C6);
 
         assertEq(storedPrice1.raw(), price1.raw());
         assertEq(storedPrice2.raw(), price2.raw());
@@ -404,56 +431,140 @@ contract OracleValuationEdgeCaseTests is OracleValuationTest {
     }
 }
 
-contract OracleValuationUntrustedCallTests is OracleValuationTest {
+contract OracleValuationFromSpokeTests is OracleValuationTest {
     using CastLib for *;
 
     uint16 constant REMOTE_CENTRIFUGE_ID = 5;
     address remoteFeeder = makeAddr("remoteFeeder");
+    AssetId remoteAsset = newAssetId(REMOTE_CENTRIFUGE_ID, 1);
 
     function setUp() public override {
         super.setUp();
-        // Register remote feeder
-        vm.prank(poolManager);
-        valuation.updateFeeder(POOL_A, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32(), true);
+        vm.mockCall(
+            hub, abi.encodeWithSelector(IHub.updateHoldingValue.selector, POOL_A, SC_1, remoteAsset), abi.encode()
+        );
+        _updateFeeder(POOL_A, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32(), true);
     }
 
-    function testUntrustedCallSuccess() public {
+    /// @dev Direction boundary: `fromSpoke` only performs feeder-validated price updates; feeder management
+    ///      is reachable via `fromHub` (hub-supervised) exclusively. `fromSpoke` never touches the feeder
+    ///      mapping, so a spoke actor cannot self-grant as a feeder even though the selector now exists.
+    function testFromSpokeCannotManageFeeders() public {
+        bytes32 spokeActor = makeAddr("spokeActor").toBytes32();
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
+
+        // A non-feeder spoke actor cannot use fromSpoke (it is not registered as a feeder).
+        vm.prank(envoy);
+        vm.expectRevert(IOracleValuation.NotFeeder.selector);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, spokeActor);
+
+        // The feeder mapping is untouched: fromSpoke has no path to grant feeder status.
+        assertEq(valuation.feeder(POOL_A, REMOTE_CENTRIFUGE_ID, spokeActor), false);
+    }
+
+    function testFromSpokeUnexpectedValue() public {
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
+
+        vm.deal(envoy, 1 ether);
+        vm.expectRevert(IOracleValuation.UnexpectedValue.selector);
+        vm.prank(envoy);
+        valuation.fromSpoke{value: 1}(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+    }
+
+    function testFromSpokeSuccess() public {
         D18 price = d18(1.5e18);
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), price.raw());
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), price.raw(), uint64(block.timestamp));
 
         vm.expectEmit(true, true, true, true);
-        emit IOracleValuation.UpdatePrice(POOL_A, SC_1, C6, price);
+        emit IOracleValuation.UpdatePrice(POOL_A, SC_1, remoteAsset, price);
 
-        vm.prank(contractUpdater);
-        valuation.untrustedCall(POOL_A, SC_1, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
 
-        (D18 storedValue, bool isValid) = valuation.pricePoolPerAsset(POOL_A, SC_1, C6);
+        (D18 storedValue, bool isValid,) = valuation.pricePoolPerAsset(POOL_A, SC_1, remoteAsset);
         assertEq(storedValue.raw(), price.raw());
         assertTrue(isValid);
     }
 
-    function testUntrustedCallNotContractUpdater() public {
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), uint128(1e18));
+    function testFromSpokeNotEnvoy() public {
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
 
-        vm.expectRevert(IOracleValuation.NotAuthorized.selector);
+        vm.expectRevert(IOracleValuation.NotEnvoy.selector);
         vm.prank(makeAddr("random"));
-        valuation.untrustedCall(POOL_A, SC_1, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
     }
 
-    function testUntrustedCallNotFeeder() public {
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), uint128(1e18));
+    function testFromSpokeNotFeeder() public {
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
 
         vm.expectRevert(IOracleValuation.NotFeeder.selector);
-        vm.prank(contractUpdater);
-        valuation.untrustedCall(POOL_A, SC_1, payload, REMOTE_CENTRIFUGE_ID, notFeeder.toBytes32());
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, notFeeder.toBytes32());
     }
 
-    function testUntrustedCallWrongCentrifugeId() public {
-        bytes memory payload = abi.encode(AssetId.unwrap(C6), uint128(1e18));
+    function testFromSpokeWrongCentrifugeId() public {
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
 
         // Feeder is registered for REMOTE_CENTRIFUGE_ID, not 999
         vm.expectRevert(IOracleValuation.NotFeeder.selector);
-        vm.prank(contractUpdater);
-        valuation.untrustedCall(POOL_A, SC_1, payload, 999, remoteFeeder.toBytes32());
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, 999, remoteFeeder.toBytes32());
+    }
+
+    function testFromSpokeStaleReplayRejected() public {
+        uint64 t0 = uint64(block.timestamp);
+        bytes memory stalePayload = abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(1.5e18), t0);
+
+        // A newer message commits a price, advancing updatedAt past t0.
+        skip(10);
+        bytes memory newerPayload =
+            abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(2e18), uint64(block.timestamp));
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, newerPayload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+
+        vm.expectRevert(IOracleValuation.StalePrice.selector);
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, stalePayload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+    }
+
+    function testFromSpokeLocalSetPriceBlocksStaleReplay() public {
+        uint64 t0 = uint64(block.timestamp);
+        bytes memory stalePayload = abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(1.5e18), t0);
+
+        // A local setPrice (hub-side feeder) advances updatedAt past t0.
+        skip(10);
+        _enableFeeder(POOL_A, feeder);
+        vm.prank(feeder);
+        valuation.setPrice(POOL_A, SC_1, remoteAsset, d18(2e18));
+
+        vm.expectRevert(IOracleValuation.StalePrice.selector);
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, stalePayload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+    }
+
+    function testFromSpokeUpdatedAtStoredOnSuccess() public {
+        uint64 t = uint64(block.timestamp);
+        bytes memory payload = abi.encode(ShareClassId.unwrap(SC_1), remoteAsset.raw(), uint128(1e18), t);
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
+
+        (,, uint64 updatedAt) = valuation.pricePoolPerAsset(POOL_A, SC_1, remoteAsset);
+        assertEq(updatedAt, t);
+    }
+
+    function testFromSpokeNetworkMismatch() public {
+        // C6 = AssetId.wrap(6) embeds centrifugeId 0, which doesn't match REMOTE_CENTRIFUGE_ID = 5.
+        bytes memory payload =
+            abi.encode(ShareClassId.unwrap(SC_1), AssetId.unwrap(C6), uint128(1e18), uint64(block.timestamp));
+
+        vm.expectRevert(IOracleValuation.NetworkMismatch.selector);
+        vm.prank(envoy);
+        valuation.fromSpoke(POOL_A, payload, REMOTE_CENTRIFUGE_ID, remoteFeeder.toBytes32());
     }
 }

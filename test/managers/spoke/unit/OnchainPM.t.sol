@@ -6,8 +6,8 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../../../src/core/utils/interfaces/IContractUpdate.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
+import {IManagerCallFromHub} from "../../../../src/core/utils/interfaces/IManagerCall.sol";
 
 import {IOnchainPM} from "../../../../src/managers/spoke/interfaces/IOnchainPM.sol";
 import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
@@ -21,7 +21,7 @@ import {WeirollTarget, OnchainPMTestBase} from "../OnchainPMTestBase.sol";
 contract OnchainPMTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     address unauthorized = makeAddr("unauthorized");
     IGateway gateway = IGateway(makeAddr("gateway"));
@@ -30,23 +30,22 @@ contract OnchainPMTest is OnchainPMTestBase {
     WeirollTarget target;
 
     function setUp() public virtual {
-        executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(gateway)))
-        );
+        executor =
+            IOnchainPM(deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(gateway))));
         target = new WeirollTarget();
     }
 
     // ─── Convenience wrappers ─────────────────────────────────────────────
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     // ─── Constructor / receive tests ─────────────────────────────────────
 
     function testConstructor() public view {
         assertEq(executor.poolId().raw(), POOL_A.raw());
-        assertEq(executor.contractUpdater(), contractUpdater);
+        assertEq(executor.envoy(), envoy);
     }
 
     function testReceiveEther() public {
@@ -57,9 +56,9 @@ contract OnchainPMTest is OnchainPMTestBase {
     }
 }
 
-// ─── TrustedCall Failures ─────────────────────────────────────────────────────
+// ─── FromHub Failures ─────────────────────────────────────────────────────
 
-contract OnchainPMTrustedCallFailureTests is OnchainPMTest {
+contract OnchainPMFromHubFailureTests is OnchainPMTest {
     using CastLib for *;
 
     function testInvalidPoolId() public {
@@ -67,39 +66,49 @@ contract OnchainPMTrustedCallFailureTests is OnchainPMTest {
         bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
 
         vm.expectRevert(IOnchainPM.InvalidPoolId.selector);
-        vm.prank(contractUpdater);
-        executor.trustedCall(POOL_B, SC_1, payload);
+        vm.prank(envoy);
+        executor.fromHub(POOL_B, payload);
     }
 
-    function testNotAuthorized() public {
+    function testNotEnvoy() public {
         bytes32 rootHash = keccak256("root");
         bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
 
-        vm.expectRevert(IOnchainPM.NotAuthorized.selector);
+        vm.expectRevert(IOnchainPM.NotEnvoy.selector);
         vm.prank(unauthorized);
-        executor.trustedCall(POOL_A, SC_1, payload);
+        executor.fromHub(POOL_A, payload);
+    }
+
+    function testUnexpectedValue() public {
+        bytes32 rootHash = keccak256("root");
+        bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
+
+        vm.deal(envoy, 1 ether);
+        vm.expectRevert(IOnchainPM.UnexpectedValue.selector);
+        vm.prank(envoy);
+        executor.fromHub{value: 1}(POOL_A, payload);
     }
 }
 
-// ─── TrustedCall Successes ────────────────────────────────────────────────────
+// ─── FromHub Successes ────────────────────────────────────────────────────
 
-contract OnchainPMTrustedCallSuccessTests is OnchainPMTest {
+contract OnchainPMFromHubSuccessTests is OnchainPMTest {
     using CastLib for *;
 
-    function testTrustedCallPolicySuccess() public {
+    function testFromHubPolicySuccess() public {
         bytes32 rootHash = keccak256("root");
         bytes memory payload = abi.encode(strategist.toBytes32(), rootHash);
 
         vm.expectEmit();
         emit IOnchainPM.UpdatePolicy(strategist, bytes32(0), rootHash);
 
-        vm.prank(contractUpdater);
-        executor.trustedCall(POOL_A, SC_1, payload);
+        vm.prank(envoy);
+        executor.fromHub(POOL_A, payload);
 
         assertEq(executor.policy(strategist), rootHash);
     }
 
-    function testTrustedCallPolicyUpdate() public {
+    function testFromHubPolicyUpdate() public {
         bytes32 oldRoot = keccak256("oldRoot");
         bytes32 newRoot = keccak256("newRoot");
 
@@ -113,7 +122,7 @@ contract OnchainPMTrustedCallSuccessTests is OnchainPMTest {
         assertEq(executor.policy(strategist), newRoot);
     }
 
-    function testTrustedCallMultipleStrategists() public {
+    function testFromHubMultipleStrategists() public {
         address strategist1 = makeAddr("strategist1");
         address strategist2 = makeAddr("strategist2");
         bytes32 root1 = keccak256("root1");
@@ -126,7 +135,7 @@ contract OnchainPMTrustedCallSuccessTests is OnchainPMTest {
         assertEq(executor.policy(strategist2), root2);
     }
 
-    function testTrustedCallClearPolicy() public {
+    function testFromHubClearPolicy() public {
         bytes32 rootHash = keccak256("root");
         _setPolicy(strategist, rootHash);
 
@@ -365,12 +374,12 @@ contract OnchainPMExecuteTests is OnchainPMTest {
         assertEq(address(target).balance, 1 ether);
     }
 
-    function testSelfCallTrustedCallReverts() public {
-        // A weiroll command targeting the OnchainPM's own trustedCall should revert
-        // because msg.sender is the OnchainPM itself, not the contractUpdater
+    function testSelfCallFromHubReverts() public {
+        // A weiroll command targeting the OnchainPM's own fromHub should revert
+        // because msg.sender is the OnchainPM itself, not the envoy
         bytes32[] memory commands = new bytes32[](1);
         commands[0] = _buildCommand(
-            ITrustedContractUpdate.trustedCall.selector,
+            IManagerCallFromHub.fromHub.selector,
             uint8(FLAG_CT_CALL) | 0x20, // FLAG_DATA
             bytes6(uint48(0x00FFFFFFFFFF)), // state[0] is raw calldata
             0xff,
@@ -379,13 +388,13 @@ contract OnchainPMExecuteTests is OnchainPMTest {
 
         bytes memory payload = abi.encode(bytes32(uint256(uint160(strategist))), keccak256("malicious"));
         bytes[] memory state = new bytes[](1);
-        state[0] = abi.encodeWithSelector(ITrustedContractUpdate.trustedCall.selector, POOL_A, SC_1, payload);
+        state[0] = abi.encodeWithSelector(IManagerCallFromHub.fromHub.selector, POOL_A, payload);
         uint128 bitmap = 0;
 
         bytes32 scriptHash = _computeScriptHash(commands, state, bitmap, NO_CALLBACKS);
         _setPolicy(strategist, scriptHash);
 
-        vm.expectRevert(); // NotAuthorized (wrapped by VM.ExecutionFailed)
+        vm.expectRevert(); // NotEnvoy (wrapped by VM.ExecutionFailed)
         vm.prank(strategist);
         executor.execute(commands, state, bitmap, NO_CALLBACKS, new bytes32[](0));
     }
@@ -1100,16 +1109,15 @@ contract ReentrantStrategist {
 
 contract OnchainPMReentrancyTests is OnchainPMTestBase {
     IGateway gateway = IGateway(makeAddr("gateway"));
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
 
     IOnchainPM executor;
     WeirollTarget target;
     ReentrantStrategist strategist;
 
     function setUp() public {
-        executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(gateway)))
-        );
+        executor =
+            IOnchainPM(deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(gateway))));
         target = new WeirollTarget();
         strategist = new ReentrantStrategist();
     }
@@ -1138,7 +1146,7 @@ contract OnchainPMReentrancyTests is OnchainPMTestBase {
 
         // Build merkle tree with both leaves
         bytes32 root = _merkleRoot2(leafA, leafB);
-        _setPolicy(executor, address(strategist), root, contractUpdater);
+        _setPolicy(executor, address(strategist), root, envoy);
 
         bytes32[] memory proofA = new bytes32[](1);
         proofA[0] = leafB;
@@ -1180,11 +1188,11 @@ contract OnchainPMInvalidBitmapTests is OnchainPMTest {
 
 contract ETHRefundRejecter {
     IOnchainPM public executor;
-    address public contractUpdater;
+    address public envoy;
 
-    constructor(IOnchainPM executor_, address contractUpdater_) {
+    constructor(IOnchainPM executor_, address envoy_) {
         executor = executor_;
-        contractUpdater = contractUpdater_;
+        envoy = envoy_;
     }
 
     function trigger(bytes32[] calldata commands, bytes[] calldata state, uint128 bitmap, bytes32[] calldata proof)
@@ -1199,16 +1207,15 @@ contract ETHRefundRejecter {
 
 contract OnchainPMETHRefundFailedTests is OnchainPMTestBase {
     IGateway gateway = IGateway(makeAddr("gateway"));
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
 
     IOnchainPM executor;
     ETHRefundRejecter rejecter;
 
     function setUp() public {
-        executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(gateway)))
-        );
-        rejecter = new ETHRefundRejecter(executor, contractUpdater);
+        executor =
+            IOnchainPM(deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(gateway))));
+        rejecter = new ETHRefundRejecter(executor, envoy);
     }
 
     function testETHRefundFailedReverts() public {
@@ -1217,7 +1224,7 @@ contract OnchainPMETHRefundFailedTests is OnchainPMTestBase {
         uint128 bitmap = 0;
 
         bytes32 scriptHash = _computeScriptHash(commands, state, bitmap);
-        _setPolicy(executor, address(rejecter), scriptHash, contractUpdater);
+        _setPolicy(executor, address(rejecter), scriptHash, envoy);
 
         vm.deal(address(rejecter), 1 ether);
         // Rejecter sends ETH but can't receive refund
@@ -1232,52 +1239,63 @@ contract OnchainPMFactoryTest is Test {
     PoolId constant POOL_A = PoolId.wrap(1);
     PoolId constant POOL_B = PoolId.wrap(2);
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     IGateway gateway = IGateway(makeAddr("gateway"));
-    IBalanceSheet balanceSheet;
     ISpoke spoke;
+    ISpokeRegistry spokeRegistry;
     IOnchainPMFactory factory;
 
     function setUp() public virtual {
-        balanceSheet = IBalanceSheet(makeAddr("balanceSheet"));
         spoke = ISpoke(makeAddr("spoke"));
+        spokeRegistry = ISpokeRegistry(makeAddr("spokeRegistry"));
 
-        vm.mockCall(address(balanceSheet), abi.encodeWithSelector(IBalanceSheet.spoke.selector), abi.encode(spoke));
+        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.spokeRegistry.selector), abi.encode(spokeRegistry));
 
         factory = IOnchainPMFactory(
             deployCode(
-                "out-ir/OnchainPM.sol/OnchainPMFactory.json",
-                abi.encode(contractUpdater, address(balanceSheet), address(gateway))
+                "out-ir/OnchainPM.sol/OnchainPMFactory.json", abi.encode(envoy, address(spoke), address(gateway))
             )
         );
     }
 
     function testConstructor() public view {
-        assertEq(factory.contractUpdater(), contractUpdater);
-        assertEq(address(factory.balanceSheet()), address(balanceSheet));
+        assertEq(factory.envoy(), envoy);
+        assertEq(address(factory.spoke()), address(spoke));
         assertEq(address(factory.gateway()), address(gateway));
     }
 }
 
 contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     function testNewOnchainPMSuccess() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         IOnchainPM exec = factory.newOnchainPM(POOL_A);
 
         assertEq(exec.poolId().raw(), POOL_A.raw());
-        assertEq(exec.contractUpdater(), contractUpdater);
+        assertEq(exec.envoy(), envoy);
     }
 
     function testNewOnchainPMInvalidPoolId() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_B), abi.encode(false));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_B),
+            abi.encode(false)
+        );
 
         vm.expectRevert(IOnchainPMFactory.InvalidPoolId.selector);
         factory.newOnchainPM(POOL_B);
     }
 
     function testNewOnchainPMAlreadyDeployedReverts() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         factory.newOnchainPM(POOL_A);
 
@@ -1287,7 +1305,11 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     }
 
     function testNewOnchainPMEventEmission() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         vm.recordLogs();
         IOnchainPM exec = factory.newOnchainPM(POOL_A);
@@ -1300,7 +1322,11 @@ contract OnchainPMFactoryDeployTest is OnchainPMFactoryTest {
     }
 
     function testGetAddressMatchesDeploy() public {
-        vm.mockCall(address(spoke), abi.encodeWithSelector(ISpoke.isPoolActive.selector, POOL_A), abi.encode(true));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isPoolActive.selector, POOL_A),
+            abi.encode(true)
+        );
 
         address predicted = factory.getAddress(POOL_A);
         IOnchainPM deployed = factory.newOnchainPM(POOL_A);

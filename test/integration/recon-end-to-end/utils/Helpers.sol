@@ -65,9 +65,20 @@ library Helpers {
         return createdAccountIds[accountEntropy % createdAccountIds.length];
     }
 
-    function getRandomAssetId(AssetId[] memory createdAssetIds, uint128 assetEntropy) internal pure returns (AssetId) {
-        uint256 randomIndex = assetEntropy % createdAssetIds.length;
-        return createdAssetIds[randomIndex];
+    /// @dev Picks an account distinct from the one `firstEntropy` selects. A holding that binds the same
+    ///      AccountId to a settlement slot and its counterpart nets every journal entry to zero, which
+    ///      makes the accounting-vs-holdings invariants trivially false without any misconfiguration a
+    ///      pool would plausibly create.
+    function getDistinctAccountId(AccountId[] memory createdAccountIds, uint8 firstEntropy, uint8 secondEntropy)
+        internal
+        pure
+        returns (AccountId)
+    {
+        uint256 length = createdAccountIds.length;
+        uint256 spread = length > 1 ? length - 1 : 1;
+        uint256 index = (firstEntropy % length + 1 + secondEntropy % spread) % length;
+
+        return createdAccountIds[index];
     }
 
     /// @dev performs the same check as SCM::_updateQueued

@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2500" height="2726" viewBox="0 0 2500 2726" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="1" y="1" width="2498" height="2724" rx="16" fill="#ffffff" stroke="#ececec" stroke-width="1"/>
+  <text x="48" y="76" font-size="30" font-weight="bold" fill="#17202a">Balance Sheet Flow - Queued Assets State Changes</text>
+
+  <!-- lifelines -->
+  <line x1="180" y1="200" x2="180" y2="2682" stroke="#d8dce1" stroke-width="1"/>
+  <line x1="560" y1="200" x2="560" y2="2682" stroke="#d8dce1" stroke-width="1"/>
+  <line x1="940" y1="200" x2="940" y2="2682" stroke="#d8dce1" stroke-width="1"/>
+  <line x1="1360" y1="200" x2="1360" y2="2682" stroke="#d8dce1" stroke-width="1"/>
+  <line x1="1860" y1="200" x2="1860" y2="2682" stroke="#d8dce1" stroke-width="1"/>
+  <line x1="2280" y1="200" x2="2280" y2="2682" stroke="#d8dce1" stroke-width="1"/>
+
+  <!-- group frame -->
+  <rect x="480" y="1970" width="1960" height="504" rx="12" fill="none" stroke="#d8dce1" stroke-width="1"/>
+  <rect x="980" y="1953" width="342" height="34" rx="10" fill="#eef0f2"/>
+  <text x="1000" y="1976" font-size="17" font-weight="bold" fill="#1f2a37">Send UpdateAssets message to Hub</text>
+
+  <!-- participants -->
+  <rect x="65" y="130" width="231" height="70" rx="10" fill="#f6f7f8"/>
+  <circle cx="99" cy="165" r="17" fill="#d6f3d2"/>
+  <text x="99" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">M</text>
+  <text x="129" y="172" font-size="21" fill="#1f2a37">Pool Manager</text>
+  <rect x="470" y="130" width="180" height="70" rx="10" fill="#f6f7f8"/>
+  <circle cx="504" cy="165" r="17" fill="#fbe6b0"/>
+  <text x="504" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+  <text x="534" y="172" font-size="21" fill="#1f2a37">Spoke</text>
+  <rect x="836" y="130" width="208" height="70" rx="10" fill="#f6f7f8"/>
+  <circle cx="870" cy="165" r="17" fill="#fbe6b0"/>
+  <text x="870" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+  <text x="900" y="172" font-size="21" fill="#1f2a37">PoolEscrow</text>
+  <rect x="1239" y="130" width="242" height="70" rx="10" fill="#f6f7f8"/>
+  <circle cx="1273" cy="165" r="17" fill="#fbe6b0"/>
+  <text x="1273" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+  <text x="1303" y="172" font-size="21" fill="#1f2a37">SnapshotQueue</text>
+  <rect x="1756" y="130" width="208" height="70" rx="10" fill="#f6f7f8"/>
+  <circle cx="1790" cy="165" r="17" fill="#fbe6b0"/>
+  <text x="1790" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+  <text x="1820" y="172" font-size="21" fill="#1f2a37">HubHandler</text>
+  <rect x="2188" y="130" width="184" height="70" rx="10" fill="#f6f7f8"/>
+  <circle cx="2222" cy="165" r="17" fill="#fbe6b0"/>
+  <text x="2222" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+  <text x="2252" y="172" font-size="21" fill="#1f2a37">Holdings</text>
+
+  <!-- activation bars -->
+  <rect x="934" y="663" width="12" height="61" rx="6" fill="#fde9b8"/>
+  <rect x="1354" y="783" width="12" height="61" rx="6" fill="#fde9b8"/>
+  <rect x="554" y="605" width="12" height="331" rx="6" fill="#fde9b8"/>
+  <rect x="934" y="1229" width="12" height="61" rx="6" fill="#fde9b8"/>
+  <rect x="1354" y="1349" width="12" height="61" rx="6" fill="#fde9b8"/>
+  <rect x="554" y="1149" width="12" height="331" rx="6" fill="#fde9b8"/>
+  <rect x="1354" y="1773" width="12" height="163" rx="6" fill="#fde9b8"/>
+  <rect x="2274" y="2134" width="12" height="80" rx="6" fill="#fde9b8"/>
+  <rect x="2274" y="2308" width="12" height="146" rx="6" fill="#fde9b8"/>
+  <rect x="1854" y="2054" width="12" height="400" rx="6" fill="#fde9b8"/>
+  <rect x="554" y="1693" width="12" height="761" rx="6" fill="#fde9b8"/>
+
+  <!-- sections -->
+  <rect x="60" y="320" width="2380" height="40" rx="8" fill="#eef0f2"/>
+  <text x="1250" y="347" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="middle">Initial State</text>
+  <rect x="60" y="512" width="2380" height="40" rx="8" fill="#eef0f2"/>
+  <text x="1250" y="539" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="middle">Deposit Operation</text>
+  <rect x="60" y="1056" width="2380" height="40" rx="8" fill="#eef0f2"/>
+  <text x="1250" y="1083" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="middle">Withdraw Operation</text>
+  <rect x="60" y="1600" width="2380" height="40" rx="8" fill="#eef0f2"/>
+  <text x="1250" y="1627" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="middle">Submit Queued Assets</text>
+  <rect x="60" y="2500" width="2380" height="40" rx="8" fill="#eef0f2"/>
+  <text x="1250" y="2527" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="middle">Final State</text>
+
+  <!-- notes -->
+  <rect x="920" y="220" width="581" height="74" rx="10" fill="#fdf1d0"/>
+  <text x="944" y="249" font-size="17" fill="#1f2a37"><tspan>Spoke → Hub communication routes through</tspan></text>
+  <text x="944" y="275" font-size="17" fill="#1f2a37"><tspan>MessageDispatcher → Gateway → adapters → MessageProcessor</tspan></text>
+  <rect x="780" y="386" width="319" height="74" rx="10" fill="#fdf1d0"/>
+  <text x="804" y="415" font-size="17" fill="#1f2a37"><tspan font-weight="bold">holding.total: </tspan><tspan>2000 USDC</tspan></text>
+  <text x="804" y="441" font-size="17" fill="#1f2a37"><tspan font-weight="bold">availableBalanceOf: </tspan><tspan>2000 USDC</tspan></text>
+  <rect x="1177" y="386" width="366" height="100" rx="10" fill="#fdf1d0"/>
+  <text x="1201" y="415" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedAssets.deposits: </tspan><tspan>500 USDC</tspan></text>
+  <text x="1201" y="441" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedAssets.withdrawals: </tspan><tspan>200 USDC</tspan></text>
+  <text x="1201" y="467" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedShares.nonce: </tspan><tspan>0</tspan></text>
+  <rect x="2134" y="386" width="291" height="100" rx="10" fill="#fdf1d0"/>
+  <text x="2158" y="415" font-size="17" fill="#1f2a37"><tspan font-weight="bold">holding amount: </tspan><tspan>5000 USDC</tspan></text>
+  <text x="2158" y="441" font-size="17" fill="#1f2a37"><tspan font-weight="bold">snapshot.isSnapshot: </tspan><tspan>false</tspan></text>
+  <text x="2158" y="467" font-size="17" fill="#1f2a37"><tspan font-weight="bold">snapshot.nonce: </tspan><tspan>0</tspan></text>
+  <rect x="874" y="956" width="553" height="74" rx="10" fill="#fdf1d0"/>
+  <text x="898" y="985" font-size="17" fill="#1f2a37"><tspan font-weight="bold">holding.total: </tspan><tspan>3000 USDC</tspan></text>
+  <text x="898" y="1011" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedAssets: </tspan><tspan>1500 USDC deposits, 200 USDC withdrawals</tspan></text>
+  <rect x="869" y="1500" width="562" height="74" rx="10" fill="#fdf1d0"/>
+  <text x="893" y="1529" font-size="17" fill="#1f2a37"><tspan font-weight="bold">holding.total: </tspan><tspan>2200 USDC</tspan></text>
+  <text x="893" y="1555" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedAssets: </tspan><tspan>1500 USDC deposits, 1000 USDC withdrawals</tspan></text>
+  <rect x="780" y="2566" width="319" height="74" rx="10" fill="#fdf1d0"/>
+  <text x="804" y="2595" font-size="17" fill="#1f2a37"><tspan font-weight="bold">holding.total: </tspan><tspan>2200 USDC</tspan></text>
+  <text x="804" y="2621" font-size="17" fill="#1f2a37"><tspan font-weight="bold">availableBalanceOf: </tspan><tspan>2200 USDC</tspan></text>
+  <rect x="1186" y="2566" width="347" height="100" rx="10" fill="#fdf1d0"/>
+  <text x="1210" y="2595" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedAssets.deposits: </tspan><tspan>0 USDC</tspan></text>
+  <text x="1210" y="2621" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedAssets.withdrawals: </tspan><tspan>0 USDC</tspan></text>
+  <text x="1210" y="2647" font-size="17" fill="#1f2a37"><tspan font-weight="bold">queuedShares.nonce: </tspan><tspan>1</tspan></text>
+  <rect x="2139" y="2566" width="282" height="100" rx="10" fill="#fdf1d0"/>
+  <text x="2163" y="2595" font-size="17" fill="#1f2a37"><tspan font-weight="bold">holding amount: </tspan><tspan>5500 USDC</tspan></text>
+  <text x="2163" y="2621" font-size="17" fill="#1f2a37"><tspan font-weight="bold">snapshot.isSnapshot: </tspan><tspan>true</tspan></text>
+  <text x="2163" y="2647" font-size="17" fill="#1f2a37"><tspan font-weight="bold">snapshot.nonce: </tspan><tspan>1</tspan></text>
+
+  <!-- messages -->
+  <g fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M186,610 H553" marker-end="url(#arrow)"/>
+    <path d="M566,668 H933" marker-end="url(#arrow)"/>
+    <path d="M946,700 H1010 V730 H949" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M566,788 H1353" marker-end="url(#arrow)"/>
+    <path d="M1366,820 H1430 V850 H1369" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M566,930 H933" marker-end="url(#arrow)"/>
+    <path d="M186,1176 H553" marker-end="url(#arrow)"/>
+    <path d="M566,1234 H933" marker-end="url(#arrow)"/>
+    <path d="M946,1266 H1010 V1296 H949" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M566,1354 H1353" marker-end="url(#arrow)"/>
+    <path d="M1366,1386 H1430 V1416 H1369" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M566,1474 H933" marker-end="url(#arrow)"/>
+    <path d="M186,1720 H553" marker-end="url(#arrow)"/>
+    <path d="M566,1778 H1353" marker-end="url(#arrow)"/>
+    <path d="M1366,1810 H1430 V1850 H1369" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M1354,1930 H567" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M566,2048 H1853" marker-end="url(#arrow)"/>
+    <path d="M1866,2128 H2273" marker-end="url(#arrow)"/>
+    <path d="M2274,2208 H1867" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M1866,2240 H1930 V2302 H1869" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M1866,2382 H2273" marker-end="url(#arrow)"/>
+    <path d="M2286,2414 H2350 V2454 H2289" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+  </g>
+  <text x="370" y="595" font-size="17" fill="#3d4753" text-anchor="middle">deposit(poolId, scId, USDC, 0, 1000)</text>
+  <text x="750" y="653" font-size="17" fill="#3d4753" text-anchor="middle">deposit(scId, USDC, 0, 1000)</text>
+  <text x="1026" y="721" font-size="17" fill="#3d4753" text-anchor="start">holding.total: 2000 → 3000 USDC</text>
+  <text x="960" y="773" font-size="17" fill="#3d4753" text-anchor="middle">queueAssets(poolId, scId, assetId, 1000, isIncrease: true)</text>
+  <text x="1446" y="841" font-size="17" fill="#3d4753" text-anchor="start">queuedAssets.deposits: 500 → 1500 USDC</text>
+  <text x="750" y="893" font-size="17" fill="#3d4753" text-anchor="middle">safeTransferFrom(caller → escrow,</text>
+  <text x="750" y="915" font-size="17" fill="#3d4753" text-anchor="middle">1000 USDC)</text>
+  <text x="370" y="1139" font-size="17" fill="#3d4753" text-anchor="middle">withdraw(poolId, scId, USDC, 0,</text>
+  <text x="370" y="1161" font-size="17" fill="#3d4753" text-anchor="middle">receiver, 800)</text>
+  <text x="750" y="1219" font-size="17" fill="#3d4753" text-anchor="middle">withdraw(scId, USDC, 0, receiver, 800)</text>
+  <text x="1026" y="1287" font-size="17" fill="#3d4753" text-anchor="start">holding.total: 3000 → 2200 USDC</text>
+  <text x="960" y="1339" font-size="17" fill="#3d4753" text-anchor="middle">queueAssets(poolId, scId, assetId, 800, isIncrease: false)</text>
+  <text x="1446" y="1407" font-size="17" fill="#3d4753" text-anchor="start">queuedAssets.withdrawals: 200 → 1000 USDC</text>
+  <text x="750" y="1459" font-size="17" fill="#3d4753" text-anchor="middle">authTransferTo(USDC, 0, receiver, 800)</text>
+  <text x="370" y="1683" font-size="17" fill="#3d4753" text-anchor="middle">submitQueuedAssets(poolId, scId, assetId,</text>
+  <text x="370" y="1705" font-size="17" fill="#3d4753" text-anchor="middle">extraGasLimit, refund)</text>
+  <text x="960" y="1763" font-size="17" fill="#3d4753" text-anchor="middle">flushAssets(poolId, scId, assetId)</text>
+  <text x="1446" y="1825" font-size="17" fill="#3d4753" text-anchor="start">net = deposits − withdrawals = 500 USDC;</text>
+  <text x="1446" y="1847" font-size="17" fill="#3d4753" text-anchor="start">clear both to 0, queuedShares.nonce: 0 → 1</text>
+  <text x="960" y="1893" font-size="17" fill="#3d4753" text-anchor="middle">UpdateData(netAmount: 500, isIncrease: true,</text>
+  <text x="960" y="1915" font-size="17" fill="#3d4753" text-anchor="middle">isSnapshot: true, nonce: 0)</text>
+  <text x="1210" y="2033" font-size="17" fill="#3d4753" text-anchor="middle">sendUpdateAssets(poolId, scId, assetId, data, extraGasLimit, refund)</text>
+  <text x="2070" y="2091" font-size="17" fill="#3d4753" text-anchor="middle">increase(poolId, scId, assetId,</text>
+  <text x="2070" y="2113" font-size="17" fill="#3d4753" text-anchor="middle">centrifugeId, 500)</text>
+  <text x="2070" y="2171" font-size="17" fill="#3d4753" text-anchor="middle">value = delta priced at</text>
+  <text x="2070" y="2193" font-size="17" fill="#3d4753" text-anchor="middle">the hub valuation</text>
+  <text x="1946" y="2255" font-size="17" fill="#3d4753" text-anchor="start">hub.updateAccountingAmount(</text>
+  <text x="1946" y="2277" font-size="17" fill="#3d4753" text-anchor="start">poolId, scId, assetId,</text>
+  <text x="1946" y="2299" font-size="17" fill="#3d4753" text-anchor="start">isPositive: true, value)</text>
+  <text x="2070" y="2345" font-size="17" fill="#3d4753" text-anchor="middle">setSnapshot(poolId, scId, centrifugeId,</text>
+  <text x="2070" y="2367" font-size="17" fill="#3d4753" text-anchor="middle">isSnapshot: true, nonce: 0)</text>
+  <text x="2266" y="2429" font-size="17" fill="#3d4753" text-anchor="end">snapshot.isSnapshot = true,</text>
+  <text x="2266" y="2451" font-size="17" fill="#3d4753" text-anchor="end">snapshot.nonce: 0 → 1</text>
+</svg>

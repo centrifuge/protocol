@@ -9,15 +9,15 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultDetails, IVaultRegistry} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {SyncManager} from "../../../src/vaults/SyncManager.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IBaseRequestManager} from "../../../src/vaults/interfaces/IBaseRequestManager.sol";
 
 import "forge-std/Test.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract IsContract {}
 
@@ -28,8 +28,7 @@ abstract contract SyncManagerBaseTest is Test {
     address immutable USER = makeAddr("USER");
 
     ISpoke spoke = ISpoke(address(new IsContract()));
-    IBalanceSheet balanceSheet = IBalanceSheet(address(new IsContract()));
-    IVaultRegistry vaultRegistry = IVaultRegistry(address(new IsContract()));
+    ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     IShareToken shareToken = IShareToken(address(new IsContract()));
     IBaseVault vault = IBaseVault(address(new IsContract()));
 
@@ -46,9 +45,8 @@ abstract contract SyncManagerBaseTest is Test {
         syncManager = new SyncManager(AUTH);
 
         vm.startPrank(AUTH);
+        syncManager.file("spokeRegistry", address(spokeRegistry));
         syncManager.file("spoke", address(spoke));
-        syncManager.file("vaultRegistry", address(vaultRegistry));
-        syncManager.file("balanceSheet", address(balanceSheet));
         vm.stopPrank();
 
         vm.mockCall(address(vault), abi.encodeWithSignature("poolId()"), abi.encode(POOL_ID));
@@ -61,11 +59,13 @@ abstract contract SyncManagerBaseTest is Test {
     //----------------------------------------------------------------------------------------------
 
     function _setupVaultDetails(uint8 assetDecimals, uint8 shareDecimals) internal {
-        VaultDetails memory details = VaultDetails({assetId: ASSET_ID, asset: asset, tokenId: TOKEN_ID, isLinked: true});
+        VaultDetails memory details = VaultDetails({
+            poolId: POOL_ID, scId: SC_ID, assetId: ASSET_ID, asset: asset, tokenId: TOKEN_ID, isLinked: true
+        });
 
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(IVaultRegistry.vaultDetails.selector, vault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, vault),
             abi.encode(details)
         );
 
@@ -78,14 +78,14 @@ abstract contract SyncManagerBaseTest is Test {
 
     function _setupPrices(D18 poolPerShare, D18 poolPerAsset) internal {
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerShare.selector, POOL_ID, SC_ID, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerShare.selector, POOL_ID, SC_ID, true),
             abi.encode(poolPerShare)
         );
 
         vm.mockCall(
-            address(spoke),
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_ID, SC_ID, ASSET_ID, true),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_ID, SC_ID, ASSET_ID, true),
             abi.encode(poolPerAsset)
         );
     }
@@ -96,16 +96,16 @@ abstract contract SyncManagerBaseTest is Test {
         vm.stopPrank();
 
         vm.mockCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(IBalanceSheet.availableBalanceOf.selector, POOL_ID, SC_ID, asset, TOKEN_ID),
+            address(spoke),
+            abi.encodeWithSelector(ISpoke.availableBalanceOf.selector, POOL_ID, SC_ID, asset, TOKEN_ID),
             abi.encode(availableBalance)
         );
     }
 
     function _setupLinkedVault(bool isLinked) internal {
         vm.mockCall(
-            address(vaultRegistry),
-            abi.encodeWithSelector(IVaultRegistry.isLinked.selector, vault),
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.isLinked.selector, vault),
             abi.encode(isLinked)
         );
     }
@@ -128,16 +128,13 @@ contract SyncManagerAdminTest is SyncManagerBaseTest {
         syncManager.file("random", address(0));
 
         address newSpoke = makeAddr("newSpoke");
-        address newBalanceSheet = makeAddr("newBalanceSheet");
-        address newVaultRegistry = makeAddr("newVaultRegistry");
+        address newSpokeRegistry = makeAddr("newSpokeRegistry");
 
         vm.startPrank(AUTH);
         syncManager.file("spoke", newSpoke);
         assertEq(address(syncManager.spoke()), newSpoke);
-        syncManager.file("balanceSheet", newBalanceSheet);
-        assertEq(address(syncManager.balanceSheet()), newBalanceSheet);
-        syncManager.file("vaultRegistry", newVaultRegistry);
-        assertEq(address(syncManager.vaultRegistry()), newVaultRegistry);
+        syncManager.file("spokeRegistry", newSpokeRegistry);
+        assertEq(address(syncManager.spokeRegistry()), newSpokeRegistry);
         vm.stopPrank();
     }
 }
@@ -447,5 +444,29 @@ contract SyncManagerMaxDepositMintConsistencyTest is SyncManagerBaseTest {
             assertTrue(maxDeposit > 0, "maxDeposit should be positive");
             assertTrue(maxMint > 0, "maxMint should be positive");
         }
+    }
+}
+
+contract SyncManagerUnknownVaultTest is SyncManagerBaseTest {
+    /// @dev A vault whose details resolve to a zero asset (unregistered) must be rejected, not read as 0.
+    function _unregisteredVault() internal returns (IBaseVault unregistered) {
+        unregistered = IBaseVault(address(new IsContract()));
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, unregistered),
+            abi.encode(VaultDetails(POOL_ID, SC_ID, ASSET_ID, address(0), TOKEN_ID, false))
+        );
+    }
+
+    function testConvertToSharesErrUnknownVault() public {
+        IBaseVault unregistered = _unregisteredVault();
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        syncManager.convertToShares(unregistered, 1e18);
+    }
+
+    function testMaxDepositErrUnknownVault() public {
+        IBaseVault unregistered = _unregisteredVault();
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        syncManager.maxDeposit(unregistered, USER);
     }
 }

@@ -14,7 +14,7 @@ import {EnumerableSet} from "@recon/EnumerableSet.sol";
 /// When using this manager in conjunction with ReconShareManager, the following invariant
 /// should be maintained by derived contracts:
 ///
-///     _getShareToken() == spoke.shareToken(_getPool(), _getShareClassId())
+///     _getShareToken() == spokeRegistry.shareToken(_getPool(), _getShareClassId())
 ///
 /// This invariant ensures that ghost variables keyed by share token addresses remain
 /// synchronized with the actual protocol state.
@@ -95,7 +95,7 @@ abstract contract ReconShareClassManager {
         __shareClassId = target;
 
         // Hook: Allow derived contracts to sync related state (e.g., update __shareToken)
-        // This maintains the invariant: _getShareToken() == spoke.shareToken(_getPool(), _getShareClassId())
+        // This maintains the invariant: _getShareToken() == spokeRegistry.shareToken(_getPool(), _getShareClassId())
         _onShareClassIdChanged(ShareClassId.wrap(target));
     }
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
-import {AssetId, VaultBaseTest as BaseTest, ERC20, ShareClassId, VaultKind} from "../../vaults/VaultBaseTest.sol";
+import {AssetId, VaultBaseTest as BaseTest, ERC20, ShareClassId} from "../../vaults/VaultBaseTest.sol";
 
 abstract contract QueueManagerBaseTest is BaseTest {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
@@ -24,16 +24,15 @@ abstract contract QueueManagerBaseTest is BaseTest {
 
         defaultTypedShareClassId = ShareClassId.wrap(defaultShareClassId);
 
-        balanceSheet.updateManager(POOL_A, address(queueManager), true);
+        spokeRegistry.updateManager(POOL_A, address(queueManager), true);
 
         (, address vaultAddress1, uint128 createdAssetId1) =
-            deployVault(VaultKind.SyncDepositAsyncRedeem, 18, defaultShareClassId);
+            deployVault(syncDepositVaultFactory, 18, defaultShareClassId);
         assetId1 = AssetId.wrap(createdAssetId1);
         vault1 = vaultAddress1;
 
-        (, address vaultAddress2, uint128 createdAssetId2) = deployVault(
-            VaultKind.SyncDepositAsyncRedeem, 18, address(fullRestrictionsHook), defaultShareClassId, asset2, 0
-        );
+        (, address vaultAddress2, uint128 createdAssetId2) =
+            deployVault(syncDepositVaultFactory, 18, address(fullRestrictionsHook), defaultShareClassId, asset2, 0);
         assetId2 = AssetId.wrap(createdAssetId2);
         vault2 = vaultAddress2;
     }
@@ -45,8 +44,8 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
     /// forge-config: default.isolate = true
     function testSuccess() public {
         uint128 extraGasLimit = 500;
-        vm.prank(address(contractUpdater));
-        queueManager.trustedCall(POOL_A, defaultTypedShareClassId, abi.encode(uint64(0), extraGasLimit));
+        vm.prank(address(envoy));
+        queueManager.fromHub(POOL_A, abi.encode(defaultTypedShareClassId.raw(), uint64(0), extraGasLimit));
 
         depositSync(vault1, user, DEFAULT_AMOUNT);
         depositSync(vault2, user, DEFAULT_AMOUNT / 2);
@@ -57,22 +56,16 @@ contract QueueManagerSuccessTest is QueueManagerBaseTest {
 
         for (uint256 i = 0; i < assetIds.length; i++) {
             vm.expectCall(
-                address(balanceSheet),
+                address(spoke),
                 abi.encodeWithSelector(
-                    balanceSheet.submitQueuedAssets.selector,
-                    POOL_A,
-                    defaultTypedShareClassId,
-                    assetIds[i],
-                    extraGasLimit
+                    spoke.submitQueuedAssets.selector, POOL_A, defaultTypedShareClassId, assetIds[i], extraGasLimit
                 )
             );
         }
 
         vm.expectCall(
-            address(balanceSheet),
-            abi.encodeWithSelector(
-                balanceSheet.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, extraGasLimit
-            )
+            address(spoke),
+            abi.encodeWithSelector(spoke.submitQueuedShares.selector, POOL_A, defaultTypedShareClassId, extraGasLimit)
         );
 
         queueManager.sync{value: 0.1 ether}(POOL_A, defaultTypedShareClassId, assetIds, address(this));

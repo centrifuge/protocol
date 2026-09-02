@@ -1,0 +1,58 @@
+{
+  "network": {
+    "chainId": 143,
+    "environment": "mainnet",
+    "centrifugeId": 11,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://monad-mainnet.g.alchemy.com/v2/",
+    "verifier": "blockscout",
+    "verifierUrl": "https://api.socialscan.io/monad-mainnet/v1/explorer/command_api/contract"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
+      "layerZeroEid": 30390,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x2c7185f5B0976397d9eB5c19d639d4005e6708f0",
+        "0x493626C5D852B9B187a9eb709D0b0978a3877238"
+      ],
+      "optionalDVNs": [
+        "0x05EF739DDE35407A421eF1B3011283f92C2B30dc",
+        "0xaCDe1f22EEAb249d3ca6Ba8805C8fEe9f52a16e7",
+        "0xd2750419b4a663c8Ff8f7B6067885D82f299aCe9"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "axelar": {
+      "axelarId": "monad",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 8481857512324358265,
+      "ccipRouter": "0x33566fE5976AAa420F3d5C64996641Fc3858CaDB",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
+      "blockNumber": 51882383,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "ffff3ea95",
+      "timestamp": "2026-01-29T12:20:19Z",
+      "suffix": "",
+      "startBlock": 51882383
+    }
+  }
+}

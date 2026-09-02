@@ -41,7 +41,7 @@ interface IHubHandler {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Name of the parameter to update (accepts 'hubRegistry', 'holdings', 'sender')
+    /// @param what Name of the parameter to update (accepts 'hub', 'holdings', 'sender', 'shareClassManager')
     /// @param data Address of the new contract
     function file(bytes32 what, address data) external;
 

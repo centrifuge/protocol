@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connections</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb;
+    --page: #f9f9f7;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --hairline: #e1e0d9;
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --series-6: #008300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface: #1a1a19;
+      --page: #0d0d0d;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --hairline: #2c2c2a;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+      --series-6: #008300;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--page); color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  h1 { font-size: 18px; margin: 0; }
+  .card {
+    background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: 12px; padding: 16px; max-width: 860px; width: 100%;
+  }
+  #legend { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  #legend .item { display: flex; align-items: center; gap: 8px; color: var(--ink-2); cursor: default; }
+  #legend .swatch { width: 22px; height: 0; border-top: 3px solid; border-radius: 2px; }
+  #caption { min-height: 1.5em; text-align: center; color: var(--ink-2); }
+  svg { display: block; width: 100%; height: auto; }
+  .edge { fill: none; stroke-width: 1.5; opacity: 0.35; transition: opacity 0.12s; }
+  .node circle { fill: var(--ink-2); stroke: var(--surface); stroke-width: 2; transition: opacity 0.12s; }
+  .node text { fill: var(--ink); font-size: 14px; transition: opacity 0.12s; }
+  .node .hit { fill: transparent; stroke: none; }
+  /* Hovering a chain: only its edges and neighbors stay on */
+  .focused .edge { opacity: 0.04; }
+  .focused .edge.on { opacity: 1; stroke-width: 2; }
+  .focused .node { opacity: 0.25; }
+  .focused .node.on { opacity: 1; }
+  .focused .node.src .dot { fill: var(--ink); }
+  /* Hovering a legend entry: only that adapter's edges stay on */
+  .adapter-focused .edge { opacity: 0.04; }
+  .adapter-focused .edge.on { opacity: 0.9; }
+  details { color: var(--ink-2); }
+  summary { cursor: pointer; }
+  table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+  th, td { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  #error { color: var(--ink-2); text-align: center; }
+  #error code { background: var(--page); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1 id="title">Connections</h1>
+<div id="legend"></div>
+<div class="card"><div id="graph"></div><div id="caption"></div></div>
+<div class="card"><details>
+  <summary>Connection rules (as written in connections.json)</summary>
+  <table id="rules"><thead>
+    <tr><th>From</th><th>To</th><th>Adapters</th><th>Threshold</th></tr>
+  </thead><tbody></tbody></table>
+</details></div>
+<div id="error" hidden>
+  Could not load <code id="jsonPath">connections.json</code>. Serve the <code>env/</code>
+  folder — from the repo root: <code>python3 -m http.server 8000 -d env</code>, then open
+  <code>http://localhost:8000/connections_viewer.html#&lt;environment&gt;</code> — the hash names the
+  directory under <code>env/</code> to read, and there is no default because which ones exist depends on
+  the branch.
+  Or pick the file manually: <input type="file" id="picker" accept=".json">
+</div>
+
+<script>
+// Adapters are whatever the config names, so nothing here needs updating when one is added
+const SERIES = 6; // --series-N slots defined above, cycled if a config ever names more
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const ENV = location.hash.slice(1);
+addEventListener("hashchange", () => location.reload());
+if (ENV) {
+  document.title = `${ENV[0].toUpperCase()}${ENV.slice(1)} Connections`;
+  document.getElementById("title").textContent = document.title;
+}
+
+// Mirrors _parseSide in ConnectionsConfig.s.sol: an array lists literal names;
+// a string is an alias reference or a literal name
+function resolveSide(side, aliases) {
+  return typeof side === "string" ? (aliases[side] ?? [side]) : side;
+}
+
+function buildModel(config) {
+  const aliases = config.aliases ?? {};
+  const rules = config.connections.map((rule) => ({
+    left: resolveSide(rule.chains[0], aliases),
+    right: resolveSide(rule.chains[1], aliases),
+    adapters: rule.adapters,
+  }));
+
+  const chains = [...new Set(rules.flatMap((r) => [...r.left, ...r.right]))].sort();
+
+  // Mirrors _findMatchingRule: the last matching rule wins — adapters are never
+  // unioned across rules, and a match with no adapters disconnects the pair
+  const pairs = new Map(); // "a|b" (sorted) -> Set of adapters
+  chains.forEach((a, i) => {
+    for (const b of chains.slice(i + 1)) {
+      const rule = rules.findLast((r) =>
+        (r.left.includes(a) && r.right.includes(b)) || (r.left.includes(b) && r.right.includes(a)));
+      if (rule && rule.adapters.length > 0) pairs.set(`${a}|${b}`, new Set(rule.adapters));
+    }
+  });
+
+  // Sorted, so which adapters are on screen decides how they are drawn, not the order the rules list them
+  const adapters = [...new Set([...pairs.values()].flatMap((set) => [...set]))].sort();
+  return { chains, pairs, adapters };
+}
+
+function render(config) {
+  const { chains, pairs, adapters } = buildModel(config);
+  const color = (adapter) => `var(--series-${(adapters.indexOf(adapter) % SERIES) + 1})`;
+
+  // Legend: one entry per adapter; hovering it isolates that adapter's edges
+  const legend = document.getElementById("legend");
+  for (const adapter of adapters) {
+    const item = document.createElement("span");
+    item.className = "item";
+    item.innerHTML = `<span class="swatch" style="border-color:${color(adapter)}"></span>${adapter}`;
+    item.addEventListener("mouseenter", () => focusAdapter(adapter));
+    item.addEventListener("mouseleave", () => focusAdapter(null));
+    legend.appendChild(item);
+  }
+
+  const W = 860, CX = W / 2, CY = W / 2, R = W / 2 - 145;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${W}`);
+
+  const pos = Object.fromEntries(chains.map((name, i) => {
+    const angle = (2 * Math.PI * i) / chains.length - Math.PI / 2;
+    return [name, { x: CX + R * Math.cos(angle), y: CY + R * Math.sin(angle), angle }];
+  }));
+
+  // Edges: one curve per (pair, adapter), parallel curves fanned apart per pair
+  const edgeLayer = document.createElementNS(SVG_NS, "g");
+  for (const [key, adapterSet] of pairs) {
+    const [a, b] = key.split("|");
+    const list = adapters.filter((ad) => adapterSet.has(ad));
+    const [p, q] = [pos[a], pos[b]];
+    const [mx, my] = [(p.x + q.x) / 2, (p.y + q.y) / 2];
+    const len = Math.hypot(q.x - p.x, q.y - p.y);
+    const [nx, ny] = [-(q.y - p.y) / len, (q.x - p.x) / len]; // unit normal
+
+    list.forEach((adapter, i) => {
+      const bow = (i - (list.length - 1) / 2) * 14; // curve peak offset, px
+      const path = document.createElementNS(SVG_NS, "path");
+      path.setAttribute("d", `M ${p.x} ${p.y} Q ${mx + 2 * bow * nx} ${my + 2 * bow * ny} ${q.x} ${q.y}`);
+      path.setAttribute("class", "edge");
+      path.setAttribute("stroke", color(adapter));
+      path.dataset.chains = key;
+      path.dataset.adapter = adapter;
+      edgeLayer.appendChild(path);
+    });
+  }
+  svg.appendChild(edgeLayer);
+
+  // Nodes: dot + label placed outward, with a large invisible hover target
+  for (const name of chains) {
+    const { x, y, angle } = pos[name];
+    const g = document.createElementNS(SVG_NS, "g");
+    g.setAttribute("class", "node");
+    g.dataset.chain = name;
+
+    const onRight = Math.cos(angle) > 0.01, onLeft = Math.cos(angle) < -0.01;
+    const label = document.createElementNS(SVG_NS, "text");
+    label.setAttribute("x", x + 18 * Math.cos(angle));
+    label.setAttribute("y", y + 18 * Math.sin(angle) + 5);
+    label.setAttribute("text-anchor", onRight ? "start" : onLeft ? "end" : "middle");
+    label.textContent = name;
+
+    const dot = document.createElementNS(SVG_NS, "circle");
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("r", 7);
+    dot.setAttribute("class", "dot");
+    const hit = document.createElementNS(SVG_NS, "circle");
+    hit.setAttribute("cx", x); hit.setAttribute("cy", y); hit.setAttribute("r", 26);
+    hit.setAttribute("class", "hit");
+
+    g.append(label, dot, hit);
+    g.addEventListener("mouseenter", () => focusChain(name));
+    g.addEventListener("mouseleave", () => focusChain(null));
+    svg.appendChild(g);
+  }
+  document.getElementById("graph").appendChild(svg);
+
+  const caption = document.getElementById("caption");
+  caption.textContent = `${chains.length} chains · ${pairs.size} connected pairs · hover a chain`;
+
+  function focusChain(name) {
+    svg.classList.toggle("focused", name !== null);
+    const neighbors = new Set();
+    const usedAdapters = new Set();
+    for (const edge of svg.querySelectorAll(".edge")) {
+      const [a, b] = edge.dataset.chains.split("|");
+      const on = a === name || b === name;
+      edge.classList.toggle("on", on);
+      if (on) { neighbors.add(a === name ? b : a); usedAdapters.add(edge.dataset.adapter); }
+    }
+    for (const node of svg.querySelectorAll(".node")) {
+      node.classList.toggle("on", node.dataset.chain === name || neighbors.has(node.dataset.chain));
+      node.classList.toggle("src", node.dataset.chain === name);
+    }
+    caption.textContent = name === null
+      ? `${chains.length} chains · ${pairs.size} connected pairs · hover a chain`
+      : `${name} · ${neighbors.size} connections · via ${[...usedAdapters].join(", ")}`;
+  }
+
+  function focusAdapter(adapter) {
+    svg.classList.toggle("adapter-focused", adapter !== null);
+    for (const edge of svg.querySelectorAll(".edge"))
+      edge.classList.toggle("on", edge.dataset.adapter === adapter);
+  }
+
+  // Table view: the rules exactly as the JSON states them
+  const tbody = document.querySelector("#rules tbody");
+  const showSide = (side) => (typeof side === "string" ? side : side.join(", "));
+  for (const rule of config.connections) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${showSide(rule.chains[0])}</td><td>${showSide(rule.chains[1])}</td>` +
+      `<td>${rule.adapters.join(", ")}</td><td>${rule.threshold}</td>`;
+    tbody.appendChild(row);
+  }
+}
+
+(ENV ? fetch(`${ENV}/connections.json`) : Promise.reject("no environment in the hash"))
+  .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+  .then(render)
+  .catch(() => {
+    const error = document.getElementById("error");
+    document.getElementById("jsonPath").textContent = `${ENV || "<environment>"}/connections.json`;
+    error.hidden = false;
+    document.getElementById("picker").addEventListener("change", (event) => {
+      event.target.files[0].text().then((text) => {
+        error.hidden = true;
+        render(JSON.parse(text));
+      });
+    });
+  });
+</script>
+</body>
+</html>

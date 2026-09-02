@@ -16,11 +16,11 @@ import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 import {IERC7540Operator, IERC7540Redeem, IERC7714, IERC7741, IERC7887Redeem} from "../misc/interfaces/IERC7540.sol";
 
 import {PoolId} from "../core/types/PoolId.sol";
-import {IVault} from "../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
 
 import {IRoot} from "../admin/interfaces/IRoot.sol";
+
+import {IShareToken} from "../token/interfaces/IShareToken.sol";
 
 abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
@@ -29,9 +29,9 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     IRoot public immutable root;
     IBaseRequestManager public baseManager;
 
-    /// @inheritdoc IVault
+    /// @inheritdoc IBaseVault
     PoolId public immutable poolId;
-    /// @inheritdoc IVault
+    /// @inheritdoc IBaseVault
     ShareClassId public immutable scId;
 
     /// @inheritdoc IERC7575
@@ -376,7 +376,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         // NOTE: For security reasons, transfer must stay at end of call despite the fact that it logically should
         // happen before depositing in the manager
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(baseManager.poolEscrow(poolId)), assets);
-        emit Deposit(receiver, msg.sender, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC7575
@@ -394,7 +394,7 @@ abstract contract BaseSyncDepositVault is BaseVault {
         assets = syncDepositManager.mint(this, shares, receiver, msg.sender);
         // NOTE: For security reasons, transfer must stay at end of call
         SafeTransferLib.safeTransferFrom(asset, msg.sender, address(baseManager.poolEscrow(poolId)), assets);
-        emit Deposit(receiver, msg.sender, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @inheritdoc IERC165

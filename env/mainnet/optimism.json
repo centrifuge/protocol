@@ -1,0 +1,56 @@
+{
+  "network": {
+    "chainId": 10,
+    "environment": "mainnet",
+    "centrifugeId": 10,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://opt-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fe728c",
+      "layerZeroEid": 30111,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x427bd19a0463fc4eDc2e247d35eB61323d7E5541",
+        "0x5b6735c66d97479cCD18294fc96B3084EcB2fa3f"
+      ],
+      "optionalDVNs": [
+        "0x3b0531eB02Ab4aD72e7a531180beeF9493a00dD2",
+        "0x539008c98B17803A273eDf98aBA2d4414Ee3f4D7",
+        "0xa7b5189bcA84Cd304D8553977c7C614329750d99"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "axelar": {
+      "axelarId": "optimism",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 3734403246176062136,
+      "ccipRouter": "0x3206695CaE29952f4b0c22a169725a865bc8Ce0f",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
+      "blockNumber": 147002472,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "cd4866f3f",
+      "timestamp": "2026-01-28T12:34:37Z",
+      "suffix": "",
+      "startBlock": 147002446
+    }
+  }
+}

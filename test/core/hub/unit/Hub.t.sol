@@ -3,28 +3,29 @@ pragma solidity ^0.8.28;
 
 import {d18, D18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
+import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {Hub} from "../../../../src/core/hub/Hub.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IFeeHook} from "../../../../src/core/hub/interfaces/IFeeHook.sol";
 import {IHoldings} from "../../../../src/core/hub/interfaces/IHoldings.sol";
 import {IValuation} from "../../../../src/core/hub/interfaces/IValuation.sol";
 import {IAdapter} from "../../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IFeeAccrual} from "../../../../src/core/hub/interfaces/IFeeAccrual.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {IHub, VaultUpdateKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {ISnapshotHook} from "../../../../src/core/hub/interfaces/ISnapshotHook.sol";
 import {IMultiAdapter} from "../../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {IAccounting, JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 import {IShareClassManager} from "../../../../src/core/hub/interfaces/IShareClassManager.sol";
+import {IHub, VaultUpdateKind, ManagerKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {IHubMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import "forge-std/Test.sol";
 
-contract MockFeeHook is IFeeHook {
+contract MockFeeAccrual is IFeeAccrual {
     mapping(PoolId => mapping(ShareClassId => uint32)) public calls;
 
     function accrue(PoolId poolId, ShareClassId scId) external {
@@ -53,7 +54,7 @@ contract TestCommon is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IGateway immutable gateway = IGateway(makeAddr("Gateway"));
     IHubMessageSender immutable sender = IHubMessageSender(makeAddr("Sender"));
-    MockFeeHook immutable feeHook = new MockFeeHook();
+    MockFeeAccrual immutable feeAccrual = new MockFeeAccrual();
 
     Hub hub = new Hub(gateway, holdings, accounting, hubRegistry, multiAdapter, scm, address(this));
 
@@ -62,10 +63,27 @@ contract TestCommon is Test {
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, ADMIN), abi.encode(true)
         );
 
+        // `_enforce` (supervisor work) reads the pool policy; default it to none so policy
+        // enforcement is a no-op in these unit tests (they exercise the manager check + business logic).
+        vm.mockCall(address(hubRegistry), abi.encodeWithSelector(hubRegistry.policy.selector), abi.encode(address(0)));
+
         vm.mockCall(address(accounting), abi.encodeWithSelector(accounting.unlock.selector, POOL_A), abi.encode(true));
 
-        hub.file("feeHook", address(feeHook));
+        vm.mockCall(address(sender), abi.encodeWithSelector(sender.localCentrifugeId.selector), abi.encode(CHAIN_A));
+
+        hub.file("feeAccrual", address(feeAccrual));
         hub.file("sender", address(sender));
+    }
+
+    function _holdingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = asset;
+        accounts[1] = equity;
+        accounts[2] = gain;
+        accounts[3] = loss;
     }
 }
 
@@ -94,13 +112,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyPool(POOL_A, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), REFUND);
+        hub.notifyShareClass(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), "", 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0, REFUND);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.updateShareHook(POOL_A, ShareClassId.wrap(0), 0, bytes32(""), REFUND);
+        hub.notifyShareMetadata(POOL_A, ShareClassId.wrap(0), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.notifySharePrice(POOL_A, ShareClassId.wrap(0), 0, REFUND);
@@ -109,13 +124,10 @@ contract TestMainMethodsChecks is TestCommon {
         hub.notifyAssetPrice(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setMaxAssetPriceAge(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, REFUND);
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.setMaxSharePriceAge(POOL_A, ShareClassId.wrap(0), 0, 0, REFUND);
-
-        vm.expectRevert(IHub.NotManager.selector);
         hub.setPoolMetadata(POOL_A, bytes(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateCurrency(POOL_A, AssetId.wrap(0));
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setSnapshotHook(POOL_A, ISnapshotHook(address(0)));
@@ -124,7 +136,7 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateHubManager(POOL_A, address(0), false);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateBalanceSheetManager(POOL_A, 0, bytes32(0), false, REFUND);
+        hub.updateManager(POOL_A, 0, ManagerKind.Spoke, bytes32(0), false, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.addShareClass(POOL_A, "", "", bytes32(0));
@@ -134,11 +146,18 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateVault(
-            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), bytes32(0), VaultUpdateKind.DeployAndLink, 0, REFUND
+            POOL_A,
+            ShareClassId.wrap(0),
+            AssetId.wrap(0),
+            bytes32(0),
+            VaultUpdateKind.DeployAndLink,
+            bytes(""),
+            0,
+            REFUND
         );
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateContract(POOL_A, ShareClassId.wrap(0), 0, bytes32(0), bytes(""), 0, REFUND);
+        hub.managerCall(POOL_A, 0, bytes32(0), bytes(""), 0, 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateSharePrice(POOL_A, ShareClassId.wrap(0), D18.wrap(0), uint64(block.timestamp));
@@ -149,15 +168,7 @@ contract TestMainMethodsChecks is TestCommon {
             ShareClassId.wrap(0),
             AssetId.wrap(0),
             IValuation(address(0)),
-            AccountId.wrap(0),
-            AccountId.wrap(0),
-            AccountId.wrap(0),
-            AccountId.wrap(0)
-        );
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.initializeLiability(
-            POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)), AccountId.wrap(0), AccountId.wrap(0)
+            _holdingAccounts(AccountId.wrap(0), AccountId.wrap(0), AccountId.wrap(0), AccountId.wrap(0))
         );
 
         vm.expectRevert(IHub.NotManager.selector);
@@ -165,9 +176,6 @@ contract TestMainMethodsChecks is TestCommon {
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.updateHoldingValuation(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), IValuation(address(0)));
-
-        vm.expectRevert(IHub.NotManager.selector);
-        hub.updateHoldingIsLiability(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), true);
 
         vm.expectRevert(IHub.NotManager.selector);
         hub.setHoldingAccountId(POOL_A, ShareClassId.wrap(0), AssetId.wrap(0), 0, AccountId.wrap(0));
@@ -182,12 +190,78 @@ contract TestMainMethodsChecks is TestCommon {
         hub.updateJournal(POOL_A, EMPTY, EMPTY);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.setAdapters(POOL_A, 0, new IAdapter[](0), new bytes32[](0), 0, 0, REFUND);
+        hub.setAdapters(POOL_A, 0, new IAdapter[](0), new bytes32[](0), 0, REFUND);
 
         vm.expectRevert(IHub.NotManager.selector);
-        hub.updateGatewayManager(POOL_A, 0, bytes32(0), false, REFUND);
+        hub.updateManager(POOL_A, 0, ManagerKind.Adapter, bytes32(0), false, REFUND);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.initiateAuthorization(POOL_A, bytes(""));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.cancelAuthorization(POOL_A, bytes(""));
 
         vm.stopPrank();
+    }
+}
+
+contract TestAuthorize is TestCommon {
+    function testAuthorizeForwardsToHubRegistry() public {
+        bytes memory data = abi.encode("some-authorization");
+        vm.mockCall(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.initiateAuthorization.selector, POOL_A, ADMIN, data),
+            ""
+        );
+        vm.expectCall(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.initiateAuthorization.selector, POOL_A, ADMIN, data)
+        );
+
+        vm.prank(ADMIN);
+        hub.initiateAuthorization(POOL_A, data);
+    }
+
+    function testCancelAuthorizationForwardsToHubRegistry() public {
+        bytes memory data = abi.encode("some-authorization");
+        vm.mockCall(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.cancelAuthorization.selector, POOL_A, ADMIN, data),
+            ""
+        );
+        vm.expectCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.cancelAuthorization.selector, POOL_A, ADMIN, data)
+        );
+
+        vm.prank(ADMIN);
+        hub.cancelAuthorization(POOL_A, data);
+    }
+}
+
+contract TestUpdateCurrency is TestCommon {
+    function testUpdateCurrencyForwardsToHubRegistry() public {
+        vm.mockCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.updateCurrency.selector, POOL_A, ASSET_A), ""
+        );
+        vm.expectCall(
+            address(hubRegistry), abi.encodeWithSelector(hubRegistry.updateCurrency.selector, POOL_A, ASSET_A)
+        );
+
+        vm.prank(ADMIN);
+        hub.updateCurrency(POOL_A, ASSET_A);
+    }
+
+    // The decimals-mismatch guard lives in HubRegistry; the Hub wrapper must not swallow its revert.
+    function testUpdateCurrencyPropagatesMismatchRevert() public {
+        vm.mockCallRevert(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.updateCurrency.selector, POOL_A, ASSET_A),
+            abi.encodeWithSelector(IHubRegistry.CurrencyDecimalsMismatch.selector)
+        );
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IHubRegistry.CurrencyDecimalsMismatch.selector);
+        hub.updateCurrency(POOL_A, ASSET_A);
     }
 }
 
@@ -197,12 +271,13 @@ contract TestNotifyShareClass is TestCommon {
 
         vm.prank(ADMIN);
         vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
-        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""), REFUND);
+        hub.notifyShareClass(POOL_A, SC_A, 23, bytes32(""), "", 0, REFUND);
     }
 }
 
 contract TestInitializeHolding is TestCommon {
     function testErrAssetNotFound() public {
+        vm.mockCall(address(scm), abi.encodeWithSelector(scm.exists.selector, POOL_A, SC_A), abi.encode(true));
         vm.mockCall(
             address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
         );
@@ -214,33 +289,8 @@ contract TestInitializeHolding is TestCommon {
             SC_A,
             ASSET_A,
             IValuation(address(1)),
-            AccountId.wrap(1),
-            AccountId.wrap(1),
-            AccountId.wrap(1),
-            AccountId.wrap(1)
+            _holdingAccounts(AccountId.wrap(1), AccountId.wrap(1), AccountId.wrap(1), AccountId.wrap(1))
         );
-    }
-}
-
-contract TestInitializeLiability is TestCommon {
-    function testErrAssetNotFound() public {
-        vm.mockCall(
-            address(hubRegistry), abi.encodeWithSelector(hubRegistry.isRegistered.selector, ASSET_A), abi.encode(false)
-        );
-
-        bytes[] memory cs = new bytes[](1);
-        cs[0] = abi.encodeWithSelector(
-            hub.initializeLiability.selector,
-            SC_A,
-            ASSET_A,
-            IValuation(address(1)),
-            AccountId.wrap(1),
-            AccountId.wrap(1)
-        );
-
-        vm.prank(ADMIN);
-        vm.expectRevert(IHubRegistry.AssetNotFound.selector);
-        hub.initializeLiability(POOL_A, SC_A, ASSET_A, IValuation(address(1)), AccountId.wrap(1), AccountId.wrap(1));
     }
 }
 
@@ -252,12 +302,12 @@ contract TestUpdateSharePrice is TestCommon {
             abi.encode(false)
         );
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 0);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 0);
 
         vm.prank(ADMIN);
         hub.updateSharePrice(POOL_A, SC_A, d18(1, 1), uint64(block.timestamp));
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 1);
     }
 }
 
@@ -277,12 +327,12 @@ contract TestNotifyAssetPrice is TestCommon {
             abi.encode()
         );
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 0);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 0);
 
         vm.prank(ADMIN);
         hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 1);
     }
 
     function testNotifyAssetPriceSendsValuationPriceWhenHoldingInitialized() public {
@@ -315,7 +365,7 @@ contract TestNotifyAssetPrice is TestCommon {
         vm.prank(ADMIN);
         hub.notifyAssetPrice(POOL_A, SC_A, ASSET_A, REFUND);
 
-        assertEq(feeHook.calls(POOL_A, SC_A), 1);
+        assertEq(feeAccrual.calls(POOL_A, SC_A), 1);
     }
 }
 
@@ -483,6 +533,98 @@ contract TestSetAccountMetadata is TestCommon {
     }
 }
 
+contract TestManagerCall is TestCommon {
+    using CastLib for address;
+
+    uint128 constant EXTRA_GAS = 42;
+    uint256 constant VALUE = 7;
+
+    /// @dev `managerCall` is the hub direction: pool-scoped, opaque payload, no probe. It forwards to
+    ///      `sendManagerCallFromHub` and emits the scId-less `ManagerCall`. On the local branch (`CHAIN_A` is the
+    ///      mocked `localCentrifugeId`) the whole `msg.value` funds the call, so `value` must equal it.
+    function testManagerCallHubRoute() public {
+        address target = makeAddr("hubTarget");
+        bytes memory payload = hex"1234";
+
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(
+                IHubMessageSender.sendManagerCallFromHub.selector,
+                CHAIN_A,
+                POOL_A,
+                target,
+                payload,
+                EXTRA_GAS,
+                VALUE,
+                REFUND
+            ),
+            abi.encode()
+        );
+
+        vm.expectEmit();
+        emit IHub.ManagerCall(CHAIN_A, POOL_A, target.toBytes32(), payload);
+
+        vm.deal(ADMIN, VALUE);
+        vm.prank(ADMIN);
+        hub.managerCall{value: VALUE}(POOL_A, CHAIN_A, target.toBytes32(), payload, EXTRA_GAS, VALUE, REFUND);
+    }
+
+    /// @dev Local branch: `value` must equal `msg.value` (here `msg.value` is 0 but `value` is not).
+    function testManagerCallLocalValueMismatchReverts() public {
+        vm.expectRevert(IHub.ManagerCallUnexpectedValue.selector);
+        vm.prank(ADMIN);
+        hub.managerCall(POOL_A, CHAIN_A, makeAddr("t").toBytes32(), hex"1234", EXTRA_GAS, VALUE, REFUND);
+    }
+
+    /// @dev Remote branch (`CHAIN_B` != `localCentrifugeId`): `value` must be 0.
+    function testManagerCallRemoteNonZeroValueReverts() public {
+        vm.expectRevert(IHub.ManagerCallUnexpectedValue.selector);
+        vm.prank(ADMIN);
+        hub.managerCall(POOL_A, CHAIN_B, makeAddr("t").toBytes32(), hex"1234", EXTRA_GAS, VALUE, REFUND);
+    }
+
+    /// @dev Remote branch (`CHAIN_B` != `localCentrifugeId`) success route: `value` must be 0 and the payload
+    ///      is forwarded opaquely.
+    function testManagerCallRemoteRoute() public {
+        address target = makeAddr("remoteSpokeTarget");
+        bytes memory payload = hex"1234";
+
+        vm.mockCall(
+            address(sender),
+            abi.encodeWithSelector(
+                IHubMessageSender.sendManagerCallFromHub.selector,
+                CHAIN_B,
+                POOL_A,
+                target,
+                payload,
+                EXTRA_GAS,
+                uint256(0),
+                REFUND
+            ),
+            abi.encode()
+        );
+
+        vm.expectEmit();
+        emit IHub.ManagerCall(CHAIN_B, POOL_A, target.toBytes32(), payload);
+
+        vm.prank(ADMIN);
+        hub.managerCall(POOL_A, CHAIN_B, target.toBytes32(), payload, EXTRA_GAS, 0, REFUND);
+    }
+
+    function testManagerCallOnlyManager() public {
+        address notManager = makeAddr("notManager");
+        vm.mockCall(
+            address(hubRegistry),
+            abi.encodeWithSelector(hubRegistry.manager.selector, POOL_A, notManager),
+            abi.encode(false)
+        );
+
+        vm.expectRevert(IHub.NotManager.selector);
+        vm.prank(notManager);
+        hub.managerCall(POOL_A, CHAIN_A, makeAddr("t").toBytes32(), hex"1234", 0, 0, REFUND);
+    }
+}
+
 contract TestHubFile is TestCommon {
     function testFileGateway() public {
         IGateway newGateway = IGateway(makeAddr("NewGateway"));
@@ -494,24 +636,14 @@ contract TestHubFile is TestCommon {
         assertEq(address(hub.gateway()), address(newGateway));
     }
 
-    function testFileFeeHook() public {
-        IFeeHook newFeeHook = IFeeHook(makeAddr("NewFeeHook"));
+    function testFileFeeAccrual() public {
+        IFeeAccrual newFeeAccrual = IFeeAccrual(makeAddr("NewFeeAccrual"));
 
         vm.expectEmit(true, true, true, true);
-        emit IHub.File("feeHook", address(newFeeHook));
+        emit IHub.File("feeAccrual", address(newFeeAccrual));
 
-        hub.file("feeHook", address(newFeeHook));
-        assertEq(address(hub.feeHook()), address(newFeeHook));
-    }
-
-    function testFileHoldings() public {
-        IHoldings newHoldings = IHoldings(makeAddr("NewHoldings"));
-
-        vm.expectEmit(true, true, true, true);
-        emit IHub.File("holdings", address(newHoldings));
-
-        hub.file("holdings", address(newHoldings));
-        assertEq(address(hub.holdings()), address(newHoldings));
+        hub.file("feeAccrual", address(newFeeAccrual));
+        assertEq(address(hub.feeAccrual()), address(newFeeAccrual));
     }
 
     function testFileSender() public {
@@ -524,14 +656,14 @@ contract TestHubFile is TestCommon {
         assertEq(address(hub.sender()), address(newSender));
     }
 
-    function testFileShareClassManager() public {
-        IShareClassManager newScm = IShareClassManager(makeAddr("NewScm"));
+    function testFileMultiAdapter() public {
+        IMultiAdapter newMultiAdapter = IMultiAdapter(makeAddr("NewMultiAdapter"));
 
         vm.expectEmit(true, true, true, true);
-        emit IHub.File("shareClassManager", address(newScm));
+        emit IHub.File("multiAdapter", address(newMultiAdapter));
 
-        hub.file("shareClassManager", address(newScm));
-        assertEq(address(hub.shareClassManager()), address(newScm));
+        hub.file("multiAdapter", address(newMultiAdapter));
+        assertEq(address(hub.multiAdapter()), address(newMultiAdapter));
     }
 
     function testFileUnrecognizedParam() public {

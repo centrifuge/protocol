@@ -3,9 +3,10 @@ pragma solidity >=0.5.0;
 
 import {PoolId} from "../../../core/types/PoolId.sol";
 import {AssetId} from "../../../core/types/AssetId.sol";
+import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
 import {IGateway} from "../../../core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISnapshotQueue} from "../../../core/spoke/interfaces/ISnapshotQueue.sol";
 
 /// @title  IQueueManager
 /// @notice Interface for managing queued asset and share synchronization across chains
@@ -15,7 +16,8 @@ interface IQueueManager {
         PoolId indexed poolId, ShareClassId indexed scId, uint64 newMinDelay, uint128 newExtraGasLimit
     );
 
-    error NotContractUpdater();
+    error NotEnvoy();
+    error UnexpectedValue();
     error MinDelayNotElapsed();
     error NoUpdateForAsset();
     error InsufficientFunds();
@@ -29,11 +31,14 @@ interface IQueueManager {
     /// @notice Routes and batches cross-chain messages between hub and spoke
     function gateway() external view returns (IGateway);
 
-    /// @notice Address authorized to update queue configuration via trusted cross-chain calls
-    function contractUpdater() external view returns (address);
+    /// @notice The Envoy that routes policy-supervised queue configuration updates
+    function envoy() external view returns (address);
 
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
-    function balanceSheet() external view returns (IBalanceSheet);
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Stores the queued share and asset deltas pending submission to the hub
+    function snapshotQueue() external view returns (ISnapshotQueue);
 
     /// @notice Queue configuration and timing state for a specific pool and share class
     /// @param poolId The pool ID

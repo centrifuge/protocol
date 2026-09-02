@@ -40,6 +40,36 @@ contract TestIdentityValuation is Test {
     }
 }
 
+contract TestIdentityValuationZeroDecimals is Test {
+    AssetId constant C0 = AssetId.wrap(100); // decimals mocked to 0
+    PoolId constant POOL_C0 = PoolId.wrap(200); // currency decimals mocked to 0
+
+    address hubRegistry = makeAddr("hubRegistry");
+    IdentityValuation valuation = new IdentityValuation(IHubRegistry(hubRegistry));
+
+    function setUp() public {
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint128)", C0), abi.encode(0));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint128)", C18), abi.encode(18));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint64)", POOL_C0), abi.encode(0));
+        vm.mockCall(address(hubRegistry), abi.encodeWithSignature("decimals(uint64)", POOL_B), abi.encode(18));
+    }
+
+    // 0-decimal asset into a 0-decimal pool: convertWithPrice takes the equal-decimals branch (no scaling).
+    function testZeroDecAssetZeroDecPool() public view {
+        assertEq(valuation.getQuote(POOL_C0, SC_1, C0, 100), 100);
+    }
+
+    // 0-decimal asset into an 18-decimal pool: 1 whole unit becomes 1e18 fine units, exponent-safe.
+    function testZeroDecAssetFinePool() public view {
+        assertEq(valuation.getQuote(POOL_B, SC_1, C0, 1), 1e18);
+    }
+
+    // 18-decimal asset into a 0-decimal pool: 1.0 fine unit rounds to 1 whole unit.
+    function testFineAssetZeroDecPool() public view {
+        assertEq(valuation.getQuote(POOL_C0, SC_1, C18, 1e18), 1);
+    }
+}
+
 contract TestIdentityValuationGetPrice is Test {
     address hubRegistry = makeAddr("hubRegistry");
     IdentityValuation valuation = new IdentityValuation(IHubRegistry(hubRegistry));

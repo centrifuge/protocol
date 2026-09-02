@@ -1,6 +1,6 @@
 # Admin
 
-The admin module provides protocol governance and emergency controls, including timelocked permission management, pause functionality, cross-chain upgrade coordination, and token recovery. It separates operational duties (pool creation, adapter wiring) from protocol-level security controls (pausing, emergency recovery).
+The admin module provides protocol governance and emergency controls, including timelocked permission management, pause functionality, and cross-chain upgrade coordination. It separates operational duties (pool creation, adapter wiring) from protocol-level security controls (pausing, spell-based token recovery).
 
 ![Admin architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/admin.puml)
 
@@ -16,6 +16,8 @@ The admin module provides protocol governance and emergency controls, including 
 
 `OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions.
 
-### `TokenRecoverer`
+### `GasService`
 
-`TokenRecoverer` enables authorized recovery of tokens from protocol contracts by temporarily granting itself ward permissions through `Root`, executing the recovery via the target contract's `recoverTokens` function, and immediately removing those permissions. This atomic permission grant-execute-revoke pattern ensures the recoverer doesn't retain elevated privileges after operations.
+The `GasService` stores gas limits (in gas units) for cross-chain message execution, providing adapters with information about how much gas to allocate for each message type on destination chains. Gas limits are benchmarked using `script/checks/benchmarks.sh` and include a base cost covering adapter and gateway processing overhead plus the specific execution cost for each message type.
+
+Each message type has an immutable gas limit set at deployment, covering operations from simple notifications (~100k gas) to complex vault deployments (~2.8M gas). The contract implements `IGasService` to expose these values to the protocol, enabling accurate gas estimation for cross-chain operations. Gas values account for worst-case scenarios like creating new escrows during pool notifications or deploying and linking vaults in a single operation.

@@ -4,29 +4,30 @@ pragma solidity 0.8.28;
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
-import {ITokenRecoverer} from "./interfaces/ITokenRecoverer.sol";
 import {IMessageDispatcher} from "./interfaces/IMessageDispatcher.sol";
-import {MessageLib, VaultUpdateKind} from "./libraries/MessageLib.sol";
-import {ISpokeMessageSender, IHubMessageSender, IScheduleAuthMessageSender} from "./interfaces/IGatewaySenders.sol";
+import {MessageLib, VaultUpdateKind, ManagerKind} from "./libraries/MessageLib.sol";
+import {ISpokeGatewayHandler, IHubGatewayHandler} from "./interfaces/IGatewayHandlers.sol";
 import {
-    ISpokeGatewayHandler,
-    IBalanceSheetGatewayHandler,
-    IHubGatewayHandler,
-    IContractUpdateGatewayHandler,
-    IVaultRegistryGatewayHandler
-} from "./interfaces/IGatewayHandlers.sol";
+    ISpokeMessageSender,
+    IHubMessageSender,
+    IScheduleAuthMessageSender,
+    ShareClassMetadata
+} from "./interfaces/IGatewaySenders.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
 import {CastLib} from "../../misc/libraries/CastLib.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
-import {IRecoverable} from "../../misc/interfaces/IRecoverable.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {AssetId} from "../types/AssetId.sol";
+import {IEnvoy} from "../utils/interfaces/IEnvoy.sol";
 import {ShareClassId} from "../types/ShareClassId.sol";
-import {IRequestManager} from "../interfaces/IRequestManager.sol";
+import {IPolicy} from "../utils/interfaces/IPolicy.sol";
+import {IRegistrar} from "../spoke/interfaces/IRegistrar.sol";
+import {ISpokeRequestManager} from "../spoke/interfaces/ISpokeRequestManager.sol";
 
 /// @title  MessageDispatcher
 /// @notice This contract serializes and dispatches outgoing cross-chain messages, handling both local and
@@ -37,18 +38,14 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     using BytesLib for bytes;
     using MathLib for uint256;
 
-    PoolId internal constant GLOBAL_POOL = PoolId.wrap(0);
     uint16 public immutable localCentrifugeId;
 
+    IEnvoy public envoy;
     IGateway public gateway;
     IMultiAdapter public multiAdapter;
-    ISpokeGatewayHandler public spoke;
+    ISpokeGatewayHandler public spokeHandler;
     IScheduleAuth public immutable scheduleAuth;
     IHubGatewayHandler public hubHandler;
-    ITokenRecoverer public tokenRecoverer;
-    IBalanceSheetGatewayHandler public balanceSheet;
-    IVaultRegistryGatewayHandler public vaultRegistry;
-    IContractUpdateGatewayHandler public contractUpdater;
 
     constructor(uint16 localCentrifugeId_, IScheduleAuth scheduleAuth_, IGateway gateway_, address deployer)
         Auth(deployer)
@@ -64,13 +61,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     /// @inheritdoc IMessageDispatcher
     function file(bytes32 what, address data) external auth {
-        if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
-        else if (what == "spoke") spoke = ISpokeGatewayHandler(data);
+        if (what == "envoy") envoy = IEnvoy(data);
         else if (what == "gateway") gateway = IGateway(data);
-        else if (what == "balanceSheet") balanceSheet = IBalanceSheetGatewayHandler(data);
-        else if (what == "vaultRegistry") vaultRegistry = IVaultRegistryGatewayHandler(data);
-        else if (what == "contractUpdater") contractUpdater = IContractUpdateGatewayHandler(data);
-        else if (what == "tokenRecoverer") tokenRecoverer = ITokenRecoverer(data);
+        else if (what == "multiAdapter") multiAdapter = IMultiAdapter(data);
+        else if (what == "spokeHandler") spokeHandler = ISpokeGatewayHandler(data);
+        else if (what == "hubHandler") hubHandler = IHubGatewayHandler(data);
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
@@ -83,7 +78,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     /// @inheritdoc IHubMessageSender
     function sendNotifyPool(uint16 centrifugeId, PoolId poolId, address refund) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spoke.addPool(poolId);
+            spokeHandler.addPool(poolId);
             _refund(refund);
         } else {
             _send(centrifugeId, MessageLib.NotifyPool({poolId: poolId.raw()}).serialize(), false, refund);
@@ -95,15 +90,24 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals,
+        ShareClassMetadata memory metadata,
         bytes32 salt,
-        bytes32 hook,
+        bytes32 registrar,
+        bytes calldata payload,
+        uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spoke.addShareClass(poolId, scId, name, symbol, decimals, salt, hook.toAddress());
+            spokeHandler.addShareClass(
+                poolId,
+                scId,
+                metadata.name,
+                metadata.symbol,
+                metadata.decimals,
+                salt,
+                IRegistrar(registrar.toAddress()),
+                payload
+            );
             _refund(refund);
         } else {
             _send(
@@ -111,11 +115,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 MessageLib.NotifyShareClass({
                         poolId: poolId.raw(),
                         scId: scId.raw(),
-                        name: name,
-                        symbol: symbol.toBytes32(),
-                        decimals: decimals,
+                        name: metadata.name,
+                        symbol: metadata.symbol.toBytes32(),
+                        decimals: metadata.decimals,
                         salt: salt,
-                        hook: hook
+                        registrar: registrar,
+                        extraGasLimit: extraGasLimit,
+                        payload: payload
                     }).serialize(),
                 false,
                 refund
@@ -130,16 +136,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         ShareClassId scId,
         string memory name,
         string memory symbol,
+        uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spoke.updateShareMetadata(poolId, scId, name, symbol);
+            spokeHandler.updateShareMetadata(poolId, scId, name, symbol);
             _refund(refund);
         } else {
             _send(
                 centrifugeId,
                 MessageLib.NotifyShareMetadata({
-                        poolId: poolId.raw(), scId: scId.raw(), name: name, symbol: symbol.toBytes32()
+                        poolId: poolId.raw(),
+                        scId: scId.raw(),
+                        name: name,
+                        symbol: symbol.toBytes32(),
+                        extraGasLimit: extraGasLimit
                     }).serialize(),
                 false,
                 refund
@@ -148,39 +159,20 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUpdateShareHook(uint16 centrifugeId, PoolId poolId, ShareClassId scId, bytes32 hook, address refund)
-        external
-        payable
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            spoke.updateShareHook(poolId, scId, hook.toAddress());
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.UpdateShareHook({poolId: poolId.raw(), scId: scId.raw(), hook: hook}).serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
     function sendNotifyPricePoolPerShare(
-        uint16 chainId,
+        uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         D18 pricePoolPerShare,
         uint64 computedAt,
         address refund
     ) external payable auth {
-        if (chainId == localCentrifugeId) {
-            spoke.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, computedAt);
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.updatePricePoolPerShare(poolId, scId, pricePoolPerShare, computedAt);
             _refund(refund);
         } else {
             _send(
-                chainId,
+                centrifugeId,
                 MessageLib.NotifyPricePoolPerShare({
                         poolId: poolId.raw(), scId: scId.raw(), price: pricePoolPerShare.raw(), timestamp: computedAt
                     }).serialize(),
@@ -200,7 +192,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         uint64 timestamp = block.timestamp.toUint64();
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.updatePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset, timestamp);
+            spokeHandler.updatePricePoolPerAsset(poolId, scId, assetId, pricePoolPerAsset, timestamp);
             _refund(refund);
         } else {
             _send(
@@ -228,7 +220,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            spoke.updateRestriction(poolId, scId, payload);
+            spokeHandler.updateRestriction(poolId, scId, payload);
             _refund(refund);
         } else {
             _send(
@@ -243,27 +235,29 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendTrustedContractUpdate(
+    function sendManagerCallFromHub(
         uint16 centrifugeId,
         PoolId poolId,
-        ShareClassId scId,
-        bytes32 target,
+        address target,
         bytes calldata payload,
         uint128 extraGasLimit,
+        uint256 value,
         address refund
     ) external payable auth {
+        // `target` is explicit: the `fromHub` manager being addressed. No origin args: already authorized
+        // at the Hub.
         if (centrifugeId == localCentrifugeId) {
-            contractUpdater.trustedCall(poolId, scId, target.toAddress(), payload);
-            _refund(refund);
+            envoy.callFromHub{value: value}(poolId, target, payload);
+            // Refund any value not forwarded rather than assume `value == msgValue()`: if that Hub
+            // precondition ever changes, the remainder is returned instead of silently stranded here.
+            if (msg.value > value) {
+                SafeTransferLib.safeTransferETH(refund, msg.value - value);
+            }
         } else {
             _send(
                 centrifugeId,
-                MessageLib.TrustedContractUpdate({
-                        poolId: poolId.raw(),
-                        scId: scId.raw(),
-                        target: target,
-                        extraGasLimit: extraGasLimit,
-                        payload: payload
+                MessageLib.ManagerCallFromHub({
+                        poolId: poolId.raw(), target: target.toBytes32(), extraGasLimit: extraGasLimit, payload: payload
                     }).serialize(),
                 false,
                 refund
@@ -278,11 +272,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         AssetId assetId,
         bytes32 vaultOrFactory,
         VaultUpdateKind kind,
+        bytes calldata payload,
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            vaultRegistry.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind);
+            spokeHandler.updateVault(poolId, scId, assetId, vaultOrFactory.toAddress(), kind, payload);
             _refund(refund);
         } else {
             _send(
@@ -293,7 +288,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                         assetId: assetId.raw(),
                         vaultOrFactory: vaultOrFactory,
                         kind: uint8(kind),
-                        extraGasLimit: extraGasLimit
+                        extraGasLimit: extraGasLimit,
+                        payload: payload
                     }).serialize(),
                 false,
                 refund
@@ -308,7 +304,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         auth
     {
         if (centrifugeId == localCentrifugeId) {
-            spoke.setRequestManager(poolId, IRequestManager(manager.toAddress()));
+            spokeHandler.setRequestManager(poolId, ISpokeRequestManager(manager.toAddress()));
             _refund(refund);
         } else {
             _send(
@@ -321,65 +317,80 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc IHubMessageSender
-    function sendUpdateBalanceSheetManager(
+    function sendAuthorizeSpokeCall(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+        external
+        payable
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.authorize(poolId, data);
+            _refund(refund);
+        } else {
+            _send(
+                centrifugeId,
+                MessageLib.AuthorizeSpokeCall({poolId: poolId.raw(), payload: data}).serialize(),
+                false,
+                refund
+            );
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendUnauthorizeSpokeCall(uint16 centrifugeId, PoolId poolId, bytes calldata data, address refund)
+        external
+        payable
+        auth
+    {
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.unauthorize(poolId, data);
+            _refund(refund);
+        } else {
+            _send(
+                centrifugeId,
+                MessageLib.UnauthorizeSpokeCall({poolId: poolId.raw(), payload: data}).serialize(),
+                false,
+                refund
+            );
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendSetPolicy(uint16 centrifugeId, PoolId poolId, bytes32 policy, address refund) external payable auth {
+        if (centrifugeId == localCentrifugeId) {
+            spokeHandler.setPolicy(poolId, IPolicy(policy.toAddress()));
+            _refund(refund);
+        } else {
+            _send(centrifugeId, MessageLib.SetPolicy({poolId: poolId.raw(), policy: policy}).serialize(), false, refund);
+        }
+    }
+
+    /// @inheritdoc IHubMessageSender
+    function sendUpdateManager(
         uint16 centrifugeId,
         PoolId poolId,
+        ManagerKind kind,
         bytes32 who,
         bool canManage,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
-            balanceSheet.updateManager(poolId, who.toAddress(), canManage);
+            address whoAddr = who.toAddress();
+            if (kind == ManagerKind.Spoke) {
+                spokeHandler.updateManager(poolId, whoAddr, canManage);
+            } else if (kind == ManagerKind.Adapter) {
+                multiAdapter.updateManager(poolId, whoAddr, canManage);
+            } else if (kind == ManagerKind.Gateway) {
+                gateway.updateManager(poolId, whoAddr, canManage);
+            } else if (kind == ManagerKind.Bridger) {
+                spokeHandler.updateBridger(poolId, whoAddr, canManage);
+            } else {
+                revert InvalidManagerKind(); // Unreachable due the enum check
+            }
             _refund(refund);
         } else {
             _send(
                 centrifugeId,
-                MessageLib.UpdateBalanceSheetManager({poolId: poolId.raw(), who: who, canManage: canManage})
-                    .serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
-    function sendSetMaxAssetPriceAge(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable auth {
-        if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.setMaxAssetPriceAge(poolId, scId, assetId, maxPriceAge);
-            _refund(refund);
-        } else {
-            _send(
-                assetId.centrifugeId(),
-                MessageLib.SetMaxAssetPriceAge({
-                        poolId: poolId.raw(), scId: scId.raw(), assetId: assetId.raw(), maxPriceAge: maxPriceAge
-                    }).serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    /// @inheritdoc IHubMessageSender
-    function sendSetMaxSharePriceAge(
-        uint16 centrifugeId,
-        PoolId poolId,
-        ShareClassId scId,
-        uint64 maxPriceAge,
-        address refund
-    ) external payable auth {
-        if (centrifugeId == localCentrifugeId) {
-            spoke.setMaxSharePriceAge(poolId, scId, maxPriceAge);
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.SetMaxSharePriceAge({poolId: poolId.raw(), scId: scId.raw(), maxPriceAge: maxPriceAge})
+                MessageLib.UpdateManager({poolId: poolId.raw(), kind: uint8(kind), who: who, canManage: canManage})
                     .serialize(),
                 false,
                 refund
@@ -407,37 +418,12 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         }
     }
 
-    /// @inheritdoc IScheduleAuthMessageSender
-    function sendRecoverTokens(
-        uint16 centrifugeId,
-        bytes32 target,
-        bytes32 token,
-        uint256 tokenId,
-        bytes32 to,
-        uint256 amount,
-        address refund
-    ) external payable auth {
-        if (centrifugeId == localCentrifugeId) {
-            tokenRecoverer.recoverTokens(
-                IRecoverable(target.toAddress()), token.toAddress(), tokenId, to.toAddress(), amount
-            );
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.RecoverTokens({target: target, token: token, tokenId: tokenId, to: to, amount: amount})
-                    .serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
     /// @inheritdoc ISpokeMessageSender
     function sendInitiateTransferShares(
         uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
+        bytes32 sender,
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
@@ -446,7 +432,15 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
             hubHandler.initiateTransferShares{value: msg.value}(
-                localCentrifugeId, targetCentrifugeId, poolId, scId, receiver, amount, remoteExtraGasLimit, refund
+                localCentrifugeId,
+                targetCentrifugeId,
+                poolId,
+                scId,
+                sender,
+                receiver,
+                amount,
+                remoteExtraGasLimit,
+                refund
             );
         } else {
             _send(
@@ -458,7 +452,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                         receiver: receiver,
                         amount: amount,
                         remoteExtraGasLimit: remoteExtraGasLimit,
-                        extraGasLimit: extraGasLimit
+                        extraGasLimit: extraGasLimit,
+                        sender: sender
                     }).serialize(),
                 false,
                 refund
@@ -479,7 +474,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     ) external payable auth {
         if (targetCentrifugeId == localCentrifugeId) {
             // Spoke chain X => Hub chain Y => Spoke chain Y
-            spoke.executeTransferShares(poolId, scId, receiver, amount);
+            spokeHandler.executeTransferShares(poolId, scId, receiver, amount);
             _refund(refund);
         } else {
             _send(
@@ -498,37 +493,27 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc ISpokeMessageSender
-    function sendUpdateHoldingAmount(
+    function sendUpdateAssets(
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         UpdateData calldata data,
-        D18 pricePoolPerAsset,
         uint128 extraGasLimit,
         address refund
-    ) external payable auth {
+    ) public payable auth {
         if (poolId.centrifugeId() == localCentrifugeId) {
-            hubHandler.updateHoldingAmount(
-                localCentrifugeId,
-                poolId,
-                scId,
-                assetId,
-                data.netAmount,
-                pricePoolPerAsset,
-                data.isIncrease,
-                data.isSnapshot,
-                data.nonce
+            hubHandler.updateAssets(
+                localCentrifugeId, poolId, scId, assetId, data.netAmount, data.isIncrease, data.isSnapshot, data.nonce
             );
             _refund(refund);
         } else {
             _send(
                 poolId.centrifugeId(),
-                MessageLib.UpdateHoldingAmount({
+                MessageLib.UpdateAssets({
                         poolId: poolId.raw(),
                         scId: scId.raw(),
                         assetId: assetId.raw(),
                         amount: data.netAmount,
-                        pricePoolPerAsset: pricePoolPerAsset.raw(),
                         timestamp: uint64(block.timestamp),
                         isIncrease: data.isIncrease,
                         isSnapshot: data.isSnapshot,
@@ -539,6 +524,21 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
                 refund
             );
         }
+    }
+
+    /// @inheritdoc ISpokeMessageSender
+    /// @dev ABI-compatibility overload of `sendUpdateAssets` for the deployed v3.1.0 BalanceSheet; the price is
+    ///      ignored (the hub values holding deltas at its own valuation).
+    function sendUpdateHoldingAmount(
+        PoolId poolId,
+        ShareClassId scId,
+        AssetId assetId,
+        UpdateData calldata data,
+        D18, /* pricePoolPerAsset */
+        uint128 extraGasLimit,
+        address refund
+    ) external payable {
+        sendUpdateAssets(poolId, scId, assetId, data, extraGasLimit, refund);
     }
 
     /// @inheritdoc ISpokeMessageSender
@@ -622,9 +622,8 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
     }
 
     /// @inheritdoc ISpokeMessageSender
-    function sendUntrustedContractUpdate(
+    function sendManagerCallFromSpoke(
         PoolId poolId,
-        ShareClassId scId,
         bytes32 target,
         bytes calldata payload,
         bytes32 sender,
@@ -634,14 +633,13 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         uint16 hubCentrifugeId = poolId.centrifugeId();
 
         if (hubCentrifugeId == localCentrifugeId) {
-            contractUpdater.untrustedCall(poolId, scId, target.toAddress(), payload, localCentrifugeId, sender);
+            envoy.callFromSpoke(poolId, target.toAddress(), payload, localCentrifugeId, sender);
             _refund(refund);
         } else {
             _send(
                 hubCentrifugeId,
-                MessageLib.UntrustedContractUpdate({
+                MessageLib.ManagerCallFromSpoke({
                         poolId: poolId.raw(),
-                        scId: scId.raw(),
                         target: target,
                         sender: sender,
                         extraGasLimit: extraGasLimit,
@@ -664,7 +662,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         address refund
     ) external payable auth {
         if (assetId.centrifugeId() == localCentrifugeId) {
-            spoke.requestCallback(poolId, scId, assetId, payload);
+            spokeHandler.requestCallback(poolId, scId, assetId, payload);
             _refund(refund);
         } else {
             _send(
@@ -688,7 +686,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
         PoolId poolId,
         bytes32[] memory adapters,
         uint8 threshold,
-        uint8 recoveryIndex,
+        uint16 targetSessionId,
         address refund
     ) external payable auth {
         if (centrifugeId == localCentrifugeId) {
@@ -697,26 +695,11 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
             _send(
                 centrifugeId,
                 MessageLib.SetPoolAdapters({
-                        poolId: poolId.raw(), threshold: threshold, recoveryIndex: recoveryIndex, adapterList: adapters
+                        poolId: poolId.raw(),
+                        threshold: threshold,
+                        targetSessionId: targetSessionId,
+                        adapterList: adapters
                     }).serialize(),
-                false,
-                refund
-            );
-        }
-    }
-
-    function sendUpdateGatewayManager(uint16 centrifugeId, PoolId poolId, bytes32 who, bool canManage, address refund)
-        external
-        payable
-        auth
-    {
-        if (centrifugeId == localCentrifugeId) {
-            gateway.updateManager(poolId, who.toAddress(), canManage);
-            _refund(refund);
-        } else {
-            _send(
-                centrifugeId,
-                MessageLib.UpdateGatewayManager({poolId: poolId.raw(), who: who, canManage: canManage}).serialize(),
                 false,
                 refund
             );
@@ -729,8 +712,7 @@ contract MessageDispatcher is Auth, IMessageDispatcher {
 
     function _refund(address refund) internal {
         if (msg.value > 0) {
-            (bool success,) = payable(refund).call{value: msg.value}("");
-            require(success, CannotRefund());
+            SafeTransferLib.safeTransferETH(refund, msg.value);
         }
     }
 }

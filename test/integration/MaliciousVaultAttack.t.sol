@@ -8,7 +8,6 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {VaultKind} from "../../src/core/spoke/interfaces/IVault.sol";
 import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
@@ -24,10 +23,14 @@ contract MaliciousFactory {
         manager = manager_;
     }
 
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address shareToken)
-        public
-        returns (address)
-    {
+    function newVault(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address shareToken,
+        bytes calldata
+    ) public returns (address) {
         vault = new MaliciousVault(poolId, scId, asset, tokenId, shareToken, manager);
         return address(vault);
     }
@@ -57,10 +60,6 @@ contract MaliciousVault {
         manager = manager_;
     }
 
-    function vaultKind() public pure returns (VaultKind vaultKind_) {
-        return VaultKind.Async;
-    }
-
     function attack() public {
         /// Trying to access directly to the AsyncRequestManager
         manager.requestDeposit(IBaseVault(address(this)), 100, address(this), address(0), address(0));
@@ -83,6 +82,7 @@ contract MaliciousVaultAttackTest is EndToEndFlows {
             s.usdcId,
             bytes32(bytes20(address(maliciousFactory))),
             VaultUpdateKind.DeployAndLink,
+            bytes(""),
             0,
             REFUND
         );

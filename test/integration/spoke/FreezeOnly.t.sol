@@ -3,9 +3,10 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {ITransferHook} from "../../../src/core/spoke/interfaces/ITransferHook.sol";
+import {AsyncVault, VaultBaseTest as BaseTest} from "../vaults/VaultBaseTest.sol";
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, VaultKind} from "../vaults/VaultBaseTest.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+import {ITransferHook} from "../../../src/token/interfaces/ITransferHook.sol";
 
 contract FreezeOnlyTest is BaseTest {
     using CastLib for *;
@@ -14,7 +15,7 @@ contract FreezeOnlyTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         (, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(freezeOnlyHook), bytes16(bytes("1")), address(erc20), 0);
+            deployVault(asyncVaultFactory, 6, address(freezeOnlyHook), bytes16(bytes("1")), address(erc20), 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 

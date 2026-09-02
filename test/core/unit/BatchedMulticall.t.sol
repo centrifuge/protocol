@@ -9,6 +9,7 @@ import "forge-std/Test.sol";
 
 contract BatchedMulticallImpl is BatchedMulticall, Test {
     uint256 public total;
+    ReentrantHook public hook;
 
     constructor(IGateway gateway) BatchedMulticall(gateway) {}
 
@@ -20,6 +21,35 @@ contract BatchedMulticallImpl is BatchedMulticall, Test {
         assertEq(msgValue(), 0);
         total += i;
     }
+
+    function setHook(ReentrantHook hook_) external payable {
+        hook = hook_;
+    }
+
+    /// @dev Simulates an inner batched call that hands control to an external hook.
+    function triggerHook() external payable {
+        hook.onSync();
+    }
+
+    /// @dev Entry point used by the reentrant hook. Because msg.sender is the hook (not the
+    ///      gateway), the real msg.value must be visible even though a batch is active.
+    function reentrantPayment() external payable {
+        assertEq(msgValue(), 5);
+    }
+}
+
+contract ReentrantHook {
+    BatchedMulticallImpl immutable impl;
+
+    constructor(BatchedMulticallImpl impl_) {
+        impl = impl_;
+    }
+
+    function onSync() external {
+        impl.reentrantPayment{value: 5}();
+    }
+
+    receive() external payable {}
 }
 
 contract MockGateway {
@@ -66,6 +96,19 @@ contract BatchedMulticallTestMulticall is BatchedMulticallTest {
         multicall.multicall{value: 1}(calls);
 
         assertEq(multicall.total(), 5);
+    }
+
+    function testReentrantCallDuringBatchKeepsRealValue() external {
+        // A reentrant call entering during an active batch from a non-gateway sender (an external
+        // hook) must see its real msg.value, otherwise the attached ETH is silently dropped.
+        ReentrantHook hook = new ReentrantHook(multicall);
+        vm.deal(address(hook), 5);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.setHook.selector, hook);
+        calls[1] = abi.encodeWithSelector(multicall.triggerHook.selector);
+
+        multicall.multicall(calls);
     }
 
     function testNestedMulticallIsBlocked() external {

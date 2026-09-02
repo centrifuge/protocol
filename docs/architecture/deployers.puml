@@ -1,60 +1,61 @@
-@startuml
+@startuml deployers
+title Deployers
 hide empty members
 
-note "Each deployer has associated its own ActionBatcher and Report\nfollowing the same shown pattern" as N1
+class JsonRegistry << (S, motivation) >>
+class CreateXScript << (S, motivation) >>
+class DeployGateScript << (S, motivation) >>
+class GateProposalScript << (S, motivation) >>
 
-class JsonRegistry
-class CreateXScript
+class BaseDeployer << (S, motivation) >>
+class GatedDeployer << (S, motivation) >>
 
-class CommonDeployer
-class HubDeployer
-class SpokeDeployer
-class AdaptersDeployer
+class DeployAdapters << (S, application) >>
 
-class ValuationsDeployer
-class HubManagersDeployer
-class ExtendedHubDeployer
-
-class SpokeManagersDeployer
-class VaultsDeployer
-class HooksDeployer
-class ExtendedSpokeDeployer
-
-class FullDeployer {
-    + function run()
+class FullDeployer  << (S, application) >> {
+    + function deployFull()
+}
+class LaunchDeployer  << (S, application) >> {
+    + function commit()
+    + function revoke()
+    + function deploy()
 }
 
-class CommonInput << (S,application) JsonConfig >>
-class AdaptersInput << (S,application) JsonConfig >>
+class CoreActionBatcher << (C, implementation) >>
+class NonCoreActionBatcher << (C, implementation) >>
+class AdapterActionBatcher << (C, implementation) >>
 
-CommonDeployer -up-|> JsonRegistry
-CommonDeployer -up-|> CreateXScript
-HubDeployer -up-|> CommonDeployer
-SpokeDeployer -up-|> CommonDeployer
-AdaptersDeployer -up-|> CommonDeployer
+class DeployerInput << (S,strategy) JsonConfig >>
 
-HubManagersDeployer -up-|> HubDeployer
-ValuationsDeployer -up-|> HubDeployer
+enum DeployPhase {
+    Commit
+    Deploy
+}
 
-ExtendedHubDeployer -up-|> HubManagersDeployer
-ExtendedHubDeployer -up-|> ValuationsDeployer
+BaseDeployer -up-|> JsonRegistry
+BaseDeployer -up-|> CreateXScript
+DeployGateScript -up-|> CreateXScript
+GateProposalScript -up-|> DeployGateScript
 
-SpokeManagersDeployer -up-|> SpokeDeployer
-VaultsDeployer -up-|> SpokeDeployer
-HooksDeployer -up-|> SpokeDeployer
+GatedDeployer --up-|> BaseDeployer
+GatedDeployer --up-|> GateProposalScript
+FullDeployer -up-|> GatedDeployer
+LaunchDeployer -up-|> FullDeployer
 
-ExtendedSpokeDeployer -up-|> SpokeManagersDeployer
-ExtendedSpokeDeployer -up-|> VaultsDeployer
-ExtendedSpokeDeployer -up-|> HooksDeployer
+DeployAdapters ---up-|> BaseDeployer
 
-FullDeployer -up-|> ExtendedHubDeployer
-FullDeployer -up-|> ExtendedSpokeDeployer
-FullDeployer -up---|> AdaptersDeployer
+GatedDeployer -right> DeployPhase
+FullDeployer -left> DeployerInput
 
-CommonDeployer -> CommonInput
-AdaptersDeployer -left> AdaptersInput
+FullDeployer ...> CoreActionBatcher
+FullDeployer ...> NonCoreActionBatcher
+FullDeployer ...> AdapterActionBatcher
 
-note right of ExtendedSpokeDeployer: Used in spoke ITs
-note right of HubDeployer: Used in hub ITs
-note right of FullDeployer: Used in end-to-end ITs,\ntestnets and productions
+note right of JsonRegistry: Utilities to write in the env files
+note left of DeployGateScript: From the create3-gate dependency
+note right of BaseDeployer: Base utilities to use create3\n in the project
+note right of GatedDeployer: Helpers to use DeployGate
+note right of FullDeployer: Used in integration tests
+note bottom of LaunchDeployer: Loads network config from JSON;\nentry point for production deployments
+
 @enduml

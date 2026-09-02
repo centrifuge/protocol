@@ -50,12 +50,6 @@ contract MockGateway {
     // Mock implementation of lockCallback
     function lockCallback() external {}
 
-    // Mock implementation of updateManager
-    function updateManager(uint64 poolId, address who, bool canManage) external {}
-
-    // Mock implementation of blockOutgoing
-    function blockOutgoing(uint16 centrifugeId, uint64 poolId, bool canSend) external {}
-
     // Mock implementation of setRefundAddress
     function setRefundAddress(uint64 poolId, address refund) public {}
 

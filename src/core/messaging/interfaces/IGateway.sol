@@ -10,9 +10,6 @@ import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
-// Reserved gas amount for processing a message failure (assuming the worst case)
-uint256 constant PROCESS_FAIL_MESSAGE_GAS = 35_000;
-
 // Max length for a supported message. Note that a batch can use several messages with this length.
 uint256 constant MESSAGE_MAX_LENGTH = 1_000;
 
@@ -35,16 +32,13 @@ interface IGateway is IMessageHandler, IRecoverable {
     //----------------------------------------------------------------------------------------------
 
     event File(bytes32 indexed what, address addr);
-    event UpdateManager(PoolId poolId, address who, bool canManage);
-    event BlockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked);
-    event PrepareMessage(uint16 indexed centrifugeId, PoolId poolId, bytes message);
+    event PrepareMessage(uint16 indexed centrifugeId, PoolId indexed poolId, bytes message);
     event UnderpaidBatch(uint16 indexed centrifugeId, bytes batch, bytes32 batchHash);
     event RepayBatch(uint16 indexed centrifugeId, bytes batch);
     event ExecuteMessage(uint16 indexed centrifugeId, bytes32 messageHash);
     event FailMessage(uint16 indexed centrifugeId, bytes32 messageHash, bytes error);
-    event SetRefundAddress(PoolId poolId, IRecoverable refund);
-    event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
-    event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
+    event ClearFailedMessage(uint16 indexed centrifugeId, bytes32 messageHash);
+    event UpdateManager(PoolId indexed poolId, address indexed who, bool canManage);
 
     //----------------------------------------------------------------------------------------------
     // Errors
@@ -74,11 +68,13 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice Dispatched when the content of a batch doesn't belong to the same pool
     error MalformedBatch();
 
-    /// @notice Dispatched when a message is sent but the gateway is blocked for sending messages
-    error OutgoingBlocked();
+    /// @notice Dispatched when a message claims to originate from the local chain. A message reaching
+    ///         `handle` always crossed a real inter-chain bridge (same-chain hub<->spoke calls bypass
+    ///         Gateway entirely via a direct call), so this can only happen for a forged message.
+    error CannotBeReceivedLocally();
 
-    /// @notice Dispatched when an account is not valid to withdraw subsidized pool funds
-    error CannotRefund();
+    /// @notice Dispatched when a message arrives from a chain that is not its expected source.
+    error SourceMismatch();
 
     /// @notice Dispatched when there is not enough gas to send the message
     error NotEnoughGas();
@@ -116,19 +112,29 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @param data New address
     function file(bytes32 what, address data) external;
 
-    /// @notice Configures a manager address for a pool
-    /// @param poolId PoolId associated to the adapters
-    /// @param who Manager address
-    /// @param canManage If enabled as manager
+    /// @notice Allow/disallow an account to act as gateway manager for a pool.
+    /// @dev    WARNING: Gateway managers carry very significant permissions. A manager can call
+    ///         `Gateway.handle` directly with an arbitrary centrifugeId and raw message bytes,
+    ///         which lets it forge any hub-originated message for its pool — including
+    ///         `SetPoolAdapters`, `UpdateManager`, and `ManagerCallFromHub`. This is intentional for
+    ///         recovery scenarios (e.g. replaying a valid message that the transport dropped), but
+    ///         it means a compromised or malicious manager key is equivalent to hub-level authority
+    ///         over that pool. Grant this role only to smart contracts that constrain what messages
+    ///         can be injected; never grant it to a plain EOA.
+    /// @param poolId The pool identifier
+    /// @param who Address to grant or revoke the gateway manager role for
+    /// @param canManage True to grant, false to revoke
     function updateManager(PoolId poolId, address who, bool canManage) external;
 
-    /// @notice Block or unblock outgoing messages for a pool on a specific chain.
-    /// @dev    Used during adapter migrations to ensure no messages are in-flight while the adapter
-    ///         configuration is being updated. See `IHub.setAdapters` for the full procedure.
-    /// @param centrifugeId Centrifuge ID associated to this block
-    /// @param poolId PoolId associated to this block
-    /// @param canSend If can send messages or not
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool canSend) external;
+    /// @notice Remove a failed message so it can no longer be retried.
+    /// @dev    Restricted to wards or a manager of the message's pool. Intended for messages that cannot
+    ///         be retried successfully and should not persist in the failed queue. It is NOT a reliable
+    ///         way to block a message that would currently execute: `retry` is permissionless, so anyone
+    ///         can front-run the clear and force execution. Only clear messages that still revert on
+    ///         retry. Decrements the failed count by one, mirroring `retry`'s per-instance semantics.
+    /// @param centrifugeId The source chain the message originated from
+    /// @param message The failed message to remove
+    function clearFailedMessage(uint16 centrifugeId, bytes memory message) external;
 
     //----------------------------------------------------------------------------------------------
     // Message handling
@@ -141,7 +147,8 @@ interface IGateway is IMessageHandler, IRecoverable {
     function repay(uint16 centrifugeId, bytes memory batch, address refund) external payable;
 
     /// @notice Retry a failed message
-    /// @param centrifugeId The destination chain
+    /// @dev    Permissionless: anyone may re-execute a failed message once its failure cause is gone.
+    /// @param centrifugeId The source chain the message originated from
     /// @param message The message to retry
     function retry(uint16 centrifugeId, bytes memory message) external;
 
@@ -211,17 +218,9 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging
     function pauser() external view returns (IProtocolPauser);
 
-    /// @notice Returns whether an address is a manager for a given pool
-    /// @param poolId The pool identifier
-    /// @param who The address to check
-    /// @return Whether the address is a manager
+    /// @notice Returns whether `who` is a gateway manager for `poolId`.
+    ///         See {updateManager} for the security implications of this role.
     function manager(PoolId poolId, address who) external view returns (bool);
-
-    /// @notice Returns whether outgoing messages are blocked for a pool on a specific chain
-    /// @param centrifugeId The destination chain identifier
-    /// @param poolId The pool identifier
-    /// @return Whether outgoing is blocked
-    function isOutgoingBlocked(uint16 centrifugeId, PoolId poolId) external view returns (bool);
 
     /// @notice Returns the underpaid batch info for a given chain and batch hash
     /// @param centrifugeId The destination chain identifier

@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    AssetId,
-    VaultBaseTest as BaseTest,
-    IShareToken,
-    PoolId,
-    ShareClassId,
-    SyncDepositVault,
-    VaultKind
-} from "./VaultBaseTest.sol";
+import {AssetId, ERC20, VaultBaseTest as BaseTest, PoolId, ShareClassId, SyncDepositVault} from "./VaultBaseTest.sol";
 
 import {D18, d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -25,15 +17,16 @@ import {
     IERC7887Redeem
 } from "../../../src/misc/interfaces/IERC7540.sol";
 
-import {IVault} from "../../../src/core/spoke/interfaces/IVault.sol";
+import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
-import {IBalanceSheet} from "../../../src/core/spoke/interfaces/IBalanceSheet.sol";
-import {VaultDetails} from "../../../src/core/spoke/interfaces/IVaultRegistry.sol";
+import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
 import {ISyncManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {IAsyncRedeemVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract SyncDepositTestHelper is BaseTest {
     using CastLib for *;
@@ -44,7 +37,7 @@ contract SyncDepositTestHelper is BaseTest {
         internal
         returns (SyncDepositVault syncVault, uint128 assetId)
     {
-        (, address syncVault_, uint128 assetId_) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address syncVault_, uint128 assetId_) = deploySimpleVault(syncDepositVaultFactory);
         assetId = assetId_;
         syncVault = SyncDepositVault(syncVault_);
 
@@ -56,21 +49,23 @@ contract SyncDepositTestHelper is BaseTest {
         );
     }
 
-    function _assertDepositEvents(SyncDepositVault vault, uint128 shares, D18 pricePoolPerShare, D18 pricePoolPerAsset)
-        internal
-    {
+    function _assertDepositEvents(SyncDepositVault vault, uint128 shares) internal {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
         uint128 depositAssetAmount = vault.previewMint(shares).toUint128();
-        VaultDetails memory vaultDetails = vaultRegistry.vaultDetails(vault);
+        VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
+        address syncDepositManager = address(vault.syncDepositManager());
 
         vm.expectEmit();
-        emit IBalanceSheet.Issue(poolId, scId, address(0), self, pricePoolPerShare, shares);
-
-        vm.expectEmit();
-        emit IBalanceSheet.NoteDeposit(
-            poolId, scId, address(0), vault.asset(), vaultDetails.tokenId, depositAssetAmount, pricePoolPerAsset
+        emit ISpoke.NoteDeposit(
+            poolId, scId, syncDepositManager, vault.asset(), vaultDetails.tokenId, depositAssetAmount
         );
+
+        vm.expectEmit();
+        emit ISpoke.Issue(poolId, scId, syncDepositManager, self, shares);
+
+        vm.expectEmit();
+        emit IERC7575.Deposit(self, self, depositAssetAmount, shares);
     }
 }
 
@@ -137,14 +132,8 @@ contract SyncDepositTest is SyncDepositTestHelper {
         (SyncDepositVault syncVault, uint128 assetId) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
         IShareToken shareToken = IShareToken(address(syncVault.share()));
 
-        // Retrieve async vault
-        IVault asyncVault_ = vaultRegistry.vault(
-            syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault.asyncRedeemManager()
-        );
-        assertNotEq(address(syncVault), address(0), "Failed to retrieve async vault");
-        IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(asyncVault_));
-
-        assertEq(address(syncVault), address(asyncVault));
+        // A SyncDepositVault is its own async-redeem vault (same contract).
+        IAsyncRedeemVault asyncVault = IAsyncRedeemVault(address(syncVault));
 
         // Will fail - user not member: can not send funds
         vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
@@ -186,7 +175,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         if (snap) {
             vm.startSnapshotGas("SyncDepositVault", "deposit");
         }
-        // _assertDepositEvents(syncVault, shares.toUint128(), pricePoolPerShare, pricePoolPerAsset);
+        _assertDepositEvents(syncVault, shares.toUint128());
         syncVault.deposit(amount, self);
         if (snap) {
             vm.stopSnapshotGas();
@@ -201,7 +190,7 @@ contract SyncDepositTest is SyncDepositTestHelper {
         asyncVault.requestRedeem(shareBalance, self, self);
         assertEq(asyncVault.pendingRedeemRequest(0, self), shareBalance);
 
-        vaultRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), syncVault);
+        spokeRegistry.unlinkVault(syncVault.poolId(), syncVault.scId(), AssetId.wrap(assetId), address(syncVault));
         assertEq(syncVault.maxDeposit(address(this)), 0);
         assertEq(syncVault.maxMint(address(this)), 0);
 
@@ -210,6 +199,51 @@ contract SyncDepositTest is SyncDepositTestHelper {
 
         vm.expectRevert(ISyncManager.ExceedsMaxMint.selector);
         syncVault.mint(1, self);
+    }
+
+    /// Covers the ERC-4626 `Deposit` event emitted by the `mint` path (sender/owner ordering).
+    function testSyncMintEmitsDepositEvent() public {
+        uint128 amount = 100;
+        erc20.mint(self, amount);
+
+        (SyncDepositVault syncVault,) = _deploySyncDepositVault(pricePoolPerShare, pricePoolPerAsset);
+        centrifugeChain.updateMember(syncVault.poolId().raw(), syncVault.scId().raw(), self, type(uint64).max);
+        erc20.approve(address(syncVault), amount);
+
+        uint256 shares = syncVault.previewDeposit(amount);
+        uint256 assets = syncVault.previewMint(shares);
+
+        vm.expectEmit();
+        emit IERC7575.Deposit(self, self, assets, shares);
+        syncVault.mint(shares, self);
+    }
+
+    /// Sync deposit of a 0-decimal asset into an 18-decimal share class (coarse asset, fine shares).
+    /// forge-config: default.isolate = true
+    function testSyncDepositZeroDecimalAsset() public {
+        ERC20 zeroDec = _newErc20("ZeroDec", "ZD", 0);
+
+        // deployVault registers the 0-decimal asset on the spoke and wires prices to 1:1.
+        (uint64 poolId, address vaultAddr, uint128 assetId) = deployVault(
+            syncDepositVaultFactory, 18, address(fullRestrictionsHook), bytes16(bytes("1")), address(zeroDec), 0
+        );
+        SyncDepositVault syncVault = SyncDepositVault(vaultAddr);
+        IShareToken shareToken = IShareToken(address(syncVault.share()));
+        assertEq(assetId != 0, true, "0-decimal asset registered on spoke");
+
+        centrifugeChain.updateMember(poolId, syncVault.scId().raw(), self, type(uint64).max);
+
+        uint128 amount = 100;
+        assertEq(syncVault.previewDeposit(amount), 100e18, "100 whole 0-dec units -> 100.0 fine shares");
+
+        zeroDec.mint(self, amount);
+        zeroDec.approve(address(syncVault), amount);
+        syncVault.deposit(amount, self);
+
+        assertEq(zeroDec.balanceOf(self), 0, "asset spent");
+        assertEq(shareToken.balanceOf(self), 100e18, "shares minted");
+        // pricePerShare = convertToAssets(10 ** 18 shares) = 1 whole 0-dec asset unit.
+        assertEq(syncVault.pricePerShare(), 1, "one fine share worth of assets is 1 whole 0-dec unit");
     }
 
     // --- erc165 checks ---

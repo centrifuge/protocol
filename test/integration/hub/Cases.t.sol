@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import {D18, d18} from "../../../src/misc/types/D18.sol";
+import {d18} from "../../../src/misc/types/D18.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
@@ -51,6 +51,28 @@ contract TestCases is CentrifugeIntegrationTest {
     }
 
     /// forge-config: default.isolate = true
+    function _holdingAccounts(AccountId asset, AccountId equity, AccountId gain, AccountId loss)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = asset;
+        accounts[1] = equity;
+        accounts[2] = gain;
+        accounts[3] = loss;
+    }
+
+    function _liabilityAccounts(AccountId expense, AccountId liability)
+        internal
+        pure
+        returns (AccountId[4] memory accounts)
+    {
+        accounts[0] = expense;
+        accounts[1] = liability;
+        accounts[2] = liability;
+        accounts[3] = liability;
+    }
+
     function testPoolCreation(bool withInitialization) public returns (PoolId poolId, ShareClassId scId) {
         poolId = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
         vm.prank(address(opsGuardian.opsSafe()));
@@ -68,18 +90,20 @@ contract TestCases is CentrifugeIntegrationTest {
         hub.createAccount(poolId, ASSET_EUR_STABLE_ACCOUNT, true);
         if (withInitialization) {
             valuation.setPrice(poolId, scId, USDC_ID, d18(1, 1));
+            valuation.setPrice(poolId, scId, EUR_STABLE_ID, d18(1, 1));
             hub.initializeHolding(
-                poolId, scId, USDC_ID, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+                poolId,
+                scId,
+                USDC_ID,
+                valuation,
+                _holdingAccounts(ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT)
             );
             hub.initializeHolding(
                 poolId,
                 scId,
                 EUR_STABLE_ID,
                 valuation,
-                ASSET_EUR_STABLE_ACCOUNT,
-                EQUITY_ACCOUNT,
-                GAIN_ACCOUNT,
-                LOSS_ACCOUNT
+                _holdingAccounts(ASSET_EUR_STABLE_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT)
             );
         }
         vm.stopPrank();
@@ -92,20 +116,24 @@ contract TestCases is CentrifugeIntegrationTest {
         uint128 assetDecimals = (10 ** hubRegistry.decimals(USDC_ID.raw())).toUint128();
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 1000 * assetDecimals, true, IS_SNAPSHOT, 0);
 
+        // Pre-initialization, only the amount is tracked; the value is established at initialization
         assertEq(holdings.amount(poolId, scId, USDC_ID), 1000 * assetDecimals);
-        assertEq(holdings.value(poolId, scId, USDC_ID), 1000 * poolDecimals);
+        assertEq(holdings.value(poolId, scId, USDC_ID), 0);
         _assertEqAccountValue(poolId, EQUITY_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, ASSET_USDC_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, GAIN_ACCOUNT, true, 0);
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
+        valuation.setPrice(poolId, scId, USDC_ID, d18(1, 1));
         vm.prank(FM);
         hub.initializeHolding(
-            poolId, scId, USDC_ID, valuation, ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT
+            poolId,
+            scId,
+            USDC_ID,
+            valuation,
+            _holdingAccounts(ASSET_USDC_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT)
         );
 
         assertEq(holdings.amount(poolId, scId, USDC_ID), 1000 * assetDecimals);
@@ -116,9 +144,7 @@ contract TestCases is CentrifugeIntegrationTest {
         _assertEqAccountValue(poolId, LOSS_ACCOUNT, true, 0);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 600 * assetDecimals, D18.wrap(1e18), false, IS_SNAPSHOT, 1
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, USDC_ID, 600 * assetDecimals, false, IS_SNAPSHOT, 1);
 
         assertEq(holdings.amount(poolId, scId, USDC_ID), 400 * assetDecimals);
         assertEq(holdings.value(poolId, scId, USDC_ID), 400 * poolDecimals);
@@ -162,17 +188,17 @@ contract TestCases is CentrifugeIntegrationTest {
         uint128 expenseDecimals = (10 ** hubRegistry.decimals(FEE_ID.raw())).toUint128();
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 50 * expenseDecimals, D18.wrap(1e18), true, IS_SNAPSHOT, 0
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 50 * expenseDecimals, true, IS_SNAPSHOT, 0);
 
+        // Pre-initialization, only the amount is tracked; the value is established at initialization
         assertEq(holdings.amount(poolId, scId, FEE_ID), 50 * expenseDecimals);
-        assertEq(holdings.value(poolId, scId, FEE_ID), 50 * poolDecimals);
+        assertEq(holdings.value(poolId, scId, FEE_ID), 0);
         _assertEqAccountValue(poolId, FEE_ACCOUNT, true, 0 * poolDecimals);
         _assertEqAccountValue(poolId, LIABILITY_ACCOUNT, true, 0 * poolDecimals);
 
+        valuation.setPrice(poolId, scId, FEE_ID, d18(1, 1));
         vm.prank(FM);
-        hub.initializeLiability(poolId, scId, FEE_ID, valuation, FEE_ACCOUNT, LIABILITY_ACCOUNT);
+        hub.initializeHolding(poolId, scId, FEE_ID, valuation, _liabilityAccounts(FEE_ACCOUNT, LIABILITY_ACCOUNT));
 
         assertEq(holdings.amount(poolId, scId, FEE_ID), 50 * expenseDecimals);
         assertEq(holdings.value(poolId, scId, FEE_ID), 50 * poolDecimals);
@@ -180,9 +206,7 @@ contract TestCases is CentrifugeIntegrationTest {
         _assertEqAccountValue(poolId, LIABILITY_ACCOUNT, true, 50 * poolDecimals);
 
         vm.prank(address(messageDispatcher));
-        hubHandler.updateHoldingAmount(
-            LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 20 * expenseDecimals, D18.wrap(1e18), false, IS_SNAPSHOT, 1
-        );
+        hubHandler.updateAssets(LOCAL_CENTRIFUGE_ID, poolId, scId, FEE_ID, 20 * expenseDecimals, false, IS_SNAPSHOT, 1);
 
         assertEq(holdings.amount(poolId, scId, FEE_ID), 30 * expenseDecimals);
         assertEq(holdings.value(poolId, scId, FEE_ID), 30 * poolDecimals);

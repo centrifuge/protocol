@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 
-import {IEndorsements} from "../../../src/core/spoke/interfaces/IEndorsements.sol";
 import {IScheduleAuth} from "../../../src/core/messaging/interfaces/IScheduleAuth.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 
@@ -71,7 +70,7 @@ contract RootTestEndorse is RootTest {
     function testEndorse() public {
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IEndorsements.Endorse(USER);
+        emit IRoot.Endorse(USER);
         root.endorse(USER);
 
         assertEq(root.endorsed(USER), true);
@@ -91,7 +90,7 @@ contract RootTestVeto is RootTest {
 
         vm.prank(address(AUTH));
         vm.expectEmit();
-        emit IEndorsements.Veto(USER);
+        emit IRoot.Veto(USER);
         root.veto(USER);
 
         assertEq(root.endorsed(USER), false);

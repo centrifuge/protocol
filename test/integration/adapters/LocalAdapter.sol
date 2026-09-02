@@ -61,7 +61,8 @@ contract LocalAdapter is Test, Auth, IAdapter, IMessageHandler {
         }
 
         adapterData = bytes32("");
-        lastReceivedPayload = payload;
+        // Strip the 2-byte session ID prefix that MultiAdapter prepends to outgoing messages
+        lastReceivedPayload = payload[2:];
 
         (bool success,) = payable(refund).call{value: refundedValue}(new bytes(0));
         assertEq(success, true, "Refund must success");

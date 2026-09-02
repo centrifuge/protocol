@@ -1,0 +1,56 @@
+{
+  "network": {
+    "chainId": 999,
+    "environment": "mainnet",
+    "centrifugeId": 9,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://hyperliquid-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x3a73033C0B1407574C76BDbAC67F126F6b4a9Aa9",
+      "layerZeroEid": 30367,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x32fFd21260172518A8844feC76A88C8F239C384b",
+        "0x83342EC538dF0460e730a8F543Fe63063e2D44C4"
+      ],
+      "optionalDVNs": [
+        "0x8E49eF1DfAe17e547CA0E7526FfDA81FbaCA810A",
+        "0xC7423626016bc40375458bc0277F28681EC91C8e",
+        "0xcFe987eBFf7612B53D145DD70EE24D00E12d6A1F"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "axelar": {
+      "axelarId": "hyperliquid",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 2442541497099098535,
+      "ccipRouter": "0x13b3332b66389B1467CA6eBd6fa79775CCeF65ec",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
+      "blockNumber": 25782445,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "c4dcd1ae",
+      "timestamp": "2026-01-28T15:19:10Z",
+      "suffix": "",
+      "startBlock": 25782445
+    }
+  }
+}

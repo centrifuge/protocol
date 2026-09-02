@@ -14,8 +14,8 @@ import {PoolId} from "../../../core/types/PoolId.sol";
 import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../../../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../../core/utils/interfaces/IContractUpdate.sol";
+import {ISpokeRegistry} from "../../../core/spoke/interfaces/ISpokeRegistry.sol";
+import {IManagerCallFromHub} from "../../../core/utils/interfaces/IManagerCall.sol";
 
 import {IOnchainPMFactory} from "../interfaces/IOnchainPMFactory.sol";
 
@@ -33,22 +33,15 @@ contract SlippageGuard is ISlippageGuard {
     uint256 internal constant PRE_BASE_SLOT = uint256(keccak256("slippageGuard.pre"));
 
     ISpoke public immutable spoke;
-    address public immutable contractUpdater;
-    IBalanceSheet public immutable balanceSheet;
+    address public immutable envoy;
     IOnchainPMFactory public immutable onchainPMFactory;
 
     mapping(PoolId => mapping(ShareClassId => PeriodState)) public period;
     mapping(PoolId => mapping(ShareClassId => SlippageConfig)) public config;
 
-    constructor(
-        ISpoke spoke_,
-        IBalanceSheet balanceSheet_,
-        address contractUpdater_,
-        IOnchainPMFactory onchainPMFactory_
-    ) {
+    constructor(ISpoke spoke_, address envoy_, IOnchainPMFactory onchainPMFactory_) {
         spoke = spoke_;
-        balanceSheet = balanceSheet_;
-        contractUpdater = contractUpdater_;
+        envoy = envoy_;
         onchainPMFactory = onchainPMFactory_;
     }
 
@@ -58,14 +51,18 @@ contract SlippageGuard is ISlippageGuard {
     }
 
     //----------------------------------------------------------------------------------------------
-    // Owner actions
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes calldata payload) external {
-        require(msg.sender == contractUpdater, NotAuthorized());
+    /// @inheritdoc IManagerCallFromHub
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
 
-        (uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (uint128, uint32));
+        (bytes16 scId_, uint128 maxPeriodLoss, uint32 periodDuration) = abi.decode(payload, (bytes16, uint128, uint32));
+        ShareClassId scId = ShareClassId.wrap(scId_);
+        require(spoke.spokeRegistry().hasShareClass(poolId, scId), ISpokeRegistry.ShareTokenDoesNotExist());
+
         config[poolId][scId] = SlippageConfig(maxPeriodLoss, periodDuration);
         emit SetConfig(poolId, scId, maxPeriodLoss, periodDuration);
     }
@@ -91,7 +88,7 @@ contract SlippageGuard is ISlippageGuard {
             TransientArrayLib.push(ASSETS_SLOT, bytes32(uint256(uint160(asset))));
             TransientArrayLib.push(TOKEN_IDS_SLOT, bytes32(tokenId));
 
-            uint128 balance = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
+            uint128 balance = spoke.availableBalanceOf(poolId, scId, asset, tokenId);
             TransientStorageLib.tstore(bytes32(PRE_BASE_SLOT + i), uint256(balance));
         }
     }
@@ -110,7 +107,7 @@ contract SlippageGuard is ISlippageGuard {
             ContextMismatch()
         );
 
-        uint8 poolDecimals = IERC20Metadata(address(spoke.shareToken(poolId, scId))).decimals();
+        uint8 poolDecimals = IERC20Metadata(address(spoke.spokeRegistry().shareToken(poolId, scId))).decimals();
         (uint256 withdrawn, uint256 deposited) = _computeDeltas(poolId, scId, poolDecimals);
         if (withdrawn > 0) {
             uint256 loss = withdrawn > deposited ? withdrawn - deposited : 0;
@@ -142,9 +139,10 @@ contract SlippageGuard is ISlippageGuard {
             uint256 tokenId = uint256(tokenIds[i]);
 
             uint128 pre = uint128(TransientStorageLib.tloadUint256(bytes32(PRE_BASE_SLOT + i)));
-            uint128 post = balanceSheet.availableBalanceOf(poolId, scId, asset, tokenId);
+            uint128 post = spoke.availableBalanceOf(poolId, scId, asset, tokenId);
 
-            D18 price = spoke.pricePoolPerAsset(poolId, scId, spoke.assetToId(asset, tokenId), true);
+            D18 price = spoke.spokeRegistry()
+                .pricePoolPerAsset(poolId, scId, spoke.spokeRegistry().assetToId(asset, tokenId, true), true);
             uint8 assetDecimals =
                 tokenId == 0 ? IERC20Metadata(asset).decimals() : IERC6909MetadataExt(asset).decimals(tokenId);
 

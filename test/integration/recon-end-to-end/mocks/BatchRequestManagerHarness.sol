@@ -14,8 +14,8 @@ import {RequestCallbackMessageLib} from "../../../../src/vaults/libraries/Reques
 /// @notice Test harness that overrides notifyDeposit/notifyRedeem to return internal values
 /// @dev Used in invariant tests to get exact claimed/cancelled breakdowns without event parsing
 contract BatchRequestManagerHarness is BatchRequestManager {
-    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address deployer)
-        BatchRequestManager(hubRegistry_, gateway_, deployer)
+    constructor(IHubRegistry hubRegistry_, IGateway gateway_, address envoy_, address deployer)
+        BatchRequestManager(hubRegistry_, gateway_, envoy_, deployer)
     {}
 
     /// @notice Wrapper around notifyDeposit that returns the calculated amounts

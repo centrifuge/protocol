@@ -7,9 +7,9 @@ import {IHubHandler} from "./interfaces/IHubHandler.sol";
 import {IHubRegistry} from "./interfaces/IHubRegistry.sol";
 import {IHubRequestManager} from "./interfaces/IHubRequestManager.sol";
 import {IShareClassManager} from "./interfaces/IShareClassManager.sol";
+import {IBridgingHook, BridgeSharesParams, BridgeSharesResult} from "./interfaces/IBridgingHook.sol";
 
 import {Auth} from "../../misc/Auth.sol";
-import {D18} from "../../misc/types/D18.sol";
 
 import {IHubMessageSender} from "../messaging/interfaces/IGatewaySenders.sol";
 import {IHubGatewayHandler} from "../messaging/interfaces/IGatewayHandlers.sol";
@@ -25,9 +25,10 @@ import {ShareClassId} from "../types/ShareClassId.sol";
 contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     IHub public hub;
     IHoldings public holdings;
-    IHubRegistry public hubRegistry;
     IHubMessageSender public sender;
     IShareClassManager public shareClassManager;
+
+    IHubRegistry public immutable hubRegistry;
 
     constructor(
         IHub hub_,
@@ -74,20 +75,21 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
     }
 
     /// @inheritdoc IHubGatewayHandler
-    function updateHoldingAmount(
+    function updateAssets(
         uint16 centrifugeId,
         PoolId poolId,
         ShareClassId scId,
         AssetId assetId,
         uint128 amount,
-        D18 pricePoolPerAsset,
         bool isIncrease,
         bool isSnapshot,
         uint64 nonce
     ) external auth {
+        // The delta is valued at the hub-side valuation; the journaled value mirrors the holding
+        // mutation exactly, so the accounts stay in sync with the holding.
         uint128 value = isIncrease
-            ? holdings.increase(poolId, scId, assetId, pricePoolPerAsset, amount)
-            : holdings.decrease(poolId, scId, assetId, pricePoolPerAsset, amount);
+            ? holdings.increase(poolId, scId, assetId, centrifugeId, amount)
+            : holdings.decrease(poolId, scId, assetId, centrifugeId, amount);
 
         if (holdings.isInitialized(poolId, scId, assetId)) {
             hub.updateAccountingAmount(poolId, scId, assetId, isIncrease, value);
@@ -117,11 +119,31 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
         uint16 targetCentrifugeId,
         PoolId poolId,
         ShareClassId scId,
+        bytes32 sender_,
         bytes32 receiver,
         uint128 amount,
         uint128 extraGasLimit,
         address refund
     ) external payable auth {
+        IBridgingHook hook = hubRegistry.bridgingHook(poolId);
+        if (address(hook) != address(0)) {
+            BridgeSharesResult memory result = hook.onBridgeShares(
+                BridgeSharesParams({
+                    originCentrifugeId: originCentrifugeId,
+                    targetCentrifugeId: targetCentrifugeId,
+                    poolId: poolId,
+                    scId: scId,
+                    sender: sender_,
+                    receiver: receiver,
+                    amount: amount,
+                    extraGasLimit: extraGasLimit,
+                    refund: refund
+                })
+            );
+            (receiver, amount, extraGasLimit, refund) =
+            (result.receiver, result.amount, result.extraGasLimit, result.refund);
+        }
+
         shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
         shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
 
