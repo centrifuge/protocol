@@ -10,7 +10,6 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../src/core/spoke/interfaces/IShareToken.sol";
 
 import {BaseVault} from "../../../src/vaults/BaseVaults.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
@@ -18,6 +17,7 @@ import {AsyncInvestmentState} from "../../../src/vaults/interfaces/IVaultManager
 import {UserOrder, EpochId} from "../../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MockERC20} from "@recon/MockERC20.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 enum OpType {
     GENERIC, // generic operations can be performed by both users and admins
@@ -204,7 +204,7 @@ abstract contract BeforeAfter is Setup {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        (, _structToUpdate.ghostHolding[poolId][scId][assetId],,) = holdings.holding(poolId, scId, assetId);
+        (, _structToUpdate.ghostHolding[poolId][scId][assetId],) = holdings.holding(poolId, scId, assetId);
     }
 
     function _updateActorRedeemRequests(bool before) internal {
@@ -290,17 +290,19 @@ abstract contract BeforeAfter is Setup {
     function _updateValuesIfNonZero(bool before) internal {
         BeforeAfterVars storage _structToUpdate = before ? _before : _after;
 
-        if (_getShareToken() != address(0)) {
-            _structToUpdate.escrowShareTokenBalance = MockERC20(_getShareToken()).balanceOf(_getPoolEscrowAddress());
-            _structToUpdate.totalShareSupply = MockERC20(_getShareToken()).totalSupply();
-        }
-
         if (address(_getVault()) != address(0)) {
-            _structToUpdate.escrowAssetBalance[address(_getVault())] =
-                MockERC20(_getVault().asset()).balanceOf(_getPoolEscrowForVault(_getVault()));
+            IBaseVault vault = _getVault();
+
+            // Keyed off the vault, not the pool/share cursors: hub_createPool moves the pool cursor, which
+            // would snapshot an unrelated empty escrow and yield a zero delta against a vault-derived amount.
+            _structToUpdate.escrowShareTokenBalance = MockERC20(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
+            _structToUpdate.totalShareSupply = MockERC20(vault.share()).totalSupply();
+
+            _structToUpdate.escrowAssetBalance[address(vault)] =
+                MockERC20(vault.asset()).balanceOf(_getPoolEscrowForVault(vault));
             _structToUpdate.poolEscrowAssetBalance =
-                MockERC20(_getVault().asset()).balanceOf(address(poolEscrowFactory.escrow(_getVault().poolId())));
-            _structToUpdate.actualAssets = MockERC20(_getVault().asset()).balanceOf(address(_getVault()));
+                MockERC20(vault.asset()).balanceOf(address(poolEscrowFactory.escrow(vault.poolId())));
+            _structToUpdate.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         }
     }
 
@@ -315,7 +317,7 @@ abstract contract BeforeAfter is Setup {
         ShareClassId scId = vault.scId();
         AssetId assetId = _getAssetId();
 
-        try spoke.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 _priceAsset) {
+        try spokeRegistry.pricePoolPerAsset(poolId, scId, assetId, true) returns (D18 _priceAsset) {
             _structToUpdate.pricePoolPerAsset[poolId][scId][assetId] = _priceAsset;
         } catch (bytes memory reason) {
             bool shareTokenDoesNotExist = checkError(reason, "ShareTokenDoesNotExist()");
@@ -339,7 +341,7 @@ abstract contract BeforeAfter is Setup {
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
 
-        try spoke.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare) {
+        try spokeRegistry.pricePoolPerShare(poolId, scId, false) returns (D18 _priceShare) {
             _structToUpdate.pricePoolPerShare[poolId][scId] = _priceShare;
         } catch (bytes memory) {
             /* reason */

@@ -3,16 +3,17 @@ pragma solidity 0.8.28;
 
 import {IERC165} from "../../../../src/misc/interfaces/IERC7575.sol";
 
-import {ShareToken} from "../../../../src/core/spoke/ShareToken.sol";
-import {ITransferHook} from "../../../../src/core/spoke/interfaces/ITransferHook.sol";
-
-import {IFreezable} from "../../../../src/hooks/interfaces/IFreezable.sol";
-import {FullRestrictions} from "../../../../src/hooks/FullRestrictions.sol";
-import {IMemberlist} from "../../../../src/hooks/interfaces/IMemberlist.sol";
+import {IFreezable} from "../../../../src/token/hooks/interfaces/IFreezable.sol";
+import {FullRestrictions} from "../../../../src/token/hooks/FullRestrictions.sol";
+import {IMemberlist} from "../../../../src/token/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "../../mocks/MockRoot.sol";
+import {MockPoolEscrowProvider} from "../../mocks/MockPoolEscrowProvider.sol";
 
 import "forge-std/Test.sol";
+
+import {ShareToken} from "../../../../src/token/ShareToken.sol";
+import {ITransferHook} from "../../../../src/token/interfaces/ITransferHook.sol";
 
 contract FullRestrictionsTest is Test {
     MockRoot root;
@@ -25,12 +26,12 @@ contract FullRestrictionsTest is Test {
         token = new ShareToken(18);
         fullRestrictionsHook = new FullRestrictions(
             address(root),
+            makeAddr("envoy"),
             spoke,
-            makeAddr("balanceSheet"),
+            makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
-            makeAddr("poolEscrowProvider"),
-            address(0) // Multi-pool mode
+            address(new MockPoolEscrowProvider())
         );
         token.file("hook", address(fullRestrictionsHook));
     }

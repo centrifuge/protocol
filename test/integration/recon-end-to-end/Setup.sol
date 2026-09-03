@@ -29,15 +29,15 @@ import {Accounting} from "../../../src/core/hub/Accounting.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../../src/core/hub/HubHandler.sol";
 import {HubRegistry} from "../../../src/core/hub/HubRegistry.sol";
-import {BalanceSheet} from "../../../src/core/spoke/BalanceSheet.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {VaultRegistry} from "../../../src/core/spoke/VaultRegistry.sol";
+import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
+import {SnapshotQueue} from "../../../src/core/spoke/SnapshotQueue.sol";
+import {SpokeRegistry} from "../../../src/core/spoke/SpokeRegistry.sol";
 import {IHoldings} from "../../../src/core/hub/interfaces/IHoldings.sol";
 import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
-import {TokenFactory} from "../../../src/core/spoke/factories/TokenFactory.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
@@ -46,9 +46,8 @@ import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassMa
 
 import {Root} from "../../../src/admin/Root.sol";
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
-import {TokenRecoverer} from "../../../src/admin/TokenRecoverer.sol";
 
-import {FullRestrictions} from "../../../src/hooks/FullRestrictions.sol";
+import {FullRestrictions} from "../../../src/token/hooks/FullRestrictions.sol";
 
 import {IdentityValuation} from "../../../src/valuations/IdentityValuation.sol";
 
@@ -65,6 +64,7 @@ import {ActorManager} from "@recon/ActorManager.sol";
 import {AssetManager} from "@recon/AssetManager.sol";
 import {SubsidyManager} from "../../../src/utils/SubsidyManager.sol";
 import {RefundEscrowFactory} from "../../../src/utils/RefundEscrowFactory.sol";
+import {ShareTokenRegistrar} from "../../../src/token/ShareTokenRegistrar.sol";
 
 // Hub
 
@@ -89,22 +89,22 @@ abstract contract Setup is
     /// === Vaults === ///
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncVaultFactory;
-    TokenFactory tokenFactory;
+    ShareTokenRegistrar shareTokenRegistrar;
     PoolEscrowFactory poolEscrowFactory;
     RefundEscrowFactory refundEscrowFactory;
 
     AsyncRequestManager asyncRequestManager;
     SyncManager syncManager;
     Spoke spoke;
-    VaultRegistry vaultRegistry;
+    SpokeRegistry spokeRegistry;
+    SpokeHandler spokeHandler;
     FullRestrictions fullRestrictions;
     IRoot root;
-    BalanceSheet balanceSheet;
+    SnapshotQueue snapshotQueue;
     SubsidyManager subsidyManager;
 
     // Mocks
     MessageDispatcher messageDispatcher;
-    TokenRecoverer tokenRecoverer;
     MockGateway gateway;
 
     // Clamping
@@ -134,7 +134,6 @@ abstract contract Setup is
 
     bytes[] internal queuedCalls; // used for storing calls to PoolRouter to be executed in a single transaction
     AccountId[] internal createdAccountIds;
-    AssetId[] internal createdAssetIds;
     D18 internal INITIAL_PRICE = d18(1e18); // set the initial price that gets used when creating an asset via a pool's
 
     // shortcut to avoid stack too deep errors
@@ -149,6 +148,12 @@ abstract contract Setup is
 
     int256 maxSharesMintNoAssets;
     int256 maxSharesDepositNoAssets;
+
+    /// @dev The controller a request was actually recorded under. `requestDeposit`/`requestRedeem` take
+    /// `(amount, controller, owner)`, and the handlers pass a random actor as controller while running as
+    /// `_getActor()`, so properties inspecting request state must follow the controller and not the caller.
+    address ghost_lastDepositRequestController;
+    address ghost_lastRedeemRequestController;
 
     modifier asAdmin() {
         vm.prank(address(this));
@@ -194,31 +199,27 @@ abstract contract Setup is
         root = new Root(48 hours, address(this));
         gateway = new MockGateway();
 
-        balanceSheet = new BalanceSheet(root, address(this));
+        snapshotQueue = new SnapshotQueue(address(this));
         refundEscrowFactory = new RefundEscrowFactory(address(this));
         subsidyManager = new SubsidyManager(refundEscrowFactory, address(this));
         asyncRequestManager = new AsyncRequestManager(subsidyManager, address(this));
         syncManager = new SyncManager(address(this));
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
-        tokenFactory = new TokenFactory(address(this), address(this));
+        shareTokenRegistrar = new ShareTokenRegistrar(address(this), address(this));
         poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
-        vaultRegistry = new VaultRegistry(address(this));
-        spoke = new Spoke(tokenFactory, address(this));
+        spokeRegistry = new SpokeRegistry(address(this));
+        spokeHandler = new SpokeHandler(spokeRegistry, poolEscrowFactory, address(this));
+        spoke = new Spoke(IGateway(address(gateway)), snapshotQueue, spokeRegistry, poolEscrowFactory, address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
+            address(this), // envoy_
+            address(spokeRegistry),
             address(spoke),
-            address(balanceSheet),
-            address(spoke), // crosschainSource_ (same chain = spoke)
+            address(spokeHandler), // crosschainSource_
             address(this),
-            address(poolEscrowFactory),
-            address(0) // poolEscrow_
+            address(poolEscrowFactory)
         );
-
-        tokenRecoverer = new TokenRecoverer(IRoot(address(root)), address(this));
-        Root(address(root)).rely(address(tokenRecoverer));
-        tokenRecoverer.rely(address(root));
-        tokenRecoverer.rely(address(messageDispatcher));
 
         messageDispatcher = new MessageDispatcher(
             CENTRIFUGE_CHAIN_ID, // localCentrifugeId = 1 for same-chain testing
@@ -229,26 +230,12 @@ abstract contract Setup is
 
         // set dependencies
         asyncRequestManager.file("spoke", address(spoke));
-        asyncRequestManager.file("balanceSheet", address(balanceSheet));
-        asyncRequestManager.file("vaultRegistry", address(vaultRegistry));
+        asyncRequestManager.file("spokeRegistry", address(spokeRegistry));
         syncManager.file("spoke", address(spoke));
-        syncManager.file("balanceSheet", address(balanceSheet));
-        syncManager.file("vaultRegistry", address(vaultRegistry));
-        vaultRegistry.file("spoke", address(spoke));
-        spoke.file("gateway", address(gateway));
+        syncManager.file("spokeRegistry", address(spokeRegistry));
         spoke.file("sender", address(messageDispatcher));
-        spoke.file("tokenFactory", address(tokenFactory));
-        spoke.file("poolEscrowFactory", address(poolEscrowFactory));
-        balanceSheet.file("spoke", address(spoke));
-        balanceSheet.file("sender", address(messageDispatcher));
-        balanceSheet.file("poolEscrowProvider", address(poolEscrowFactory));
-
-        balanceSheet.file("gateway", address(gateway));
-        poolEscrowFactory.file("balanceSheet", address(balanceSheet));
-        address[] memory tokenWards = new address[](2);
-        tokenWards[0] = address(spoke);
-        tokenWards[1] = address(balanceSheet);
-        tokenFactory.file("wards", tokenWards);
+        snapshotQueue.rely(address(spoke));
+        poolEscrowFactory.file("spoke", address(spoke));
 
         // Set up all spoke permissions
         setupSpokePermissions();
@@ -268,8 +255,10 @@ abstract contract Setup is
         accounting = new Accounting(address(this));
         holdings = new Holdings(IHubRegistry(address(hubRegistry)), address(this));
         shareClassManager = new ShareClassManager(IHubRegistry(address(hubRegistry)), address(this));
+        // `managerCall` is envoy-gated; the recon admin/doomsday targets invoke it directly as this Tester
+        // contract, so set the envoy to `address(this)` to keep those call sites working without per-call pranks.
         batchRequestManager = new BatchRequestManagerHarness(
-            IHubRegistry(address(hubRegistry)), IGateway(address(gateway)), address(this)
+            IHubRegistry(address(hubRegistry)), IGateway(address(gateway)), address(this), address(this)
         );
         hub = new Hub(
             IGateway(address(gateway)),
@@ -327,11 +316,11 @@ abstract contract Setup is
 
         // MessageDispatcher needs auth permissions to call protected functions
         spoke.rely(address(messageDispatcher));
-        balanceSheet.rely(address(messageDispatcher));
+        spoke.rely(address(messageDispatcher));
 
         // Spoke, balanceSheet, and hub need permission to call MessageDispatcher
         messageDispatcher.rely(address(spoke));
-        messageDispatcher.rely(address(balanceSheet));
+        messageDispatcher.rely(address(spoke));
         messageDispatcher.rely(address(hub));
 
         // Add missing MessageDispatcher permissions (matching HubDeployer)
@@ -342,8 +331,10 @@ abstract contract Setup is
         hub.file("sender", address(messageDispatcher));
 
         messageDispatcher.file("hubHandler", address(hubHandler));
-        messageDispatcher.file("spoke", address(spoke));
-        messageDispatcher.file("balanceSheet", address(balanceSheet));
+        messageDispatcher.file("spokeHandler", address(spokeHandler));
+
+        // SpokeHandler permissions: messageDispatcher is the same-chain caller
+        spokeHandler.rely(address(messageDispatcher));
 
         // Add missing HubHelpers file configuration (matching HubDeployer)
         hubHandler.file("hub", address(hub));
@@ -379,33 +370,37 @@ abstract contract Setup is
 
     // Note: messageDispatcher is a mock and doesn't have rely function
     function setupSpokePermissions() private {
+        // SpokeRegistry permissions
+        spokeRegistry.rely(address(spokeHandler));
+        spokeRegistry.rely(address(spoke));
+        spokeRegistry.rely(address(root));
+
         // Root endorsements (from CommonDeployer and SpokeDeployer)
-        root.endorse(address(balanceSheet));
+        root.endorse(address(spoke));
         root.endorse(address(asyncRequestManager));
 
-        // Rely Spoke (from SpokeDeployer)
+        // Rely SpokeHandler (from SpokeDeployer)
+        shareTokenRegistrar.rely(address(spokeHandler));
+        shareTokenRegistrar.file("envoy", address(this));
+        shareTokenRegistrar.file("spokeRegistry", address(spokeRegistry));
+        asyncRequestManager.rely(address(spokeHandler));
+        fullRestrictions.rely(address(shareTokenRegistrar));
+        poolEscrowFactory.rely(address(spokeHandler));
+
+        // Rely Spoke
         asyncVaultFactory.rely(address(spoke));
-        asyncVaultFactory.rely(address(vaultRegistry));
+        asyncVaultFactory.rely(address(spokeHandler));
         syncVaultFactory.rely(address(spoke));
-        syncVaultFactory.rely(address(vaultRegistry));
-        tokenFactory.rely(address(spoke));
-        asyncRequestManager.rely(address(spoke));
+        syncVaultFactory.rely(address(spokeHandler));
+        shareTokenRegistrar.rely(address(spoke));
         syncManager.rely(address(spoke));
-        fullRestrictions.rely(address(spoke));
-        poolEscrowFactory.rely(address(spoke));
         gateway.rely(address(spoke));
-        vaultRegistry.rely(address(spoke));
 
         // Rely async requests manager
         asyncRequestManager.rely(address(asyncVaultFactory));
         asyncRequestManager.rely(address(syncVaultFactory));
         asyncRequestManager.rely(address(messageDispatcher));
         asyncRequestManager.rely(address(syncManager));
-
-        // Rely VaultRegistry
-        vaultRegistry.rely(address(asyncVaultFactory));
-        vaultRegistry.rely(address(syncVaultFactory));
-        vaultRegistry.rely(address(messageDispatcher));
 
         // Rely sync manager
         syncManager.rely(address(spoke));
@@ -416,11 +411,11 @@ abstract contract Setup is
         syncManager.rely(address(syncVaultFactory));
 
         // Rely BalanceSheet
-        gateway.rely(address(balanceSheet));
-        balanceSheet.rely(address(asyncRequestManager));
-        balanceSheet.rely(address(syncManager));
-        balanceSheet.rely(address(messageDispatcher));
-        balanceSheet.rely(address(gateway));
+        gateway.rely(address(spoke));
+        spoke.rely(address(asyncRequestManager));
+        spoke.rely(address(syncManager));
+        spoke.rely(address(messageDispatcher));
+        spoke.rely(address(gateway));
 
         // Rely SubsidyManager and RefundEscrowFactory
         subsidyManager.rely(address(root));
@@ -431,17 +426,15 @@ abstract contract Setup is
 
         // Rely Root (from all deployers)
         spoke.rely(address(root));
-        spoke.rely(address(vaultRegistry));
         asyncRequestManager.rely(address(root));
         syncManager.rely(address(root));
-        balanceSheet.rely(address(root));
+        spoke.rely(address(root));
         asyncVaultFactory.rely(address(root));
         syncVaultFactory.rely(address(root));
-        tokenFactory.rely(address(root));
+        shareTokenRegistrar.rely(address(root));
         fullRestrictions.rely(address(root));
         gateway.rely(address(root));
         poolEscrowFactory.rely(address(root));
-        vaultRegistry.rely(address(root));
 
         // Rely gateway
         spoke.rely(address(gateway));
@@ -451,7 +444,7 @@ abstract contract Setup is
 
         // Rely messageDispatcher - these contracts rely on messageDispatcher, not the other way around
         spoke.rely(address(messageDispatcher));
-        balanceSheet.rely(address(messageDispatcher));
+        spoke.rely(address(messageDispatcher));
     }
 
     // ===============================
@@ -462,7 +455,7 @@ abstract contract Setup is
     function _captureShareQueueState(PoolId poolId, ShareClassId scId) internal {
         bytes32 key = _poolShareKey(poolId, scId);
 
-        (uint128 delta, bool isPositive,, uint64 nonce) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta, bool isPositive,, uint64 nonce) = snapshotQueue.queuedShares(poolId, scId);
 
         before_shareQueueDelta[key] = delta;
         before_shareQueueIsPositive[key] = isPositive;
@@ -517,8 +510,8 @@ abstract contract Setup is
         bytes32 key = keccak256(abi.encode(poolId));
 
         // Check actual authorization
-        bool isWard = balanceSheet.wards(caller) == 1;
-        bool isManager = balanceSheet.manager(poolId, caller);
+        bool isWard = spoke.wards(caller) == 1;
+        bool isManager = spokeRegistry.manager(poolId, caller);
 
         // Update ghost tracking
         if (isWard) {
@@ -543,13 +536,13 @@ abstract contract Setup is
 
         // Check all pools for manager permissions - simplified for testing
         // In a full implementation, this would check all tracked pools
-        if (balanceSheet.wards(user) == 1) {
+        if (spoke.wards(user) == 1) {
             newLevel = AuthLevel.WARD;
         } else {
             // Check if user is manager for any tracked pool
             PoolId[] memory pools = _getPools();
             for (uint256 i = 0; i < pools.length; i++) {
-                if (balanceSheet.manager(pools[i], user)) {
+                if (spokeRegistry.manager(pools[i], user)) {
                     newLevel = AuthLevel.MANAGER;
                     break;
                 }
@@ -592,20 +585,20 @@ abstract contract Setup is
         }
 
         // Track system contracts as implicitly endorsed
-        if (from == address(balanceSheet) || from == address(spoke) || from == address(hub)) {
+        if (from == address(spoke) || from == address(spoke) || from == address(hub)) {
             ghost_isEndorsedContract[from] = true;
             ghost_endorsedTransferAttempts[key]++;
         }
     }
 
-    /// @notice Hook override to maintain invariant: _getShareToken() == spoke.shareToken(_getPool(), _getShareClassId())
+    /// @notice Hook override to maintain invariant: _getShareToken() == spokeRegistry.shareToken(_getPool(), _getShareClassId())
     /// @dev Called automatically when share class changes via _switchShareClassId() or _addShareClassId()
     /// @dev This ensures ghost variables keyed by share token address remain synchronized with protocol state
     /// @param newShareClassId The new share class that was just set as active
     function _onShareClassIdChanged(ShareClassId newShareClassId) internal virtual override {
         // Auto-sync share token with the new share class to maintain consistency
         // This prevents ghost variable tracking bugs where _getShareToken() returns a token that doesn't match current (pool, shareClass)
-        address newShareToken = address(spoke.shareToken(_getPool(), newShareClassId));
+        address newShareToken = address(spokeRegistry.shareToken(_getPool(), newShareClassId));
 
         if (newShareToken != address(0)) {
             _setShareToken(newShareToken);

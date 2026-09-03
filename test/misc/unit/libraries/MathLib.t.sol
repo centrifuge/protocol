@@ -19,6 +19,14 @@ contract MathLibTest is Test {
         assertEq(result, expected, "Incorrect rpow calculation");
     }
 
+    function testRpowZeroBaseZeroExp() public pure {
+        assertEq(MathLib.rpow(0, 0, 5), 5, "0^0 should return base");
+    }
+
+    function testRpowZeroBasePositiveExp() public pure {
+        assertEq(MathLib.rpow(0, 3, 10 ** 27), 0, "0^n (n>0) should be 0");
+    }
+
     function testMulDivDown(uint256 x, uint256 y, uint256 denominator) public pure {
         // Ignore cases where x * y overflows or denominator is 0.
         unchecked {
@@ -150,5 +158,17 @@ contract MathLibTest is Test {
 
         y = uint256(bound(y, 0, x - 1));
         assertEq(MathLib.max(x, y), x);
+    }
+
+    function testAbsDiff() public pure {
+        assertEq(MathLib.absDiff(0, 0), 0);
+        assertEq(MathLib.absDiff(5, 5), 0);
+        assertEq(MathLib.absDiff(7, 3), 4);
+        assertEq(MathLib.absDiff(3, 7), 4);
+    }
+
+    function testFuzzAbsDiff(uint256 a, uint256 b) public pure {
+        assertEq(MathLib.absDiff(a, b), MathLib.absDiff(b, a));
+        assertEq(MathLib.absDiff(a, b), a > b ? a - b : b - a);
     }
 }

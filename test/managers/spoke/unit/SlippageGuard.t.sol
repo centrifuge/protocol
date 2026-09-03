@@ -8,7 +8,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {SlippageGuard} from "../../../../src/managers/spoke/guards/SlippageGuard.sol";
 import {IOnchainPMFactory} from "../../../../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
@@ -26,8 +26,8 @@ contract SlippageGuardTest is Test {
     D18 constant PRICE_ONE = D18.wrap(1e18);
 
     address spoke = makeAddr("spoke");
-    address balanceSheet = makeAddr("balanceSheet");
-    address contractUpdater = makeAddr("contractUpdater");
+    address spokeRegistry = makeAddr("spokeRegistry");
+    address envoy = makeAddr("envoy");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
@@ -37,9 +37,7 @@ contract SlippageGuardTest is Test {
 
     function setUp() public virtual {
         _setupMocks();
-        guard = new SlippageGuard(
-            ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater, IOnchainPMFactory(onchainPMFactory)
-        );
+        guard = new SlippageGuard(ISpoke(spoke), envoy, IOnchainPMFactory(onchainPMFactory));
         vm.mockCall(
             onchainPMFactory,
             abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
@@ -48,35 +46,47 @@ contract SlippageGuardTest is Test {
     }
 
     function _setupMocks() internal {
-        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken));
+        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.spokeRegistry.selector), abi.encode(spokeRegistry));
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(shareToken)
+        );
+        vm.mockCall(
+            spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.hasShareClass.selector, POOL_A, SC_1), abi.encode(true)
+        );
         vm.mockCall(shareToken, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
 
         vm.mockCall(assetA, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(assetB, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
 
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, assetA, uint256(0)), abi.encode(ASSET_ID_1)
+            spokeRegistry,
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetA, uint256(0)),
+            abi.encode(ASSET_ID_1)
         );
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, assetB, uint256(0)), abi.encode(ASSET_ID_2)
+            spokeRegistry,
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetB, uint256(0)),
+            abi.encode(ASSET_ID_2)
         );
 
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
             abi.encode(PRICE_ONE)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_2, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_2, true),
             abi.encode(PRICE_ONE)
         );
     }
 
     function _mockBalance(address asset, uint256 tokenId, uint128 available) internal {
         vm.mockCall(
-            balanceSheet,
-            abi.encodeWithSelector(IBalanceSheet.availableBalanceOf.selector, POOL_A, SC_1, asset, tokenId),
+            spoke,
+            abi.encodeWithSelector(ISpoke.availableBalanceOf.selector, POOL_A, SC_1, asset, tokenId),
             abi.encode(available)
         );
     }
@@ -307,9 +317,9 @@ contract SlippageGuardStalePriceTest is SlippageGuardTest {
 
         // Price call for assetA reverts (stale)
         vm.mockCallRevert(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
-            abi.encodeWithSelector(ISpoke.InvalidPrice.selector)
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            abi.encodeWithSelector(ISpokeRegistry.InvalidPrice.selector)
         );
 
         vm.expectRevert();
@@ -350,26 +360,26 @@ contract SlippageGuardTrustedCallTest is SlippageGuardTest {
         vm.expectEmit();
         emit ISlippageGuard.SetConfig(POOL_A, SC_1, maxPeriodLoss, periodDuration);
 
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(maxPeriodLoss, periodDuration));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), maxPeriodLoss, periodDuration));
 
         (uint128 storedLoss, uint32 storedDuration) = guard.config(POOL_A, SC_1);
         assertEq(storedLoss, maxPeriodLoss);
         assertEq(storedDuration, periodDuration);
     }
 
-    function testSetConfigNotAuthorized() public {
-        vm.expectRevert(ISlippageGuard.NotAuthorized.selector);
+    function testSetConfigNotEnvoy() public {
+        vm.expectRevert(ISlippageGuard.NotEnvoy.selector);
         vm.prank(makeAddr("random"));
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(1 days)));
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), uint128(500e18), uint32(1 days)));
     }
 
     function testSetConfigOverwrite() public {
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(1 days)));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), uint128(500e18), uint32(1 days)));
 
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(200e18), uint32(2 days)));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), uint128(200e18), uint32(2 days)));
 
         (uint128 storedLoss, uint32 storedDuration) = guard.config(POOL_A, SC_1);
         assertEq(storedLoss, 200e18);
@@ -387,8 +397,8 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
         super.setUp();
 
         // Configure period: 500e18 max loss over 1 day
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(MAX_PERIOD_LOSS, uint32(1 days)));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), MAX_PERIOD_LOSS, uint32(1 days)));
     }
 
     function _doSwapWithLoss(uint128 preBalance, uint128 postBalance) internal {
@@ -463,8 +473,8 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
         assertEq(lossBefore, 90e18);
 
         // Tighten the config to 50e18 — period state must NOT be wiped
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(50e18), uint32(1 days)));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), uint128(50e18), uint32(1 days)));
 
         (uint128 lossAfter, uint48 startAfter) = guard.period(POOL_A, SC_1);
         assertEq(lossAfter, lossBefore, "cumulativeLoss must be preserved across config change");
@@ -482,8 +492,8 @@ contract SlippageGuardPeriodLossTest is SlippageGuardTest {
 
     function testPeriodDisabledWhenZeroDuration() public {
         // Override config with zero duration (disabled)
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(0)));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), uint128(500e18), uint32(0)));
 
         // Even with large loss, no PeriodLossExceeded because tracking is disabled
         _doSwapWithLoss(1000e18, 900e18);
@@ -509,11 +519,13 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
             abi.encode(uint8(18))
         );
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, erc6909, erc6909TokenId), abi.encode(ASSET_ID_3)
+            spokeRegistry,
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), erc6909, erc6909TokenId),
+            abi.encode(ASSET_ID_3)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_3, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_3, true),
             abi.encode(PRICE_ONE)
         );
     }
@@ -587,8 +599,8 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
             abi.encode(erc6909Decimals)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_3, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_3, true),
             abi.encode(priceTwo)
         );
 
@@ -607,8 +619,8 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
     }
 
     function testERC6909PeriodLossTracking() public {
-        vm.prank(contractUpdater);
-        guard.trustedCall(POOL_A, SC_1, abi.encode(uint128(500e18), uint32(1 days)));
+        vm.prank(envoy);
+        guard.fromHub(POOL_A, abi.encode(SC_1.raw(), uint128(500e18), uint32(1 days)));
 
         // Script with ERC6909 loss
         _mockBalance(erc6909, erc6909TokenId, 1000e18);
@@ -631,8 +643,7 @@ contract SlippageGuardERC6909Test is SlippageGuardTest {
 contract SlippageGuardConstructorTest is SlippageGuardTest {
     function testConstructor() public view {
         assertEq(address(guard.spoke()), spoke);
-        assertEq(address(guard.balanceSheet()), balanceSheet);
-        assertEq(guard.contractUpdater(), contractUpdater);
+        assertEq(guard.envoy(), envoy);
     }
 }
 
@@ -644,8 +655,8 @@ contract SlippageGuardZeroPriceTest is SlippageGuardTest {
     function testWithdrawalWithZeroPriceReverts() public {
         // Override assetA price to zero
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
             abi.encode(PRICE_ZERO)
         );
 
@@ -662,8 +673,8 @@ contract SlippageGuardZeroPriceTest is SlippageGuardTest {
     function testDepositWithZeroPriceReverts() public {
         // Override assetA price to zero
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
             abi.encode(PRICE_ZERO)
         );
 
@@ -680,8 +691,8 @@ contract SlippageGuardZeroPriceTest is SlippageGuardTest {
     function testNoChangeWithZeroPriceSucceeds() public {
         // Override assetA price to zero
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
             abi.encode(PRICE_ZERO)
         );
 

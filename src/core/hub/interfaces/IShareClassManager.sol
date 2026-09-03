@@ -24,10 +24,10 @@ struct Price {
     uint64 computedAt;
 }
 
-struct IssuancePerNetwork {
-    /// @dev Total accumulated amount of shares issued on this network
+struct IssuanceCounters {
+    /// @dev Total accumulated amount of shares issued
     uint128 issuances;
-    /// @dev Total accumulated amount of shares revoked on this network
+    /// @dev Total accumulated amount of shares revoked
     uint128 revocations;
 }
 
@@ -48,6 +48,11 @@ interface IShareClassManager {
         uint16 indexed centrifugeId, PoolId indexed poolId, ShareClassId indexed scId, uint128 amount
     );
 
+    /// @notice Emitted when the number of networks that have revoked more than they reported issuing changes
+    event UpdateNegativeNetworkCount(
+        PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint32 count
+    );
+
     //----------------------------------------------------------------------------------------------
     // Errors
     //----------------------------------------------------------------------------------------------
@@ -65,6 +70,12 @@ interface IShareClassManager {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Update the share class issuance
+    /// @dev    Both counters only ever go up, so a revocation bigger than everything issued so far does not
+    ///         revert. The extra is simply added to `revocations` and cancels out against later issuances.
+    ///         This happens in normal operation: when shares are bridged off a chain, the hub subtracts them
+    ///         from that chain right away, but the issuance that minted them may still be sitting in the
+    ///         chain's queue. If this reverted, the sending chain's snapshot nonce would never be consumed
+    ///         and every later message from it would be rejected.
     /// @param centrifugeId Identifier of the chain
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
@@ -123,6 +134,9 @@ interface IShareClassManager {
     /// @notice Returns the total issuance across all networks for a share class
     /// @dev     This is only updated when queued shares on the spoke are updated to the hub, so can
     ///                maybe out of sync and not reflect the exact latest issuance across networks.
+    ///                Reverts with {NegativeIssuance} if any chain has revoked more than it has reported
+    ///                issuing, since the total would be wrong. Read {issuanceAcrossNetworks} for the two
+    ///                counters it is derived from, which are always readable.
     ///
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
@@ -130,11 +144,38 @@ interface IShareClassManager {
     function totalIssuance(PoolId poolId, ShareClassId scId) external view returns (uint128 totalIssuance);
 
     /// @notice Exposes issuance of a share class on a given network
+    /// @dev    Reverts with {NegativeIssuance} if the chain has revoked more than it has reported issuing,
+    ///         since the figure would be wrong. Anything called while handling an incoming message should
+    ///         read {issuancePerNetwork} and deal with the difference itself, because a revert would undo
+    ///         that message and leave the chain unable to report anything further.
     /// @param poolId Identifier of the pool
     /// @param scId Identifier of the share class
     /// @param centrifugeId Identifier of the chain
     /// @return The share issuance on the specified network
     function issuance(PoolId poolId, ShareClassId scId, uint16 centrifugeId) external view returns (uint128);
+
+    /// @notice Returns the number of networks that have revoked more shares than they have reported issuing
+    /// @dev    Non-zero means the netted total is smaller than the shares the networks really hold, by exactly
+    ///         the sum of those networks' shortfalls - so anything derived from the total, a price per share
+    ///         above all, would be wrong. Shares bridged off a network before it submits the issuance that
+    ///         minted them is what puts one in this state, and its own submission is what clears it.
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @return count The number of networks in that state
+    function negativeNetworkCount(PoolId poolId, ShareClassId scId) external view returns (uint32 count);
+
+    /// @notice Returns the combined issuance (issuances and revocations) for a share class across all networks
+    /// @dev    Always readable, unlike {totalIssuance}. If `revocations` is larger than `issuances`, at
+    ///         least one chain has bridged shares away before reporting that it issued them, and the
+    ///         difference is how many shares the hub has not been told about yet.
+    /// @param poolId Identifier of the pool
+    /// @param scId Identifier of the share class
+    /// @return issuances The cumulative amount ever issued across all networks
+    /// @return revocations The cumulative amount ever revoked across all networks
+    function issuanceAcrossNetworks(PoolId poolId, ShareClassId scId)
+        external
+        view
+        returns (uint128 issuances, uint128 revocations);
 
     /// @notice Returns the combined issuance (issuances and revocations) for a share class on a given network
     /// @param poolId Identifier of the pool

@@ -8,7 +8,7 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
+import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -22,6 +22,7 @@ import {Helpers} from "../utils/Helpers.sol";
 import {MockERC20} from "@recon/MockERC20.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Dependencies
 
@@ -56,9 +57,9 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         MockERC20(vault.asset()).approve(address(vault), assets);
 
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
-        (uint128 prevDeposits, uint128 prevWithdrawals) = balanceSheet.queuedAssets(poolId, scId, assetId);
+        (uint128 prevDeposits, uint128 prevWithdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
@@ -82,6 +83,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint128 /* prevWithdrawals */
     ) private {
         // ghost tracking
+        ghost_lastDepositRequestController = to;
         userRequestDeposited[scId][assetId][to] += assets;
         sumOfDepositRequests[vault.asset()] += assets;
         requestDepositAssets[to][vault.asset()] += assets;
@@ -105,9 +107,25 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 assets,
         bytes memory reason
     ) private {
-        // precondition: check that it wasn't an overflow because we only care about underflow
+        // precondition: check that it wasn't an overflow because we only care about underflow. `requestDeposit`
+        // credits four independent uint128 accumulators, so all of them have to be excluded. The escrow holding
+        // total and the gross queued-deposit leg are two an admin `noteDeposit` can drive to the uint128
+        // ceiling on its own, without `pendingDeposit` moving at all; a later `balanceSheet_withdraw` drains the
+        // holding total again while the gross queued leg stays saturated. The escrow `reserved` leg is the fourth:
+        // `balanceSheet_overReserve_clamped` reserves past `available` by design, which on a saturated holding
+        // leaves single-digit headroom, and `requestDeposit` then reserves the requested assets on top.
         uint128 pendingDeposit = batchRequestManager.pendingDeposit(poolId, scId, assetId);
-        if (uint256(pendingDeposit) + uint256(assets) < uint256(type(uint128).max)) {
+        IBaseVault vault = _getVault();
+        (uint128 escrowTotal, uint128 escrowReserved) =
+            IPoolEscrow(_getPoolEscrowForVault(vault)).holding(scId, vault.asset(), 0);
+        (uint128 queuedDeposits,) = snapshotQueue.queuedAssets(poolId, scId, assetId);
+
+        bool wouldOverflow = uint256(pendingDeposit) + assets >= uint256(type(uint128).max)
+            || uint256(escrowTotal) + assets > uint256(type(uint128).max)
+            || uint256(escrowReserved) + assets > uint256(type(uint128).max)
+            || uint256(queuedDeposits) + assets > uint256(type(uint128).max);
+
+        if (!wouldOverflow) {
             bool arithmeticRevert = checkError(reason, Panic.arithmeticPanic);
             t(!arithmeticRevert, "depositRequest reverts with arithmetic panic");
         }
@@ -136,13 +154,14 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         vm.prank(_getActor());
         try IAsyncVault(address(_getVault())).requestRedeem(shares, to, _getActor()) {
             // ghost tracking
+            ghost_lastRedeemRequestController = to;
             sumOfRedeemRequests[vault.share()] += shares; // E-2
             requestRedeemShares[to][vault.share()] += shares;
-            userRequestRedeemed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][to] += shares;
+            userRequestRedeemed[vault.scId()][spokeRegistry.vaultDetails(address(vault)).assetId][to] += shares;
 
             userRequestRedeemedAssets[
                 vault.scId()
-            ][vaultRegistry.vaultDetails(vault).assetId][to] += vault.convertToAssets(shares);
+            ][spokeRegistry.vaultDetails(address(vault)).assetId][to] += vault.convertToAssets(shares);
 
             if (
                 fullRestrictions.isFrozen(vault.share(), _getActor()) == true
@@ -174,7 +193,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
         bytes32 controllerBytes = controller.toBytes32();
 
         _captureShareQueueState(poolId, scId);
@@ -242,7 +261,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // update ghosts
         userCancelledDeposits[scId][assetId][controller] += (pendingCancelAfter - pendingCancelBefore);
 
-        // precondition: if user queues a cancellation but it doesn't get immediately executed,
+        // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed,
         // the epochId should not change
         if (Helpers.canMutate(lastUpdateBefore, pendingBefore, depositEpochId)) {
             (uint128 pendingAfter, uint32 lastUpdateAfter) =
@@ -289,7 +308,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         _captureShareQueueState(poolId, scId);
 
@@ -312,7 +331,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             userCancelledRedeems[scId][assetId][controller] += delta;
 
             uint256 nowRedeemEpoch = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
-            // precondition: if user queues a cancellation but it doesn't get immediately executed, the epochId should
+            // precondition: if user snapshotQueue a cancellation but it doesn't get immediately executed, the epochId should
             // not change
             if (Helpers.canMutate(lastUpdateBefore, pendingBefore, redeemEpochId)) {
                 eq(lastUpdateAfter, nowRedeemEpoch, "lastUpdate != nowRedeemEpoch");
@@ -375,7 +394,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shareUserB4 = IShareToken(vault.share()).balanceOf(_getActor());
         uint256 shareEscrowB4 = IShareToken(vault.share()).balanceOf(_getPoolEscrowForVault(vault));
         (uint128 pendingBefore,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, _getActor().toBytes32()
+            vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId, _getActor().toBytes32()
         );
 
         // NOTE: external calls above so need to prank directly here
@@ -399,7 +418,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             }
 
             // Check for share queue flip
-            (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(vault.poolId(), vault.scId());
+            (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(vault.poolId(), vault.scId());
             bytes32 key = _poolShareKey(vault.poolId(), vault.scId());
             uint128 deltaBefore = before_shareQueueDelta[key];
             bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -411,7 +430,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         (uint128 pendingAfter,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, _getActor().toBytes32()
+            vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId, _getActor().toBytes32()
         );
 
         // Processed Deposit | E-2 | Global-1
@@ -426,11 +445,15 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
 
             sumOfSyncDepositsAsset[vault.asset()] += assets;
             sumOfSyncDepositsShare[vault.share()] += shares;
-            userDepositProcessed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
-            userRequestDeposited[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
+            userDepositProcessed[
+                    vault.scId()
+                ][spokeRegistry.vaultDetails(address(vault)).assetId][_getActor()] += assets;
+            userRequestDeposited[
+                    vault.scId()
+                ][spokeRegistry.vaultDetails(address(vault)).assetId][_getActor()] += assets;
 
             // Track cumulative assets deposited for withdrawal proportionality property
-            AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+            AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
             bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
             ghost_cumulativeAssetsDeposited[assetKey] += assets;
         }
@@ -461,6 +484,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    function vault_deposit_clamped(uint256 assets) public {
+        assets = between(assets, 0, _getVault().maxDeposit(_getActor()));
+
+        vault_deposit(assets);
+    }
+
     // Given a random value, see if the other one would yield more shares or lower cost
     // Not only check view
     // Also do it and test it via revert test
@@ -476,7 +505,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         bool isAsyncVault = Helpers.isAsyncVault(address(vault));
 
         (uint128 pendingBefore,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, to.toBytes32()
+            vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId, to.toBytes32()
         );
 
         // NOTE: external calls above so need to prank directly here
@@ -500,7 +529,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             }
 
             // Check for share queue flip
-            (uint128 deltaAfter, bool isPositiveAfter,,) = balanceSheet.queuedShares(vault.poolId(), vault.scId());
+            (uint128 deltaAfter, bool isPositiveAfter,,) = snapshotQueue.queuedShares(vault.poolId(), vault.scId());
             bytes32 key = _poolShareKey(vault.poolId(), vault.scId());
             uint128 deltaBefore = before_shareQueueDelta[key];
             bool isPositiveBefore = before_shareQueueIsPositive[key];
@@ -511,7 +540,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
 
         (uint128 pendingAfter,) = batchRequestManager.depositRequest(
-            vault.poolId(), vault.scId(), vaultRegistry.vaultDetails(vault).assetId, to.toBytes32()
+            vault.poolId(), vault.scId(), spokeRegistry.vaultDetails(address(vault)).assetId, to.toBytes32()
         );
 
         // Processed Deposit | E-2
@@ -519,8 +548,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         // NOTE: async vaults don't request deposits but we need to track this value for the escrow balance property
         if (!isAsyncVault) {
             ghost_netSharePosition[keccak256(abi.encode(vault.poolId(), vault.scId()))] += int256(uint256(shares)); // encodes the share key; not state variable because of stack too deep
-            userRequestDeposited[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
-            userDepositProcessed[vault.scId()][vaultRegistry.vaultDetails(vault).assetId][_getActor()] += assets;
+            userRequestDeposited[
+                    vault.scId()
+                ][spokeRegistry.vaultDetails(address(vault)).assetId][_getActor()] += assets;
+            userDepositProcessed[
+                    vault.scId()
+                ][spokeRegistry.vaultDetails(address(vault)).assetId][_getActor()] += assets;
             sumOfSyncDepositsAsset[vault.asset()] += assets;
 
             sumOfSyncDepositsShare[vault.share()] += shares;
@@ -530,7 +563,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
             executedInvestments[vault.share()] += shares;
 
             // Track cumulative assets deposited for withdrawal proportionality property
-            AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+            AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
             bytes32 assetKey = keccak256(abi.encode(vault.poolId(), vault.scId(), assetId));
             ghost_cumulativeAssetsDeposited[assetKey] += assets;
         }
@@ -543,20 +576,21 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
 
-        // Bal b4
-        uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(_getActor());
+        // Bal b4. `redeem` pays `to`, not the controller, so the delta below has to be measured on `to` or a
+        // payout to another actor reads as a zero-delta fee-on-transfer.
+        uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(to);
         uint256 tokenEscrowB4 = MockERC20(_getVault().asset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
         vm.prank(_getActor());
         uint256 assets = _getVault().redeem(shares, to, _getActor());
 
-        // NOTE: vault.redeem() does NOT call balanceSheet.revoke() - it only transfers assets from escrow
+        // NOTE: vault.redeem() does NOT call spoke.revoke() - it only transfers assets from escrow
         // Share revocation happens separately via AsyncRequestManager.revokedShares() when hub processes requests
         // Therefore, no ghost tracking needed here
 
         // Bal after
-        uint256 tokenUserAfter = MockERC20(_getVault().asset()).balanceOf(_getActor());
+        uint256 tokenUserAfter = MockERC20(_getVault().asset()).balanceOf(to);
         uint256 tokenEscrowAfter = MockERC20(_getVault().asset()).balanceOf(escrow);
 
         // E-1
@@ -583,6 +617,12 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         }
     }
 
+    function vault_redeem_clamped(uint256 shares, uint256 toEntropy) public {
+        shares = between(shares, 0, _getVault().maxRedeem(_getActor()));
+
+        vault_redeem(shares, toEntropy);
+    }
+
     function vault_withdraw(uint256 assets, uint256 toEntropy) public updateGhostsWithType(OpType.REMOVE) {
         IBaseVault vault = _getVault();
         _captureShareQueueState(vault.poolId(), vault.scId());
@@ -590,8 +630,8 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         address to = _getRandomActor(toEntropy);
         address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
 
-        // Bal b4
-        uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(_getActor());
+        // Bal b4. `withdraw` pays `to`, not the controller, so measure `to` (see vault_redeem).
+        uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(to);
         uint256 tokenEscrowB4 = MockERC20(_getVault().asset()).balanceOf(escrow);
 
         // NOTE: external calls above so need to prank directly here
@@ -599,7 +639,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint256 shares = _getVault().withdraw(assets, to, _getActor());
 
         // Bal after
-        uint256 tokenUserAfter = MockERC20(_getVault().asset()).balanceOf(_getActor());
+        uint256 tokenUserAfter = MockERC20(_getVault().asset()).balanceOf(to);
         uint256 tokenEscrowAfter = MockERC20(_getVault().asset()).balanceOf(escrow);
 
         // E-1

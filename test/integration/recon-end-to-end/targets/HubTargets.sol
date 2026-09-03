@@ -10,7 +10,7 @@ import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
-import {MAX_MESSAGE_COST} from "../../../../src/core/messaging/interfaces/IGasService.sol";
+import {ManagerKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
@@ -19,8 +19,8 @@ import {BatchRequestManagerHarness} from "../mocks/BatchRequestManagerHarness.so
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
-import {Helpers} from "../utils/Helpers.sol";
 import {Properties} from "../properties/Properties.sol";
+import {MAX_MESSAGE_COST} from "../../../utils/GasConstants.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
 // Dependencies
@@ -55,7 +55,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         bytes32 investor = CastLib.toBytes32(_getActor());
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
-        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
 
         uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(poolId, scId, investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
@@ -69,7 +69,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         bytes32 investor = CastLib.toBytes32(_getActor());
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
-        AssetId assetId = vaultRegistry.vaultDetails(_getVault()).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
 
         uint32 maxClaimsBound = batchRequestManager.maxRedeemClaims(poolId, scId, investor, assetId);
         maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
@@ -82,8 +82,15 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     // ═══════════════════════════════════════════════════════════════
     // PERMISSIONLESS FUNCTIONS
     // ═══════════════════════════════════════════════════════════════
-    function hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint)
-        public
+    function hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint) public returns (PoolId poolId) {
+        require(poolCount < RECON_MAX_POOLS, "pool deploy cap");
+
+        return _hub_createPool(poolIdAsUint, admin, assetIdAsUint);
+    }
+
+    /// @dev Uncapped, so the one-shot deploy shortcut can never be locked out by the cap
+    function _hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint)
+        internal
         updateGhosts
         asActor
         returns (PoolId poolId)
@@ -94,14 +101,9 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         hub.createPool(_poolId, admin, _assetId);
 
         _addPool(_poolId.raw());
+        poolCount++;
 
         return _poolId;
-    }
-
-    function hub_createPool_clamped(uint64 poolIdAsUint, uint128 assetEntropy) public asActor {
-        AssetId _assetId = Helpers.getRandomAssetId(createdAssetIds, assetEntropy);
-
-        hub_createPool(poolIdAsUint, _getActor(), _assetId.raw());
     }
 
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier
@@ -114,7 +116,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
     /// - Tracks maxMint changes for symmetry with redeem flow
     /// - Validates PoolEscrow state changes
-    /// - Uses hubHandler.notifyDeposit() return values for reliable state tracking
+    /// - Uses BatchRequestManagerHarness.notifyDepositWithReturn() return values for reliable state tracking
     /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         address actor = _getActor();
@@ -123,7 +125,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         // Calculate max claims
         uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(poolId, scId, investor, assetId);
@@ -201,7 +203,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @notice Redeem Flow Tracking:
     /// - Tracks claimable withdrawal deltas (investorClaimableAfter - investorClaimableBefore)
     /// - Tracks share balance changes (investorSharesBefore vs investorSharesAfter)
-    /// - Uses hubHandler.notifyRedeem() return values for reliable state tracking
+    /// - Uses BatchRequestManagerHarness.notifyRedeemWithReturn() return values for reliable state tracking
     /// - Updates ghost variables: sumOfWithdrawable, userRedemptionsProcessed, userCancelledRedeems
     function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
         _executeNotifyRedeem(maxClaims);
@@ -215,15 +217,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
 
         // Execute notifyRedeemWithReturn and get return values
         vm.prank(actor);
-        (,
-            // totalPayoutAssetAmount - not used for ghost variables
-            uint128 totalPaymentShareAmount,
-            uint128 totalCancelledShareAmount
-        ) = BatchRequestManagerHarness(address(batchRequestManager))
+        (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 totalCancelledShareAmount) = BatchRequestManagerHarness(
+                address(batchRequestManager)
+            )
             .notifyRedeemWithReturn(
                 vault.poolId(),
                 vault.scId(),
-                vaultRegistry.vaultDetails(vault).assetId,
+                spokeRegistry.vaultDetails(address(vault)).assetId,
                 CastLib.toBytes32(actor),
                 maxClaims,
                 actor
@@ -233,7 +233,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             investorClaimableBefore,
             asyncRequestManager.maxWithdraw(vault, actor),
             totalPaymentShareAmount,
-            totalCancelledShareAmount
+            totalCancelledShareAmount,
+            totalPayoutAssetAmount
         );
     }
 
@@ -277,10 +278,24 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         );
     }
 
-    function hub_updateBalanceSheetManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
-        hub.updateBalanceSheetManager{value: GAS}(
-            PoolId.wrap(poolId), chainId, CastLib.toBytes32(manager), enable, address(this)
+    function hub_updateSpokeManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
+        hub.updateManager{value: GAS}(
+            PoolId.wrap(poolId), chainId, ManagerKind.Spoke, CastLib.toBytes32(manager), enable, address(this)
         );
+    }
+
+    /// @dev Reproducer-only: writing the hub ledger directly desyncs the snapshot nonce from `SnapshotQueue`
+    ///      (every later `submitQueued*` reverts `InvalidNonce`) and moves `holdings.amount` with no escrow move
+    function hub_updateAssets(uint128 amount, bool isIncrease) internal updateGhosts asAdmin {
+        IBaseVault vault = IBaseVault(_getVault());
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
+        uint16 centrifugeId = assetId.centrifugeId();
+
+        (, uint64 nonce) = holdings.snapshot(poolId, scId, centrifugeId);
+
+        hubHandler.updateAssets(centrifugeId, poolId, scId, assetId, amount, isIncrease, true, nonce);
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -293,6 +308,27 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @return True if all epochs have been claimed
     function _hasClaimedAllEpochs(uint32 maxClaims, uint32 maxClaimsBound) private pure returns (bool) {
         return maxClaims == maxClaimsBound && maxClaims > 0;
+    }
+
+    /// @dev `hub_notifyDeposit` gates its claim-completeness check on `maxClaims == bound`, so pass the exact bound
+    function _maxDepositClaims() internal view returns (uint32) {
+        IBaseVault vault = _getVault();
+        return batchRequestManager.maxDepositClaims(
+            vault.poolId(),
+            vault.scId(),
+            CastLib.toBytes32(_getActor()),
+            spokeRegistry.vaultDetails(address(vault)).assetId
+        );
+    }
+
+    function _maxRedeemClaims() internal view returns (uint32) {
+        IBaseVault vault = _getVault();
+        return batchRequestManager.maxRedeemClaims(
+            vault.poolId(),
+            vault.scId(),
+            CastLib.toBytes32(_getActor()),
+            spokeRegistry.vaultDetails(address(vault)).assetId
+        );
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -310,7 +346,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         (pendingBeforeSCM,) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
         (,,,, pendingBeforeARM,,,,,) = asyncRequestManager.investments(vault, _getActor());
@@ -389,7 +425,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         uint128 cancelledAssetAmount
     ) private {
         IBaseVault vault = _getVault();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
         ShareClassId scId = vault.scId();
         address actor = _getActor();
 
@@ -425,7 +461,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         (, uint32 lastUpdate) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
         (uint32 depositEpochId,,,) = batchRequestManager.epochId(poolId, scId, assetId);
@@ -439,7 +475,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         (bool isCancellingAfter,) = batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
 
@@ -463,7 +499,7 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         IBaseVault vault = _getVault();
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
 
         (uint128 pendingAfterSCM,) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
 
@@ -501,14 +537,16 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @param investorClaimableAfter Claimable amount after claim
     /// @param paymentShareAmount Total shares used for payment
     /// @param cancelledShareAmount Amount of shares cancelled
+    /// @param payoutAssetAmount Total assets paid out by the fulfilled redemption (asset-denominated payout)
     function _updateRedeemGhostVariables(
         uint256 investorClaimableBefore,
         uint256 investorClaimableAfter,
         uint128 paymentShareAmount,
-        uint128 cancelledShareAmount
+        uint128 cancelledShareAmount,
+        uint128 payoutAssetAmount
     ) private {
         IBaseVault vault = _getVault();
-        AssetId assetId = vaultRegistry.vaultDetails(vault).assetId;
+        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
         ShareClassId scId = vault.scId();
         address actor = _getActor();
 
@@ -517,6 +555,8 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
         }
 
         userRedemptionsProcessed[scId][assetId][actor] += paymentShareAmount;
+
+        userRedemptionsProcessedAssets[scId][assetId][actor] += payoutAssetAmount;
 
         userCancelledRedeems[scId][assetId][actor] += cancelledShareAmount;
     }

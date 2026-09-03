@@ -3,6 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IERC165} from "forge-std/interfaces/IERC165.sol";
 
+/// @notice Dispatched when an ERC-6909 transfer returns false instead of reverting.
+error TransferFailed();
+
 interface IERC6909 is IERC165 {
     error EmptyOwner();
     error EmptyAmount();

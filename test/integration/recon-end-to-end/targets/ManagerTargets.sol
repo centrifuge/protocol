@@ -54,7 +54,12 @@ abstract contract ManagerTargets is BaseTargetFunctions, Properties {
 
     /// @dev Deploy a new token and add it to the list of assets, then set it as the current asset
     function add_new_asset(uint8 decimals) public updateGhostsWithType(OpType.ADMIN) returns (address) {
-        address newAsset = _newAsset(decimals);
+        require(newAssetCount < RECON_MAX_NEW_ASSETS, "asset deploy cap");
+        newAssetCount++;
+
+        // _newAsset also makes this the current asset, so decimals above 18 would poison every later
+        // spoke_registerAsset with TooManyDecimals.
+        address newAsset = _newAsset(uint8(between(decimals, 0, 18)));
         return newAsset;
     }
 

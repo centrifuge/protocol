@@ -4,8 +4,9 @@ pragma solidity >=0.5.0;
 import {IRoot} from "./IRoot.sol";
 import {ISafe} from "./ISafe.sol";
 
-import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
 import {IScheduleAuthMessageSender} from "../../core/messaging/interfaces/IGatewaySenders.sol";
+
+import {ITokenBridge} from "../../bridge/interfaces/ITokenBridge.sol";
 
 interface IProtocolGuardian {
     error NotTheAuthorizedSafe();
@@ -44,27 +45,12 @@ interface IProtocolGuardian {
     /// @param refund Address to receive unused gas refund
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
 
-    /// @notice Recover tokens on a specific chain
-    /// @dev    Only supports EVM targets today
-    /// @param refund Address to receive unused gas refund
-    function recoverTokens(
-        uint16 centrifugeId,
-        address target,
-        address token,
-        uint256 tokenId,
-        address to,
-        uint256 amount,
-        address refund
-    ) external payable;
-
-    /// @notice Block or unblock outgoing messages for global pool
-    /// @dev Local-only operation for fast emergency response
-    /// @param centrifugeId Target chain ID to block/unblock
-    /// @param isBlocked True to block outgoing messages, false to unblock
-    function blockOutgoing(uint16 centrifugeId, bool isBlocked) external;
+    /// @notice Configure TokenBridge relayer address
+    /// @param relayer The relayer address to set
+    function fileTokenBridgeRelayer(address relayer) external;
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts a bytes32 representation of 'safe', 'gateway', or 'sender'
+    /// @param what Accepts a bytes32 representation of 'safe', 'sender', or 'tokenBridge'
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
@@ -78,9 +64,9 @@ interface IProtocolGuardian {
     /// @notice Multisig that authorizes protocol-level guardian operations
     function safe() external view returns (ISafe);
 
-    /// @notice Gateway used for cross-chain upgrade scheduling and outgoing message blocking
-    function gateway() external view returns (IGateway);
-
     /// @notice Dispatches cross-chain messages for remote upgrade scheduling and cancellation
     function sender() external view returns (IScheduleAuthMessageSender);
+
+    /// @notice TokenBridge used for cross-chain share token transfers
+    function tokenBridge() external view returns (ITokenBridge);
 }

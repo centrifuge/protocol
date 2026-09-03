@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../src/misc/Auth.sol";
 import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
+import {SafeTransferLib} from "../../../src/misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "../../../src/misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../../../src/misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageLib.sol";
@@ -12,17 +13,11 @@ import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
-import {
-    IGateway,
-    PROCESS_FAIL_MESSAGE_GAS,
-    MESSAGE_MAX_LENGTH,
-    ERR_MAX_LENGTH
-} from "../../../src/core/messaging/interfaces/IGateway.sol";
+import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 
 import "forge-std/Test.sol";
-import {VmSafe} from "forge-std/Vm.sol";
 
 // -----------------------------------------
 //     MESSAGE MOCKING
@@ -35,7 +30,8 @@ uint16 constant LOCAL_CENT_ID = 23;
 
 uint128 constant MAX_BATCH_GAS_LIMIT = 1_000_000;
 uint128 constant BASE_COST = 50_000;
-uint128 constant MESSAGE_PROCESSING_GAS_LIMIT = 100_000 + uint128(PROCESS_FAIL_MESSAGE_GAS);
+uint128 constant MOCK_PROCESS_FAIL_GAS = 35_000;
+uint128 constant MESSAGE_PROCESSING_GAS_LIMIT = 100_000 + MOCK_PROCESS_FAIL_GAS;
 uint128 constant MESSAGE_OVERALL_GAS_LIMIT = BASE_COST + MESSAGE_PROCESSING_GAS_LIMIT;
 uint128 constant EXTRA_GAS_LIMIT = 200_000;
 
@@ -49,7 +45,9 @@ enum MessageKind {
     WithPoolA2,
     WithPoolAFail, // Use this will fail
     WithPoolALongFail, // Use this will fail
-    WithPoolATooLong
+    WithPoolATooLong,
+    SetPoolAdapters, // pool-routed: messagePoolId returns its pool (POOL_A), mirroring MessageLib
+    RequireRemoteSource // messageSourceCentrifugeId returns REMOTE_CENT_ID, pool-routed like WithPoolA1
 }
 
 function length(MessageKind kind) pure returns (uint16) {
@@ -61,6 +59,8 @@ function length(MessageKind kind) pure returns (uint16) {
     if (kind == MessageKind.WithPoolAFail) return 10;
     if (kind == MessageKind.WithPoolALongFail) return uint16(10);
     if (kind == MessageKind.WithPoolATooLong) return uint16(MESSAGE_MAX_LENGTH + 1);
+    if (kind == MessageKind.SetPoolAdapters) return 13;
+    if (kind == MessageKind.RequireRemoteSource) return 10;
     return 2;
 }
 
@@ -103,8 +103,8 @@ contract MockProcessor {
             // bypass this check for the retry case where all available gas is passed
             require(
                 gasleft()
-                    <= (properties.messageProcessingGasLimit(centrifugeId, payload) - PROCESS_FAIL_MESSAGE_GAS) * 63
-                        / 64,
+                    <= (properties.messageProcessingGasLimit(centrifugeId, payload)
+                            - properties.messageFailureGasReserve()) * 63 / 64,
                 "Too much gas passed to handle"
             );
         }
@@ -124,6 +124,14 @@ contract MockMessageProperties is IMessageProperties {
     }
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    function routePoolId(bytes calldata message, bool) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    function _poolId(bytes calldata message) internal pure returns (PoolId) {
         if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolA1ExtraGas)) return POOL_A;
@@ -132,6 +140,8 @@ contract MockMessageProperties is IMessageProperties {
         if (message.toUint8(0) == uint8(MessageKind.WithPoolAFail)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)) return POOL_A;
         if (message.toUint8(0) == uint8(MessageKind.WithPoolATooLong)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.SetPoolAdapters)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return POOL_A;
         revert("Unreachable: message never asked for pool");
     }
 
@@ -148,6 +158,15 @@ contract MockMessageProperties is IMessageProperties {
 
     function maxBatchGasLimit(uint16) external pure returns (uint128) {
         return MAX_BATCH_GAS_LIMIT;
+    }
+
+    function messageFailureGasReserve() external pure returns (uint128) {
+        return MOCK_PROCESS_FAIL_GAS;
+    }
+
+    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16) {
+        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return REMOTE_CENT_ID;
+        return 0;
     }
 }
 
@@ -176,25 +195,6 @@ contract GatewayExt is Gateway, Test {
 
     function outboundBatch(uint16 centrifugeId, PoolId poolId) public view returns (bytes memory) {
         return TransientBytesLib.get(_outboundBatchSlot(centrifugeId, poolId));
-    }
-
-    function safeProcess(uint16 centrifugeId, bytes memory message, bytes32 messageHash, uint128 gasLimit) public {
-        uint256 prevGas = gasleft();
-        // NOTE: we're measuring the whole safeProcess despite only the failed branch should be cover
-        // by PROCESS_FAIL_MESSAGE_GAS. We don't have a way to just measure the failed part because
-        // reverting and copying values to the callee needs to be consumed by the reserved PROCESS_FAIL_MESSAGE_GAS gas.
-        _safeProcess(centrifugeId, message, messageHash, gasLimit);
-        uint256 consumedGas = prevGas - gasleft();
-
-        if (
-            message.toUint8(0) == uint8(MessageKind.WithPoolAFail)
-                || message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)
-        ) {
-            console.log("stricted consumed gas in the failure:", consumedGas);
-            // Coverage disables the optimizer, increasing gas costs
-            uint256 tolerance = vm.isContext(VmSafe.ForgeContext.Coverage) ? 5_000 : 0;
-            assertLt(consumedGas, PROCESS_FAIL_MESSAGE_GAS + tolerance, "PROCESS_FAIL_MESSAGE_GAS is not high enough");
-        }
     }
 
     function startBatching() public {
@@ -228,7 +228,6 @@ contract GatewayTest is Test {
     GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
-    address immutable MANAGER = makeAddr("MANAGER");
     address immutable REFUND = makeAddr("REFUND");
     address NO_PAYABLE_DESTINATION = address(new NoPayableDestination());
 
@@ -288,22 +287,6 @@ contract GatewayTestFile is GatewayTest {
     }
 }
 
-contract GatewayTestUpdateManager is GatewayTest {
-    function testErrNotAuthorized() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.updateManager(POOL_A, MANAGER, true);
-    }
-
-    function testUpdateManager() public {
-        vm.expectEmit();
-        emit IGateway.UpdateManager(POOL_A, MANAGER, true);
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        assertEq(gateway.manager(POOL_A, MANAGER), true);
-    }
-}
-
 contract GatewayTestHandle is GatewayTest {
     function testErrPaused() public {
         _mockPause(true);
@@ -312,9 +295,31 @@ contract GatewayTestHandle is GatewayTest {
     }
 
     function testErrNotAuthorized() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
         vm.prank(ANY);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.handle(REMOTE_CENT_ID, new bytes(0));
+        gateway.handle(REMOTE_CENT_ID, batch);
+    }
+
+    function testManagerCanHandle() public {
+        bytes memory batch = MessageKind.WithPoolA1.asBytes(); // messagePoolId -> POOL_A
+        gateway.updateManager(POOL_A, ANY, true);
+
+        vm.expectEmit();
+        emit IGateway.ExecuteMessage(REMOTE_CENT_ID, keccak256(batch));
+        vm.prank(ANY);
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        assertEq(processor.processed(REMOTE_CENT_ID, 0), batch);
+    }
+
+    function testManagerOfOtherPoolCannotHandle() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes(); // messagePoolId -> POOL_0
+        gateway.updateManager(POOL_A, ANY, true); // manager of POOL_A, not POOL_0
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.handle(REMOTE_CENT_ID, batch);
     }
 
     function testNotEnoughGas() public {
@@ -331,6 +336,54 @@ contract GatewayTestHandle is GatewayTest {
 
         vm.expectRevert(IGateway.MalformedBatch.selector);
         gateway.handle(REMOTE_CENT_ID, batch);
+    }
+
+    /// @dev A SetPoolAdapters message now reports its own pool from messagePoolId (it routes over the pool's
+    ///      own adapter set), so it can't share a batch with a global/other-pool message — the batch's
+    ///      single-pool invariant rejects it. Nothing builds such a batch today (Hub.setAdapters sends it
+    ///      standalone), but the guard makes that explicit.
+    function testErrMalformedBatchSetPoolAdaptersWithGlobalMessage() public {
+        bytes memory setPoolAdapters = MessageKind.SetPoolAdapters.asBytes(); // messagePoolId -> POOL_A
+        bytes memory globalMessage = MessageKind.WithPool0.asBytes(); // messagePoolId -> POOL_0
+        bytes memory batch = abi.encodePacked(setPoolAdapters, globalMessage);
+
+        vm.expectRevert(IGateway.MalformedBatch.selector);
+        gateway.handle(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrCannotBeReceivedLocally() public {
+        bytes memory batch = MessageKind.WithPool0.asBytes();
+
+        vm.expectRevert(IGateway.CannotBeReceivedLocally.selector);
+        gateway.handle(LOCAL_CENT_ID, batch);
+    }
+
+    function testErrSourceMismatch() public {
+        bytes memory batch = MessageKind.RequireRemoteSource.asBytes(); // requires REMOTE_CENT_ID
+
+        vm.expectRevert(IGateway.SourceMismatch.selector);
+        gateway.handle(REMOTE_CENT_ID + 1, batch);
+    }
+
+    function testSourceMismatchAcceptsMatchingSource() public {
+        bytes memory batch = MessageKind.RequireRemoteSource.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        assertEq(processor.count(REMOTE_CENT_ID), 1);
+    }
+
+    /// @dev Unlike a processor-level failure (testBatchWithFailingMessages), a source mismatch reverts the
+    ///      whole batch: nothing in it - including the otherwise-valid message1 - gets processed.
+    function testSourceMismatchRevertsWholeBatch() public {
+        bytes memory message1 = MessageKind.WithPoolA1.asBytes();
+        bytes memory message2 = MessageKind.RequireRemoteSource.asBytes(); // requires REMOTE_CENT_ID
+        bytes memory batch = abi.encodePacked(message1, message2);
+
+        vm.expectRevert(IGateway.SourceMismatch.selector);
+        gateway.handle(REMOTE_CENT_ID + 1, batch);
+
+        assertEq(processor.count(REMOTE_CENT_ID + 1), 0);
     }
 
     function testMessage() public {
@@ -400,13 +453,6 @@ contract GatewayTestHandle is GatewayTest {
 
         assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(message)), 2);
     }
-
-    function testMessageFailBenchmark() public {
-        bytes memory message = MessageKind.WithPoolALongFail.asBytes();
-        bytes32 messageHash = keccak256(message);
-
-        gateway.safeProcess(REMOTE_CENT_ID, message, messageHash, MESSAGE_OVERALL_GAS_LIMIT);
-    }
 }
 
 contract GatewayTestRetry is GatewayTest {
@@ -456,6 +502,80 @@ contract GatewayTestRetry is GatewayTest {
     }
 }
 
+contract GatewayTestClearFailedMessage is GatewayTest {
+    function testErrNotAuthorized() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+    }
+
+    function testErrNotFailedMessage() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        vm.expectRevert(IGateway.NotFailedMessage.selector);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+    }
+
+    function testClearFailedMessageAsWard() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
+
+        vm.expectEmit();
+        emit IGateway.ClearFailedMessage(REMOTE_CENT_ID, keccak256(batch));
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+        // The message can no longer be retried nor denied
+        vm.expectRevert(IGateway.NotFailedMessage.selector);
+        gateway.retry(REMOTE_CENT_ID, batch);
+    }
+
+    function testClearFailedMessageAsManager() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        // POOL_A is the pool of WithPoolAFail
+        gateway.updateManager(POOL_A, ANY, true);
+
+        vm.prank(ANY);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+    }
+
+    function testClearFailedMessageDecrementsOneAtATime() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+        gateway.handle(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 2);
+
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 1);
+
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+        assertEq(gateway.failedMessages(REMOTE_CENT_ID, keccak256(batch)), 0);
+    }
+
+    function testClearFailedMessageRevokedManager() public {
+        bytes memory batch = MessageKind.WithPoolAFail.asBytes();
+
+        gateway.handle(REMOTE_CENT_ID, batch);
+
+        gateway.updateManager(POOL_A, ANY, true);
+        gateway.updateManager(POOL_A, ANY, false);
+
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        gateway.clearFailedMessage(REMOTE_CENT_ID, batch);
+    }
+}
+
 contract GatewayTestSend is GatewayTest {
     function testErrNotAuthorized() public {
         vm.prank(ANY);
@@ -487,26 +607,13 @@ contract GatewayTestSend is GatewayTest {
         gateway.send{value: 1}(REMOTE_CENT_ID, MessageKind.WithPoolA1.asBytes(), false, REFUND);
     }
 
-    function testErrOutgoingBlocked() public {
-        bytes memory message = MessageKind.WithPoolA1.asBytes();
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        vm.prank(MANAGER);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_OVERALL_GAS_LIMIT, REFUND);
-
-        vm.expectRevert(IGateway.OutgoingBlocked.selector);
-        gateway.send(REMOTE_CENT_ID, message, false, REFUND);
-    }
-
     function testErrCannotRefund() public {
         bytes memory message = MessageKind.WithPoolA1.asBytes();
         uint256 cost = MESSAGE_OVERALL_GAS_LIMIT + ADAPTER_ESTIMATE;
 
         _mockAdapter(REMOTE_CENT_ID, message, MESSAGE_OVERALL_GAS_LIMIT, NO_PAYABLE_DESTINATION);
 
-        vm.expectRevert(IGateway.CannotRefund.selector);
+        vm.expectRevert(SafeTransferLib.SafeTransferEthFailed.selector);
         gateway.send{value: cost + 1234}(REMOTE_CENT_ID, message, false, NO_PAYABLE_DESTINATION);
     }
 
@@ -794,21 +901,6 @@ contract GatewayTestRepay is GatewayTest {
         gateway.repay(REMOTE_CENT_ID, batch, REFUND);
     }
 
-    function testErrOutgoingBlocked() public {
-        bytes memory batch = MessageKind.WithPoolA1.asBytes();
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        _mockAdapter(REMOTE_CENT_ID, batch, MESSAGE_OVERALL_GAS_LIMIT, address(this));
-        gateway.send(REMOTE_CENT_ID, batch, true, address(0));
-        uint256 payment = MESSAGE_OVERALL_GAS_LIMIT + ADAPTER_ESTIMATE;
-
-        vm.prank(MANAGER);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        vm.expectRevert(IGateway.OutgoingBlocked.selector);
-        gateway.repay{value: payment}(REMOTE_CENT_ID, batch, REFUND);
-    }
-
     function testCorrectRepay() public {
         bytes memory batch = MessageKind.WithPoolA1.asBytes();
 
@@ -827,25 +919,6 @@ contract GatewayTestRepay is GatewayTest {
         assertEq(gasLimit, 0);
 
         assertEq(address(REFUND).balance, 1234); // Excees is refunded
-    }
-}
-
-contract GatewayTestBlockOutgoing is GatewayTest {
-    function testErrManagerNotAllowed() public {
-        vm.prank(ANY);
-        vm.expectRevert(IAuth.NotAuthorized.selector);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, false);
-    }
-
-    function testBlockOutgoing() public {
-        gateway.updateManager(POOL_A, MANAGER, true);
-
-        vm.prank(MANAGER);
-        vm.expectEmit();
-        emit IGateway.BlockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-        gateway.blockOutgoing(REMOTE_CENT_ID, POOL_A, true);
-
-        assertEq(gateway.isOutgoingBlocked(REMOTE_CENT_ID, POOL_A), true);
     }
 }
 

@@ -16,7 +16,8 @@ import {
     raw,
     reciprocal,
     reciprocalMulUint128,
-    reciprocalMulUint256
+    reciprocalMulUint256,
+    withinDeviation
 } from "../../../../src/misc/types/D18.sol";
 
 import "forge-std/Test.sol";
@@ -177,6 +178,46 @@ contract D18Test is Test {
     function testIsNotZero() public pure {
         assertEq(d18(0).isNotZero(), false);
         assertEq(d18(123).isNotZero(), true);
+    }
+
+    function testWithinDeviationAdd() public pure {
+        assertTrue(d18(1e18 + 1e16).withinDeviation(d18(1e18), 1e16));
+        assertFalse(d18(1e18 + 1e16 + 1).withinDeviation(d18(1e18), 1e16));
+    }
+
+    function testWithinDeviationSub() public pure {
+        assertTrue(d18(1e18 - 1e16).withinDeviation(d18(1e18), 1e16));
+        assertFalse(d18(1e18 - 1e16 - 1).withinDeviation(d18(1e18), 1e16));
+    }
+
+    function testWithinDeviationEqual() public pure {
+        assertTrue(d18(1e18).withinDeviation(d18(1e18), 0));
+        assertFalse(d18(1e18 + 1).withinDeviation(d18(1e18), 0));
+        assertFalse(d18(1e18 - 1).withinDeviation(d18(1e18), 0));
+    }
+
+    /// @dev Fuzz the full uint128 range against an independent reference to pin precision:
+    ///      predicate = |value - reference| * 1e18 <= maxDeviation * reference.
+    ///      NOTE: Avoiding MathLib here so the two paths are independent.
+    /// forge-config: default.fuzz.runs = 100000
+    function testFuzzWithinDeviationMatchesExactReference(uint128 maxDeviation, uint128 value, uint128 reference_)
+        public
+        pure
+    {
+        uint256 delta = value > reference_ ? uint256(value) - reference_ : uint256(reference_) - value;
+        assertEq(
+            d18(value).withinDeviation(d18(reference_), maxDeviation),
+            delta * 1e18 <= uint256(maxDeviation) * uint256(reference_)
+        );
+    }
+
+    function testWithinDeviationPrecisionFloor() public pure {
+        // ref=1 (D18 precision floor). Old ceil formula rounded fractional allowed up to 1,
+        // admitting prices 0 and 2 at any nonzero deviation. Cross-multiply fix rejects them.
+        assertFalse(d18(0).withinDeviation(d18(1), 1e16)); // 100% below — rejected
+        assertFalse(d18(2).withinDeviation(d18(1), 1e16)); // 100% above — rejected
+        assertFalse(d18(3).withinDeviation(d18(1), 1e16)); // 200% above — rejected
+        assertTrue(d18(1).withinDeviation(d18(1), 1e16)); // exact match — accepted
     }
 }
 

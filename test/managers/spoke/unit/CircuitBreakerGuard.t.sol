@@ -20,20 +20,20 @@ contract CircuitBreakerTallyTest is Test {
 
     function testSingleTallyWithinLimit() public {
         guard.tally(key, 500_000e6, MAX, WINDOW);
-        (uint128 total,) = guard.cumulative(address(this), key, WINDOW);
+        (uint128 total,) = guard.cumulative(address(this), key);
         assertEq(total, 500_000e6);
     }
 
     function testMultipleTalliesAccumulate() public {
         guard.tally(key, 300_000e6, MAX, WINDOW);
         guard.tally(key, 400_000e6, MAX, WINDOW);
-        (uint128 total,) = guard.cumulative(address(this), key, WINDOW);
+        (uint128 total,) = guard.cumulative(address(this), key);
         assertEq(total, 700_000e6);
     }
 
     function testTallyExactLimitPasses() public {
         guard.tally(key, MAX, MAX, WINDOW);
-        (uint128 total,) = guard.cumulative(address(this), key, WINDOW);
+        (uint128 total,) = guard.cumulative(address(this), key);
         assertEq(total, MAX);
     }
 
@@ -49,7 +49,7 @@ contract CircuitBreakerTallyTest is Test {
         guard.tally(key, 900_000e6, MAX, WINDOW);
         vm.warp(block.timestamp + WINDOW + 1);
         guard.tally(key, 900_000e6, MAX, WINDOW);
-        (uint128 total,) = guard.cumulative(address(this), key, WINDOW);
+        (uint128 total,) = guard.cumulative(address(this), key);
         assertEq(total, 900_000e6);
     }
 
@@ -66,8 +66,8 @@ contract CircuitBreakerTallyTest is Test {
         bytes32 keyB = keccak256("bridge-weth");
         guard.tally(key, 900_000e6, MAX, WINDOW);
         guard.tally(keyB, 900_000e6, MAX, WINDOW);
-        (uint128 totalA,) = guard.cumulative(address(this), key, WINDOW);
-        (uint128 totalB,) = guard.cumulative(address(this), keyB, WINDOW);
+        (uint128 totalA,) = guard.cumulative(address(this), key);
+        (uint128 totalB,) = guard.cumulative(address(this), keyB);
         assertEq(totalA, 900_000e6);
         assertEq(totalB, 900_000e6);
     }
@@ -76,8 +76,8 @@ contract CircuitBreakerTallyTest is Test {
         guard.tally(key, 900_000e6, MAX, WINDOW);
         vm.prank(makeAddr("other"));
         guard.tally(key, 900_000e6, MAX, WINDOW);
-        (uint128 totalThis,) = guard.cumulative(address(this), key, WINDOW);
-        (uint128 totalOther,) = guard.cumulative(makeAddr("other"), key, WINDOW);
+        (uint128 totalThis,) = guard.cumulative(address(this), key);
+        (uint128 totalOther,) = guard.cumulative(makeAddr("other"), key);
         assertEq(totalThis, 900_000e6);
         assertEq(totalOther, 900_000e6);
     }
@@ -92,7 +92,7 @@ contract CircuitBreakerTallyTest is Test {
             guard.tally(key, b, max, WINDOW);
         } else {
             guard.tally(key, b, max, WINDOW);
-            (uint128 total,) = guard.cumulative(address(this), key, WINDOW);
+            (uint128 total,) = guard.cumulative(address(this), key);
             assertEq(total, uint256(a) + uint256(b));
         }
     }
@@ -108,7 +108,7 @@ contract CircuitBreakerTallyTest is Test {
         // Next block: 1 second elapsed > 0, window resets
         vm.warp(block.timestamp + 1);
         guard.tally(key, MAX, MAX, 0);
-        (uint128 total,) = guard.cumulative(address(this), key, 0);
+        (uint128 total,) = guard.cumulative(address(this), key);
         assertEq(total, MAX);
     }
 
@@ -117,6 +117,25 @@ contract CircuitBreakerTallyTest is Test {
         uint256 amount = uint256(type(uint128).max) + 1;
         vm.expectRevert();
         guard.tally(key, amount, type(uint256).max, WINDOW);
+    }
+
+    function testTallyPersistsAcrossWindowChange() public {
+        // Fill half the limit under window W.
+        guard.tally(key, 600_000e6, MAX, WINDOW);
+
+        // Caller changes rateWindow to W/2 (simulates SetRateLimit). The tally must persist —
+        // the new window key must NOT give a fresh zero-total slot.
+        uint256 newWindow = WINDOW / 2;
+        guard.tally(key, 300_000e6, MAX, newWindow);
+
+        (uint128 total,) = guard.cumulative(address(this), key);
+        assertEq(total, 900_000e6);
+
+        // And the combined limit is still enforced.
+        vm.expectRevert(
+            abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsCumulativeLimit.selector, key, 200_000e6, MAX, newWindow)
+        );
+        guard.tally(key, 200_000e6, MAX, newWindow);
     }
 }
 
@@ -137,7 +156,7 @@ contract CircuitBreakerDeltaTest is Test {
 
     function testFirstCallAnchorsToCurrentValue() public {
         guard.delta(key, 1000, 1040, MAX_BPS, WINDOW);
-        (uint128 anchor, uint64 windowStart) = guard.refs(address(this), key, WINDOW);
+        (uint128 anchor, uint64 windowStart) = guard.refs(address(this), key);
         assertEq(anchor, 1000);
         assertEq(windowStart, block.timestamp);
     }
@@ -147,7 +166,7 @@ contract CircuitBreakerDeltaTest is Test {
 
         // Second call within window — currentValue is ignored, anchor stays 1000
         guard.delta(key, 9999, 1049, MAX_BPS, WINDOW);
-        (uint128 anchor,) = guard.refs(address(this), key, WINDOW);
+        (uint128 anchor,) = guard.refs(address(this), key);
         assertEq(anchor, 1000);
     }
 
@@ -182,7 +201,7 @@ contract CircuitBreakerDeltaTest is Test {
 
         // New window — anchors to currentValue (2000), not old anchor
         guard.delta(key, 2000, 2090, MAX_BPS, WINDOW);
-        (uint128 anchor,) = guard.refs(address(this), key, WINDOW);
+        (uint128 anchor,) = guard.refs(address(this), key);
         assertEq(anchor, 2000);
     }
 
@@ -215,8 +234,8 @@ contract CircuitBreakerDeltaTest is Test {
         guard.delta(key, 1000, 1050, MAX_BPS, WINDOW);
         guard.delta(keyB, 5000, 5250, MAX_BPS, WINDOW);
 
-        (uint128 anchorA,) = guard.refs(address(this), key, WINDOW);
-        (uint128 anchorB,) = guard.refs(address(this), keyB, WINDOW);
+        (uint128 anchorA,) = guard.refs(address(this), key);
+        (uint128 anchorB,) = guard.refs(address(this), keyB);
         assertEq(anchorA, 1000);
         assertEq(anchorB, 5000);
     }
@@ -226,8 +245,8 @@ contract CircuitBreakerDeltaTest is Test {
         vm.prank(makeAddr("other"));
         guard.delta(key, 2000, 2100, MAX_BPS, WINDOW);
 
-        (uint128 anchorThis,) = guard.refs(address(this), key, WINDOW);
-        (uint128 anchorOther,) = guard.refs(makeAddr("other"), key, WINDOW);
+        (uint128 anchorThis,) = guard.refs(address(this), key);
+        (uint128 anchorOther,) = guard.refs(makeAddr("other"), key);
         assertEq(anchorThis, 1000);
         assertEq(anchorOther, 2000);
     }
@@ -256,13 +275,30 @@ contract CircuitBreakerDeltaTest is Test {
         // window=0: anchor resets on every new block (1 second elapsed > 0)
         vm.warp(1_000_000);
         guard.delta(key, 1000, 1000, MAX_BPS, 0);
-        (uint128 anchor1,) = guard.refs(address(this), key, 0);
+        (uint128 anchor1,) = guard.refs(address(this), key);
         assertEq(anchor1, 1000);
 
         vm.warp(block.timestamp + 1);
         guard.delta(key, 2000, 2000, MAX_BPS, 0);
-        (uint128 anchor2,) = guard.refs(address(this), key, 0);
+        (uint128 anchor2,) = guard.refs(address(this), key);
         assertEq(anchor2, 2000);
+    }
+
+    function testDeltaAnchorPersistsAcrossWindowChange() public {
+        guard.delta(key, 1000, 1000, MAX_BPS, WINDOW);
+        (uint128 anchor,) = guard.refs(address(this), key);
+        assertEq(anchor, 1000);
+
+        // Window change: anchor persists, not reset to currentValue
+        uint256 newWindow = WINDOW * 2;
+        guard.delta(key, 1049, 1049, MAX_BPS, newWindow); // currentValue 4.9% above anchor — still within 5%
+        (uint128 anchorAfter,) = guard.refs(address(this), key);
+        assertEq(anchorAfter, 1000);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ICircuitBreakerGuard.ExceedsDeltaLimit.selector, key, 1049, 1051, MAX_BPS, newWindow)
+        );
+        guard.delta(key, 1049, 1051, MAX_BPS, newWindow); // 5.1% from anchor 1000 — blocked
     }
 
     function testFuzzDelta(uint128 currentValue, uint128 newValue, uint16 maxDeltaBps) public {
@@ -279,7 +315,7 @@ contract CircuitBreakerDeltaTest is Test {
             guard.delta(key, currentValue, newValue, maxDeltaBps, WINDOW);
         } else {
             guard.delta(key, currentValue, newValue, maxDeltaBps, WINDOW);
-            (uint128 anchor,) = guard.refs(address(this), key, WINDOW);
+            (uint128 anchor,) = guard.refs(address(this), key);
             assertEq(anchor, currentValue);
         }
     }

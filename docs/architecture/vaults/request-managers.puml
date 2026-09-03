@@ -4,35 +4,39 @@ hide empty members
 
 skinparam linetype ortho
 
-package misc {
+skinparam nodesep 25
+
+package core {
     class "Escrow" as PoolEscrow<<pool>>
-    class "Escrow" as RouterEscrow<<router>>
+    class Envoy
+    interface IManagerCallFromHub
 }
 
 package spoke {
     class Spoke
-    class BalanceSheet
-    interface IRequestManager
-    interface ITrustedContractUpdate
+    class SnapshotQueue
+    interface ISpokeRequestManager
 }
 
 interface IBaseRequestManager
 interface IAsyncRequestManager
 interface ISyncManager
 
-IBaseRequestManager -up-|> IRequestManager
+IBaseRequestManager -up-|> ISpokeRequestManager
 
 IAsyncRequestManager -up-|> IBaseRequestManager
-ISyncManager -up-|> ITrustedContractUpdate
 
-AsyncRequestManager -up-> BalanceSheet
+Envoy --> IManagerCallFromHub
+
+AsyncRequestManager -up-> Spoke
 AsyncRequestManager -up-|> IAsyncRequestManager
-BalanceSheet -up-> PoolEscrow
+Spoke -up-> PoolEscrow
+Spoke -up-> SnapshotQueue
 
 SyncManager -up-|> ISyncManager
-SyncManager -up--> BalanceSheet
+SyncManager -up-|> IManagerCallFromHub
+SyncManager -up--> Spoke
 
-VaultRouter -up-> RouterEscrow
 VaultRouter -up-> Spoke
 
 @enduml

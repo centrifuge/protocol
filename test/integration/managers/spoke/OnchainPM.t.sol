@@ -7,7 +7,7 @@ import {IMulticall} from "../../../../src/misc/interfaces/IMulticall.sol";
 
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
-import {IBalanceSheet} from "../../../../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IBatchedMulticall} from "../../../../src/core/utils/interfaces/IBatchedMulticall.sol";
 
 import {WeirollTarget, OnchainPMTestBase} from "../../../managers/spoke/OnchainPMTestBase.sol";
@@ -51,7 +51,7 @@ contract MockGateway {
 contract OnchainPMMulticallTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     MockGateway mockGateway;
     IOnchainPM executor;
@@ -60,7 +60,7 @@ contract OnchainPMMulticallTest is OnchainPMTestBase {
     function setUp() public virtual {
         mockGateway = new MockGateway();
         executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(mockGateway)))
         );
         target = new WeirollTarget();
     }
@@ -68,7 +68,7 @@ contract OnchainPMMulticallTest is OnchainPMTestBase {
     // ─── Convenience wrappers ─────────────────────────────────────────────
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     /// @dev Build a script, set its policy, and return the calldata for executor.execute().
@@ -224,7 +224,7 @@ contract OnchainPMMulticallBatchTest is OnchainPMMulticallTest {
 contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     MockGateway mockGateway;
     IOnchainPM executor;
@@ -232,7 +232,7 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     SlippageGuard guard;
 
     address spoke = makeAddr("spoke");
-    address balanceSheet = makeAddr("balanceSheet");
+    address spokeRegistry = makeAddr("spokeRegistry");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     address shareToken = makeAddr("shareToken");
     address assetA = makeAddr("assetA");
@@ -245,12 +245,10 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
     function setUp() public {
         mockGateway = new MockGateway();
         executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(mockGateway)))
         );
         target = new WeirollTarget();
-        guard = new SlippageGuard(
-            ISpoke(spoke), IBalanceSheet(balanceSheet), contractUpdater, IOnchainPMFactory(onchainPMFactory)
-        );
+        guard = new SlippageGuard(ISpoke(spoke), envoy, IOnchainPMFactory(onchainPMFactory));
         vm.mockCall(
             onchainPMFactory,
             abi.encodeWithSelector(IOnchainPMFactory.getAddress.selector, POOL_A),
@@ -258,30 +256,39 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
         );
 
         // Setup mocks for the guard
-        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.shareToken.selector, POOL_A, SC_1), abi.encode(shareToken));
+        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.spokeRegistry.selector), abi.encode(spokeRegistry));
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(shareToken)
+        );
         vm.mockCall(shareToken, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(assetA, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(assetB, abi.encodeWithSignature("decimals()"), abi.encode(uint8(18)));
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, assetA, uint256(0)), abi.encode(ASSET_ID_1)
+            spokeRegistry,
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetA, uint256(0)),
+            abi.encode(ASSET_ID_1)
         );
         vm.mockCall(
-            spoke, abi.encodeWithSelector(ISpoke.assetToId.selector, assetB, uint256(0)), abi.encode(ASSET_ID_2)
+            spokeRegistry,
+            abi.encodeWithSelector(bytes4(keccak256("assetToId(address,uint256,bool)")), assetB, uint256(0)),
+            abi.encode(ASSET_ID_2)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_1, true),
             abi.encode(PRICE_ONE)
         );
         vm.mockCall(
-            spoke,
-            abi.encodeWithSelector(ISpoke.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_2, true),
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.pricePoolPerAsset.selector, POOL_A, SC_1, ASSET_ID_2, true),
             abi.encode(PRICE_ONE)
         );
     }
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     /// @dev Build a FLAG_DATA weiroll command — raw calldata from state[stateIdx].
@@ -292,8 +299,8 @@ contract OnchainPMSlippageGuardTest is OnchainPMTestBase {
 
     function _mockBalance(address asset, uint128 available) internal {
         vm.mockCall(
-            balanceSheet,
-            abi.encodeWithSelector(IBalanceSheet.availableBalanceOf.selector, POOL_A, SC_1, asset, uint256(0)),
+            spoke,
+            abi.encodeWithSelector(ISpoke.availableBalanceOf.selector, POOL_A, SC_1, asset, uint256(0)),
             abi.encode(available)
         );
     }
@@ -432,7 +439,7 @@ contract SimpleAavePool {
 contract OnchainPMFlashLoanTest is OnchainPMTestBase {
     using CastLib for *;
 
-    address contractUpdater = makeAddr("contractUpdater");
+    address envoy = makeAddr("envoy");
     address strategist = makeAddr("strategist");
     address onchainPMFactory = makeAddr("onchainPMFactory");
     MockGateway mockGateway;
@@ -445,7 +452,7 @@ contract OnchainPMFlashLoanTest is OnchainPMTestBase {
     function setUp() public {
         mockGateway = new MockGateway();
         executor = IOnchainPM(
-            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, contractUpdater, address(mockGateway)))
+            deployCode("out-ir/OnchainPM.sol/OnchainPM.json", abi.encode(POOL_A, envoy, address(mockGateway)))
         );
         target = new WeirollTarget();
         flashReceiver = new FlashLoanHelper(IOnchainPMFactory(onchainPMFactory));
@@ -464,7 +471,7 @@ contract OnchainPMFlashLoanTest is OnchainPMTestBase {
     }
 
     function _setPolicy(address who, bytes32 root) internal {
-        _setPolicy(executor, who, root, contractUpdater);
+        _setPolicy(executor, who, root, envoy);
     }
 
     function testFlashLoanCallback() public {

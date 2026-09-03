@@ -20,7 +20,7 @@ actor Investor
 actor BalanceSheetManager
 participant Vault
 participant AsyncRequestManager as ARM
-participant BalanceSheet
+participant Spoke
 participant PoolEscrow
 participant Hub
 actor HubManager
@@ -35,8 +35,8 @@ end note
 Investor -> Vault : requestDeposit()
 Vault -> ARM : requestDeposit()
 ARM -> PoolEscrow : transfer assets from investor
-ARM -> BalanceSheet : reserve(assets, REASON_DEPOSIT)
-BalanceSheet -> PoolEscrow : mark assets as reserved
+ARM -> Spoke : reserve(assets, REASON_DEPOSIT)
+Spoke -> PoolEscrow : mark assets as reserved
 
 note right of PoolEscrow
     Assets in PoolEscrow:
@@ -48,10 +48,10 @@ end note
 
 HubManager -> Hub : approvedDeposits()
 Hub -> ARM : approvedDeposits()
-ARM -> BalanceSheet : unreserve(assets, REASON_DEPOSIT)
-BalanceSheet -> PoolEscrow : decrease reserved counter
-ARM -> BalanceSheet : noteDeposit()
-BalanceSheet -> PoolEscrow : deposit() [tracking only]
+ARM -> Spoke : unreserve(assets, REASON_DEPOSIT)
+Spoke -> PoolEscrow : decrease reserved counter
+ARM -> Spoke : noteDeposit()
+Spoke -> PoolEscrow : deposit() [tracking only]
 
 note right of PoolEscrow
     Assets in PoolEscrow:
@@ -61,8 +61,8 @@ end note
 
 == balance sheet manager withdraws ==
 
-BalanceSheetManager -> BalanceSheet : withdraw(assets)
-BalanceSheet -> PoolEscrow : withdraw() + authTransferTo()
+BalanceSheetManager -> Spoke : withdraw(assets)
+Spoke -> PoolEscrow : withdraw() + authTransferTo()
 PoolEscrow --> BalanceSheetManager : transfer assets
 
 note right of PoolEscrow
@@ -73,11 +73,11 @@ end note
 
 HubManager -> Hub : issueShares()
 Hub --> ARM : issuedShares()
-ARM -> BalanceSheet : issue(shares)
-BalanceSheet -> ShareToken : mint(shares, PoolEscrow)
+ARM -> Spoke : issue(shares)
+Spoke -> ShareToken : mint(shares, PoolEscrow)
 ShareToken --> PoolEscrow : shares minted
-ARM -> BalanceSheet : reserve(shares, REASON_DEPOSIT)
-BalanceSheet -> PoolEscrow : mark shares as reserved
+ARM -> Spoke : reserve(shares, REASON_DEPOSIT)
+Spoke -> PoolEscrow : mark shares as reserved
 
 note right of PoolEscrow
     Shares in PoolEscrow:
@@ -98,10 +98,10 @@ end note
 
 Investor -> Vault : mint()
 Vault -> ARM : deposit() or mint()
-ARM -> BalanceSheet : unreserve(shares, REASON_DEPOSIT)
-BalanceSheet -> PoolEscrow : decrease reserved counter
-ARM -> BalanceSheet : withdraw(shares, investor)
-BalanceSheet -> PoolEscrow : authTransferTo(investor)
+ARM -> Spoke : unreserve(shares, REASON_DEPOSIT)
+Spoke -> PoolEscrow : decrease reserved counter
+ARM -> Spoke : withdraw(shares, investor)
+Spoke -> PoolEscrow : authTransferTo(investor)
 PoolEscrow --> Investor : transfer shares
 
 note right of Investor
@@ -113,10 +113,10 @@ end note
 
 Investor -> Vault : requestRedeem()
 Vault -> ARM : requestRedeem()
-ARM -> BalanceSheet : transferSharesFrom(investor→escrow)
-BalanceSheet -> PoolEscrow : receive shares from investor
-ARM -> BalanceSheet : reserve(shares, REASON_REDEEM)
-BalanceSheet -> PoolEscrow : mark shares as reserved
+ARM -> Spoke : transferSharesFrom(investor→escrow)
+Spoke -> PoolEscrow : receive shares from investor
+ARM -> Spoke : reserve(shares, REASON_REDEEM)
+Spoke -> PoolEscrow : mark shares as reserved
 
 note right of PoolEscrow
     Shares in PoolEscrow:
@@ -128,8 +128,8 @@ HubManager -> Hub : approvedRedeems()
 
 == balance sheet manager repays ==
 
-BalanceSheetManager -> BalanceSheet : deposit(assets)
-BalanceSheet -> PoolEscrow : receive assets
+BalanceSheetManager -> Spoke : deposit(assets)
+Spoke -> PoolEscrow : receive assets
 
 note right of PoolEscrow
     Assets received (unreserved)
@@ -140,15 +140,15 @@ end note
 
 HubManager -> Hub : revokeShares()
 Hub -> ARM : revokedShares()
-ARM -> BalanceSheet : reserve(assets, REASON_REDEEM)
-BalanceSheet -> PoolEscrow : mark assets as reserved
-ARM -> BalanceSheet : unreserve(shares, REASON_REDEEM)
-BalanceSheet -> PoolEscrow : mark shares as unreserved
-ARM -> BalanceSheet : transferSharesFrom(escrow→ARM)
-BalanceSheet -> PoolEscrow : transfer shares to ARM
-ARM -> BalanceSheet : revoke(shares)
-BalanceSheet -> ShareToken : burn(shares)
-ARM -> BalanceSheet : noteWithdraw(assets)
+ARM -> Spoke : reserve(assets, REASON_REDEEM)
+Spoke -> PoolEscrow : mark assets as reserved
+ARM -> Spoke : unreserve(shares, REASON_REDEEM)
+Spoke -> PoolEscrow : mark shares as unreserved
+ARM -> Spoke : transferSharesFrom(escrow→ARM)
+Spoke -> PoolEscrow : transfer shares to ARM
+ARM -> Spoke : revoke(shares)
+Spoke -> ShareToken : burn(shares)
+ARM -> Spoke : noteWithdraw(assets)
 
 note right of PoolEscrow
     Assets: total = Z, reserved = Z
@@ -170,10 +170,10 @@ end note
 
 Investor -> Vault : withdraw()
 Vault --> ARM : withdraw() or redeem()
-ARM -> BalanceSheet : unreserve(assets, REASON_REDEEM)
-BalanceSheet -> PoolEscrow : decrease reserved counter
-ARM -> BalanceSheet : withdraw(EscrowAndTransfer)
-BalanceSheet -> PoolEscrow : withdraw() + authTransferTo()
+ARM -> Spoke : unreserve(assets, REASON_REDEEM)
+Spoke -> PoolEscrow : decrease reserved counter
+ARM -> Spoke : withdraw(EscrowAndTransfer)
+Spoke -> PoolEscrow : withdraw() + authTransferTo()
 PoolEscrow --> Investor : transfer assets
 
 note right of Investor

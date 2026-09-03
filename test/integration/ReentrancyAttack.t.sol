@@ -5,15 +5,14 @@ import {EndToEndFlows} from "./EndToEnd.t.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {ERC20} from "../../src/misc/ERC20.sol";
-import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IERC7751} from "../../src/misc/interfaces/IERC7751.sol";
 import {SafeTransferLib} from "../../src/misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {ISnapshotHook} from "../../src/core/hub/interfaces/ISnapshotHook.sol";
-import {IBalanceSheet, WithdrawMode} from "../../src/core/spoke/interfaces/IBalanceSheet.sol";
 
 // ============================================================================
 // ATTACK CONTRACTS - Inline for easier security review
@@ -29,7 +28,7 @@ import {IBalanceSheet, WithdrawMode} from "../../src/core/spoke/interfaces/IBala
 /// 2. Alice is removed as manager by Bob
 /// 3. Bob calls Hub.multicall([updateHoldingValue(...)])
 /// 4. updateHoldingValue() triggers this hook via holdings.callOnSyncSnapshot()
-/// 5. This hook re-enters Hub.updateHubManager(poolId, Alice, true)
+/// 5. This hook re-enters Hub.updateManager(poolId, Alice, true)
 /// 6. _isManager(poolId) checks msgSender() which returns _sender = Bob
 /// 7. The check passes and Alice is re-added as manager!
 contract MaliciousSnapshotHook is ISnapshotHook {
@@ -60,6 +59,53 @@ contract MaliciousSnapshotHook is ISnapshotHook {
     function onTransfer(PoolId, ShareClassId, uint16, uint16, uint128) external {}
 }
 
+/// @notice Reproduces bug bounty issue #1: incorrect msgValue() handling during batching.
+/// @dev Models the "Manager B Safe" from the report. The hook is itself a pool manager (so the
+///      reentrant Hub call passes msgSender()'s manager check, since msg.sender is the hook, not
+///      the gateway). During an active Hub batch it makes a reentrant *payable* call into the Hub.
+///
+///      With the buggy msgValue() (`_sender != address(0) ? 0 : msg.value`), the value was zeroed
+///      simply because a batch was active, dropping the attached ETH and leaving it stuck in the
+///      Hub. After the fix (`_sender != 0 && msg.sender == gateway`), the value is preserved for
+///      this non-gateway caller and forwarded through the normal refund flow.
+contract ValueStuckHook is ISnapshotHook {
+    IHub public immutable hub;
+    PoolId public immutable targetPool;
+    ShareClassId public immutable scId;
+    uint16 public immutable centrifugeId;
+    address public immutable refund;
+    uint256 public immutable value;
+    bool public executed;
+
+    constructor(
+        IHub hub_,
+        PoolId targetPool_,
+        ShareClassId scId_,
+        uint16 centrifugeId_,
+        address refund_,
+        uint256 value_
+    ) {
+        hub = hub_;
+        targetPool = targetPool_;
+        scId = scId_;
+        centrifugeId = centrifugeId_;
+        refund = refund_;
+        value = value_;
+    }
+
+    function onSync(PoolId poolId, ShareClassId, uint16) external {
+        if (PoolId.unwrap(poolId) == PoolId.unwrap(targetPool) && !executed) {
+            executed = true;
+            // Reentrant payable call while the batch is still active.
+            hub.notifySharePrice{value: value}(targetPool, scId, centrifugeId, refund);
+        }
+    }
+
+    function onTransfer(PoolId, ShareClassId, uint16, uint16, uint128) external {}
+
+    receive() external payable {}
+}
+
 /// @notice Contract that tests the refund callback vulnerability in same-chain deployments
 /// @dev This contract was created to test if the `_sender` pattern could be exploited
 ///      via MessageDispatcher._refund() callback. Testing showed this attack does NOT work
@@ -71,7 +117,7 @@ contract MaliciousSnapshotHook is ISnapshotHook {
 /// 2. Hub.notifyPool() → MessageDispatcher.sendNotifyPool() → _refund(ATTACKER)
 /// 3. _refund does: payable(ATTACKER).call{value: msg.value}("")
 /// 4. This contract's receive() is triggered with _sender still set to Manager
-/// 5. receive() calls Hub.updateHubManager() to add itself as manager
+/// 5. receive() calls Hub.updateManager() to add itself as manager
 contract RefundAttacker {
     IHub public immutable hub;
     PoolId public immutable targetPool;
@@ -112,7 +158,7 @@ contract RefundAttacker {
 /// - Stablecoin gets compromised via malicious upgrade
 /// - BSM withdraws compromised token, triggering drain of USDC
 contract MaliciousERC20 is ERC20 {
-    IBalanceSheet public balanceSheet;
+    ISpoke public balanceSheet;
     PoolId public targetPool;
     ShareClassId public targetScId;
     address public targetAsset; // USDC to drain
@@ -128,7 +174,7 @@ contract MaliciousERC20 is ERC20 {
     /// @notice Configure the attack parameters
     /// @dev Must be called before the attack can execute
     function setAttackParams(
-        IBalanceSheet balanceSheet_,
+        ISpoke balanceSheet_,
         PoolId poolId_,
         ShareClassId scId_,
         address targetAsset_,
@@ -175,9 +221,7 @@ contract MaliciousERC20 is ERC20 {
                 // - We're still inside BalanceSheet.multicall
                 // - _sender is still set to BSM
                 // - isManager(msgSender()) will pass
-                balanceSheet.withdraw(
-                    targetPool, targetScId, targetAsset, 0, attacker, usdcBalance, WithdrawMode.TransferOnly
-                );
+                balanceSheet.withdraw(targetPool, targetScId, targetAsset, 0, attacker, usdcBalance);
             }
         }
 
@@ -193,7 +237,7 @@ contract MaliciousERC20 is ERC20 {
 /// @notice Tests demonstrating reentrancy vulnerabilities in the Hub's BatchedMulticall pattern
 /// @dev These tests prove that the `_sender` pattern in BatchedMulticall allows privilege escalation
 ///      during external callbacks. The vulnerability exists because:
-///      1. Hub.updateHubManager() does NOT have the `protected` modifier
+///      1. Hub.updateManager() does NOT have the `protected` modifier
 ///      2. _isManager() uses msgSender() which returns _sender during reentrancy
 ///      3. snapshotHook.onSync() is NOT a view function - can call external contracts
 ///
@@ -217,7 +261,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
     ///      1. Alice (FM) sets a malicious snapshotHook with a backdoor
     ///      2. Alice is removed as manager by Bob
     ///      3. Bob triggers multicall with updateHoldingValue
-    ///      4. The hook re-enters updateHubManager to re-add Alice
+    ///      4. The hook re-enters updateManager to re-add Alice
     ///      5. _isManager() passes because msgSender() returns Bob (_sender)
     ///
     /// Expected: If vulnerability exists, test PASSES (Alice re-added)
@@ -236,9 +280,9 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
         vm.stopPrank();
 
         // Verify snapshot is active (mock hook was called)
@@ -274,7 +318,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
 
         // 4. ATTACK: Bob triggers multicall with updateHoldingValue
         // This will trigger holdings.callOnSyncSnapshot() -> maliciousHook.onSync()
-        // The hook will re-enter hub.updateHubManager(POOL_A, Alice, true)
+        // The hook will re-enter hub.updateManager(POOL_A, Alice, true)
         // Since _sender = Bob, the _isManager check will pass!
         bytes[] memory calls = new bytes[](1);
         calls[0] = abi.encodeCall(IHub.updateHoldingValue, (POOL_A, SC_1, s.usdcId));
@@ -301,9 +345,9 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
-        s.balanceSheet.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
         vm.stopPrank();
 
         vm.deal(BOB, 1 ether);
@@ -326,6 +370,54 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.prank(BOB);
         vm.expectRevert(IHub.NotManager.selector);
         h.hub.updateHoldingValue(POOL_A, SC_1, s.usdcId);
+    }
+
+    /// @notice Bug bounty issue #1: a reentrant payable call during a batch must not drop its ETH.
+    /// @dev A malicious manager sets a snapshot hook. The hook (modeling a separate manager Safe
+    ///      that pre-signed a payable Hub op) reenters Hub.notifySharePrice with real ETH while the
+    ///      batch is active. The reentrant ETH must follow the normal refund flow, not be stuck.
+    /// forge-config: default.isolate = true
+    function testSnapshotHookReentrancyDoesNotStuckValue() public {
+        // Same-chain so the local refund branch in MessageDispatcher is exercised.
+        _configurePool(true);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        // Establish snapshot state so the hook fires during updateHoldingValue().
+        vm.startPrank(ERC20_DEPLOYER);
+        s.usdc.mint(BSM, USDC_AMOUNT_1);
+        vm.stopPrank();
+
+        vm.startPrank(BSM);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
+        vm.stopPrank();
+
+        address RECEIVER = makeAddr("RECEIVER");
+        uint256 stuckValue = 1 ether;
+
+        ValueStuckHook hook = new ValueStuckHook(h.hub, POOL_A, SC_1, h.centrifugeId, RECEIVER, stuckValue);
+        vm.deal(address(hook), stuckValue);
+
+        // The reentrant caller must itself be a manager (the pre-signed Safe), so msgSender()'s
+        // manager check passes when the hook reenters.
+        vm.startPrank(FM);
+        h.hub.updateHubManager(POOL_A, address(hook), true);
+        h.hub.setSnapshotHook(POOL_A, hook);
+        vm.stopPrank();
+
+        uint256 hubBalanceBefore = address(h.hub).balance;
+
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeCall(IHub.updateHoldingValue, (POOL_A, SC_1, s.usdcId));
+
+        vm.prank(FM);
+        h.hub.multicall(calls);
+
+        // The reentrant payable call fired and its ETH was refunded, not stuck in the Hub.
+        assertTrue(hook.executed(), "hook should have reentered with value");
+        assertEq(RECEIVER.balance, stuckValue, "reentrant ETH should be refunded, not stuck");
+        assertEq(address(h.hub).balance, hubBalanceBefore, "no ETH should be stuck in the Hub");
     }
 
     // ========================================================================
@@ -422,19 +514,28 @@ contract ReentrancyAttackTest is EndToEndFlows {
         vm.stopPrank();
 
         vm.startPrank(BSM);
-        s.usdc.approve(address(s.balanceSheet), USDC_AMOUNT_1);
-        s.balanceSheet.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
+        s.usdc.approve(address(s.spoke), USDC_AMOUNT_1);
+        s.spoke.deposit(POOL_A, SC_1, address(s.usdc), 0, USDC_AMOUNT_1);
         vm.stopPrank();
 
         // 2. Deploy malicious token and configure attack parameters
         address attackerReceiver = makeAddr("ATTACKER_RECEIVER");
         MaliciousERC20 maliciousToken = new MaliciousERC20();
-        maliciousToken.setAttackParams(s.balanceSheet, POOL_A, SC_1, address(s.usdc), attackerReceiver);
+        maliciousToken.setAttackParams(s.spoke, POOL_A, SC_1, address(s.usdc), attackerReceiver);
 
-        // 3. Fund the pool escrow with malicious token directly (bypass registration)
-        // This simulates a scenario where a compromised/malicious token is already in the escrow
-        address escrowAddress = address(s.balanceSheet.escrow(POOL_A));
+        // 3. Register the malicious token as an asset, then fund the pool escrow with it directly.
+        // This simulates a stablecoin that was legitimately registered and later turned malicious via a
+        // compromised/malicious upgrade (noteDeposit requires a registered asset to resolve its AssetId).
+        vm.prank(ANY);
+        s.spoke.registerAsset{value: GAS}(h.centrifugeId, address(maliciousToken), 0, ANY);
+
+        address escrowAddress = address(s.spoke.escrow(POOL_A));
         maliciousToken.mint(escrowAddress, 1000);
+
+        // Reconcile the tokens already sitting in the escrow into the hub-accounted holding, so the
+        // subsequent withdraw() has balance to draw against (noteDeposit performs no token movement).
+        vm.prank(BSM);
+        s.spoke.noteDeposit(POOL_A, SC_1, address(maliciousToken), 0, 1000);
 
         // Record balances before attack
         uint256 attackerUsdcBefore = s.usdc.balanceOf(attackerReceiver);
@@ -448,11 +549,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
         // The transfer() callback will reenter BalanceSheet.withdraw() to drain USDC
         // Using TransferOnly mode bypasses accounting checks for the malicious token withdrawal
         bytes[] memory calls = new bytes[](1);
-        // Use explicit selector for the 7-param withdraw overload with WithdrawMode enum
-        bytes4 withdrawSelector = bytes4(keccak256("withdraw(uint64,bytes16,address,uint256,address,uint128,uint8)"));
-        calls[0] = abi.encodeWithSelector(
-            withdrawSelector, POOL_A, SC_1, address(maliciousToken), 0, BSM, 500, WithdrawMode.TransferOnly
-        );
+        calls[0] = abi.encodeCall(ISpoke.withdraw, (POOL_A, SC_1, address(maliciousToken), 0, BSM, 500));
 
         vm.prank(BSM);
         vm.expectRevert(
@@ -460,11 +557,11 @@ contract ReentrancyAttackTest is EndToEndFlows {
                 IERC7751.WrappedError.selector,
                 address(maliciousToken),
                 maliciousToken.transfer.selector,
-                abi.encodeWithSelector(IAuth.NotAuthorized.selector),
+                abi.encodeWithSelector(ISpoke.NotManager.selector),
                 abi.encodeWithSelector(SafeTransferLib.SafeTransferFailed.selector)
             )
         );
-        s.balanceSheet.multicall(calls);
+        s.spoke.multicall(calls);
 
         // 5. ASSERT: Attack was prevented - USDC remains in escrow
         uint256 attackerUsdcAfter = s.usdc.balanceOf(attackerReceiver);

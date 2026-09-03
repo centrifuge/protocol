@@ -3,9 +3,7 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
-import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {IScheduleAuthMessageSender} from "../../../src/core/messaging/interfaces/IGatewaySenders.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
@@ -15,6 +13,8 @@ import {IProtocolGuardian} from "../../../src/admin/interfaces/IProtocolGuardian
 
 import "forge-std/Test.sol";
 
+import {ITokenBridge} from "../../../src/bridge/interfaces/ITokenBridge.sol";
+
 contract IsContract {}
 
 contract ProtocolGuardianTest is Test {
@@ -22,35 +22,29 @@ contract ProtocolGuardianTest is Test {
 
     IRoot immutable root = IRoot(address(new IsContract()));
     ISafe immutable SAFE = ISafe(address(new IsContract()));
-    IGateway immutable gateway = IGateway(address(new IsContract()));
     IScheduleAuthMessageSender immutable sender = IScheduleAuthMessageSender(address(new IsContract()));
+    ITokenBridge immutable tokenBridge = ITokenBridge(address(new IsContract()));
 
     address immutable OWNER = makeAddr("owner");
     address immutable UNAUTHORIZED = makeAddr("unauthorized");
     address immutable TARGET = makeAddr("target");
-    address immutable TOKEN = makeAddr("token");
-    address immutable TO = makeAddr("to");
     address immutable REFUND = makeAddr("refund");
     IAdapter immutable ADAPTER = IAdapter(makeAddr("adapter"));
 
     uint16 constant CENTRIFUGE_ID = 1;
-    uint256 constant TOKEN_ID = 1;
-    uint256 constant AMOUNT = 100;
     uint256 constant COST = 123;
-    PoolId constant GLOBAL_POOL = PoolId.wrap(0);
-
     ProtocolGuardian protocolGuardian;
 
     function setUp() public {
-        protocolGuardian = new ProtocolGuardian(SAFE, root, gateway, sender);
+        protocolGuardian = new ProtocolGuardian(SAFE, root, sender, tokenBridge);
         vm.deal(address(SAFE), 1 ether);
     }
 
     function testProtocolGuardian() public view {
         assertEq(address(protocolGuardian.safe()), address(SAFE));
         assertEq(address(protocolGuardian.root()), address(root));
-        assertEq(address(protocolGuardian.gateway()), address(gateway));
         assertEq(address(protocolGuardian.sender()), address(sender));
+        assertEq(address(protocolGuardian.tokenBridge()), address(tokenBridge));
     }
 }
 
@@ -194,73 +188,6 @@ contract ProtocolGuardianTestCancelUpgrade is ProtocolGuardianTest {
     }
 }
 
-contract ProtocolGuardianTestRecoverTokens is ProtocolGuardianTest {
-    using CastLib for address;
-
-    function testRecoverTokensSuccess() public {
-        vm.mockCall(
-            address(sender),
-            COST,
-            abi.encodeWithSelector(
-                sender.sendRecoverTokens.selector,
-                CENTRIFUGE_ID,
-                TARGET.toBytes32(),
-                TOKEN.toBytes32(),
-                TOKEN_ID,
-                TO.toBytes32(),
-                AMOUNT,
-                REFUND
-            ),
-            abi.encode()
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.recoverTokens{value: COST}(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
-    }
-
-    function testRecoverTokensRevertWhenNotSafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.recoverTokens(CENTRIFUGE_ID, TARGET, TOKEN, TOKEN_ID, TO, AMOUNT, REFUND);
-    }
-}
-
-contract ProtocolGuardianTestBlockOutgoing is ProtocolGuardianTest {
-    function testBlockOutgoingBlockSuccess() public {
-        vm.mockCall(
-            address(gateway),
-            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, true),
-            abi.encode()
-        );
-        vm.expectCall(
-            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, true)
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
-    }
-
-    function testBlockOutgoingUnblockSuccess() public {
-        vm.mockCall(
-            address(gateway),
-            abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, false),
-            abi.encode()
-        );
-        vm.expectCall(
-            address(gateway), abi.encodeWithSelector(IGateway.blockOutgoing.selector, CENTRIFUGE_ID, GLOBAL_POOL, false)
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, false);
-    }
-
-    function testBlockOutgoingRevertWhenNotSafe() public {
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.blockOutgoing(CENTRIFUGE_ID, true);
-    }
-}
-
 contract ProtocolGuardianTestFile is ProtocolGuardianTest {
     function testFileSafeSuccess() public {
         address newSafe = makeAddr("newSafe");
@@ -292,21 +219,45 @@ contract ProtocolGuardianTestFile is ProtocolGuardianTest {
         protocolGuardian.file("invalid", makeAddr("address"));
     }
 
-    function testFileGatewaySuccess() public {
-        address newGateway = makeAddr("newGateway");
+    function testFileTokenBridgeSuccess() public {
+        address newTokenBridge = makeAddr("newTokenBridge");
 
         vm.expectEmit();
-        emit IProtocolGuardian.File("gateway", newGateway);
+        emit IProtocolGuardian.File("tokenBridge", newTokenBridge);
 
         vm.prank(address(SAFE));
-        protocolGuardian.file("gateway", newGateway);
+        protocolGuardian.file("tokenBridge", newTokenBridge);
 
-        assertEq(address(protocolGuardian.gateway()), newGateway);
+        assertEq(address(protocolGuardian.tokenBridge()), newTokenBridge);
     }
 
     function testFileRevertWhenNotSafe() public {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.file("safe", makeAddr("address"));
+    }
+}
+
+contract ProtocolGuardianTestTokenBridge is ProtocolGuardianTest {
+    function testFileRelayerSuccess() public {
+        address relayer = makeAddr("relayer");
+
+        vm.mockCall(
+            address(tokenBridge),
+            abi.encodeWithSignature("file(bytes32,address)", bytes32("relayer"), relayer),
+            abi.encode()
+        );
+        vm.expectCall(
+            address(tokenBridge), abi.encodeWithSignature("file(bytes32,address)", bytes32("relayer"), relayer)
+        );
+
+        vm.prank(address(SAFE));
+        protocolGuardian.fileTokenBridgeRelayer(relayer);
+    }
+
+    function testFileRelayerRevertWhenNotSafe() public {
+        vm.prank(UNAUTHORIZED);
+        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
+        protocolGuardian.fileTokenBridgeRelayer(makeAddr("relayer"));
     }
 }

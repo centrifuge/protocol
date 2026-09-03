@@ -1,13 +1,13 @@
 # Hub Managers
 
-Hub managers provide higher-level abstractions for pool management on the Hub, including NAV (Net Asset Value) tracking, accounting integration, and share price calculation for single-share-class pools. These managers coordinate with `Holdings`, `Accounting`, and `ShareClassManager` to maintain pool financial state.
+Hub managers are pool-scoped contracts registered as managers on the Hub to provide governance and oversight around the authorization (policy) flow.
 
 ![Hub Managers architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/managers/hub-managers.puml)
 
-### `NAVManager`
+### `Supervisor`
 
-`NAVManager` abstracts accounting of net asset value (NAV) for pools. It implements `ISnapshotHook` to receive callbacks when spokes reach snapshot state or when shares are transferred, triggering NAV calculations. The manager creates and manages accounting accounts per network (equity, liability, gain, loss) and initializes holdings with appropriate account mappings. The contract assumes all assets in a pool are shared across all share classes rather than being segregated.
+`Supervisor` is a pool-scoped sentinel registry and veto layer for the authorize flow. It holds no positive power of its own; its sole job is to let the sentinels it tracks veto a pending authorization during the policy delay window. It is registered as a Hub manager for its pool only so it can reach `IHub.cancelAuthorization` on behalf of sentinels (which are not themselves Hub managers). The hub, pool, and contract updater are immutable; the sentinel set is managed via `IHub.managerCall` through the pool's Envoy path.
 
-### `SimplePriceManager`
+### `SupervisorFactory`
 
-`SimplePriceManager` calculates share prices for single-share-class pools based on NAV and total share issuance. It implements `INAVHook` to receive NAV updates from `NAVManager` and automatically computes and broadcasts share prices to configured networks. The contract maintains aggregate metrics (total issuance and NAV) across all networks and tracks per-network metrics for incremental updates. When NAV updates occur, the manager recalculates the pool-wide share price (NAV / total shares) and notifies all registered networks of the new price.
+`SupervisorFactory` deploys a `Supervisor` per pool at a deterministic, previewable CREATE2 address derived from `(poolId, envoy)` (the `hub` is a factory immutable). This lets a pool's supervisor address be computed ahead of deployment.

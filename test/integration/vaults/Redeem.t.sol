@@ -1,16 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {
-    AssetId,
-    AsyncVault,
-    VaultBaseTest as BaseTest,
-    ERC20,
-    IShareToken,
-    PoolId,
-    ShareClassId,
-    VaultKind
-} from "./VaultBaseTest.sol";
+import {AssetId, AsyncVault, VaultBaseTest as BaseTest, ERC20, PoolId, ShareClassId} from "./VaultBaseTest.sol";
 
 import {D18} from "../../../src/misc/types/D18.sol";
 import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
@@ -23,6 +14,8 @@ import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+
 contract RedeemTest is BaseTest {
     using MessageLib for *;
     using RequestMessageLib for *;
@@ -32,7 +25,7 @@ contract RedeemTest is BaseTest {
     function testRedeem(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -46,7 +39,7 @@ contract RedeemTest is BaseTest {
         vault.requestRedeem(0, self, self);
 
         // will fail - investment asset not allowed
-        centrifugeChain.unlinkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
+        centrifugeChain.unlinkVault(vault.poolId().raw(), vault.scId().raw(), address(vault_));
         vm.expectRevert(IAsyncRequestManager.VaultNotLinked.selector);
         vault.requestRedeem(amount, address(this), address(this));
 
@@ -56,9 +49,9 @@ contract RedeemTest is BaseTest {
         uint128 assets = uint128((amount * 10 ** 18) / defaultPrice);
 
         // success
-        centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), vault_);
+        centrifugeChain.linkVault(vault.poolId().raw(), vault.scId().raw(), address(vault_));
         vault.requestRedeem(amount, address(this), address(this));
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(vault.pendingRedeemRequest(0, self), amount);
         assertEq(vault.claimableRedeemRequest(0, self), 0);
 
@@ -76,7 +69,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.maxRedeem(self), amount); // max deposit
         assertEq(vault.pendingRedeemRequest(0, self), 0);
         assertEq(vault.claimableRedeemRequest(0, self), amount);
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0);
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assets);
 
         // can redeem to self
@@ -88,8 +81,8 @@ contract RedeemTest is BaseTest {
 
         assertEq(shareToken.balanceOf(self), 0);
 
-        assertTrue(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))) <= 1);
-        assertTrue(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))) <= 1);
+        assertTrue(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))) <= 1);
+        assertTrue(erc20.balanceOf(address(spoke.escrow(vault.poolId()))) <= 1);
 
         assertApproxEqAbs(erc20.balanceOf(self), (amount / 2), 1);
         assertApproxEqAbs(erc20.balanceOf(investor), (amount / 2), 1);
@@ -106,7 +99,7 @@ contract RedeemTest is BaseTest {
     function testWithdraw(uint256 amount) public {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -116,7 +109,7 @@ contract RedeemTest is BaseTest {
         );
 
         vault.requestRedeem(amount, address(this), address(this));
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertGt(vault.pendingRedeemRequest(0, self), 0);
 
         // trigger executed collectRedeem
@@ -128,7 +121,7 @@ contract RedeemTest is BaseTest {
         // assert withdraw & redeem values adjusted
         assertEq(vault.maxWithdraw(self), assets); // max deposit
         assertEq(vault.maxRedeem(self), amount); // max deposit
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0);
         assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assets);
 
         // can redeem to self
@@ -154,7 +147,7 @@ contract RedeemTest is BaseTest {
         uint256 amount = redemption1 + redemption2;
         vm.assume(amountAssumption(amount));
 
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -174,9 +167,12 @@ contract RedeemTest is BaseTest {
     }
 
     function testCancelRedeemOrder(uint256 amount) public {
-        amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
+        // Bounded to MAX_UINT128 / 4: `deposit()` below requests 2 * amount, and each deposit is
+        // queued twice (noteDeposit, then unreserve on approval) in the balance sheet's asset
+        // accounting, so the effective ceiling is MAX_UINT128 / 4 per unit of `amount`.
+        amount = uint128(bound(amount, 2, MAX_UINT128 / 4));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         deposit(vault_, self, amount * 2); // deposit funds first
@@ -193,7 +189,7 @@ contract RedeemTest is BaseTest {
         vault.cancelRedeemRequest(0, self);
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
 
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(shareToken.balanceOf(self), amount);
 
         // check message was send out to centchain
@@ -219,7 +215,7 @@ contract RedeemTest is BaseTest {
             vault.poolId().raw(), vault.scId().raw(), CastLib.toBytes32(self), assetId, 0, 0, uint128(amount)
         );
 
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(shareToken.balanceOf(self), amount);
         assertEq(vault.claimableCancelRedeemRequest(0, self), amount);
         assertEq(vault.pendingCancelRedeemRequest(0, self), false);
@@ -229,7 +225,7 @@ contract RedeemTest is BaseTest {
     }
 
     function testPartialRedemptionExecutions() public {
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         PoolId poolId = vault.poolId();
@@ -293,7 +289,7 @@ contract RedeemTest is BaseTest {
     function partialRedeem(ShareClassId scId, AsyncVault vault, ERC20 asset) public {
         IShareToken shareToken = IShareToken(address(vault.share()));
 
-        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId);
+        AssetId assetId = spokeRegistry.assetToId(address(asset), erc20TokenId);
         uint256 totalShares = shareToken.balanceOf(self);
         uint256 redeemAmount = 50000000000000000000;
         assertTrue(redeemAmount <= totalShares);

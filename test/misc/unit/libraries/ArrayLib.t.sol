@@ -28,21 +28,9 @@ contract ArrayLibTest is Test {
             vm.assume(initialArray[i] > type(int16).min);
         }
         storedArray = initialArray;
-        storedArray.decreaseFirstNValues(valuesToDecrease, valuesToDecrease);
+        storedArray.decreaseFirstNValues(valuesToDecrease);
 
         assertEq(uint8(int8(_sum(initialArray) - _sum(storedArray))), valuesToDecrease);
-    }
-
-    function testDecreaseFirstNValuesButNotBelowZeroAfterIndex(uint8 valuesToDecrease, uint8 numValuesLowerZeroIndex)
-        public
-    {
-        valuesToDecrease = uint8(bound(valuesToDecrease, 0, 8));
-        numValuesLowerZeroIndex = uint8(bound(numValuesLowerZeroIndex, 0, valuesToDecrease));
-
-        int16[8] memory initialArray = storedArray;
-        storedArray.decreaseFirstNValues(valuesToDecrease, numValuesLowerZeroIndex);
-
-        assertEq(uint8(int8(_sum(initialArray) - _sum(storedArray))), numValuesLowerZeroIndex);
     }
 
     function _sum(int16[8] memory arr) internal pure returns (int256 count) {

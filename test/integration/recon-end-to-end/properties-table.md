@@ -1,3 +1,6 @@
+Status column: ✅ holds under fuzzing · ❌ known to break, see `.claude/docs/recon/13-acknowledged-risks.md`
+· 📄 documented in the suite but not exercised by any handler.
+
 | # | Function Name | Property Description | Passing |
 |----|--------------|---------------------|----------|
 | 1 | vault_maxDeposit | user can always maxDeposit if they have > 0 assets and are approved | ✅ |
@@ -29,10 +32,10 @@
 | 27 | vault_6_redeem (erc7540_6) | 7540-6 claiming more than max redeem always reverts | ✅ |
 | 28 | vault_7 (erc7540_7) | 7540-7 requestRedeem reverts if the share balance is less than amount | ✅ |
 | 29 | vault_8 (erc7540_8) | 7540-8 preview* always reverts | ✅ |
-| 30 | vault_9_deposit (erc7540_9) | 7540-9 if maxDeposit > 0, then deposit(max) should not revert | ✅ |
-| 31 | vault_9_mint (erc7540_9) | 7540-9 if maxMint > 0, then mint(max) should not revert | ✅ |
-| 32 | vault_9_withdraw (erc7540_9) | 7540-9 if maxWithdraw > 0, then withdraw(max) should not revert | ✅ |
-| 33 | vault_9_redeem (erc7540_9) | 7540-9 if maxRedeem > 0, then redeem(max) should not revert | ✅ |
+| 30 | erc7540_9_deposit | 7540-9 if maxDeposit > 0, then deposit(max) should not revert — spec reference only, no `vault_9_*` wrapper is exposed | 📄 |
+| 31 | erc7540_9_mint | 7540-9 if maxMint > 0, then mint(max) should not revert — spec reference only | 📄 |
+| 32 | erc7540_9_withdraw | 7540-9 if maxWithdraw > 0, then withdraw(max) should not revert — spec reference only | 📄 |
+| 33 | erc7540_9_redeem | 7540-9 if maxRedeem > 0, then redeem(max) should not revert — spec reference only | 📄 |
 | 34 | property_sentinel_token_balance | Sentinel: current actor can reach a non-zero share balance | ✅ |
 | 35 | property_sum_of_shares_received | Sum of share tokens received on `deposit` and `mint` <= sum of fulfilledDepositRequest.shares | ✅ |
 | 36 | property_sum_of_assets_received | the sum of assets received on redeem and withdraw <= sum of payout of fulfilledRedeemRequest | ✅ |
@@ -67,9 +70,13 @@
 | 65 | property_sum_pending_user_redeem_geq_total_pending_redeem | The sum of pending user redeem amounts is always >= total pending redeem amount | ✅ |
 | 66 | property_sum_pending_user_redeem_geq_total_pending_redeem | The total pending redeem amount is always >= the approved redeem amount | ✅ |
 | 67 | property_epochId_can_increase_by_one_within_same_transaction | The epoch of a pool epochId[poolId] can increase at most by one within the same transaction | ✅ |
+| 67a | property_epoch_pointer_ordering | BRM epoch pointers: issueEpoch <= depositEpoch and revokeEpoch <= redeemEpoch, always (EW5) | ✅ |
 | 68 | property_decrease_valuation_no_increase_in_accountValue | account.totalDebit and account.totalCredit is always less than uint128(type(int128).max) | ✅ |
 | 69 | property_decrease_valuation_no_increase_in_accountValue | Any decrease in valuation should not result in an increase in accountValue | ✅ |
-| 70 | property_accounting_and_holdings_soundness | Value of Holdings == accountValue(Asset) | ✅ |
+| 70 | property_accounting_and_holdings_soundness | accountValue(assetAccount(assetId)) >= sum over share classes of holdings.value(poolId, scId, assetId): one asset account is shared by every share class holding that asset | ✅ |
+| 70a | property_accounting_books_balance | Per pool, sum of account totalDebit equals sum of totalCredit (double-entry, lock()-enforced) (EW2) | ✅ |
+| 70b | property_deficitCountMatchesHoldings | deficitCount(pool, share class, network) equals the number of holdings with decreasedAmount > increasedAmount, recomputed from holdingAmounts | ✅ |
+| 70c | property_deficitCountMatchesHoldings | networkDeficitCount(pool, network) equals the sum of deficitCount over the network's share classes: the rollup a snapshot hook gates on never drifts from what it rolls up | ✅ |
 | 71 | property_user_cannot_mutate_pending_redeem | A user cannot mutate their pending redeem amount if the epoch has not advanced | ✅ |
 | 72 | property_additions_dont_cause_ppfs_loss | operations which increase deposits/shares don't decrease PPS | ✅ |
 | 73 | property_removals_dont_cause_ppfs_loss | operations which remove deposits/shares don't decrease PPS | ✅ |
@@ -87,10 +94,8 @@
 | 85 | property_shareQueueAssetCounter | Verifies that the asset counter accurately reflects non-empty asset queues | ✅ |
 | 86 | property_assetQueueCounterConsistency | queuedAssetCounter matches the number of non-empty asset queues | ✅ |
 | 87 | property_assetCounterBounds | queuedAssetCounter does not exceed total number of tracked assets | ✅ |
-| 88 | property_assetQueueNonNegative | Asset queue deposits/withdrawals can never underflow | ✅ |
 | 89 | property_nonceMonotonicity | Nonce strictly increases with each queue submission | ✅ |
-| 90 | property_reserveUnreserveBalanceIntegrity | Reserve operations maintain PoolEscrow balance consistency (available + reserved = total) | ✅ |
-| 91 | property_availableGtQueued | BalanceSheet must always have sufficient balance for queued assets | ❌ |
+| 91 | property_availableGtQueued | The balance sheet must always have sufficient balance for queued assets | ❌ |
 | 92 | property_authorizationBypass | authorization checks can't be bypassed | ❌ |
 | 93 | property_authorizationLevel | successful authorized calls must be made by authorized accounts | ✅ |
 | 94 | property_authorizationChange | authorization changes are correctly tracked | ✅ |
@@ -104,6 +109,14 @@
 | 102 | balanceSheet_noteDeposit | PoolEscrow.total increases by exactly the amount deposited | ✅ |
 | 103 | balanceSheet_noteDeposit | PoolEscrow.reserved does not change during noteDeposit | ✅ |
 | 104 | balanceSheet_withdraw | Withdrawals should not fail when there's sufficient balance | ✅ |
+| 104a | balanceSheet_withdrawReserved | PoolEscrow.total and PoolEscrow.reserved both decrease by exactly the amount withdrawn | ✅ |
+| 104b | balanceSheet_withdrawReserved | withdrawReserved does not queue a Hub holding decrease (already queued when reserved) | ✅ |
+| 104c | balanceSheet_withdrawShares | withdrawShares moves shares out of the pool escrow with no change to queuedShares — handler is `internal`, reachable only via `balanceSheet_withdrawShares_clamped` or a reproducer | ✅ |
+| 104d | property_escrowBalanceMatchesHoldingTotal | The pool escrow's raw token balance for an asset equals the sum of holding.total across share classes | ✅ |
+| 104e | property_hubHoldingMatchesEscrowAccounted | Holdings conservation law: once the asset queue is drained, hub holdings.amount equals escrow accounted (total - reserved, floored at 0), exactly, incl. through over-reserve deficit excursions | ✅ |
+| 104f | property_holdingZeroAmountHasZeroValue | A holding with zero derived amount carries zero value (no phantom NAV stranded on an emptied holding) | ✅ |
+| 104g | hub_updateHoldingValue | Inline: immediately after update(), holdings.value equals getQuote(holdings.amount) (mark-to-market coherence) | ✅ |
+| 104h | property_poolEscrowReservedSumConsistency | Per pool x scId, holding.reserved equals the sum of keyed reservedBy over ARM and both reasons (EW1) | ✅ |
 | 105 | doomsday_mint | user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision | ✅ |
 | 106 | doomsday_mint | user should always be able to deposit less than maxMint | ✅ |
 | 107 | doomsday_mint | user pays pricePerShare + precision, the amount of shares user receives should be pricePerShare - precision | ✅ |
@@ -116,6 +129,8 @@
 | 114 | doomsday_impliedPricePerShare_never_changes_after_user_operation | implied pricePerShare (totalAssets / totalSupply) never changes after a user operation | ✅ |
 | 115 | doomsday_accountValue | accounting.accountValue should never revert | ✅ |
 | 116 | doomsday_zeroPrice_noPanics | System handles all operations gracefully at zero price | ✅ |
+| 116a | doomsday_claimCancelDepositRequest_always_claimable | If claimableCancelDeposit > 0, the claim succeeds and pays exactly that amount (EW3, DOS) | ✅ |
+| 116b | doomsday_claimCancelRedeemRequest_always_claimable | If claimableCancelRedeem > 0, the claim succeeds and returns exactly those shares (EW3, DOS) | ✅ |
 | 117 | hub_notifyDeposit | After successfully calling claimDeposit for an investor (via notifyDeposit), their allocation decreases | ✅ |
 | 118 | hub_notifyDeposit | PoolEscrow.total increases by exactly totalPaymentAssetAmount | ✅ |
 | 119 | hub_notifyDeposit | PoolEscrow.reserved does not change during deposit processing | ✅ |
@@ -131,3 +146,45 @@
 | 129 | vault_cancelDepositRequest | cancelDepositRequest absolute value should never be higher than pendingDeposit (would result in underflow) | ✅ |
 | 130 | vault_cancelRedeemRequest | After successfully calling cancelRedeemRequest for an investor, their shares are returned | ✅ |
 | 131 | vault_cancelRedeemRequest | cancelRedeemRequest absolute value should never be higher than pendingRedeem (would result in underflow) | ✅ |
+
+## Changelog
+
+### 2026-07-27 — merge of origin/main (v3.3 audit fixes, #254/#260/#264/#270)
+
+Added: `property_deficitCountMatchesHoldings` (70b), from main's holdings-deficit-gate PR.
+
+Handler surface changes:
+* `hub_updateAssets` is now `internal` (reproducer/sanity only). It writes the hub ledger directly, which
+  (a) desynchronises the hub snapshot nonce from `SnapshotQueue`'s, permanently reverting every later
+  `submitQueued*` with `InvalidNonce`, and (b) moves `holdings.amount` with no matching escrow move, breaking
+  104e. Its clamped variant was removed. The fuzzer reaches the same deficit state through
+  `balanceSheet_overReserve_clamped` + `balanceSheet_submitQueuedAssets`, pinned by
+  `CryticSanity.test_deficitCountMatchesHoldings_queueDriver`.
+* ~~`spoke_deployAndLinkVault` resolves the deployed vault through the ERC-7575 pointer instead of the
+  `DeployVault` log, so it needs no `recordLogs`/`getRecordedLogs` support from whichever fuzzer drives the suite.
+  A deliberate divergence from main, which kept the log scan.~~ **Retracted 2026-08-04.** #296 deleted
+  `_pointVault`, so there is no pointer to read; the handler now uses `IVaultFactory.getVault`. The
+  cheatcode-independence argument stands, the mechanism does not.
+
+Rows 30-33 re-marked 📄: the `vault_9_*` wrappers were deleted in the 2026-07-20 pass; the `erc7540_9_*`
+bodies survive as spec documentation and are not exercised.
+
+### 2026-07-20 — investment-flow gap additions (docs/invariant-gaps-investment-flow)
+
+Added: `property_accounting_books_balance` (70a, EW2), `property_epoch_pointer_ordering`
+(67a, EW5), `property_poolEscrowReservedSumConsistency` (104h, EW1),
+`doomsday_claimCancelDepositRequest_always_claimable` / `_claimCancelRedeemRequest_`
+(116a/116b, EW3), and inline post-flush zeroing asserts in `balanceSheet_submitQueuedAssets` /
+`balanceSheet_submitQueuedShares` (EW6). Every addition passed a deliberate-falsification check.
+
+Removed (vacuous — algebraically always true, zero signal):
+* `property_reserveUnreserveBalanceIntegrity` (was 90) — asserted restatements of its own
+  `total = available + reserved` definition; its `ghost_reserveIntegrityViolations` was written
+  nowhere. Superseded by EW1 (104h), which reads the real keyed `reservedBy` ledger.
+* `property_assetQueueNonNegative` (was 88) — asserted `uint128 >= 0`.
+
+Not landed (unreachable in the synchronous same-chain harness): EW4 (cancel-flag-implies-pending)
+and EW7 (request-while-cancel-pending reverts). Cancellations round-trip through the real
+MessageDispatcher and fulfill synchronously inside the cancel call, so `pendingCancelDeposit/Redeem`
+is never true at a property checkpoint — both properties would be always-true. See the gap-analysis
+addendum (docs/notes/gap-analysis-2026-07-invariants-investment-flow.md §8).

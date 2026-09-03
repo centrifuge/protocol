@@ -1,0 +1,42 @@
+{
+    "aliases": {
+        "ALL": ["ethereum", "base", "arbitrum", "plume", "avalanche", "bnb-smart-chain", "hyper-evm", "optimism", "monad", "pharos"]
+    },
+    "connections": [
+        {
+            "chains": ["ALL", "ALL"],
+            "adapters": ["axelar", "layerZero"],
+            "threshold": 2
+        },
+        {
+            "chains": [["pharos"], "ALL"],
+            "adapters": ["layerZero"],
+            "threshold": 1
+        },
+        {
+            "chains": [["monad"], "ALL"],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
+        },
+        {
+            "chains": [["monad"], ["plume", "hyper-evm", "pharos"]],
+            "adapters": ["layerZero"],
+            "threshold": 1
+        },
+        {
+            "chains": [["pharos"], ["ethereum"]],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
+        },
+        {
+            "chains": [["plume"], ["ethereum"]],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
+        },
+        {
+            "chains": [["x-layer"], ["ethereum", "base", "arbitrum", "avalanche", "bnb-smart-chain"]],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
+        }
+    ]
+}

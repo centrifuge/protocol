@@ -5,12 +5,13 @@ import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
-import {IGateway, PROCESS_FAIL_MESSAGE_GAS, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "./interfaces/IGateway.sol";
+import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "./interfaces/IGateway.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
 import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
+import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 import {TransientArrayLib} from "../../misc/libraries/TransientArrayLib.sol";
 import {TransientBytesLib} from "../../misc/libraries/TransientBytesLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
@@ -41,15 +42,14 @@ contract Gateway is Auth, Recoverable, IGateway {
     IMessageProperties public messageProperties;
     IProtocolPauser public immutable pauser;
 
-    // Management
-    mapping(PoolId => mapping(address => bool)) public manager;
-
     // Outbound & payments
     bool public transient isBatching;
     bool internal transient _isSendingBatch;
     address internal transient _batcher;
-    mapping(uint16 centrifugeId => mapping(PoolId => bool)) public isOutgoingBlocked;
     mapping(uint16 centrifugeId => mapping(bytes32 batchHash => Underpaid)) public underpaid;
+
+    // Pool-level managers
+    mapping(PoolId => mapping(address => bool)) public manager;
 
     // Inbound
     mapping(uint16 centrifugeId => mapping(bytes32 messageHash => uint256)) public failedMessages;
@@ -89,14 +89,32 @@ contract Gateway is Auth, Recoverable, IGateway {
         emit UpdateManager(poolId, who, canManage);
     }
 
+    /// @inheritdoc IGateway
+    function clearFailedMessage(uint16 centrifugeId, bytes memory message)
+        external
+        onlyAuthOrManager(messageProperties.messagePoolId(message))
+    {
+        bytes32 messageHash = keccak256(message);
+        require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
+
+        failedMessages[centrifugeId][messageHash]--;
+        emit ClearFailedMessage(centrifugeId, messageHash);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Incoming
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IMessageHandler
-    function handle(uint16 centrifugeId, bytes memory batch) public pauseable auth {
-        PoolId batchPoolId = messageProperties.messagePoolId(batch);
+    function handle(uint16 centrifugeId, bytes memory batch)
+        public
+        pauseable
+        onlyAuthOrManager(messageProperties.messagePoolId(batch))
+    {
+        require(centrifugeId != localCentrifugeId, CannotBeReceivedLocally());
 
+        PoolId batchPoolId = messageProperties.messagePoolId(batch);
+        uint128 failureGasReserve = messageProperties.messageFailureGasReserve();
         bytes memory remaining = batch;
         while (remaining.length > 0) {
             uint256 length = messageProperties.messageLength(remaining);
@@ -107,23 +125,34 @@ contract Gateway is Auth, Recoverable, IGateway {
                 require(batchPoolId == messageProperties.messagePoolId(message), MalformedBatch());
             }
 
+            uint16 requiredSource = messageProperties.messageSourceCentrifugeId(message);
+            require(requiredSource == 0 || requiredSource == centrifugeId, SourceMismatch());
+
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
             uint128 gasLimit = messageProperties.messageProcessingGasLimit(localCentrifugeId, message);
             require(gasleft() >= gasLimit, NotEnoughGas());
 
-            _safeProcess(centrifugeId, message, messageHash, gasLimit);
+            _safeProcess(centrifugeId, message, messageHash, gasLimit, failureGasReserve);
         }
     }
 
-    function _safeProcess(uint16 centrifugeId, bytes memory message, bytes32 messageHash, uint128 gasLimit) internal {
+    function _safeProcess(
+        uint16 centrifugeId,
+        bytes memory message,
+        bytes32 messageHash,
+        uint128 gasLimit,
+        uint128 failureGasReserve_
+    ) internal {
         (bool success, bytes memory err) = address(processor)
             .excessivelySafeCall(
-                gasLimit - PROCESS_FAIL_MESSAGE_GAS,
+                gasLimit - failureGasReserve_,
                 0,
                 ERR_MAX_LENGTH,
                 abi.encodeWithSelector(IMessageHandler.handle.selector, centrifugeId, message)
             );
+
+        _afterProcessorCall();
 
         if (success) {
             emit ExecuteMessage(centrifugeId, messageHash);
@@ -132,6 +161,10 @@ contract Gateway is Auth, Recoverable, IGateway {
             emit FailMessage(centrifugeId, messageHash, err);
         }
     }
+
+    // Called immediately after excessivelySafeCall returns, before the success/failure branch.
+    // No-op in production; overridden in test harnesses to insert gas checkpoints.
+    function _afterProcessorCall() internal virtual {}
 
     /// @inheritdoc IGateway
     function retry(uint16 centrifugeId, bytes memory message) external pauseable {
@@ -183,7 +216,7 @@ contract Gateway is Auth, Recoverable, IGateway {
             require(gasLimit <= messageProperties.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
 
             uint256 cost = _send(centrifugeId, message, gasLimit, refund, unpaidMode, msg.value);
-            _refund(refund, msg.value - cost);
+            SafeTransferLib.safeTransferETH(refund, msg.value - cost);
         }
     }
 
@@ -195,9 +228,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         bool unpaidMode,
         uint256 fuel
     ) internal returns (uint256 cost) {
-        PoolId adapterPoolId = messageProperties.messagePoolId(batch);
-        require(!isOutgoingBlocked[centrifugeId][adapterPoolId], OutgoingBlocked());
-
         cost = adapter.estimate(centrifugeId, batch, batchGasLimit);
         if (fuel >= cost) {
             adapter.send{value: cost}(centrifugeId, batch, batchGasLimit, refund);
@@ -206,13 +236,6 @@ contract Gateway is Auth, Recoverable, IGateway {
             cost = 0;
         } else {
             revert NotEnoughGas();
-        }
-    }
-
-    function _refund(address refund, uint256 fuel) internal {
-        if (fuel > 0) {
-            (bool success,) = payable(refund).call{value: fuel}("");
-            require(success, CannotRefund());
         }
     }
 
@@ -235,7 +258,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         underpaid_.counter--;
 
         uint256 cost = _send(centrifugeId, batch, underpaid_.gasLimit, refund, false, msg.value);
-        _refund(refund, msg.value - cost);
+        SafeTransferLib.safeTransferETH(refund, msg.value - cost);
 
         if (underpaid_.counter == 0) delete underpaid[centrifugeId][batchHash];
 
@@ -265,10 +288,10 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(address(_batcher) == address(0), CallbackWasNotLocked());
 
         if (isNested) {
-            _refund(refund, msg.value - callbackValue);
+            SafeTransferLib.safeTransferETH(refund, msg.value - callbackValue);
         } else {
             uint256 cost = _endBatching(msg.value - callbackValue, refund);
-            _refund(refund, msg.value - callbackValue - cost);
+            SafeTransferLib.safeTransferETH(refund, msg.value - callbackValue - cost);
         }
     }
 
@@ -307,12 +330,6 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(_batcher != address(0), CallbackIsLocked());
         require(msg.sender == _batcher, CallbackWasNotFromSender());
         _batcher = address(0);
-    }
-
-    /// @inheritdoc IGateway
-    function blockOutgoing(uint16 centrifugeId, PoolId poolId, bool isBlocked) external onlyAuthOrManager(poolId) {
-        isOutgoingBlocked[centrifugeId][poolId] = isBlocked;
-        emit BlockOutgoing(centrifugeId, poolId, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------

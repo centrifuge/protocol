@@ -20,3 +20,6 @@
 [submodule "lib/enso-weiroll"]
 	path = lib/enso-weiroll
 	url = https://github.com/ensobuild/enso-weiroll
+[submodule "lib/create3-gate"]
+	path = lib/create3-gate
+	url = https://github.com/centrifuge/create3-gate

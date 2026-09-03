@@ -6,11 +6,9 @@ import {
     AsyncVault,
     VaultBaseTest as BaseTest,
     ERC20,
-    IShareToken,
     MockAdapter,
     PoolId,
-    SyncDepositVault,
-    VaultKind
+    SyncDepositVault
 } from "./VaultBaseTest.sol";
 
 import "../../../src/misc/interfaces/IERC7575.sol";
@@ -20,14 +18,17 @@ import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
 import {IERC7751} from "../../../src/misc/interfaces/IERC7751.sol";
 import {IERC7540Deposit} from "../../../src/misc/interfaces/IERC7540.sol";
 
-import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {IBaseVault} from "../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "../../../src/vaults/interfaces/IVaultRouter.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 contract VaultRouterTest is BaseTest {
     using MessageLib for *;
@@ -49,9 +50,11 @@ contract VaultRouterTest is BaseTest {
 
     function _testCFGRouterDeposit(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2, since the balance sheet's queued deposit amount is
+        // accounted twice over the request/approve lifecycle (noteDeposit, then unreserve).
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -96,7 +99,7 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout);
         assertEq(vault.maxDeposit(self), amount);
         IShareToken shareToken = IShareToken(address(vault.share()));
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), sharePayout);
 
         if (snap) {
             vm.startSnapshotGas("VaultRouter", "claimDeposit");
@@ -107,12 +110,12 @@ contract VaultRouterTest is BaseTest {
         }
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
         assertApproxEqAbs(shareToken.balanceOf(self), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), amount, 1);
     }
 
     function testEnableDisableVaults() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -151,10 +154,12 @@ contract VaultRouterTest is BaseTest {
     }
 
     function _testRouterRedeem(uint256 amount, bool snap) internal {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit that funds the redeem is queued twice
+        // (noteDeposit, then unreserve on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
         // deposit
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -191,7 +196,7 @@ contract VaultRouterTest is BaseTest {
         }
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
         vaultRouter.claimRedeem(vault, self, self);
@@ -200,9 +205,11 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testRouterDepositIntoMultipleVaults(uint256 amount1, uint256 amount2) public {
-        amount1 = uint128(bound(amount1, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: each deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount1 = uint128(bound(amount1, 4, MAX_UINT128 / 2));
         vm.assume(amount1 % 2 == 0);
-        amount2 = uint128(bound(amount2, 4, MAX_UINT128));
+        amount2 = uint128(bound(amount2, 4, MAX_UINT128 / 2));
         vm.assume(amount2 % 2 == 0);
 
         (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
@@ -214,8 +221,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit(vault2, amount2, self, self);
 
         // trigger - deposit order fulfillment
-        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spokeRegistry.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
@@ -225,23 +232,25 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxDeposit(self), amount2);
         IShareToken shareToken1 = IShareToken(address(vault1.share()));
         IShareToken shareToken2 = IShareToken(address(vault2.share()));
-        assertEq(shareToken1.balanceOf(address(balanceSheet.escrow(vault1.poolId()))), sharePayout1);
-        assertEq(shareToken2.balanceOf(address(balanceSheet.escrow(vault2.poolId()))), sharePayout2);
+        assertEq(shareToken1.balanceOf(address(spoke.escrow(vault1.poolId()))), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(spoke.escrow(vault2.poolId()))), sharePayout2);
 
         vaultRouter.claimDeposit(vault1, self, self);
         vaultRouter.claimDeposit(vault2, self, self);
         assertApproxEqAbs(shareToken1.balanceOf(self), sharePayout1, 1);
         assertApproxEqAbs(shareToken2.balanceOf(self), sharePayout2, 1);
-        assertApproxEqAbs(shareToken1.balanceOf(address(balanceSheet.escrow(vault1.poolId()))), 0, 1);
-        assertApproxEqAbs(shareToken2.balanceOf(address(balanceSheet.escrow(vault2.poolId()))), 0, 1);
+        assertApproxEqAbs(shareToken1.balanceOf(address(spoke.escrow(vault1.poolId()))), 0, 1);
+        assertApproxEqAbs(shareToken2.balanceOf(address(spoke.escrow(vault2.poolId()))), 0, 1);
         assertApproxEqAbs(erc20X.balanceOf(address(poolEscrowFactory.escrow(vault1.poolId()))), amount1, 1);
         assertApproxEqAbs(erc20Y.balanceOf(address(poolEscrowFactory.escrow(vault2.poolId()))), amount2, 1);
     }
 
     function testRouterRedeemFromMultipleVaults(uint256 amount1, uint256 amount2) public {
-        amount1 = uint128(bound(amount1, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposits funding the redeems are each queued twice
+        // (noteDeposit, then unreserve on approval) in the balance sheet's asset accounting.
+        amount1 = uint128(bound(amount1, 4, MAX_UINT128 / 2));
         vm.assume(amount1 % 2 == 0);
-        amount2 = uint128(bound(amount2, 4, MAX_UINT128));
+        amount2 = uint128(bound(amount2, 4, MAX_UINT128 / 2));
         vm.assume(amount2 % 2 == 0);
 
         // deposit
@@ -252,8 +261,8 @@ contract VaultRouterTest is BaseTest {
         vaultRouter.requestDeposit(vault1, amount1, self, self);
         vaultRouter.requestDeposit(vault2, amount2, self, self);
 
-        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spokeRegistry.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
         vaultRouter.claimDeposit(vault1, self, self);
@@ -289,11 +298,13 @@ contract VaultRouterTest is BaseTest {
     }
 
     function testMulticallingDepositClaimAndRequestRedeem(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         // deposit
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
         erc20.mint(self, amount);
@@ -312,19 +323,22 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.claimDeposit.selector, vault_, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestRedeem.selector, vault_, sharePayout, self, self, fuel);
-        vaultRouter.multicall{value: GAS}(calls);
+        // Subsidized requests need no attached value.
+        vaultRouter.multicall(calls);
 
         (uint128 assetPayout) = fulfillRedeemRequest(vault, assetId, sharePayout, self);
         assertApproxEqAbs(shareToken.balanceOf(self), 0, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
         assertApproxEqAbs(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assetPayout, 1);
         assertApproxEqAbs(erc20.balanceOf(self), 0, 1);
     }
 
     function testMulticallingDepositIntoMultipleVaults(uint256 amount1, uint256 amount2) public {
-        amount1 = uint128(bound(amount1, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: each deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount1 = uint128(bound(amount1, 4, MAX_UINT128 / 2));
         vm.assume(amount1 % 2 == 0);
-        amount2 = uint128(bound(amount2, 4, MAX_UINT128));
+        amount2 = uint128(bound(amount2, 4, MAX_UINT128 / 2));
         vm.assume(amount2 % 2 == 0);
 
         (ERC20 erc20X, ERC20 erc20Y, AsyncVault vault1, AsyncVault vault2) = setUpMultipleVaults(amount1, amount2);
@@ -335,11 +349,12 @@ contract VaultRouterTest is BaseTest {
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault1, amount1, self, self);
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault2, amount2, self, self);
-        vaultRouter.multicall{value: GAS}(calls);
+        // Subsidized requests need no attached value.
+        vaultRouter.multicall(calls);
 
         // trigger - deposit order fulfillment
-        AssetId assetId1 = spoke.assetToId(address(erc20X), erc20TokenId);
-        AssetId assetId2 = spoke.assetToId(address(erc20Y), erc20TokenId);
+        AssetId assetId1 = spokeRegistry.assetToId(address(erc20X), erc20TokenId);
+        AssetId assetId2 = spokeRegistry.assetToId(address(erc20Y), erc20TokenId);
         (uint128 sharePayout1) = fulfillDepositRequest(vault1, assetId1.raw(), amount1, 0, self);
         (uint128 sharePayout2) = fulfillDepositRequest(vault2, assetId2.raw(), amount2, 0, self);
 
@@ -349,15 +364,15 @@ contract VaultRouterTest is BaseTest {
         assertEq(vault2.maxDeposit(self), amount2);
         IShareToken shareToken1 = IShareToken(address(vault1.share()));
         IShareToken shareToken2 = IShareToken(address(vault2.share()));
-        assertEq(shareToken1.balanceOf(address(balanceSheet.escrow(vault1.poolId()))), sharePayout1);
-        assertEq(shareToken2.balanceOf(address(balanceSheet.escrow(vault2.poolId()))), sharePayout2);
+        assertEq(shareToken1.balanceOf(address(spoke.escrow(vault1.poolId()))), sharePayout1);
+        assertEq(shareToken2.balanceOf(address(spoke.escrow(vault2.poolId()))), sharePayout2);
     }
 
     function testMultipleTopUpScenarios(uint256 amount) public {
         amount = uint128(bound(amount, 4, MAX_UINT128));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -367,7 +382,7 @@ contract VaultRouterTest is BaseTest {
         erc20.approve(vault_, amount);
         vaultRouter.enable(vault);
 
-        vm.expectRevert(ISpoke.UnknownVault.selector);
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
         vaultRouter.requestDeposit(IAsyncVault(makeAddr("maliciousVault")), amount, self, self);
 
         bytes[] memory calls = new bytes[](2);
@@ -375,7 +390,9 @@ contract VaultRouterTest is BaseTest {
         calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault_, amount / 2, self, self);
 
         assertEq(address(vaultRouter).balance, 0);
-        vaultRouter.multicall{value: GAS}(calls);
+        // Subsidized requests need no attached value, and none is stranded in the router afterwards.
+        vaultRouter.multicall(calls);
+        assertEq(address(vaultRouter).balance, 0);
     }
 
     // --- helpers ---
@@ -423,9 +440,9 @@ contract VaultRouterTest is BaseTest {
         vm.label(address(erc20X), "erc20X");
         vm.label(address(erc20Y), "erc20Y");
         (, address vault1_,) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20X), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20X), 0);
         (, address vault2_,) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), bytes16(bytes("2")), address(erc20Y), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), bytes16(bytes("2")), address(erc20Y), 0);
         vault1 = AsyncVault(vault1_);
         vault2 = AsyncVault(vault2_);
         vm.label(vault1_, "vault1");
@@ -477,22 +494,35 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testInitialization() public {
         // redeploying within test to increase coverage
-        new VaultRouter(gateway, spoke, vaultRegistry, address(this));
+        new VaultRouter(spoke, spokeRegistry, address(this));
 
-        assertEq(address(vaultRouter.gateway()), address(gateway));
         assertEq(address(vaultRouter.spoke()), address(spoke));
     }
 
     function testGetVault() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
+
+        // Linking already points the ERC-7575 slot.
+        PoolId poolId = vault.poolId();
+        bytes memory payload =
+            abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, vault.scId().raw(), assetId, vault_);
+        vm.prank(shareTokenRegistrar.envoy());
+        shareTokenRegistrar.fromHub(poolId, payload);
 
         assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), address(erc20)), vault_);
     }
 
+    function testGetVaultReturnsZeroForUnpointedAsset() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+
+        assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), makeAddr("otherAsset")), address(0));
+    }
+
     function testRequestDeposit() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -505,11 +535,81 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         vaultRouter.enable(vault);
 
         vaultRouter.requestDeposit(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
+    }
+
+    function testMulticallRequestDepositRequiresNoPayment() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+        erc20.mint(self, amount);
+        erc20.approve(address(vault_), amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(vaultRouter.enable.selector, vault);
+        calls[1] = abi.encodeWithSelector(vaultRouter.requestDeposit.selector, vault, amount, self, self);
+
+        // No native tokens attached: the cross-chain request is paid by the pool subsidy through the
+        // request manager, so the pool's subsidy balance drops and the caller pays nothing.
+        uint256 subsidyBefore = address(refundEscrowFactory.get(vault.poolId())).balance;
+        vaultRouter.multicall(calls);
+
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
+        assertLt(address(refundEscrowFactory.get(vault.poolId())).balance, subsidyBefore);
+        assertEq(address(vaultRouter).balance, 0);
+    }
+
+    /// @dev The router uses a plain multicall (no gateway batching), so two paid cross-chain calls in one
+    ///      multicall each try to forward msg.value; the second fails closed on insufficient balance rather
+    ///      than reusing the value.
+    function testMulticallTwoCrosschainTransfersRevert() public {
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+        erc20.mint(self, assets);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        erc20.approve(address(vaultRouter), assets);
+        uint256 shares = vault.previewDeposit(assets);
+
+        uint16 centrifugeId = 2;
+        centrifugeChain.updateMember(
+            vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
+        );
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
+
+        bytes[] memory calls = new bytes[](3);
+        calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), self);
+        calls[1] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares / 2,
+            centrifugeId,
+            self.toBytes32(),
+            address(vaultRouter),
+            uint128(0),
+            uint128(0),
+            address(0)
+        );
+        calls[2] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares / 2,
+            centrifugeId,
+            self.toBytes32(),
+            address(vaultRouter),
+            uint128(0),
+            uint128(0),
+            address(0)
+        );
+
+        // GAS covers one transfer; the second re-forwards msg.value with an empty router balance and reverts.
+        vm.expectRevert();
+        vaultRouter.multicall{value: GAS}(calls);
     }
 
     function testRouterSyncDeposit() public {
-        (uint64 poolId, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (uint64 poolId, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
         vm.label(vault_, "vault");
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -522,11 +622,11 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
         erc20.approve(address(vaultRouter), amount);
         vaultRouter.deposit(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(balanceSheet.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
+        assertEq(erc20.balanceOf(address(spoke.poolEscrowProvider().escrow(PoolId.wrap(poolId)))), amount);
     }
 
     function testRouterSyncDepositAndTransfer() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.SyncDepositAsyncRedeem);
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
         vm.label(vault_, "vault");
         SyncDepositVault vault = SyncDepositVault(vault_);
         uint256 assets = 100 * 10 ** 18;
@@ -540,6 +640,9 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         centrifugeChain.updateMember(
             vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
         );
+
+        // The router forwards crosschainTransferShares, so it must hold the bridger role
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
 
         bytes[] memory calls = new bytes[](2);
         calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), self);
@@ -557,8 +660,50 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         vaultRouter.multicall{value: GAS * 2}(calls);
     }
 
+    function testRequestDepositRouterCustody() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+
+        // The router is endorsed (exempt from membership); only the controller needs to be a member.
+        erc20.mint(address(vaultRouter), amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+
+        vaultRouter.requestDeposit(vault, amount, self, address(vaultRouter));
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
+    }
+
+    function testCrosschainTransferSharesFromOwner() public {
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+
+        erc20.mint(self, assets);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        erc20.approve(vault_, assets);
+        uint256 shares = vault.deposit(assets, self);
+
+        uint16 centrifugeId = 2;
+        centrifugeChain.updateMember(
+            vault.poolId().raw(), vault.scId().raw(), address(uint160(centrifugeId)), type(uint64).max
+        );
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
+
+        IShareToken shareToken = IShareToken(address(vault.share()));
+        shareToken.approve(address(vaultRouter), shares);
+        uint256 supplyBefore = shareToken.totalSupply();
+
+        vaultRouter.crosschainTransferShares{value: GAS}(
+            vault, uint128(shares), centrifugeId, bytes32("receiver"), self, uint128(0), uint128(0), address(0)
+        );
+
+        assertEq(shareToken.balanceOf(self), 0, "owner shares moved out");
+        assertEq(shareToken.balanceOf(address(vaultRouter)), 0, "router retains no shares");
+        assertEq(shareToken.totalSupply(), supplyBefore - shares, "source shares burned");
+    }
+
     function testCancelDepositRequest() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
 
@@ -584,7 +729,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testClaimCancelDepositRequest() public {
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
 
@@ -596,11 +741,11 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
         vaultRouter.enable(vault);
         vaultRouter.requestDeposit(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
 
         vaultRouter.cancelDepositRequest(vault);
         assertEq(vault.pendingCancelDepositRequest(0, self), true);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), self.toBytes32(), assetId, 0, 0, uint128(amount)
         );
@@ -615,13 +760,13 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         vaultRouter.claimCancelDepositRequest(vault, nonMember, self);
 
         vaultRouter.claimCancelDepositRequest(vault, self, self);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), 0);
         assertEq(erc20.balanceOf(self), amount);
     }
 
     function testRequestRedeem() external {
         // Deposit first
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -652,7 +797,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testCancelRedeemRequest() public {
         // Deposit first
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -687,7 +832,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testClaimCancelRedeemRequest() public {
         // Deposit first
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
         uint256 amount = 100 * 10 ** 18;
@@ -732,7 +877,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testPermit() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
 
         bytes32 PERMIT_TYPEHASH =
@@ -761,7 +906,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
     }
 
     function testEnableAndDisable() public {
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         vm.label(vault_, "vault");
 
@@ -777,7 +922,7 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
 
     function testIfUserIsPermittedToExecuteRequests() public {
         uint256 amount = 100 * 10 ** 18;
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         vm.label(vault_, "vault");
         AsyncVault vault = AsyncVault(vault_);
 
@@ -799,6 +944,6 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         assertTrue(canUserExecute);
 
         vaultRouter.requestDeposit(vault, amount, self, self);
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
     }
 }

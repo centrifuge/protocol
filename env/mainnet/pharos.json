@@ -1,0 +1,53 @@
+{
+  "network": {
+    "chainId": 1672,
+    "environment": "mainnet",
+    "centrifugeId": 12,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://api.zan.top/node/v1/pharos/mainnet/",
+    "verifier": "blockscout",
+    "verifierUrl": "https://api.socialscan.io/pharos-mainnet/v1/explorer/command_api/contract",
+    "explorerApiUrl": "https://api.socialscan.io/pharos-mainnet/v1/explorer"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
+      "layerZeroEid": 30407,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0xa83C79E69117EEFB888592A23Bc02cB6029aDA3a",
+        "0xFE5aA76e3ad55BC9cf1fB08324e0d221Be4fb932"
+      ],
+      "optionalDVNs": [
+        "0x3E249F6892aCfeF1922Fc3Bce38FEFeec3896817",
+        "0x8893D768df1E096Df008101108539aD0d8859e9b",
+        "0xDd7B5E1dB4AaFd5C8EC3b764eFB8ed265Aa5445B"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "chainlink": {
+      "chainSelector": 7801139999541420232,
+      "ccipRouter": "0x4e52dD94e9BCfeFE3C78153bDfB0AB1d30687297",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
+      "blockNumber": 3193850,
+      "version": "v3.1"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "0931a54f",
+      "timestamp": "2026-02-23T16:09:17Z",
+      "suffix": "",
+      "startBlock": 3193850
+    }
+  }
+}

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="720" viewBox="0 0 1920 720" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="1" y="1" width="1918" height="718" rx="16" fill="#ffffff" stroke="#ececec" stroke-width="1"/>
+  <text x="48" y="76" font-size="30" font-weight="bold" fill="#17202a">Hub</text>
+
+  <g transform="translate(0,50)">
+
+  <!-- group: messaging -->
+  <g fill="#eef0f2">
+    <rect x="60" y="192" width="124" height="40" rx="12"/>
+    <rect x="60" y="208" width="384" height="274" rx="14"/>
+  </g>
+  <text x="92" y="252" font-size="21" font-weight="bold" fill="#1f2a37">messaging</text>
+
+  <!-- edges -->
+  <g fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round">
+    <!-- IMessageProcessor -> HubHandler -->
+    <path d="M412,305 H520" marker-end="url(#arrow)"/>
+    <!-- HubHandler -> Hub -->
+    <path d="M740,305 H840 Q860,305 860,325 V380" marker-end="url(#arrow)"/>
+    <!-- Hub -> IMessageDispatcher -->
+    <path d="M760,415 H412" marker-end="url(#arrow)"/>
+    <!-- IHubRequestManager -> Hub -->
+    <path d="M730,615 H840 Q860,615 860,595 V450" marker-end="url(#arrow)"/>
+
+    <!-- HubHandler ..> IBridgingHook (the handler is what invokes the hook) -->
+    <path d="M620,270 V180" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <!-- BridgeCircuitBreaker -up-|> IBridgingHook -->
+    <path d="M432,145 H520" marker-end="url(#arrow)"/>
+
+    <!-- Hub fan-out (solid spine at x=1000, upward) -->
+    <path d="M960,415 H980 Q1000,415 1000,395 V195 Q1000,175 1020,175 H1080" marker-end="url(#arrow)"/>
+    <path d="M960,415 H980 Q1000,415 1000,395 V275 Q1000,255 1020,255 H1080" marker-end="url(#arrow)"/>
+    <path d="M960,415 H980 Q1000,415 1000,395 V355 Q1000,335 1020,335 H1080" marker-end="url(#arrow)"/>
+    <!-- Hub -> Accounting -->
+    <path d="M960,415 H1080" marker-end="url(#arrow)"/>
+
+    <!-- Hub dotted fan-out (dotted spine at x=1030, downward) -->
+    <path d="M960,430 H1010 Q1030,430 1030,450 V475 Q1030,495 1050,495 H1080" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+    <path d="M960,430 H1010 Q1030,430 1030,450 V555 Q1030,575 1050,575 H1080" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+
+    <!-- Holdings -> IValuation -->
+    <path d="M1380,175 H1480" marker-end="url(#arrow)"/>
+    <!-- Holdings ..> ISnapshotHook -->
+    <path d="M1380,195 H1400 Q1420,195 1420,215 V455 Q1420,475 1440,475 H1480" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+
+    <!-- OracleValuation -up-|> IValuation -->
+    <path d="M1640,240 V210" marker-end="url(#arrow)"/>
+    <!-- IdentityValuation -up-|> IValuation -->
+    <path d="M1800,375 H1840 Q1860,375 1860,355 V210 Q1860,190 1840,190 H1800" marker-end="url(#arrow)"/>
+
+    <!-- StdHubPolicy -up-|> IHubPolicy -->
+    <path d="M1480,575 H1380" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- nodes -->
+  <g>
+    <!-- bridging hook row -->
+    <rect x="92" y="110" width="340" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="126" cy="145" r="17" fill="#fbe6b0"/>
+    <text x="126" y="145" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="156" y="145" font-size="21" fill="#1f2a37" dominant-baseline="central">BridgeCircuitBreaker</text>
+
+    <rect x="520" y="110" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="554" cy="145" r="17" fill="#d6f3d2"/>
+    <text x="554" y="145" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="584" y="145" font-size="21" fill="#1f2a37" dominant-baseline="central">IBridgingHook</text>
+
+    <!-- messaging members -->
+    <rect x="92" y="270" width="320" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="126" cy="305" r="17" fill="#d6f3d2"/>
+    <text x="126" y="305" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="156" y="305" font-size="21" fill="#1f2a37" dominant-baseline="central">IMessageProcessor</text>
+
+    <rect x="92" y="380" width="320" height="70" rx="10" fill="#ffffff"/>
+    <circle cx="126" cy="415" r="17" fill="#d6f3d2"/>
+    <text x="126" y="415" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="156" y="415" font-size="21" fill="#1f2a37" dominant-baseline="central">IMessageDispatcher</text>
+
+    <!-- HubHandler -->
+    <rect x="520" y="270" width="220" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="554" cy="305" r="17" fill="#fbe6b0"/>
+    <text x="554" y="305" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="584" y="305" font-size="21" fill="#1f2a37" dominant-baseline="central">HubHandler</text>
+
+    <!-- IHubRequestManager -->
+    <rect x="430" y="580" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="464" cy="615" r="17" fill="#d6f3d2"/>
+    <text x="464" y="615" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="494" y="615" font-size="21" fill="#1f2a37" dominant-baseline="central">IHubRequestManager</text>
+
+    <!-- Hub (focus) -->
+    <rect x="760" y="380" width="200" height="70" rx="10" fill="#fde9b8"/>
+    <circle cx="794" cy="415" r="17" fill="#fbd77a"/>
+    <text x="794" y="415" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="824" y="415" font-size="21" fill="#1f2a37" dominant-baseline="central">Hub</text>
+
+    <!-- column: Hub collaborators -->
+    <rect x="1080" y="140" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1114" cy="175" r="17" fill="#fbe6b0"/>
+    <text x="1114" y="175" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1144" y="175" font-size="21" fill="#1f2a37" dominant-baseline="central">Holdings</text>
+
+    <rect x="1080" y="220" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1114" cy="255" r="17" fill="#fbe6b0"/>
+    <text x="1114" y="255" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1144" y="255" font-size="21" fill="#1f2a37" dominant-baseline="central">HubRegistry</text>
+
+    <rect x="1080" y="300" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1114" cy="335" r="17" fill="#fbe6b0"/>
+    <text x="1114" y="335" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1144" y="335" font-size="21" fill="#1f2a37" dominant-baseline="central">ShareClassManager</text>
+
+    <rect x="1080" y="380" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1114" cy="415" r="17" fill="#fbe6b0"/>
+    <text x="1114" y="415" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1144" y="415" font-size="21" fill="#1f2a37" dominant-baseline="central">Accounting</text>
+
+    <rect x="1080" y="460" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1114" cy="495" r="17" fill="#d6f3d2"/>
+    <text x="1114" y="495" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="1144" y="495" font-size="21" fill="#1f2a37" dominant-baseline="central">IFeeAccrual</text>
+
+    <rect x="1080" y="540" width="300" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1114" cy="575" r="17" fill="#d6f3d2"/>
+    <text x="1114" y="575" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="1144" y="575" font-size="21" fill="#1f2a37" dominant-baseline="central">IHubPolicy</text>
+
+    <!-- column: second order -->
+    <rect x="1480" y="140" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1514" cy="175" r="17" fill="#d6f3d2"/>
+    <text x="1514" y="175" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="1544" y="175" font-size="21" fill="#1f2a37" dominant-baseline="central">IValuation</text>
+
+    <rect x="1480" y="240" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1514" cy="275" r="17" fill="#fbe6b0"/>
+    <text x="1514" y="275" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1544" y="275" font-size="21" fill="#1f2a37" dominant-baseline="central">OracleValuation</text>
+
+    <rect x="1480" y="340" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1514" cy="375" r="17" fill="#fbe6b0"/>
+    <text x="1514" y="375" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1544" y="375" font-size="21" fill="#1f2a37" dominant-baseline="central">IdentityValuation</text>
+
+    <rect x="1480" y="440" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1514" cy="475" r="17" fill="#d6f3d2"/>
+    <text x="1514" y="475" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+    <text x="1544" y="475" font-size="21" fill="#1f2a37" dominant-baseline="central">ISnapshotHook</text>
+
+    <rect x="1480" y="540" width="320" height="70" rx="10" fill="#f6f7f8"/>
+    <circle cx="1514" cy="575" r="17" fill="#fbe6b0"/>
+    <text x="1514" y="575" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+    <text x="1544" y="575" font-size="21" fill="#1f2a37" dominant-baseline="central">StdHubPolicy</text>
+  </g>
+  </g>
+</svg>

@@ -49,7 +49,10 @@ abstract contract BatchedMulticall is Multicall, IBatchedMulticall {
 
     /// @dev Only the call to multicall should pass the msg.value, which is then passed
     ///      in `gateway.withBatch`. No inner calls should pass any msg.value.
+    /// @dev Mirrors msgSender(): the value is only zeroed for calls coming through the gateway
+    ///      callback path. Otherwise a reentrant call entering during an active batch (e.g. via an
+    ///      external hook) would have its real msg.value silently dropped, leaving native tokens stuck.
     function msgValue() internal view returns (uint256 value) {
-        return _sender != address(0) ? 0 : msg.value;
+        return _sender != address(0) && msg.sender == address(gateway) ? 0 : msg.value;
     }
 }

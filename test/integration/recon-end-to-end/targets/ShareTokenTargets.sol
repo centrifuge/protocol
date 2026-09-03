@@ -3,11 +3,10 @@ pragma solidity 0.8.28;
 
 // Recon Deps
 
-import {IShareToken} from "../../../../src/core/spoke/interfaces/IShareToken.sol";
-
 import {vm} from "@chimera/Hevm.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
+import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
 // Dependencies
 

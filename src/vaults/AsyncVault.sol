@@ -12,8 +12,8 @@ import {IERC7540Deposit, IERC7887Deposit} from "../misc/interfaces/IERC7540.sol"
 
 import {PoolId} from "../core/types/PoolId.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {VaultKind} from "../core/spoke/interfaces/IVault.sol";
-import {IShareToken} from "../core/spoke/interfaces/IShareToken.sol";
+
+import {IShareToken} from "../token/interfaces/IShareToken.sol";
 
 /// @title  AsyncVault
 /// @notice Asynchronous Tokenized Vault standard implementation for Centrifuge pools
@@ -167,13 +167,5 @@ contract AsyncVault is BaseAsyncRedeemVault, IAsyncVault {
 
     function onCancelDepositClaimable(address controller, uint256 assets) public virtual auth {
         emit CancelDepositClaimable(controller, REQUEST_ID, assets);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // IBaseVault view
-    //----------------------------------------------------------------------------------------------
-
-    function vaultKind() public pure returns (VaultKind vaultKind_) {
-        return VaultKind.Async;
     }
 }

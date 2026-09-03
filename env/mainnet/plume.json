@@ -1,0 +1,59 @@
+{
+  "network": {
+    "chainId": 98866,
+    "environment": "mainnet",
+    "centrifugeId": 4,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://rpc.plume.org/",
+    "verifier": "blockscout",
+    "verifierUrl": "https://explorer.plume.org/api/",
+    "explorerApiUrl": "https://explorer.plume.org/api/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0xC1b15d3B262bEeC0e3565C11C9e0F6134BdaCB36",
+      "layerZeroEid": 30370,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x395B14700812cccC38b8e64F0a06ce2045FE9bA3",
+        "0x78f607fc38e071cEB8630B7B12c358eE01C31E96"
+      ],
+      "optionalDVNs": [
+        "0x75Ab9D30e4FF4913a4dF9A02aF8Cef3525A93F68",
+        "0x882a1EE8891c7d22310dedf032eF9653785532B8",
+        "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "axelar": {
+      "axelarId": "plume",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 17912061998839310979,
+      "ccipRouter": "0x5C4f4622AD0EC4a47e04840db7E9EcA8354109af",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
+      "blockNumber": 11931253,
+      "version": "3"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "9706a86",
+      "timestamp": "2025-07-15T14:23:38Z",
+      "suffix": "",
+      "startBlock": 11931253
+    }
+  }
+}

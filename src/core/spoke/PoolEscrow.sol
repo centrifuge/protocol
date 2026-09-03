@@ -20,7 +20,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     mapping(
         ShareClassId
             => mapping(
-            address reserver => mapping(uint32 reason => mapping(address asset => mapping(uint256 tokenId => uint128)))
+            address reserver => mapping(bytes32 reason => mapping(address asset => mapping(uint256 tokenId => uint128)))
         )
     ) public reservedBy;
 
@@ -51,7 +51,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+    function reserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, bytes32 reason)
         external
         auth
     {
@@ -65,7 +65,7 @@ contract PoolEscrow is Escrow, Recoverable, IPoolEscrow {
     }
 
     /// @inheritdoc IPoolEscrow
-    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, uint32 reason)
+    function unreserve(ShareClassId scId, address asset, uint256 tokenId, uint128 value, address caller, bytes32 reason)
         external
         auth
     {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {AsyncVault, VaultBaseTest as BaseTest, IShareToken, PoolId, ShareClassId, VaultKind} from "./VaultBaseTest.sol";
+import {AsyncVault, VaultBaseTest as BaseTest, PoolId, ShareClassId} from "./VaultBaseTest.sol";
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
 import {MathLib} from "../../../src/misc/libraries/MathLib.sol";
@@ -14,14 +14,14 @@ contract AsyncVaultTest is BaseTest {
         vm.assume(nonWard != address(root) && nonWard != address(this) && nonWard != address(asyncRequestManager));
         vm.assume(assetId > 0);
 
-        (uint64 poolId, address vault_,) = deployVault(VaultKind.Async, erc20.decimals(), scId);
+        (uint64 poolId, address vault_,) = deployVault(asyncVaultFactory, erc20.decimals(), scId);
         AsyncVault vault = AsyncVault(vault_);
 
         // values set correctly
         assertEq(vault.asset(), address(erc20));
         assertEq(vault.scId().raw(), scId);
-        IShareToken token = spoke.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId));
-        assertEq(address(vault.share()), address(token));
+        address token = address(spokeRegistry.shareToken(PoolId.wrap(poolId), ShareClassId.wrap(scId)));
+        assertEq(address(vault.share()), token);
 
         // permissions set correctly
         assertEq(vault.wards(address(root)), 1);
@@ -34,7 +34,7 @@ contract AsyncVaultTest is BaseTest {
     /// @dev requestRedeem is not checked because the share class token supply is already capped at uint128
     function testAssertUint128(uint256 amount) public {
         vm.assume(amount > MAX_UINT128); // amount has to overflow UINT128
-        (, address vault_,) = deploySimpleVault(VaultKind.Async);
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
 
         vm.expectRevert(MathLib.Uint128_Overflow.selector);
@@ -68,7 +68,7 @@ contract AsyncVaultTest is BaseTest {
         bytes16 scId = bytes16(bytes("6dec"));
 
         (uint64 poolId, address vaultAddr, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset18), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), scId, address(asset18), 0);
         AsyncVault vault = AsyncVault(vaultAddr);
 
         // At 1:1 price: 1 full share (1e6 units) costs 1 full 18-dec asset (1e18 units)

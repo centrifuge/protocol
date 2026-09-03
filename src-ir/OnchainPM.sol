@@ -6,10 +6,10 @@ import {MerkleProofLib} from "../src/misc/libraries/MerkleProofLib.sol";
 import {TransientArrayLib} from "../src/misc/libraries/TransientArrayLib.sol";
 
 import {PoolId} from "../src/core/types/PoolId.sol";
-import {ShareClassId} from "../src/core/types/ShareClassId.sol";
+import {ISpoke} from "../src/core/spoke/interfaces/ISpoke.sol";
 import {IGateway} from "../src/core/messaging/interfaces/IGateway.sol";
 import {BatchedMulticall} from "../src/core/utils/BatchedMulticall.sol";
-import {IBalanceSheet} from "../src/core/spoke/interfaces/IBalanceSheet.sol";
+import {IManagerCallFromHub} from "../src/core/utils/interfaces/IManagerCall.sol";
 
 import {IOnchainPM} from "../src/managers/spoke/interfaces/IOnchainPM.sol";
 import {IOnchainPMFactory} from "../src/managers/spoke/interfaces/IOnchainPMFactory.sol";
@@ -20,7 +20,7 @@ import {VM} from "enso-weiroll/VM.sol";
 /// @notice Per-pool execution engine that allows strategists to run pre-approved multi-step onchain
 ///         workflows (supply, withdraw, swap, bridge) for a Centrifuge pool. Scripts are
 ///         authored as weiroll command sequences and authorized via a Merkle proof policy set by
-///         trusted calls from the hub manager. A state bitmap lets governance pin specific state slots so strategists
+///         manager calls from the hub. A state bitmap lets governance pin specific state slots so strategists
 ///         cannot modify them at execution time.
 /// @dev    Native tokens sent with `execute()` are forwarded to VALUECALL commands and any remainder
 ///         is returned to the caller. No native tokens should ever remain in this contract between calls.
@@ -31,28 +31,30 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
     bytes32 private constant CALLBACK_CALLERS_SLOT = bytes32(uint256(keccak256("onchainPM.callbackCallers")) - 1);
 
     PoolId public immutable poolId;
-    address public immutable contractUpdater;
+    address public immutable envoy;
 
     mapping(address strategist => bytes32 root) public policy;
 
     uint256 public transient callbackIdx;
     address public transient activeStrategist;
 
-    constructor(PoolId poolId_, address contractUpdater_, IGateway gateway_) BatchedMulticall(gateway_) {
+    constructor(PoolId poolId_, address envoy_, IGateway gateway_) BatchedMulticall(gateway_) {
         poolId = poolId_;
-        contractUpdater = contractUpdater_;
+        envoy = envoy_;
     }
 
     receive() external payable {}
 
     //----------------------------------------------------------------------------------------------
-    // Owner actions
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Update the strategist policy root via the ContractUpdater.
-    function trustedCall(PoolId poolId_, ShareClassId, bytes calldata payload) external {
+    /// @inheritdoc IManagerCallFromHub
+    /// @dev Updates the strategist policy root.
+    function fromHub(PoolId poolId_, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
         require(poolId == poolId_, InvalidPoolId());
-        require(msg.sender == contractUpdater, NotAuthorized());
 
         (bytes32 who, bytes32 what) = abi.decode(payload, (bytes32, bytes32));
         address strategist = who.toAddress();
@@ -187,20 +189,20 @@ contract OnchainPM is BatchedMulticall, VM, IOnchainPM {
 /// @notice Deploys pool-specific OnchainPM instances deterministically via CREATE2.
 contract OnchainPMFactory is IOnchainPMFactory {
     IGateway public immutable gateway;
-    address public immutable contractUpdater;
-    IBalanceSheet public immutable balanceSheet;
+    address public immutable envoy;
+    ISpoke public immutable spoke;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IGateway gateway_) {
-        contractUpdater = contractUpdater_;
-        balanceSheet = balanceSheet_;
+    constructor(address envoy_, ISpoke spoke_, IGateway gateway_) {
+        envoy = envoy_;
+        spoke = spoke_;
         gateway = gateway_;
     }
 
     /// @inheritdoc IOnchainPMFactory
     function newOnchainPM(PoolId poolId) external returns (IOnchainPM) {
-        require(balanceSheet.spoke().isPoolActive(poolId), InvalidPoolId());
+        require(spoke.spokeRegistry().isPoolActive(poolId), InvalidPoolId());
 
-        OnchainPM onchainPM = new OnchainPM{salt: bytes32(uint256(poolId.raw()))}(poolId, contractUpdater, gateway);
+        OnchainPM onchainPM = new OnchainPM{salt: bytes32(uint256(poolId.raw()))}(poolId, envoy, gateway);
 
         emit DeployOnchainPM(poolId, address(onchainPM));
         return IOnchainPM(address(onchainPM));
@@ -210,7 +212,7 @@ contract OnchainPMFactory is IOnchainPMFactory {
     function getAddress(PoolId poolId) external view returns (address) {
         bytes32 salt = bytes32(uint256(poolId.raw()));
         bytes32 initCodeHash =
-            keccak256(abi.encodePacked(type(OnchainPM).creationCode, abi.encode(poolId, contractUpdater, gateway)));
+            keccak256(abi.encodePacked(type(OnchainPM).creationCode, abi.encode(poolId, envoy, gateway)));
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
     }
 }

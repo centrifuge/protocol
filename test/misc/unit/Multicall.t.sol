@@ -31,6 +31,10 @@ contract MulticallImpl is Multicall {
         value += value_;
     }
 
+    function addPayable(uint256 value_) external payable protected {
+        value += value_;
+    }
+
     function err() external protected {
         revert("error");
     }
@@ -101,5 +105,29 @@ contract MulticallTest is Test {
 
         vm.expectRevert(ReentrancyProtection.UnauthorizedSender.selector);
         multicall.multicall(calls);
+    }
+
+    /// @dev Each call in a batch is a delegatecall, which does not carry its own value: the EVM's
+    ///      CALLVALUE stays whatever the outer multicall() call received for every delegatecall in the
+    ///      loop. A non-payable function's compiler-generated entry check reads CALLVALUE, so batching it
+    ///      alongside a payable call that actually attaches value reverts, even though each call is fine
+    ///      invoked on its own.
+    function testErrCannotMixPayableAndNonPayableWithValue() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
+        calls[1] = abi.encodeWithSelector(multicall.addPayable.selector, 3);
+
+        vm.expectRevert(IMulticall.CallFailedWithEmptyRevert.selector);
+        multicall.multicall{value: 1}(calls);
+    }
+
+    function testMixPayableAndNonPayableSucceedsWithZeroValue() public {
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(multicall.add.selector, 2);
+        calls[1] = abi.encodeWithSelector(multicall.addPayable.selector, 3);
+
+        multicall.multicall(calls);
+
+        assertEq(multicall.value(), 5);
     }
 }

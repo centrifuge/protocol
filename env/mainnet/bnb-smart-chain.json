@@ -1,0 +1,56 @@
+{
+  "network": {
+    "chainId": 56,
+    "environment": "mainnet",
+    "centrifugeId": 6,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 15,
+    "baseRpcUrl": "https://bnb-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+      "layerZeroEid": 30102,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0xf0a5C5306adbFd4e3dfD5d4B148B451c411d3878",
+        "0xfA9bA83C102283958B997Adc8B44ED3A3CdB5dDa"
+      ],
+      "optionalDVNs": [
+        "0x31F748a368a893Bdb5aBB67ec95F232507601A73",
+        "0x439264FB87581a70Bb6D7bEFd16b636521B0Ad2D",
+        "0x534C6b3e6805E9287ff1D49C349d5f7a01B9b7F5"
+      ],
+      "optionalDVNThreshold": 2
+    },
+    "axelar": {
+      "axelarId": "binance",
+      "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 11344663589394136015,
+      "ccipRouter": "0x34B03Cb9086d7D758AC55af71584F81A598759FE",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
+      "blockNumber": 54800894,
+      "version": "3"
+    }
+  },
+  "deploymentInfo": {
+    "deploy:protocol": {
+      "gitCommit": "cd4866f3f",
+      "timestamp": "2026-01-27T14:56:12Z",
+      "suffix": "",
+      "startBlock": 54800894
+    }
+  }
+}

@@ -3,45 +3,44 @@ pragma solidity 0.8.28;
 
 import {IQueueManager} from "./interfaces/IQueueManager.sol";
 
-import {Auth} from "../../misc/Auth.sol";
-import {CastLib} from "../../misc/libraries/CastLib.sol";
-import {BitmapLib} from "../../misc/libraries/BitmapLib.sol";
 import {TransientStorageLib} from "../../misc/libraries/TransientStorageLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IGateway} from "../../core/messaging/interfaces/IGateway.sol";
-import {IBalanceSheet} from "../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {ISnapshotQueue} from "../../core/spoke/interfaces/ISnapshotQueue.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @dev minDelay can be set to a non-zero value, for cases where assets or shares can be permissionlessly modified
 ///      (e.g. if the on/off ramp manager is used, or if sync deposits are enabled). This prevents spam.
-contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
-    using CastLib for *;
-    using BitmapLib for *;
-
+contract QueueManager is IQueueManager, IManagerCallFromHub {
+    address public immutable envoy;
+    ISpoke public immutable spoke;
+    ISnapshotQueue public immutable snapshotQueue;
     IGateway public immutable gateway;
-    address public immutable contractUpdater;
-    IBalanceSheet public immutable balanceSheet;
 
     mapping(PoolId => mapping(ShareClassId => ShareClassQueueState)) public scQueueState;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, address deployer) Auth(deployer) {
-        contractUpdater = contractUpdater_;
-        balanceSheet = balanceSheet_;
-        gateway = balanceSheet_.gateway();
+    constructor(address envoy_, ISpoke spoke_) {
+        envoy = envoy_;
+        spoke = spoke_;
+        snapshotQueue = spoke_.snapshotQueue();
+        gateway = spoke_.gateway();
     }
 
     //----------------------------------------------------------------------------------------------
-    // Owner actions
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId, ShareClassId scId, bytes memory payload) external {
-        require(msg.sender == contractUpdater, NotContractUpdater());
+    /// @inheritdoc IManagerCallFromHub
+    function fromHub(PoolId poolId, bytes calldata payload) external payable {
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
 
-        (uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (uint64, uint64));
+        (bytes16 scId_, uint64 minDelay, uint64 extraGasLimit) = abi.decode(payload, (bytes16, uint64, uint64));
+        ShareClassId scId = ShareClassId.wrap(scId_);
         ShareClassQueueState storage sc = scQueueState[poolId][scId];
         sc.minDelay = minDelay;
         sc.extraGasLimit = extraGasLimit;
@@ -71,17 +70,17 @@ contract QueueManager is Auth, IQueueManager, ITrustedContractUpdate {
             TransientStorageLib.tstore(key, true);
 
             // Check if valid
-            (uint128 deposits, uint128 withdrawals) = balanceSheet.queuedAssets(poolId, scId, assetIds[i]);
+            (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetIds[i]);
             if (deposits > 0 || withdrawals > 0) {
-                balanceSheet.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit, address(0));
+                spoke.submitQueuedAssets(poolId, scId, assetIds[i], sc.extraGasLimit, address(0));
             }
         }
 
-        (uint128 delta,, uint32 queuedAssetCounter,) = balanceSheet.queuedShares(poolId, scId);
+        (uint128 delta,, uint32 queuedAssetCounter,) = snapshotQueue.queuedShares(poolId, scId);
         bool submitShares = delta > 0 && queuedAssetCounter == 0;
 
         if (submitShares) {
-            balanceSheet.submitQueuedShares(poolId, scId, sc.extraGasLimit, address(0));
+            spoke.submitQueuedShares(poolId, scId, sc.extraGasLimit, address(0));
             sc.lastSync = uint64(block.timestamp);
         }
     }

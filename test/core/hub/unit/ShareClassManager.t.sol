@@ -39,6 +39,16 @@ bytes32 constant SC_SECOND_SALT = bytes32(uint256(bytes32(bytes8(POOL_ID))) + 2)
 uint32 constant STORAGE_INDEX_METRICS = 3;
 
 contract HubRegistryMock {
+    bool public poolExists = true;
+
+    function setPoolExists(bool poolExists_) external {
+        poolExists = poolExists_;
+    }
+
+    function exists(PoolId) external view returns (bool) {
+        return poolExists;
+    }
+
     function decimals(PoolId) external pure returns (uint8) {
         return DECIMALS_POOL;
     }
@@ -274,10 +284,24 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         shareClass.updateShares(centrifugeId, poolId, wrongScId, 100, true);
     }
 
-    function testDecreaseOverFlow() public {
-        // vm.expectRevert(ShareClassManager.DecreaseMoreThanIssued.selector); // Error doesn't exist
-        vm.expectRevert();
+    function testDecreaseBeyondIssuanceDoesNotRevert() public {
+        // A revocation arriving before the issuance that minted the shares must not revert, or the chain
+        // that sent it would be unable to report anything further.
         shareClass.updateShares(centrifugeId, poolId, scId, 1, false);
+
+        vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
+        shareClass.totalIssuance(poolId, scId);
+
+        (uint128 issuances, uint128 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
+        assertEq(issuances, 0);
+        assertEq(revocations, 1);
+    }
+
+    function testAddShareClassNonExistingPool() public {
+        HubRegistryMock(hubRegistryMock).setPoolExists(false);
+
+        vm.expectRevert(IHubRegistry.NonExistingPool.selector);
+        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT);
     }
 
     function testAddShareClassInvalidNameEmpty() public {
@@ -386,18 +410,24 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
         // Issue on another network to keep totalIssuance positive
         shareClass.updateShares(2, poolId, scId, 1000, true);
 
-        // Try to revoke without any issuance on network 1
+        // Revoke without any issuance on network 1
         shareClass.updateShares(centrifugeId, poolId, scId, 100, false);
 
         // Reading issuance for network 1 should revert with NegativeIssuance
         vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
         shareClass.issuance(poolId, scId, centrifugeId);
 
-        // But we can still read issuance for network 2
+        // The two counters show the same thing without reverting, which is what SimplePriceManager reads
+        // while the hub is handling a message
+        (uint128 issuances, uint128 revocations) = shareClass.issuancePerNetwork(poolId, scId, centrifugeId);
+        assertEq(issuances, 0);
+        assertEq(revocations, 100);
+
+        // Network 2 is unaffected
         assertEq(shareClass.issuance(poolId, scId, 2), 1000);
     }
 
-    function testNegativeIssuanceRevertsAfterPartialRevoke() public {
+    function testNegativeIssuanceAfterPartialRevoke() public {
         // Issue 500 on network 1 and 1000 on network 2
         shareClass.updateShares(centrifugeId, poolId, scId, 500, true);
         shareClass.updateShares(2, poolId, scId, 1000, true);
@@ -405,7 +435,6 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
         // Revoke 600 on network 1 (more than issued on that network)
         shareClass.updateShares(centrifugeId, poolId, scId, 600, false);
 
-        // This should revert when trying to read issuance for network 1
         vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
         shareClass.issuance(poolId, scId, centrifugeId);
 
@@ -429,6 +458,82 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
         // But reading issuance for network 2 should revert
         vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
         shareClass.issuance(poolId, scId, 2);
+    }
+
+    function testTotalIssuanceRefusesShortfallAndNets() public {
+        // Revoking more than the hub knows about does not revert, and the extra is not thrown away
+        shareClass.updateShares(1, poolId, scId, 400, true);
+        shareClass.updateShares(2, poolId, scId, 1000, false);
+
+        vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
+        shareClass.totalIssuance(poolId, scId);
+
+        (uint128 issuances, uint128 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
+        assertEq(issuances, 400);
+        assertEq(revocations, 1000);
+
+        // The chain reports its issuance and the numbers add up again
+        shareClass.updateShares(2, poolId, scId, 1000, true);
+
+        assertEq(shareClass.totalIssuance(poolId, scId), 400);
+        assertEq(shareClass.issuance(poolId, scId, 2), 0);
+        (issuances, revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
+        assertEq(issuances, 1400);
+        assertEq(revocations, 1000);
+    }
+
+    function testNegativeNetworkCountTracksCrossings() public {
+        shareClass.updateShares(1, poolId, scId, 5000, true);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 0);
+
+        // Two networks revoke more than they have reported issuing.
+        vm.expectEmit();
+        emit IShareClassManager.UpdateNegativeNetworkCount(poolId, scId, 2, 1);
+        shareClass.updateShares(2, poolId, scId, 100, false);
+
+        shareClass.updateShares(3, poolId, scId, 100, false);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 2);
+
+        // Only a crossing moves the count. A further revocation on a network already counted is a no-op.
+        shareClass.updateShares(2, poolId, scId, 100, false);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 2);
+
+        // And an issuance that does not bring a network back to parity leaves it counted.
+        shareClass.updateShares(2, poolId, scId, 100, true);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 2);
+
+        // Reaching parity is the crossing back out.
+        vm.expectEmit();
+        emit IShareClassManager.UpdateNegativeNetworkCount(poolId, scId, 2, 1);
+        shareClass.updateShares(2, poolId, scId, 100, true);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 1);
+
+        shareClass.updateShares(3, poolId, scId, 100, true);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 0);
+    }
+
+    function testNegativeNetworkCountIsPerShareClass() public {
+        ShareClassId scId2 = shareClass.previewNextShareClassId(poolId);
+        shareClass.addShareClass(poolId, SC_NAME, SC_SYMBOL, SC_SECOND_SALT);
+
+        shareClass.updateShares(centrifugeId, poolId, scId, 100, false);
+
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 1);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId2), 0, "a sibling share class is untouched");
+    }
+
+    /// @dev The count is what tells a reader the netted totals are smaller than the shares the networks
+    ///      really hold, and by how much: the sum of the counted networks' shortfalls.
+    function testNegativeNetworkCountMarksWhereTheTotalsAreShort() public {
+        shareClass.updateShares(1, poolId, scId, 1000, true);
+        shareClass.updateShares(2, poolId, scId, 400, false);
+
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 1);
+        assertEq(shareClass.totalIssuance(poolId, scId), 600, "netted across networks");
+
+        (uint128 issuances, uint128 revocations) = shareClass.issuancePerNetwork(poolId, scId, 2);
+        assertEq(revocations - issuances, 400, "network 2 is short by 400");
+        assertEq(shareClass.issuance(poolId, scId, 1), 1000, "so what the networks hold sums to 1000, not 600");
     }
 
     function testFuzzIssuanceAccounting(uint128 issue1, uint128 revoke1, uint128 issue2) public {

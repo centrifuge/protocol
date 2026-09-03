@@ -4,21 +4,24 @@ pragma solidity ^0.8.28;
 import {CentrifugeIntegrationTest} from "./Integration.t.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
-import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
-import {IUntrustedContractUpdate} from "../../src/core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromSpoke} from "../../src/core/utils/interfaces/IManagerCall.sol";
 
 import "forge-std/Test.sol";
 
-/// @notice Simple mock that accepts UntrustedContractUpdate calls
-contract MockUntrustedTarget is IUntrustedContractUpdate {
-    function untrustedCall(PoolId, ShareClassId, bytes calldata, uint16, bytes32) external pure {}
+/// @notice Simple mock that accepts ManagerCallFromSpoke calls
+contract MockSpokeTarget is IManagerCallFromSpoke {
+    function fromSpoke(PoolId, bytes calldata, uint16, bytes32) external payable {}
 }
 
 /// @title Gateway Batch Memory Expansion Test
 /// @notice Test to verify that max allowed batches from source chain can be processed on destination
 contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
     using MessageLib for *;
+
+    // UntrustedContractUpdate has no source restriction, so any non-local id works here; only
+    // used as the `centrifugeId` param to `gateway.handle` (the pool itself stays local).
+    uint16 constant REMOTE_CENTRIFUGE_ID = 1;
 
     PoolId poolId;
     address target;
@@ -27,8 +30,8 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
         super.setUp();
         poolId = hubRegistry.poolId(LOCAL_CENTRIFUGE_ID, 1);
 
-        // Deploy mock target that accepts UntrustedContractUpdate calls
-        target = address(new MockUntrustedTarget());
+        // Deploy mock target that accepts ManagerCallFromSpoke calls
+        target = address(new MockSpokeTarget());
 
         // Create a pool so messages are valid
         vm.prank(address(opsGuardian.opsSafe()));
@@ -39,12 +42,11 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
         vm.store(address(gateway), slot, bytes32(uint256(1)));
     }
 
-    /// @notice Creates an UntrustedContractUpdate message with 0 payload (107 bytes)
+    /// @notice Creates a ManagerCallFromSpoke message with 0 payload (91 bytes)
     function _createMessage() internal view returns (bytes memory) {
         return MessageLib.serialize(
-            MessageLib.UntrustedContractUpdate({
+            MessageLib.ManagerCallFromSpoke({
                 poolId: poolId.raw(),
-                scId: "",
                 target: bytes32(uint256(uint160(target))),
                 sender: "",
                 extraGasLimit: 0,
@@ -65,11 +67,11 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
     function testMaxAllowedBatchCanBeProcessed() public {
         // Get gas limits from the system
         bytes memory singleMessage = _createMessage();
-        uint128 perMessageGasLimit = gasService.messageOverallGasLimit(LOCAL_CENTRIFUGE_ID, singleMessage);
+        uint128 perMessageGasLimit = gasService.messageOverallGasLimit(REMOTE_CENTRIFUGE_ID, singleMessage);
 
         // NOTE: if using 30_000_000 here, the safety margin is still 3.8 at the moment of this comment.
         // NOTE: limit is approx under a maxBatchLimit of 65_000_000
-        uint128 maxBatchLimit = gasService.maxBatchGasLimit(LOCAL_CENTRIFUGE_ID);
+        uint128 maxBatchLimit = gasService.maxBatchGasLimit(REMOTE_CENTRIFUGE_ID);
         uint256 maxMessages = maxBatchLimit / perMessageGasLimit;
 
         bytes memory batch = _createBatch(maxMessages);
@@ -83,7 +85,7 @@ contract GatewayBatchMemoryExpansionTest is CentrifugeIntegrationTest {
 
         // Process the batch and measure gas
         uint256 gasBefore = gasleft();
-        gateway.handle(LOCAL_CENTRIFUGE_ID, batch);
+        gateway.handle(REMOTE_CENTRIFUGE_ID, batch);
         uint256 gasConsumed = gasBefore - gasleft();
 
         console.log("Result:");

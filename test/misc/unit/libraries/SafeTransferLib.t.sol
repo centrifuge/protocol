@@ -59,6 +59,13 @@ contract ERC20WithBooleanAlwaysFalse {
     }
 }
 
+/// @dev Rejects any ETH sent to it, even a zero-value call.
+contract RejectsAllETH {
+    fallback() external payable {
+        revert("always reverts");
+    }
+}
+
 /// @author Modified from
 /// https://github.com/morpho-org/morpho-blue/blob/main/test/forge/libraries/SafeTransferLibTest.sol
 contract SafeTransferLibTest is Test {
@@ -130,5 +137,35 @@ contract SafeTransferLibTest is Test {
 
     function safeApprove(address token, address spender, uint256 amount) external {
         SafeTransferLib.safeApprove(token, spender, amount);
+    }
+
+    function testSafeTransferETH(uint256 amount) public {
+        amount = bound(amount, 0, 100 ether);
+        vm.deal(address(this), amount);
+        address to = makeAddr("recipient");
+
+        SafeTransferLib.safeTransferETH(to, amount);
+
+        assertEq(to.balance, amount);
+    }
+
+    function testSafeTransferETHSkipsCallWhenZero() public {
+        // A zero-value transfer must not attempt the low-level call at all, even to a destination
+        // that reverts unconditionally on any call.
+        address to = address(new RejectsAllETH());
+
+        SafeTransferLib.safeTransferETH(to, 0);
+    }
+
+    function testSafeTransferETHRevertsOnFailure() public {
+        vm.deal(address(this), 1 ether);
+        address to = address(new RejectsAllETH());
+
+        vm.expectRevert(SafeTransferLib.SafeTransferEthFailed.selector);
+        this.safeTransferETH(to, 1 ether);
+    }
+
+    function safeTransferETH(address to, uint256 value) external {
+        SafeTransferLib.safeTransferETH(to, value);
     }
 }

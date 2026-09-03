@@ -6,11 +6,9 @@ import {
     AsyncVault,
     VaultBaseTest as BaseTest,
     ERC20,
-    IShareToken,
     MockAdapter,
     PoolId,
-    ShareClassId,
-    VaultKind
+    ShareClassId
 } from "./VaultBaseTest.sol";
 
 import {D18} from "../../../src/misc/types/D18.sol";
@@ -25,6 +23,8 @@ import {IAsyncVault} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {RequestMessageLib} from "../../../src/vaults/libraries/RequestMessageLib.sol";
 import {IAsyncRequestManager} from "../../../src/vaults/interfaces/IVaultManagers.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
+
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 
 contract DepositTest is BaseTest {
     using MessageLib for *;
@@ -55,11 +55,13 @@ contract DepositTest is BaseTest {
 
     function _testDepositMint(uint256 amount, bool snap) internal {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
 
         uint128 price = 2 * 10 ** 18;
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updatePricePoolPerShare(
@@ -113,7 +115,7 @@ contract DepositTest is BaseTest {
         vault.requestDeposit(amount, self, self);
 
         // ensure funds are locked in escrow
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(self), 0);
         assertEq(vault.pendingDepositRequest(0, self), amount);
         assertEq(vault.claimableDepositRequest(0, self), 0);
@@ -136,7 +138,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.pendingDepositRequest(0, self), 0);
         assertEq(vault.claimableDepositRequest(0, self), amount);
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), shares);
 
         // check maxDeposit and maxMint are 0 for non-members
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, uint64(block.timestamp));
@@ -155,14 +157,14 @@ contract DepositTest is BaseTest {
         vault.deposit(amount / 2, self, self); // deposit half the amount
         // Allow 2 difference because of rounding
         assertApproxEqAbs(shareToken.balanceOf(self), shares / 2, 2);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares - shares / 2, 2);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxMint(self), shares - shares / 2, 2);
         assertApproxEqAbs(vault.maxDeposit(self), amount - amount / 2, 2);
 
         // mint the rest
         vault.mint(vault.maxMint(self), self);
         assertApproxEqAbs(shareToken.balanceOf(self), shares - vault.maxMint(self), 2);
-        assertTrue(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))) <= 1);
+        assertTrue(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))) <= 1);
         assertTrue(vault.maxMint(self) <= 1);
 
         // minting or depositing more should revert
@@ -181,7 +183,12 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0
+            asyncVaultFactory,
+            SHARE_TOKEN_DECIMALS,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(asset),
+            0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
@@ -224,7 +231,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
+    //     AsyncVault vault = AsyncVault(deploySimpleVault(asyncVaultFactory));
     //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
@@ -286,7 +293,7 @@ contract DepositTest is BaseTest {
     //     tokenAmount = bound(tokenAmount, 1 * 10 ** 6, type(uint128).max / 10 ** 12);
 
     //     //Deploy a pool
-    //     AsyncVault vault = AsyncVault(deploySimpleVault(VaultKind.Async));
+    //     AsyncVault vault = AsyncVault(deploySimpleVault(asyncVaultFactory));
     //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
@@ -332,11 +339,13 @@ contract DepositTest is BaseTest {
 
     function testDepositMintToReceiver(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
@@ -362,7 +371,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), shares); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), shares);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), shares);
 
         // deposit to receiver should fail due to missing membership
         vm.expectPartialRevert(IERC7751.WrappedError.selector);
@@ -381,17 +390,19 @@ contract DepositTest is BaseTest {
 
         assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
         assertApproxEqAbs(shareToken.balanceOf(receiver), shares, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount, 1);
     }
 
     function testDepositAsEndorsedOperator(uint256 amount) public {
         // If lower than 4 or odd, rounding down can lead to not receiving any tokens
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         address receiver = makeAddr("receiver");
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
@@ -417,7 +428,7 @@ contract DepositTest is BaseTest {
         assertEq(vault.maxMint(self), sharePayout); // max deposit
         assertEq(vault.maxDeposit(self), amount); // max deposit
         // assert share class tokens minted
-        assertEq(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), sharePayout);
+        assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), sharePayout);
 
         centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), receiver, type(uint64).max); // add
         // receiver
@@ -442,8 +453,8 @@ contract DepositTest is BaseTest {
 
         assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
         assertApproxEqAbs(shareToken.balanceOf(receiver), sharePayout, 1);
-        assertApproxEqAbs(shareToken.balanceOf(address(balanceSheet.escrow(vault.poolId()))), 0, 1);
-        assertApproxEqAbs(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount, 1);
+        assertApproxEqAbs(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0, 1);
+        assertApproxEqAbs(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount, 1);
     }
 
     function testDepositAndRedeemPrecision() public {
@@ -452,7 +463,12 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) = deployVault(
-            VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), bytes16(bytes("1")), address(asset), 0
+            asyncVaultFactory,
+            SHARE_TOKEN_DECIMALS,
+            address(fullRestrictionsHook),
+            bytes16(bytes("1")),
+            address(asset),
+            0
         );
         AsyncVault vault = AsyncVault(vault_);
         centrifugeChain.updatePricePoolPerShare(
@@ -505,7 +521,7 @@ contract DepositTest is BaseTest {
         assets = 115500000; // 115.5*10**6
 
         // mint interest into escrow
-        asset.mint(address(balanceSheet.escrow(vault.poolId())), assets - investmentAmount);
+        asset.mint(address(spoke.escrow(vault.poolId())), assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
             poolId, vault.scId().raw(), bytes32(bytes20(self)), assetId, assets, firstSharePayout + secondSharePayout, 0
@@ -519,7 +535,7 @@ contract DepositTest is BaseTest {
     function testDepositAndRedeemPrecisionWithInverseDecimals(bytes16 scId) public {
         ERC20 asset = _newErc20("Currency", "CR", 18);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, 6, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
         centrifugeChain.updatePricePoolPerShare(poolId, scId, 1000000000000000000000000000, uint64(block.timestamp));
@@ -568,7 +584,7 @@ contract DepositTest is BaseTest {
 
         // Adjust escrow for interest
         // NOTE: In reality, the FM would have allocate the interest;
-        asset.approve(address(balanceSheet.escrow(PoolId.wrap(poolId))), type(uint256).max);
+        asset.approve(address(spoke.escrow(PoolId.wrap(poolId))), type(uint256).max);
         _topUpEscrow(PoolId.wrap(poolId), ShareClassId.wrap(scId), asset, assets - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
@@ -591,7 +607,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -630,7 +646,7 @@ contract DepositTest is BaseTest {
 
         ERC20 asset = _newErc20("Currency", "CR", INVESTMENT_CURRENCY_DECIMALS);
         (uint64 poolId, address vault_, uint128 assetId) =
-            deployVault(VaultKind.Async, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
+            deployVault(asyncVaultFactory, SHARE_TOKEN_DECIMALS, address(fullRestrictionsHook), scId, address(asset), 0);
         AsyncVault vault = AsyncVault(vault_);
 
         // price = (100*10**18) /  (99 * 10**18) = 101.010101 * 10**18
@@ -666,7 +682,7 @@ contract DepositTest is BaseTest {
         amount = uint128(bound(amount, 2, MAX_UINT128 / 2));
 
         uint128 price = 2 * 10 ** 18;
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         PoolId poolId = vault.poolId();
         ShareClassId scId = vault.scId();
@@ -677,7 +693,7 @@ contract DepositTest is BaseTest {
 
         vault.requestDeposit(amount, self, self);
 
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(address(self)), 0);
 
         // NOTE: Removed test for "cannot fulfill redeem if there is no pending request"
@@ -702,7 +718,7 @@ contract DepositTest is BaseTest {
         centrifugeChain.isFulfilledDepositRequest(
             vault.poolId().raw(), vault.scId().raw(), CastLib.toBytes32(self), assetId, 0, 0, amount.toUint128()
         );
-        assertEq(erc20.balanceOf(address(balanceSheet.escrow(vault.poolId()))), amount);
+        assertEq(erc20.balanceOf(address(spoke.escrow(vault.poolId()))), amount);
         assertEq(erc20.balanceOf(self), 0);
         assertEq(vault.claimableCancelDepositRequest(0, self), amount);
         assertEq(vault.pendingCancelDepositRequest(0, self), false);
@@ -721,7 +737,7 @@ contract DepositTest is BaseTest {
         asset.approve(address(vault), investmentAmount);
         asset.mint(self, investmentAmount);
         vault.requestDeposit(investmentAmount, self, self);
-        AssetId assetId = spoke.assetToId(address(asset), erc20TokenId); // retrieve assetId
+        AssetId assetId = spokeRegistry.assetToId(address(asset), erc20TokenId); // retrieve assetId
 
         // first trigger executed collectInvest of the first 50% at a price of 1.4
         uint128 assets = 50000000; // 50 * 10**6
@@ -752,10 +768,12 @@ contract DepositTest is BaseTest {
     }
 
     function testDepositAsInvestorDirectly(uint256 amount) public {
-        amount = uint128(bound(amount, 4, MAX_UINT128));
+        // Bounded to MAX_UINT128 / 2: the deposit is queued twice (noteDeposit, then unreserve
+        // on approval) in the balance sheet's asset accounting.
+        amount = uint128(bound(amount, 4, MAX_UINT128 / 2));
         vm.assume(amount % 2 == 0);
 
-        (, address vault_, uint128 assetId) = deploySimpleVault(VaultKind.Async);
+        (, address vault_, uint128 assetId) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);
         IShareToken shareToken = IShareToken(address(vault.share()));
 
@@ -785,7 +803,7 @@ contract DepositTest is BaseTest {
 
     function _topUpEscrow(PoolId poolId, ShareClassId scId, ERC20 asset, uint256 assetAmount) internal {
         asset.mint(address(this), assetAmount);
-        asset.approve(address(balanceSheet), assetAmount);
-        balanceSheet.deposit(poolId, scId, address(asset), 0, assetAmount.toUint128());
+        asset.approve(address(spoke), assetAmount);
+        spoke.deposit(poolId, scId, address(asset), 0, assetAmount.toUint128());
     }
 }

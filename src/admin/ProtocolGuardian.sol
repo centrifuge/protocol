@@ -7,28 +7,26 @@ import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
-import {IGateway} from "../core/messaging/interfaces/IGateway.sol";
 import {IScheduleAuthMessageSender} from "../core/messaging/interfaces/IGatewaySenders.sol";
+
+import {ITokenBridge} from "../bridge/interfaces/ITokenBridge.sol";
 
 /// @title  ProtocolGuardian
 /// @notice This contract provides emergency controls and protocol-level management including pausing,
-///         permission scheduling, cross-chain upgrade coordination, and adapter configuration.
+///         permission scheduling, and cross-chain upgrade coordination.
 contract ProtocolGuardian is IProtocolGuardian {
     using CastLib for address;
 
-    PoolId public constant GLOBAL_POOL = PoolId.wrap(0);
-
     IRoot public immutable root;
     ISafe public safe;
-    IGateway public gateway;
+    ITokenBridge public tokenBridge;
     IScheduleAuthMessageSender public sender;
 
-    constructor(ISafe safe_, IRoot root_, IGateway gateway_, IScheduleAuthMessageSender sender_) {
+    constructor(ISafe safe_, IRoot root_, IScheduleAuthMessageSender sender_, ITokenBridge tokenBridge_) {
         safe = safe_;
         root = root_;
-        gateway = gateway_;
         sender = sender_;
+        tokenBridge = tokenBridge_;
     }
 
     modifier onlySafe() {
@@ -48,8 +46,8 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function file(bytes32 what, address data) external onlySafe {
         if (what == "safe") safe = ISafe(data);
-        else if (what == "gateway") gateway = IGateway(data);
         else if (what == "sender") sender = IScheduleAuthMessageSender(data);
+        else if (what == "tokenBridge") tokenBridge = ITokenBridge(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -83,6 +81,15 @@ contract ProtocolGuardian is IProtocolGuardian {
     }
 
     //----------------------------------------------------------------------------------------------
+    // Bridge Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
+    function fileTokenBridgeRelayer(address relayer) external onlySafe {
+        tokenBridge.file("relayer", relayer);
+    }
+
+    //----------------------------------------------------------------------------------------------
     // Cross-Chain Operations
     //----------------------------------------------------------------------------------------------
 
@@ -94,26 +101,6 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable onlySafe {
         sender.sendCancelUpgrade{value: msg.value}(centrifugeId, target.toBytes32(), refund);
-    }
-
-    /// @inheritdoc IProtocolGuardian
-    function recoverTokens(
-        uint16 centrifugeId,
-        address target,
-        address token,
-        uint256 tokenId,
-        address to,
-        uint256 amount,
-        address refund
-    ) external payable onlySafe {
-        sender.sendRecoverTokens{value: msg.value}(
-            centrifugeId, target.toBytes32(), token.toBytes32(), tokenId, to.toBytes32(), amount, refund
-        );
-    }
-
-    /// @inheritdoc IProtocolGuardian
-    function blockOutgoing(uint16 centrifugeId, bool isBlocked) external onlySafe {
-        gateway.blockOutgoing(centrifugeId, GLOBAL_POOL, isBlocked);
     }
 
     //----------------------------------------------------------------------------------------------
