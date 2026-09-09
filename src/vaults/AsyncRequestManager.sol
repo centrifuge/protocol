@@ -729,5 +729,11 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     {
         (address asset,) = spokeRegistry.idToAsset(assetId, true);
         vault_ = IBaseVault(IShareToken(address(spokeRegistry.shareToken(poolId, scId))).vault(asset));
+
+        VaultDetails memory details = spokeRegistry.vaultDetails(address(vault_));
+        require(
+            details.isLinked && details.poolId == poolId && details.scId == scId && details.assetId == assetId,
+            ISpokeRegistry.InvalidVault()
+        );
     }
 }

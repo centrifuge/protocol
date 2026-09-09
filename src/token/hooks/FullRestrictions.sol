@@ -43,7 +43,7 @@ contract FullRestrictions is BaseTransferHook {
         if (isRedeemRequest(from, to)) return isSourceMember(from, hookData);
         if (isRedeemFulfillment(from, to)) return true;
         if (isRedeemClaimOrRevocation(from, to)) return true;
-        if (isCrosschainTransfer(from, to)) return true;
+        if (isCrosschainTransfer(from, to)) return isTargetMember(to, hookData);
         if (isCrosschainTransferExecution(from, to)) return isTargetMember(to, hookData);
 
         // Else, it's a transfer

@@ -225,10 +225,19 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IVaultRouter
-    function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address) {
+    function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address vault_) {
         IShareToken share = IShareToken(address(spokeRegistry.shareToken(poolId, scId)));
         require(address(share) != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
-        return share.vault(asset);
+
+        vault_ = share.vault(asset);
+        if (vault_ == address(0)) return address(0);
+
+        VaultDetails memory details = spokeRegistry.vaultDetails(vault_);
+        require(
+            details.isLinked && details.poolId == poolId && details.scId == scId && details.asset == asset
+                && details.tokenId == 0,
+            ISpokeRegistry.InvalidVault()
+        );
     }
 
     /// @inheritdoc IVaultRouter
