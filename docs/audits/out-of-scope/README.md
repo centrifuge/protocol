@@ -1,8 +1,10 @@
 # Audit out-of-scope lists
 
-Internal out-of-scope scoping for external security reviews. Excluded from the public mirror via `.publicignore`, because these reference assumptions and findings that are not public, including not-yet-released versions under audit.
+Out-of-scope scoping for external security reviews.
 
-The audit report PDFs in the parent `docs/audits/` directory stay public; only this `out-of-scope/` subfolder is internal.
+A release's own list (`vX.Y.Z.md`) is published to the public mirror from that release's live branch, because the bug bounty for that release is scoped against it. The rolling list for the currently deployed version (`cantina-bug-bounty.md`) and this README stay internal via `.publicignore`, since they reference assumptions and findings for versions still under audit.
+
+The audit report PDFs in the parent `docs/audits/` directory stay public.
 
 ## Files
 
