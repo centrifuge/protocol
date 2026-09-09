@@ -138,7 +138,10 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
 
     /// @inheritdoc IRegistrar
     /// @dev Pulls the tokens to the caller before burning, so transfer hooks observe the same flow
-    ///      shapes as before. The burn consumes the allowance the caller granted to this registrar.
+    ///      shapes as before. Passing `sender == from` makes that pull skip the allowance branch; the
+    ///      burn that follows is the leg that consumes the allowance {IRegistrar.burn} has the caller
+    ///      grant, since the registrar burns on the caller's behalf. An unlimited allowance is left
+    ///      untouched, a finite one is spent and has to be granted again per burn.
     function burn(address token, address from, uint256 amount) external auth {
         IShareToken(token).authTransferFrom(from, from, msg.sender, amount);
         IShareToken(token).burn(msg.sender, amount);
@@ -147,13 +150,6 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
     /// @inheritdoc IRegistrar
     function authTransferFrom(address token, address sender, address from, address to, uint256 amount) external auth {
         IShareToken(token).authTransferFrom(sender, from, to, amount);
-    }
-
-    /// @inheritdoc IRegistrar
-    /// @dev The registry has already validated the link, so this trusted path is a thin pass-through; the
-    ///      governance override (`RegistrarCall.SetVault` via `fromHub`) keeps its own declarative validation.
-    function updateVault(address token, address asset, address vault) external auth {
-        IShareToken(token).updateVault(asset, vault);
     }
 
     /// @inheritdoc IRegistrar

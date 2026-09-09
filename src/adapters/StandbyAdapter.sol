@@ -35,9 +35,9 @@ contract StandbyAdapter is IStandbyAdapter {
     IAdapter public immutable underlying;
     IMessageHandler public immutable entrypoint;
 
-    /// @dev Credits are keyed on (centrifugeId, gasLimit, payload), not session-scoped, so a recorded send
-    ///      can still be forwarded after an adapter rotation. This matches normal adapter behaviour — any
-    ///      adapter can still deliver an in-flight message post-rotation — and forwards can never exceed
+    /// @dev Credits are keyed on (centrifugeId, gasLimit, payload). The payload is what {MultiAdapter.send}
+    ///      dispatched, which carries the session id in its leading bytes, so a credit is session-scoped in
+    ///      practice and a forward after a blocked session no longer resolves. Forwards can never exceed
     ///      sends, so the standby vote stays bounded by what was actually sent.
     mapping(bytes32 id => uint256) public forwardable;
 

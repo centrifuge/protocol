@@ -8,6 +8,7 @@ import {
     ERC20,
     MockAdapter,
     PoolId,
+    ShareClassId,
     SyncDepositVault
 } from "./VaultBaseTest.sol";
 
@@ -519,6 +520,47 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         AsyncVault vault = AsyncVault(vault_);
 
         assertEq(vaultRouter.getVault(vault.poolId(), vault.scId(), makeAddr("otherAsset")), address(0));
+    }
+
+    /// @dev The ERC-7575 pointer is set by the pool, so a lookup keyed by the tuple must not take it at
+    ///      face value. Reachable by a ward the pool relied on its own share token calling the bare
+    ///      `updateVault`, which skips the validation `ShareTokenRegistrar._setVault` applies.
+    function testGetVaultRejectsAPointerThatLeavesTheTuple() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+        IShareToken share = IShareToken(address(vault.share()));
+
+        // The registrar is a ward on the token, so this is the shape a relied ward reaches
+        vm.prank(address(shareTokenRegistrar));
+        share.updateVault(address(erc20), makeAddr("aVaultOfSomeOtherPool"));
+
+        // Hoisted: both are external calls, and expectRevert would otherwise bind to the first of them
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        vaultRouter.getVault(poolId, scId, address(erc20));
+    }
+
+    /// @dev The asset is part of the tuple too: a pointer moved to a sibling vault of the same pool and
+    ///      share class still leaves the tuple that was asked for.
+    function testGetVaultRejectsAPointerToAnotherAssetsVault() public {
+        (, address vault_,) = deploySimpleVault(asyncVaultFactory);
+        AsyncVault vault = AsyncVault(vault_);
+        IShareToken share = IShareToken(address(vault.share()));
+
+        ERC20 otherAsset = _newErc20("Y's Dollar", "USDY", 6);
+        (, address otherVault,) =
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), vault.scId().raw(), address(otherAsset), 0);
+
+        vm.prank(address(shareTokenRegistrar));
+        share.updateVault(address(erc20), otherVault);
+
+        PoolId poolId = vault.poolId();
+        ShareClassId scId = vault.scId();
+
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        vaultRouter.getVault(poolId, scId, address(erc20));
     }
 
     function testRequestDeposit() public {

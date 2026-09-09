@@ -147,8 +147,8 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         return (from != address(spoke) && from != crosschainSource) && to == address(0);
     }
 
-    function isCrosschainTransfer(address from, address to) public view returns (bool) {
-        return from == crosschainSource && to == address(0);
+    function isCrosschainTransfer(address, address to) public pure returns (bool) {
+        return to != address(0) && uint160(to) <= type(uint16).max;
     }
 
     function isCrosschainTransferExecution(address from, address to) public view returns (bool) {

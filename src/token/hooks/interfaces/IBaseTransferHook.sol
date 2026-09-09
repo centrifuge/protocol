@@ -74,10 +74,19 @@ interface IBaseTransferHook is ITransferHook {
     /// @notice True when shares are minted to the pool escrow (zero-address → escrow, for fulfillment accounting)
     function isRedeemFulfillment(address from, address to) external view returns (bool);
 
-    /// @notice True when shares are burned from a non-balance-sheet, non-cross-chain source (claim or cancel)
+    /// @notice True when a holder's shares leave the pool: the burn-side check that gates a fulfilled
+    ///         redemption or a cancelled-deposit refund, and the pair a ward burning a holder's balance
+    ///         directly produces.
+    /// @dev    The `maxRedeem`, `maxWithdraw` and `claimableCancelDepositRequest` views run it with the
+    ///         holder as the source, but the claim paths run it against the receiver; only `redeem` also
+    ///         gates on the controller, through `maxRedeem`. A zero view is therefore not proof that no
+    ///         authorized claim to another receiver is available.
     function isRedeemClaimOrRevocation(address from, address to) external view returns (bool);
 
-    /// @notice True when shares are burned by the cross-chain source (outbound cross-chain transfer)
+    /// @notice True when the destination is a chain rather than a holder, for an outbound cross-chain
+    ///         transfer. {ShareTokenRegistrar.canBridge} encodes the destination centrifuge id as an
+    ///         address and runs that pair through the restriction check, which is the encoding this
+    ///         matches; a registrar that answers `canBridge` some other way never produces the pair.
     function isCrosschainTransfer(address from, address to) external view returns (bool);
 
     /// @notice True when shares are minted by the cross-chain source to a recipient (inbound cross-chain transfer)

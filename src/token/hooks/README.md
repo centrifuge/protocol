@@ -28,6 +28,12 @@ The hook provides comprehensive transfer control, ensuring that tokens only flow
 
 ### `FreelyTransferable`
 
-`FreelyTransferable` allows unrestricted transfers without memberlist or freeze requirements. It always returns `true` for transfer checks, providing an opt-out from restrictions while maintaining the hook infrastructure for potential future upgrades.
+`FreelyTransferable` leaves transfers between holders unrestricted, and gates the points where a position enters or leaves the pool: an account must be a member to be issued shares directly, to submit a redemption request, and to settle any of the four claim legs (deposit claim, redeem claim, and both cancellation refunds). Freezes bind on both legs of every flow, with the pool escrow exempt on either side.
 
-This hook is suitable for fully permissionless pools or testing environments where compliance restrictions aren't needed. It still inherits the base infrastructure for memberlist and freeze management but doesn't enforce any restrictions by default.
+This hook suits pools that screen who may subscribe and who may settle, but not who may hold. Membership is checked again at claim time and not only when the request was submitted, so a `validUntil` that lapses in between can withhold a claim whose assets are already in the escrow or whose shares are already burned. Which party has to be a member differs per entry point:
+
+- `deposit`/`mint` and `claimCancelRedeemRequest` hand out shares and check both the controller and the receiver, so an expired holder cannot settle them at all.
+- `redeem` gates on `maxRedeem`, so it checks the controller as well as the receiver. `withdraw` carries no such gate and checks only the receiver, so an expired holder can still take the assets out by naming a member as receiver.
+- `claimCancelDepositRequest` returns assets without burning anything and checks only the receiver, so an expired holder can likewise route the refund to a member.
+
+The `maxRedeem`, `maxWithdraw` and `claimableCancelDepositRequest` views run their check with the holder as both parties, so they read zero for an expired holder even on the two legs where a claim to a member receiver would still complete: reading zero there is not proof that no authorized claim remains. An operator the holder authorized can direct any of these on their behalf. Pools granting an unbounded `validUntil` never reach any of it. `RedemptionRestrictions` is the variant that gates the redemption request but leaves every settlement leg open.
