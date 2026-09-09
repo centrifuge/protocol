@@ -151,15 +151,17 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         );
     }
 
+    /// @dev The outbound leg a hook actually sees is the destination chain encoded as an address, which is
+    ///      what {IRegistrar.canBridge} runs through the check. The burn itself is performed by the spoke, so
+    ///      it classifies as a redeem fulfillment and is indistinguishable from a redemption by pair alone.
     function testCrosschainTransfers() public view {
         assertTrue(
-            correctHook.isCrosschainTransfer(address(spokeHandler), address(0)), "spokeHandler burn is crosschain"
+            correctHook.isCrosschainTransfer(USER, address(uint160(LOCAL_CENTRIFUGE_ID))),
+            "destination chain is a crosschain transfer"
         );
+        assertTrue(correctHook.isRedeemFulfillment(address(spoke), address(0)), "the spoke performs the burn");
         assertFalse(
-            correctHook.isRedeemFulfillment(address(spokeHandler), address(0)), "spokeHandler burn not fulfillment"
-        );
-        assertFalse(
-            correctHook.isRedeemClaimOrRevocation(address(spokeHandler), address(0)), "spokeHandler burn not revocation"
+            correctHook.isCrosschainTransfer(address(spokeHandler), address(0)), "the crosschain source never burns"
         );
     }
 
@@ -196,7 +198,10 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         assertFalse(correctHook.isRedeemRequest(USER, user2), "user to user not redeem request");
         assertFalse(correctHook.isRedeemFulfillment(USER, user2), "user to user not redeem fulfillment");
         assertFalse(correctHook.isRedeemClaimOrRevocation(USER, user2), "user to user not revocation");
-        assertFalse(correctHook.isCrosschainTransfer(USER, user2), "user to user not cross-chain");
+        assertFalse(
+            correctHook.isCrosschainTransfer(USER, address(0x1111111111111111111111111111111111111111)),
+            "a holder address is not a chain"
+        );
     }
 
     function testInternalProtocolTransfers() public view {

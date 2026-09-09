@@ -60,6 +60,16 @@ depth = 100
 call_override = false
 fail_on_revert = false
 
+# Stateful invariant runs, reached with `FOUNDRY_PROFILE=invariant`. Wider and shallower than the default
+# profile's settings: the invariants under test/invariant/ are looking for a short mis-ordered sequence, so
+# many independent runs find one sooner than a few deep ones. Reverting calls still consume a step, which is
+# why every handler swallows its own reverts rather than leaning on fail_on_revert.
+[profile.invariant.invariant]
+runs = 256
+depth = 25
+call_override = false
+fail_on_revert = false
+
 # Every network reachable by `--rpc-url <alias>` on the CLI and `vm.rpcUrl(<alias>)` in Solidity, so that
 # building a URL out of a base and an API key happens in exactly one place. Aliases match the network names
 # under env/<environment>/, which is how NetworkConfigLib.rpcUrl (a live-branch consumer) resolves one from

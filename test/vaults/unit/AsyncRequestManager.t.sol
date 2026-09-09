@@ -1125,3 +1125,103 @@ contract AsyncRequestManagerTestCallback is AsyncRequestManagerTest {
         manager.callback(POOL_A, SC_1, ASSET_ID, payload);
     }
 }
+
+/// @dev A callback is authenticated for a (poolId, scId, assetId) tuple, but the vault it lands on is
+///      resolved through the share token's ERC-7575 pointer, which the pool controls. These cover that the
+///      resolved vault is checked back against the authenticated tuple, so a pool cannot aim its token at
+///      another pool's vault and have its callbacks credit, or its claims spend, that pool's escrow.
+contract AsyncRequestManagerTestRequestVaultTuple is AsyncRequestManagerTest {
+    using RequestCallbackMessageLib for *;
+    using CastLib for *;
+
+    PoolId constant POOL_B = PoolId.wrap(2);
+    ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("sc2"));
+
+    IAsyncVault foreignVault = IAsyncVault(address(new IsContract()));
+
+    /// @dev Points POOL_A/SC_1's token at a vault the registry reports as `details`.
+    function _pointAt(IAsyncVault vault_, VaultDetails memory details) internal {
+        vm.mockCall(
+            address(shareToken), abi.encodeWithSelector(IERC7575Share.vault.selector, asset), abi.encode(vault_)
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(spokeRegistry.vaultDetails.selector, vault_),
+            abi.encode(details)
+        );
+    }
+
+    function _fulfilledDeposit() internal view returns (bytes memory) {
+        return RequestCallbackMessageLib.serialize(
+            RequestCallbackMessageLib.FulfilledDepositRequest(USER.toBytes32(), ASSETS, SHARES, 0)
+        );
+    }
+
+    function _fulfilledRedeem() internal view returns (bytes memory) {
+        return RequestCallbackMessageLib.serialize(
+            RequestCallbackMessageLib.FulfilledRedeemRequest(USER.toBytes32(), ASSETS, SHARES, 0)
+        );
+    }
+
+    function testErrForeignPoolVaultOnRedeem() public {
+        // The token of POOL_A/SC_1 resolves a vault the registry says belongs to POOL_B.
+        _pointAt(foreignVault, VaultDetails(POOL_B, SC_1, ASSET_ID, asset, TOKEN_ID, true));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledRedeem());
+    }
+
+    function testErrForeignPoolVaultOnDeposit() public {
+        _pointAt(foreignVault, VaultDetails(POOL_B, SC_1, ASSET_ID, asset, TOKEN_ID, true));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledDeposit());
+    }
+
+    function testErrForeignShareClassVault() public {
+        _pointAt(foreignVault, VaultDetails(POOL_A, SC_2, ASSET_ID, asset, TOKEN_ID, true));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledRedeem());
+    }
+
+    function testErrForeignAssetVault() public {
+        AssetId otherAssetId = newAssetId(LOCAL_CENTRIFUGE_ID, 2);
+        _pointAt(foreignVault, VaultDetails(POOL_A, SC_1, otherAssetId, asset, TOKEN_ID, true));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledRedeem());
+    }
+
+    function testErrUnlinkedVault() public {
+        _pointAt(foreignVault, VaultDetails(POOL_A, SC_1, ASSET_ID, asset, TOKEN_ID, false));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledRedeem());
+    }
+
+    function testErrUnregisteredVault() public {
+        // An address the registry has never seen. Real storage returns a zero struct, so isLinked is false.
+        IAsyncVault unknown = IAsyncVault(address(new IsContract()));
+        _pointAt(
+            unknown, VaultDetails(PoolId.wrap(0), ShareClassId.wrap(bytes16(0)), AssetId.wrap(0), address(0), 0, false)
+        );
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledRedeem());
+    }
+
+    function testMatchingTupleIsAccepted() public {
+        // The default mocks already point POOL_A/SC_1 at a vault registered to exactly that tuple, so the
+        // callback reaches the pending-request check rather than the vault check.
+        vm.prank(AUTH);
+        vm.expectRevert(IAsyncRequestManager.NoPendingRequest.selector);
+        manager.callback(POOL_A, SC_1, ASSET_ID, _fulfilledRedeem());
+    }
+}

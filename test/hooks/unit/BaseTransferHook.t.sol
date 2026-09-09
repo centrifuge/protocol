@@ -255,10 +255,16 @@ contract BaseTransferHookTestTransferTypes is BaseTransferHookTestBase {
         assertFalse(hook.isRedeemClaimOrRevocation(user1, user2));
     }
 
+    /// @dev The destination is a chain id encoded as an address, which is what canBridge checks. The source
+    ///      is irrelevant: a holder bridging out is the only shape that reaches this pair.
     function testIsCrosschainTransfer() public view {
-        assertTrue(hook.isCrosschainTransfer(crosschainSource, address(0)));
-        assertFalse(hook.isCrosschainTransfer(user1, address(0)));
-        assertFalse(hook.isCrosschainTransfer(crosschainSource, user1));
+        assertTrue(hook.isCrosschainTransfer(user1, address(uint160(1))), "chain 1 is a destination chain");
+        assertTrue(
+            hook.isCrosschainTransfer(user1, address(uint160(type(uint16).max))), "highest chain id still a chain"
+        );
+        assertFalse(hook.isCrosschainTransfer(user1, address(0)), "a burn is not a cross-chain transfer");
+        assertFalse(hook.isCrosschainTransfer(user1, user2), "a holder is not a chain");
+        assertFalse(hook.isCrosschainTransfer(user1, ESCROW_HOOK_ID), "the escrow sentinel sits above the range");
     }
 
     function testIsCrosschainTransferExecution() public view {
