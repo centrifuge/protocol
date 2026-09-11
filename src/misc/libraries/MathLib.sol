@@ -198,4 +198,9 @@ library MathLib {
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
     }
+
+    /// @notice Returns the absolute difference |a - b|, never underflows.
+    function absDiff(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a - b : b - a;
+    }
 }

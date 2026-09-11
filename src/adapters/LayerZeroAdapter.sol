@@ -27,13 +27,23 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 /// @dev    A delegate is set on deployment, to configure the DVN and executor
 ///         settings as well as the send/receive libraries.
 ///
-///         Message ordering is not enforced.
+///         Replay protection is enforced by the LayerZero endpoint via message
+///         GUIDs. Since nextNonce() returns 0 (unordered mode), the endpoint
+///         tracks delivered message identifiers to prevent duplicate delivery.
 contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;
 
-    /// @dev Cost of executing `lzReceive()` except entrypoint.handle()
-    uint256 public constant RECEIVE_COST = 4000;
+    /// @dev Cost of executing `lzReceive()` except entrypoint.handle(), reserved per destination chain.
+    ///      Covers 1 cold SLOAD (single-slot `sources` struct) + 1 cold CALL (entrypoint) at 4_700, plus
+    ///      a flat 5_300 for dispatch, calldata decode, mapping hash, memory and call setup.
+    uint256 public constant DEFAULT_RECEIVE_COST = 10_000;
+
+    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
+    // Monad reprices cold storage access (2100→8100) and cold account access (2600→10100) per its
+    // published opcode schedule (docs.monad.xyz), putting those same two accesses at 18_200 => +13_500
+    // over DEFAULT, wrapper allowance unchanged. Mirrors GasService's per-chain reserve.
+    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 13_500;
 
     IMessageHandler public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
@@ -59,11 +69,6 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
-    }
-
-    /// @inheritdoc IAdapterWiring
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return destinations[centrifugeId].layerZeroEid != 0;
     }
 
     /// @dev Update the LayerZero delegate.
@@ -113,8 +118,9 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingReceipt memory receipt =
-            endpoint.send{value: msg.value}(_params(destination, payload, gasLimit + RECEIVE_COST), refund);
+        MessagingReceipt memory receipt = endpoint.send{value: msg.value}(
+            _params(destination, payload, gasLimit + _receiveCost(centrifugeId)), refund
+        );
         adapterData = receipt.guid;
     }
 
@@ -123,8 +129,15 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         LayerZeroDestination memory destination = destinations[centrifugeId];
         require(destination.layerZeroEid != 0, UnknownChainId());
 
-        MessagingFee memory fee = endpoint.quote(_params(destination, payload, gasLimit + RECEIVE_COST), address(this));
+        MessagingFee memory fee =
+            endpoint.quote(_params(destination, payload, gasLimit + _receiveCost(centrifugeId)), address(this));
         return fee.nativeFee;
+    }
+
+    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
+    ///      repricing needs a larger reserve than other chains.
+    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
+        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
     }
 
     /// @dev Generate message parameters

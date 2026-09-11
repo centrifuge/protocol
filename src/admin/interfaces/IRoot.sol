@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IEndorsements} from "../../core/spoke/interfaces/IEndorsements.sol";
 import {IScheduleAuth} from "../../core/messaging/interfaces/IScheduleAuth.sol";
 import {IProtocolPauser} from "../../core/messaging/interfaces/IProtocolPauser.sol";
 
-interface IRoot is IEndorsements, IProtocolPauser, IScheduleAuth {
+interface IRoot is IProtocolPauser, IScheduleAuth {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -13,6 +12,8 @@ interface IRoot is IEndorsements, IProtocolPauser, IScheduleAuth {
     event File(bytes32 indexed what, uint256 data);
     event RelyContract(address indexed target, address indexed user);
     event DenyContract(address indexed target, address indexed user);
+    event Endorse(address indexed user);
+    event Veto(address indexed user);
 
     //----------------------------------------------------------------------------------------------
     // Errors
@@ -56,6 +57,11 @@ interface IRoot is IEndorsements, IProtocolPauser, IScheduleAuth {
 
     /// @notice Removes the endorsed user
     function veto(address user) external;
+
+    /// @notice Returns whether the user is endorsed
+    /// @param user The address to check for endorsement status
+    /// @return True if the user is endorsed, false otherwise
+    function endorsed(address user) external view returns (bool);
 
     //----------------------------------------------------------------------------------------------
     // Pause management

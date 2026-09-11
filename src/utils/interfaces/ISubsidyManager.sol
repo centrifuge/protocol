@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {PoolId} from "../../core/types/PoolId.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {IRefundEscrowFactory} from "./IRefundEscrowFactory.sol";
 
-interface ISubsidyManager is ITrustedContractUpdate {
+import {PoolId} from "../../core/types/PoolId.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
+
+interface ISubsidyManager is IManagerCallFromHub {
     event File(bytes32 indexed what, address data);
     event DepositSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
     event WithdrawSubsidy(PoolId indexed poolId, address indexed sender, uint256 amount);
@@ -12,9 +14,17 @@ interface ISubsidyManager is ITrustedContractUpdate {
     error FileUnrecognizedParam();
     error RefundEscrowNotDeployed();
     error NotEnoughToWithdraw();
+    error NotEnvoy();
+    error UnexpectedValue();
+
+    /// @notice The Envoy that routes policy-supervised subsidy withdrawals
+    function envoy() external view returns (address);
+
+    /// @notice Factory that deploys per-pool refund escrows for holding subsidy deposits
+    function refundEscrowFactory() external view returns (IRefundEscrowFactory);
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'refundEscrowFactory'.
+    /// @param what The bytes32 representation of 'refundEscrowFactory' or 'envoy'.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 

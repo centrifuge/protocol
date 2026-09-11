@@ -12,9 +12,10 @@ import {SafeTransferLib} from "../../misc/libraries/SafeTransferLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
-import {IBalanceSheet, WithdrawMode} from "../../core/spoke/interfaces/IBalanceSheet.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
 
 /// @title  OnOffRamp
 /// @notice Balance sheet manager for depositing and withdrawing ERC20 assets with accounting token support.
@@ -28,38 +29,33 @@ contract OnOffRamp is IOnOffRamp {
     using CastLib for *;
 
     PoolId public immutable poolId;
-    address public immutable contractUpdater;
+    address public immutable envoy;
     ShareClassId public immutable scId;
-    IBalanceSheet public immutable balanceSheet;
+    ISpoke public immutable spoke;
     IAccountingToken public immutable accountingToken;
 
     mapping(address asset => bool) public onramp;
     mapping(address relayer => bool) public relayer;
     mapping(address asset => mapping(address receiver => bool isEnabled)) public offramp;
 
-    constructor(
-        PoolId poolId_,
-        ShareClassId scId_,
-        address contractUpdater_,
-        IBalanceSheet balanceSheet_,
-        IAccountingToken accountingToken_
-    ) {
+    constructor(PoolId poolId_, ShareClassId scId_, address envoy_, ISpoke spoke_, IAccountingToken accountingToken_) {
         poolId = poolId_;
         scId = scId_;
-        contractUpdater = contractUpdater_;
-        balanceSheet = balanceSheet_;
+        envoy = envoy_;
+        spoke = spoke_;
         accountingToken = accountingToken_;
     }
 
     //----------------------------------------------------------------------------------------------
-    // Owner actions
+    // Hub actions
     //----------------------------------------------------------------------------------------------
 
-    /// @inheritdoc ITrustedContractUpdate
-    function trustedCall(PoolId poolId_, ShareClassId scId_, bytes memory payload) external {
+    /// @inheritdoc IManagerCallFromHub
+    /// @dev This manager is deployed per (poolId, scId); the call's poolId must match and the scId is implicit.
+    function fromHub(PoolId poolId_, bytes calldata payload) external payable {
         require(poolId == poolId_, InvalidPoolId());
-        require(scId == scId_, InvalidShareClassId());
-        require(msg.sender == contractUpdater, NotContractUpdater());
+        require(msg.sender == envoy, NotEnvoy());
+        require(msg.value == 0, UnexpectedValue());
 
         uint8 kindValue = abi.decode(payload, (uint8));
         require(kindValue <= uint8(type(TrustedCall).max), UnknownTrustedCall());
@@ -67,13 +63,13 @@ contract OnOffRamp is IOnOffRamp {
         TrustedCall kind = TrustedCall(kindValue);
         if (kind == TrustedCall.Onramp) {
             (, uint128 assetId, bool isEnabled) = abi.decode(payload, (uint8, uint128, bool));
-            (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId), true);
             require(tokenId == 0, ERC6909NotSupported());
 
             onramp[asset] = isEnabled;
 
-            if (isEnabled) SafeTransferLib.safeApprove(asset, address(balanceSheet), type(uint256).max);
-            else SafeTransferLib.safeApprove(asset, address(balanceSheet), 0);
+            if (isEnabled) SafeTransferLib.safeApprove(asset, address(spoke), type(uint256).max);
+            else SafeTransferLib.safeApprove(asset, address(spoke), 0);
 
             emit UpdateOnramp(asset, isEnabled);
         } else if (kind == TrustedCall.Relayer) {
@@ -85,7 +81,7 @@ contract OnOffRamp is IOnOffRamp {
         } else if (kind == TrustedCall.Offramp) {
             (, uint128 assetId, bytes32 receiverAddress, bool isEnabled) =
                 abi.decode(payload, (uint8, uint128, bytes32, bool));
-            (address asset, uint256 tokenId) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            (address asset, uint256 tokenId) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId), true);
             require(tokenId == 0, ERC6909NotSupported());
             address receiver = receiverAddress.toAddress();
 
@@ -94,7 +90,7 @@ contract OnOffRamp is IOnOffRamp {
         } else if (kind == TrustedCall.Withdraw) {
             (, uint128 assetId, uint128 amount, bytes32 receiverAddress) =
                 abi.decode(payload, (uint8, uint128, uint128, bytes32));
-            (address asset,) = balanceSheet.spoke().idToAsset(AssetId.wrap(assetId));
+            (address asset,) = spoke.spokeRegistry().idToAsset(AssetId.wrap(assetId), true);
             address receiver = receiverAddress.toAddress();
 
             require(offramp[asset][receiver], InvalidOfframpDestination());
@@ -120,13 +116,13 @@ contract OnOffRamp is IOnOffRamp {
         require(onramp[asset], NotAllowedOnrampAsset());
 
         // Deposit real asset
-        balanceSheet.deposit(poolId, scId, asset, 0, amount);
+        spoke.deposit(poolId, scId, asset, 0, amount);
 
-        // Mint liability accounting token and deposit to BalanceSheet
+        // Mint liability accounting token and deposit to the balance sheet
         uint256 liabTokenId = accountingToken.toTokenId(poolId, asset, true);
         accountingToken.mint(address(this), liabTokenId, amount, scId);
-        accountingToken.approve(address(balanceSheet), liabTokenId, amount);
-        balanceSheet.deposit(poolId, scId, address(accountingToken), liabTokenId, amount);
+        accountingToken.approve(address(spoke), liabTokenId, amount);
+        spoke.deposit(poolId, scId, address(accountingToken), liabTokenId, amount);
     }
 
     /// @inheritdoc IWithdrawManager
@@ -146,13 +142,13 @@ contract OnOffRamp is IOnOffRamp {
     function _withdraw(address asset, uint128 amount, address receiver) internal {
         require(receiver != address(0) && offramp[asset][receiver], InvalidOfframpDestination());
         // Withdraw real asset to receiver
-        balanceSheet.withdraw(poolId, scId, asset, 0, receiver, amount, WithdrawMode.Full);
+        spoke.withdraw(poolId, scId, asset, 0, receiver, amount);
 
-        // Mint non-liability accounting token and deposit to BalanceSheet
+        // Mint non-liability accounting token and deposit to the balance sheet
         uint256 accTokenId = accountingToken.toTokenId(poolId, asset, false);
         accountingToken.mint(address(this), accTokenId, amount, scId);
-        accountingToken.approve(address(balanceSheet), accTokenId, amount);
-        balanceSheet.deposit(poolId, scId, address(accountingToken), accTokenId, amount);
+        accountingToken.approve(address(spoke), accTokenId, amount);
+        spoke.deposit(poolId, scId, address(accountingToken), accTokenId, amount);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -167,25 +163,41 @@ contract OnOffRamp is IOnOffRamp {
 }
 
 contract OnOffRampFactory is IOnOffRampFactory {
-    address public immutable contractUpdater;
-    IBalanceSheet public immutable balanceSheet;
+    address public immutable envoy;
+    ISpoke public immutable spoke;
     IAccountingToken public immutable accountingToken;
 
-    constructor(address contractUpdater_, IBalanceSheet balanceSheet_, IAccountingToken accountingToken_) {
-        contractUpdater = contractUpdater_;
-        balanceSheet = balanceSheet_;
+    constructor(address envoy_, ISpoke spoke_, IAccountingToken accountingToken_) {
+        envoy = envoy_;
+        spoke = spoke_;
         accountingToken = accountingToken_;
     }
 
     /// @inheritdoc IOnOffRampFactory
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOffRamp) {
-        balanceSheet.spoke().shareToken(poolId, scId); // Check for existence
+        require(spoke.spokeRegistry().hasShareClass(poolId, scId), ISpokeRegistry.ShareTokenDoesNotExist());
 
-        OnOffRamp manager = new OnOffRamp{salt: keccak256(abi.encode(poolId.raw(), scId.raw()))}(
-            poolId, scId, contractUpdater, balanceSheet, accountingToken
-        );
+        OnOffRamp manager = new OnOffRamp{salt: _salt(poolId, scId)}(poolId, scId, envoy, spoke, accountingToken);
 
         emit DeployOnOffRamp(poolId, scId, address(manager));
         return IOnOffRamp(manager);
+    }
+
+    /// @inheritdoc IOnOffRampFactory
+    function previewManager(PoolId poolId, ShareClassId scId) external view returns (address) {
+        bytes32 hash =
+            keccak256(abi.encodePacked(bytes1(0xff), address(this), _salt(poolId, scId), _initCodeHash(poolId, scId)));
+        return address(uint160(uint256(hash)));
+    }
+
+    function _initCodeHash(PoolId poolId, ShareClassId scId) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(type(OnOffRamp).creationCode, abi.encode(poolId, scId, envoy, spoke, accountingToken))
+        );
+    }
+
+    /// @dev Deterministic CREATE2 salt so a (poolId, scId) maps to a fixed, previewable address.
+    function _salt(PoolId poolId, ShareClassId scId) internal pure returns (bytes32) {
+        return keccak256(abi.encode(poolId.raw(), scId.raw()));
     }
 }

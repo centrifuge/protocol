@@ -11,4 +11,7 @@ interface IOnOffRampFactory {
 
     /// @notice Deploys new on-offramp manager.
     function newManager(PoolId poolId, ShareClassId scId) external returns (IOnOffRamp);
+
+    /// @notice Returns the deterministic address of the on-offramp manager for the given pool and share class.
+    function previewManager(PoolId poolId, ShareClassId scId) external view returns (address);
 }

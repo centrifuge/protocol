@@ -30,11 +30,17 @@ interface IAccounting {
     /// @notice Dispatched when the pool is already unlocked.
     error AccountingAlreadyUnlocked();
 
+    /// @notice Dispatched when trying to unlock the null pool sentinel.
+    error InvalidPoolId();
+
     /// @notice Dispatched when the pool is not unlocked to interact with.
     error AccountingLocked();
 
     /// @notice Dispatched when the debit and credit side do not match at the end of a transaction.
     error Unbalanced();
+
+    /// @notice Dispatched when trying to create an account with the null id (the unset-slot sentinel).
+    error InvalidAccountId();
 
     /// @notice Dispatched when trying to create an account that already exists.
     error AccountExists();
@@ -95,4 +101,27 @@ interface IAccounting {
     /// @param account The account to check
     /// @return True if the account exists, false otherwise
     function exists(PoolId poolId, AccountId account) external view returns (bool);
+
+    /// @notice Returns the current debited amount in the active transaction
+    /// @dev Transient storage: Only non-zero during an active unlock/lock session
+    /// @return The current debited amount
+    function debited() external view returns (uint128);
+
+    /// @notice Returns the current credited amount in the active transaction
+    /// @dev Transient storage: Only non-zero during an active unlock/lock session
+    /// @return The current credited amount
+    function credited() external view returns (uint128);
+
+    /// @notice Returns the account data for a given pool and account
+    /// @param poolId The pool the account belongs to
+    /// @param account The account identifier
+    /// @return totalDebit The total debit amount
+    /// @return totalCredit The total credit amount
+    /// @return isDebitNormal Whether the account is debit-normal
+    /// @return lastUpdated The timestamp of the last update
+    /// @return metadata The account metadata
+    function accounts(PoolId poolId, AccountId account)
+        external
+        view
+        returns (uint128 totalDebit, uint128 totalCredit, bool isDebitNormal, uint64 lastUpdated, bytes memory metadata);
 }

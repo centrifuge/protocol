@@ -6,6 +6,9 @@ import {D18} from "../../misc/types/D18.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
+import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
+import {IHubRequestManagerCallback} from "../../core/hub/interfaces/IHubRequestManagerCallback.sol";
 import {IHubRequestManager, IHubRequestManagerNotifications} from "../../core/hub/interfaces/IHubRequestManager.sol";
 
 /// @notice Struct containing the epoch data for issuing share class tokens
@@ -62,6 +65,17 @@ enum RequestType {
     Redeem
 }
 
+/// @notice Enum indicating the manager action encoded in a `IManagerCallFromHub.fromHub` payload
+enum ManagerAction {
+    Invalid,
+    ApproveDeposits,
+    ApproveRedeems,
+    IssueShares,
+    RevokeShares,
+    ForceCancelDepositRequest,
+    ForceCancelRedeemRequest
+}
+
 /// @notice Struct containing the epoch IDs for each action
 /// @param deposit The epoch ID for deposits
 /// @param issue The epoch ID for issuing shares
@@ -74,7 +88,7 @@ struct EpochId {
     uint32 revoke;
 }
 
-interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifications {
+interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifications, IManagerCallFromHub {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------
@@ -190,6 +204,12 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     /// @notice Dispatched when unknown request type is encountered.
     error UnknownRequestType();
 
+    /// @notice Dispatched when value is forwarded to an action that sends no message (would strand).
+    error UnexpectedValue();
+
+    /// @notice Dispatched when `fromHub` is called by any address other than the `Envoy`.
+    error NotEnvoy();
+
     error InsufficientPending();
     error ZeroApprovalAmount();
     error EpochNotFound();
@@ -246,109 +266,70 @@ interface IBatchRequestManager is IHubRequestManager, IHubRequestManagerNotifica
     // Manager actions
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Approve pending deposit requests for an epoch
-    /// @dev This function approves a specific amount of assets from the current deposit epoch
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param depositAssetId The asset identifier for deposits
-    /// @param nowDepositEpochId The current deposit epoch identifier
-    /// @param approvedAssetAmount The amount of assets approved for this epoch
-    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
-    /// @param refund Address to receive unused gas refund
-    function approveDeposits(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        uint32 nowDepositEpochId,
-        uint128 approvedAssetAmount,
-        D18 pricePoolPerAsset,
-        address refund
-    ) external payable;
+    /// @dev Entry point: `IManagerCallFromHub.fromHub`. Payload: `abi.encode(uint8 kind, bytes16 scId, ...args)`
+    ///      (see `ManagerAction`). `poolId` comes from the call; `scId` is decoded from `payload`.
+    ///      Only callable through the `Envoy`; policy enforcement happens at the Hub beforehand.
 
-    /// @notice Approve pending redemption requests for an epoch
-    /// @dev This function approves a specific amount of shares from the current redeem epoch
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param payoutAssetId The asset identifier for payouts
-    /// @param nowRedeemEpochId The current redeem epoch identifier
-    /// @param approvedShareAmount The amount of shares approved for redemption
-    /// @param pricePoolPerAsset The price of one asset unit in terms of pool currency
-    function approveRedeems(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        uint32 nowRedeemEpochId,
-        uint128 approvedShareAmount,
-        D18 pricePoolPerAsset
-    ) external payable;
+    //----------------------------------------------------------------------------------------------
+    // Storage getters
+    //----------------------------------------------------------------------------------------------
 
-    /// @notice Issue shares to investors based on approved deposits
-    /// @dev This function mints shares for the approved deposit epoch using the provided share price
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param depositAssetId The asset identifier for deposits
-    /// @param nowIssueEpochId The current issue epoch identifier
-    /// @param pricePoolPerShare The price of pool currency per share unit
-    /// @param extraGasLimit Additional gas limit for cross-chain operations
-    /// @param refund Address to receive unused gas refund
-    function issueShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId depositAssetId,
-        uint32 nowIssueEpochId,
-        D18 pricePoolPerShare,
-        uint128 extraGasLimit,
-        address refund
-    ) external payable;
+    /// @notice Hub contract called for deposit approvals, share issuance, and redeem processing
+    function hub() external view returns (IHubRequestManagerCallback);
 
-    /// @notice Revoke shares and prepare asset payouts for redemptions
-    /// @dev This function burns shares for the approved redeem epoch and calculates asset payouts
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param payoutAssetId The asset identifier for payouts
-    /// @param nowRevokeEpochId The current revoke epoch identifier
-    /// @param pricePoolPerShare The price of pool currency per share unit
-    /// @param extraGasLimit Additional gas limit for cross-chain operations
-    /// @param refund Address to receive unused gas refund
-    function revokeShares(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId payoutAssetId,
-        uint32 nowRevokeEpochId,
-        D18 pricePoolPerShare,
-        uint128 extraGasLimit,
-        address refund
-    ) external payable;
+    /// @notice Registry of pools, assets, and manager permissions on the hub chain
+    function hubRegistry() external view returns (IHubRegistry);
 
-    /// @notice Force cancel a user's deposit request (manager action)
-    /// @dev This allows the manager to cancel a deposit request on behalf of a user
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param investor The investor's address as bytes32
-    /// @param depositAssetId The asset identifier for the deposit
-    /// @param refund Address to receive unused gas refund
-    function forceCancelDepositRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 investor,
-        AssetId depositAssetId,
-        address refund
-    ) external payable;
+    /// @notice The Envoy, the only authorized caller of `fromHub`
+    function envoy() external view returns (address);
 
-    /// @notice Force cancel a user's redemption request (manager action)
-    /// @dev This allows the manager to cancel a redemption request on behalf of a user
-    /// @param poolId The pool identifier
-    /// @param scId The share class identifier
-    /// @param investor The investor's address as bytes32
-    /// @param payoutAssetId The asset identifier for the payout
-    /// @param refund Address to receive unused gas refund
-    function forceCancelRedeemRequest(
-        PoolId poolId,
-        ShareClassId scId,
-        bytes32 investor,
-        AssetId payoutAssetId,
-        address refund
-    ) external payable;
+    /// @notice Returns the epoch ID data for a given pool, share class and asset
+    function epochId(PoolId poolId, ShareClassId scId, AssetId assetId)
+        external
+        view
+        returns (uint32 deposit, uint32 issue, uint32 redeem, uint32 revoke);
+
+    /// @notice Returns the total pending redeem amount for a given pool, share class and asset
+    function pendingRedeem(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128);
+
+    /// @notice Returns the total pending deposit amount for a given pool, share class and asset
+    function pendingDeposit(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128);
+
+    /// @notice Returns the user's redeem request order for a given pool, share class, asset and investor
+    function redeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (uint128 pending, uint32 lastUpdate);
+
+    /// @notice Returns the user's deposit request order for a given pool, share class, asset and investor
+    function depositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (uint128 pending, uint32 lastUpdate);
+
+    /// @notice Returns the user's queued redeem request for a given pool, share class, asset and investor
+    function queuedRedeemRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool isCancelling, uint128 amount);
+
+    /// @notice Returns the user's queued deposit request for a given pool, share class, asset and investor
+    function queuedDepositRequest(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool isCancelling, uint128 amount);
+
+    /// @notice Returns whether force cancel is allowed for a deposit request
+    function allowForceDepositCancel(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool);
+
+    /// @notice Returns whether force cancel is allowed for a redeem request
+    function allowForceRedeemCancel(PoolId poolId, ShareClassId scId, AssetId assetId, bytes32 investor)
+        external
+        view
+        returns (bool);
 
     //----------------------------------------------------------------------------------------------
     // View methods

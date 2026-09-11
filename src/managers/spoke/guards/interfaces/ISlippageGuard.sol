@@ -4,8 +4,8 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../../../core/types/PoolId.sol";
 import {ISpoke} from "../../../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../core/types/ShareClassId.sol";
-import {IBalanceSheet} from "../../../../core/spoke/interfaces/IBalanceSheet.sol";
-import {ITrustedContractUpdate} from "../../../../core/utils/interfaces/IContractUpdate.sol";
+import {IManagerCallFromHub} from "../../../../core/utils/interfaces/IManagerCall.sol";
+
 import {IOnchainPMFactory} from "../../interfaces/IOnchainPMFactory.sol";
 
 struct AssetEntry {
@@ -23,7 +23,7 @@ struct PeriodState {
     uint48 periodStart;
 }
 
-interface ISlippageGuard is ITrustedContractUpdate {
+interface ISlippageGuard is IManagerCallFromHub {
     error SlippageExceeded(uint256 withdrawn, uint256 deposited, uint16 maxBps);
     error PeriodLossExceeded(uint128 accumulated, uint128 maxPeriodLoss);
     error EmptyAssets();
@@ -32,6 +32,8 @@ interface ISlippageGuard is ITrustedContractUpdate {
     error NotOpener();
     error ContextMismatch();
     error NotAuthorized();
+    error NotEnvoy();
+    error UnexpectedValue();
     error ZeroPrice();
 
     event SetConfig(PoolId indexed poolId, ShareClassId indexed scId, uint128 maxPeriodLoss, uint32 periodDuration);
@@ -53,8 +55,7 @@ interface ISlippageGuard is ITrustedContractUpdate {
     function close(PoolId poolId, ShareClassId scId, uint16 maxSlippageBps) external;
 
     function spoke() external view returns (ISpoke);
-    function balanceSheet() external view returns (IBalanceSheet);
-    function contractUpdater() external view returns (address);
+    function envoy() external view returns (address);
     function onchainPMFactory() external view returns (IOnchainPMFactory);
     function config(PoolId poolId, ShareClassId scId)
         external

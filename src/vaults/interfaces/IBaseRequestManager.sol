@@ -8,15 +8,15 @@ import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {IPoolEscrow} from "../../core/spoke/interfaces/IPoolEscrow.sol";
-import {IRequestManager} from "../../core/interfaces/IRequestManager.sol";
+import {ISpokeRequestManager} from "../../core/spoke/interfaces/ISpokeRequestManager.sol";
 
-interface IBaseRequestManager is IRequestManager {
+interface IBaseRequestManager is ISpokeRequestManager {
     event File(bytes32 indexed what, address data);
 
     error FileUnrecognizedParam();
 
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spoke', etc.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 

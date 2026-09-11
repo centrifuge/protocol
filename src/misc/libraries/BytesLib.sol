@@ -186,4 +186,10 @@ library BytesLib {
         require(_bytes.length > _start, SliceOutOfBounds());
         return _bytes[_start] != 0;
     }
+
+    function decodeCall(bytes calldata data) internal pure returns (bytes4 selector, bytes calldata payload) {
+        require(data.length >= 4, SliceOutOfBounds());
+        selector = bytes4(data[:4]);
+        payload = data[4:];
+    }
 }

@@ -20,12 +20,22 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
+/// @dev    Replay protection is enforced by the Axelar Gateway via `validateContractCall()`,
+///         which marks each command ID as consumed and reverts on reuse.
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 
-    /// @dev Cost of executing `execute()` except entrypoint.handle().
+    /// @dev Cost of executing `execute()` except entrypoint.handle(), reserved per destination chain.
     /// NOTE: Tested in production using real `validateContractCall()` implementation.
-    uint256 public constant RECEIVE_COST = 26000;
+    uint256 public constant DEFAULT_RECEIVE_COST = 26000;
+
+    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
+    // Monad reprices cold storage access (2100→8100, +6000/slot) and cold account access (2600→10100,
+    // +7500/call) per its published opcode schedule (docs.monad.xyz). execute() makes 2 cold SLOADs (a
+    // uint16 + a bytes32 spanning two slots) + 2 cold CALLs (validateContractCall, entrypoint) =>
+    // +27_000 over DEFAULT. The gateway's own internal cold writes aren't separately reserved, so this
+    // figure may be low. Mirrors GasService.
+    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 27_000;
 
     IMessageHandler public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
@@ -52,11 +62,6 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
         destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
-    }
-
-    /// @inheritdoc IAdapterWiring
-    function isWired(uint16 centrifugeId) external view returns (bool) {
-        return bytes(destinations[centrifugeId].axelarId).length != 0;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -118,7 +123,13 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         require(bytes(destination.axelarId).length != 0, UnknownChainId());
 
         return axelarGasService.estimateGasFee(
-            destination.axelarId, destination.addr, payload, gasLimit + RECEIVE_COST, bytes("")
+            destination.axelarId, destination.addr, payload, gasLimit + _receiveCost(centrifugeId), bytes("")
         );
+    }
+
+    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
+    ///      repricing needs a larger reserve than other chains.
+    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
+        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
     }
 }

@@ -5,12 +5,11 @@ import {Auth} from "../../misc/Auth.sol";
 import {IAuth} from "../../misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {IVault} from "../../core/spoke/interfaces/IVault.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {IShareToken} from "../../core/spoke/interfaces/IShareToken.sol";
 import {IVaultFactory} from "../../core/spoke/factories/interfaces/IVaultFactory.sol";
 
 import {SyncDepositVault} from "../SyncDepositVault.sol";
+import {IShareToken} from "../../token/interfaces/IShareToken.sol";
 import {IAsyncRedeemManager, ISyncDepositManager} from "../interfaces/IVaultManagers.sol";
 
 /// @title  Sync Vault Factory
@@ -32,16 +31,18 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
     }
 
     /// @inheritdoc IVaultFactory
-    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, IShareToken token)
+    /// @dev The trailing payload is unused: this factory needs no extra deployment configuration.
+    function newVault(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, address token, bytes calldata)
         public
         auth
-        returns (IVault)
+        returns (address)
     {
         require(tokenId == 0, UnsupportedTokenId());
 
         bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
-        SyncDepositVault vault =
-            new SyncDepositVault{salt: salt}(poolId, scId, asset, token, root, syncDepositManager, asyncRedeemManager);
+        SyncDepositVault vault = new SyncDepositVault{salt: salt}(
+            poolId, scId, asset, IShareToken(token), root, syncDepositManager, asyncRedeemManager
+        );
 
         vault.rely(root);
         vault.rely(address(syncDepositManager));
@@ -51,6 +52,23 @@ contract SyncDepositVaultFactory is Auth, IVaultFactory {
         IAuth(address(asyncRedeemManager)).rely(address(vault));
 
         vault.deny(address(this));
-        return vault;
+        return address(vault);
+    }
+
+    /// @inheritdoc IVaultFactory
+    /// @dev The trailing payload is unused: the deployed address does not depend on it.
+    function getVault(PoolId poolId, ShareClassId scId, address asset, uint256, address token, bytes calldata)
+        external
+        view
+        returns (address)
+    {
+        bytes32 salt = keccak256(abi.encode(poolId, scId, asset));
+        bytes32 initCodeHash = keccak256(
+            abi.encodePacked(
+                type(SyncDepositVault).creationCode,
+                abi.encode(poolId, scId, asset, IShareToken(token), root, syncDepositManager, asyncRedeemManager)
+            )
+        );
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
     }
 }

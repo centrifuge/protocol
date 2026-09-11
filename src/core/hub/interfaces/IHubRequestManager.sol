@@ -5,6 +5,7 @@ import {IERC165} from "../../../misc/interfaces/IERC165.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
+import {RequestId} from "../../types/RequestId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 
 interface IHubRequestManager is IERC165 {
@@ -13,22 +14,22 @@ interface IHubRequestManager is IERC165 {
 }
 
 interface IHubRequestManagerNotifications is IERC165 {
-    /// @notice Notify a deposit for an investor address located in the chain where the asset belongs
+    /// @notice Notify a deposit for the given request located in the chain where the asset belongs
     function notifyDeposit(
         PoolId poolId,
         ShareClassId scId,
         AssetId depositAssetId,
-        bytes32 investor,
+        RequestId requestId,
         uint32 maxClaims,
         address refund
     ) external payable;
 
-    /// @notice Notify a redemption for an investor address located in the chain where the asset belongs
+    /// @notice Notify a redemption for the given request located in the chain where the asset belongs
     function notifyRedeem(
         PoolId poolId,
         ShareClassId scId,
         AssetId payoutAssetId,
-        bytes32 investor,
+        RequestId requestId,
         uint32 maxClaims,
         address refund
     ) external payable;

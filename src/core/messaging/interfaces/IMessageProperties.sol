@@ -28,4 +28,15 @@ interface IMessageProperties {
 
     /// @notice Inspect the message to return the associated PoolId if any
     function messagePoolId(bytes calldata message) external pure returns (PoolId);
+
+    /// @notice The pool whose adapter set should route/verify the message. Same as `messagePoolId`, except a
+    ///         SetPoolAdapters for a pool with no adapter set yet (`poolConfigured == false`) falls back to
+    ///         the global pool, so the pool's first adapter configuration can be delivered over the global set.
+    function routePoolId(bytes calldata message, bool poolConfigured) external pure returns (PoolId);
+
+    /// @notice Returns the centrifugeId that `message` must originate from, or 0 if any source is permitted.
+    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16);
+
+    /// @notice Gas reserved in every message budget to handle a worst-case processor revert.
+    function messageFailureGasReserve() external view returns (uint128);
 }

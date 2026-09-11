@@ -7,8 +7,12 @@ import {IBaseRequestManager} from "./IBaseRequestManager.sol";
 import {D18} from "../../misc/types/D18.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
+import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
-import {ITrustedContractUpdate} from "../../core/utils/interfaces/IContractUpdate.sol";
+import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
+import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
+
+import {ISubsidyManager} from "../../utils/interfaces/ISubsidyManager.sol";
 
 //----------------------------------------------------------------------------------------------
 // Deposit Manager Interfaces
@@ -22,7 +26,8 @@ interface IDepositManager {
     /// @dev    The assets required to fulfill the deposit are already locked in escrow upon calling requestDeposit.
     ///         The shares required to fulfill the deposit have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
-    ///         Receiver has to pass all the share token restrictions in order to receive the shares.
+    ///         Both the owner and the receiver have to pass all the share token restrictions: the owner
+    ///         has to pass them for the claimed amount as well (mirrors `maxMint`).
     function deposit(IBaseVault vault, uint256 assets, address receiver, address owner)
         external
         returns (uint256 shares);
@@ -34,7 +39,8 @@ interface IDepositManager {
     /// @dev    The assets required to fulfill the mint are already locked in escrow upon calling requestDeposit.
     ///         The shares required to fulfill the mint have already been minted and transferred to the escrow on
     ///         fulfillDepositRequest.
-    ///         Receiver has to pass all the share token restrictions in order to receive the shares.
+    ///         Both the owner and the receiver have to pass all the share token restrictions: the owner
+    ///         has to pass them for the claimed amount as well (mirrors `maxMint`).
     function mint(IBaseVault vault, uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /// @notice Returns the max amount of assets based on the unclaimed amount of shares after at least one successful
@@ -93,7 +99,8 @@ interface IAsyncDepositManager is IDepositManager, IBaseRequestManager {
     function pendingCancelDepositRequest(IBaseVault vault, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has claimable deposit request cancellation and returns the total claim
-    ///         value in assets.
+    ///         value in assets. Returns 0 while the share token restrictions block the user, matching what
+    ///         {claimCancelDepositRequest} would do.
     function claimableCancelDepositRequest(IBaseVault vault, address user) external view returns (uint256 assets);
 }
 
@@ -152,7 +159,8 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     ///         owner to the escrow, even though the asset payout can only happen after epoch execution.
     ///         The receiver becomes the owner of redeem request fulfillment.
     /// @param  source Deprecated
-    /// @param  transfer Set `false` for legacy vaults which already execute the transfer in the vault implementation
+    /// @param  transfer Deprecated and ignored (kept for ABI compatibility); shares are always transferred
+    ///         to the pool escrow by this manager
     function requestRedeem(
         IBaseVault vault,
         uint256 shares,
@@ -179,7 +187,8 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     ///         Shares are transferred from the escrow to the receiver.
     /// @dev    The shares required to fulfill the claim have already been reserved for the owner in escrow on
     ///         fulfillRedeemRequest with non-zero cancelled share amount value.
-    ///         Receiver has to pass all the share token restrictions in order to receive the shares.
+    ///         Both the owner and the receiver have to pass all the share token restrictions: the owner
+    ///         has to pass them for the claimed amount as well (mirrors `claimableCancelRedeemRequest`).
     function claimCancelRedeemRequest(IBaseVault vault, address receiver, address owner)
         external
         returns (uint256 shares);
@@ -191,7 +200,8 @@ interface IAsyncRedeemManager is IRedeemManager, IBaseRequestManager {
     function pendingCancelRedeemRequest(IBaseVault vault, address user) external view returns (bool isPending);
 
     /// @notice Indicates whether a user has claimable redeem request cancellation and returns the total claim
-    ///         value in shares.
+    ///         value in shares. Returns 0 while the share token restrictions block the escrow-to-user leg,
+    ///         matching what {claimCancelRedeemRequest} would do.
     function claimableCancelRedeemRequest(IBaseVault vault, address user) external view returns (uint256 shares);
 }
 
@@ -223,13 +233,15 @@ interface ISyncDepositValuation {
     function pricePoolPerShare(PoolId poolId, ShareClassId scId) external view returns (D18 price);
 }
 
-interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedContractUpdate {
+interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, IManagerCallFromHub {
     event SetValuation(PoolId indexed poolId, ShareClassId indexed scId, address valuation);
     event SetMaxReserve(
         PoolId indexed poolId, ShareClassId indexed scId, address asset, uint256 tokenId, uint128 maxReserve
     );
     event File(bytes32 indexed what, address data);
 
+    error NotEnvoy();
+    error UnexpectedValue();
     error ExceedsMaxDeposit();
     error FileUnrecognizedParam();
     error ExceedsMaxMint();
@@ -242,8 +254,11 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
         MaxReserve
     }
 
+    /// @notice The Envoy that routes policy-supervised valuation/max-reserve updates
+    function envoy() external view returns (address);
+
     /// @notice Updates contract parameters of type address.
-    /// @param what The bytes32 representation of 'gateway' or 'spoke'.
+    /// @param what The bytes32 representation of 'spoke', 'spokeRegistry' or 'envoy'.
     /// @param data The new contract address.
     function file(bytes32 what, address data) external;
 
@@ -269,6 +284,21 @@ interface ISyncManager is ISyncDepositManager, ISyncDepositValuation, ITrustedCo
     /// @param maxReserve The amount of maximum reserve
     function setMaxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 maxReserve)
         external;
+
+    /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Stores pool, share class, asset, vault, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
+
+    /// @notice Price source contract used for sync deposit pricing on a given pool and share class
+    function valuation(PoolId poolId, ShareClassId scId) external view returns (ISyncDepositValuation);
+
+    /// @notice Maximum asset amount the escrow will accept for a given pool, share class, and asset
+    function maxReserve(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId)
+        external
+        view
+        returns (uint128);
 }
 
 //----------------------------------------------------------------------------------------------
@@ -306,9 +336,9 @@ struct AsyncInvestmentState {
 //----------------------------------------------------------------------------------------------
 
 /// @dev Reservation reason for deposit flows
-uint32 constant REASON_DEPOSIT = 1;
+bytes32 constant REASON_DEPOSIT = bytes32(uint256(1));
 /// @dev Reservation reason for redeem flows
-uint32 constant REASON_REDEEM = 2;
+bytes32 constant REASON_REDEEM = bytes32(uint256(2));
 
 interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
     error ExceedsMaxDeposit();
@@ -342,4 +372,13 @@ interface IAsyncRequestManager is IAsyncDepositManager, IAsyncRedeemManager {
             bool pendingCancelDepositRequest,
             bool pendingCancelRedeemRequest
         );
+
+    /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
+    function spoke() external view returns (ISpoke);
+
+    /// @notice Stores pool, share class, asset, vault, and price state for the spoke side
+    function spokeRegistry() external view returns (ISpokeRegistry);
+
+    /// @notice Manages gas subsidies for cross-chain message costs, funded per-pool
+    function subsidyManager() external view returns (ISubsidyManager);
 }
