@@ -102,6 +102,26 @@ contract ChainConfigTest is ChainConfigBase {
         '"opsAdmin":"0x0000000000000000000000000000000000000002"},'
         '"contracts":{"spoke":{"address":"0x0000000000000000000000000000000000000004"}}}';
 
+    /// @dev The four ways a config can record a Root it cannot hand over. Each has a `.contracts.root`, so
+    ///      each means to keep one, and none of them names an address a launch could wire the protocol to
+    string constant MALFORMED_ROOT = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002"},'
+        '"contracts":{"root":{"address":"0xnot-an-address"}}}';
+
+    string constant ROOT_WITHOUT_ADDRESS = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002"},' '"contracts":{"root":{"blockNumber":1}}}';
+
+    string constant NULL_ROOT = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002"},' '"contracts":{"root":null}}';
+
+    string constant ZERO_ROOT = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002"},'
+        '"contracts":{"root":{"address":"0x0000000000000000000000000000000000000000"}}}';
+
     /// @dev A config carries the name it was read under, not one it names itself: `detect()` derives the
     ///      name from the path, and everything downstream — the rpc alias, the connections lookup — keys off
     ///      it, so a config could not disagree about who it is even if it tried.
@@ -153,16 +173,39 @@ contract ChainConfigTest is ChainConfigBase {
 
     /// @dev `Root` is the one `.contracts` entry the chain half reads, because keeping it is what decides
     ///      whether a launch lands beside the Root a chain already has or stands a second one next to it.
-    function test_rootAddressIsWhatTheConfigRecords() public pure {
+    function test_rootAddressIsWhatTheConfigRecords() public view {
         assertEq(Chains.parseRootAddress(WITH_ROOT), address(3));
     }
 
     /// @dev Absent is an answer, not a failure: it is what a chain being prepared looks like, and what tells a
     ///      launch to deploy its own. Zero whether the section is missing or merely has no Root in it — a
     ///      revert either way would make every such config undeployable.
-    function test_rootAddressIsZeroWhereNoneIsRecorded() public pure {
+    function test_rootAddressIsZeroWhereNoneIsRecorded() public view {
         assertEq(Chains.parseRootAddress(WITHOUT_ROOT), address(0), "a contracts section with no root");
         assertEq(Chains.parseRootAddress(MINIMAL), address(0), "no contracts section at all");
+    }
+
+    /// @dev Only the absent Root is zero. One that is recorded and unreadable has to fail where it is read:
+    ///      answering zero would deploy a second Root beside the one this chain already carries, and wire the
+    ///      whole protocol to it. A zero address is the one that needs saying out loud — it parses fine, and
+    ///      is exactly the value that means "no Root recorded"
+    function test_rootAddressRevertsOnARootItCannotRead() public {
+        vm.expectRevert();
+        this.rootAddress(MALFORMED_ROOT);
+
+        vm.expectRevert();
+        this.rootAddress(ROOT_WITHOUT_ADDRESS);
+
+        vm.expectRevert();
+        this.rootAddress(NULL_ROOT);
+
+        vm.expectRevert("config records a zero Root: delete .contracts.root to deploy one");
+        this.rootAddress(ZERO_ROOT);
+    }
+
+    /// @dev An external hop, as `parse` above, so `vm.expectRevert` sees the revert below its own depth
+    function rootAddress(string memory json) external view returns (address) {
+        return Chains.parseRootAddress(json);
     }
 
     /// @dev An external hop, so that `vm.expectRevert` sees the revert at a lower depth than its own call

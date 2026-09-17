@@ -399,12 +399,17 @@ library Chains {
 
     /// @notice The `Root` a config records under `.contracts`, or zero where it records none.
     /// @dev    The JSON-taking half of `ChainConfigLib.rootAddress`, as `parse` is of `load`.
-    function parseRootAddress(string memory json) internal pure returns (address) {
-        try vm.parseJsonAddress(json, ".contracts.root.address") returns (address addr) {
-            return addr;
-        } catch {
-            return address(0);
-        }
+    ///
+    ///         Only a missing `.contracts.root` returns zero. If the key is there but the address cannot be
+    ///         read — a typo, a truncated value, a zero left as a placeholder — this reverts, since the
+    ///         config means to keep a Root and returning zero would deploy a second one beside it.
+    function parseRootAddress(string memory json) internal view returns (address) {
+        if (!vm.keyExistsJson(json, ".contracts.root")) return address(0);
+
+        address root = vm.parseJsonAddress(json, ".contracts.root.address");
+        require(root != address(0), "config records a zero Root: delete .contracts.root to deploy one");
+
+        return root;
     }
 
     /// @notice The network name `block.chainid` belongs to. Walks every root `configRoots()` names — so a

@@ -9,7 +9,7 @@ again. Nothing here talks to a chain — every one of them reads the repository 
 | Script | Asserts that | Check | Fix |
 |---|---|---|---|
 | `fix_imports.py` | Solidity imports are relative, ordered and actually used | `--check-order`, `--check-relative`, `--check-unused`, `--test-roundtrip` | `--organize`, `--fix-unused` |
-| `check_ward_coverage.py` | every `file()` target has a matching `rely()` in the deployer, and every ward grant has a test asserting it | (default) | — fix by hand |
+| `check_ward_coverage.py` | every `file()` target has a matching `rely()` in the deployer, every ward grant has a test asserting it, and the action batchers and `RootFixes` wire `Root` identically | (default) | — fix by hand |
 | `check_claude_tree.py` | every path listed in the CLAUDE.md directory tree still exists | (default) | `--fix` |
 | `benchmarks.sh` | the gas limits in `GasService` match a fresh benchmark run | `check` | `apply` |
 

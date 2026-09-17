@@ -6,6 +6,8 @@ This script automatically verifies that:
 1. Every file("x", address) call has a corresponding rely() in deployment scripts
 2. Every ward relationship in deployment has a corresponding test assertion
 3. No orphaned ward grants exist (wards without file() calls)
+4. Every rely/endorse the action batchers perform on Root has a `RootFixes.cast()` counterpart,
+   and both paths are asserted in the deployment test
 
 Usage:
     python3 script/checks/check_ward_coverage.py
@@ -35,6 +37,39 @@ _OPTIONAL_FILE_PARAMETERS = {
     ("Hub", "feeAccrual"),  # optional fee hook; Hub only calls it when address(feeAccrual) != address(0)
 }
 
+# Root wiring targets that are deploy-time only, so `RootFixes` has no counterpart for them. Everything
+# else the batchers grant or endorse on Root has to be mirrored there: a chain that already carried its
+# Root gets `RootFixes` and nothing else, and no single deployment exercises both paths.
+_ROOT_WIRING_EXEMPT = {
+    "noncorebatcher",  # the core batcher passing the ward on; RootFixes does its own Root work
+}
+
+# The wiring both halves have to agree on, spelled out so that changing Root's permissions means changing
+# this set. That edit is the acknowledgement, as updating `registeredCount()` is in EnvConfig.t.sol: the
+# parity check below only proves the two halves match, and they match just as well when both are wrong.
+_EXPECTED_ROOT_WIRING = {
+    ("rely", "messagedispatcher"),
+    ("rely", "messageprocessor"),
+    ("rely", "protocolguardian"),
+    ("endorse", "spoke"),
+    ("endorse", "asyncrequestmanager"),
+    ("endorse", "vaultrouter"),
+    ("endorse", "tokenbridge"),
+    ("endorse", "sharemanager"),
+}
+
+# Every mutating entrypoint on Root, longest first so the alternation cannot stop at a prefix. The net
+# below needs the whole surface: it fails on Root-shaped calls the structured pass could not read, and a
+# missing op here is a call it would never look at in the first place.
+_ROOT_OPS = (
+    "executeScheduledRely", "relyContract", "denyContract", "scheduleRely",
+    "cancelRely", "unpause", "endorse", "pause", "rely", "deny", "veto", "file",
+)
+
+# The wiring ops. `deny` is read and skipped — each half hands its own ward back — and so is `file`,
+# which sets Root's delay rather than a permission.
+_ROOT_WIRING_OPS = ("rely", "endorse")
+
 def normalize_name(name: str) -> str:
     """
     Normalize variable names for comparison by removing underscores and converting to lowercase,
@@ -61,6 +96,13 @@ class WardGrant:
     """Represents a rely() call granting ward permissions"""
     target: str  # Contract receiving the ward
     granter: str  # Contract being granted permissions
+    location: str
+
+@dataclass
+class RootWiring:
+    """Represents a rely()/endorse() call on Root, in the batchers or in RootFixes"""
+    op: str  # "rely" or "endorse"
+    target: str  # Contract being granted the ward, or endorsed
     location: str
 
 @dataclass
@@ -99,6 +141,14 @@ class AnalysisResult:
     missing_tests: List[Tuple[str, str, str]] = field(default_factory=list)  # (target, granter, location)
     orphaned_wards: List[Tuple[str, str, str]] = field(default_factory=list)  # (target, granter, location)
     uninitialized_parameters: List[Tuple[str, str, str, str]] = field(default_factory=list)  # (contract, param_name, target_type, location)
+    batcher_root_wiring: List[RootWiring] = field(default_factory=list)
+    root_fixes_wiring: List[RootWiring] = field(default_factory=list)
+    unguarded_root_wiring: List[RootWiring] = field(default_factory=list)  # batcher Root calls outside `wireRoot`
+    missing_root_fixes: List[Tuple[str, str, str]] = field(default_factory=list)  # (op, target, location)
+    orphaned_root_fixes: List[Tuple[str, str, str]] = field(default_factory=list)  # (op, target, location)
+    missing_root_wiring_tests: List[Tuple[str, str, str]] = field(default_factory=list)  # (op, target, path)
+    unreadable_root_calls: List[Tuple[str, str, str]] = field(default_factory=list)  # (op, location, call)
+    unacknowledged_root_wiring: List[Tuple[str, str, str]] = field(default_factory=list)  # (op, target, why)
 
 
 class WardCoverageChecker:
@@ -218,6 +268,163 @@ class WardCoverageChecker:
                 ))
 
         return test_assertions
+
+    # A Root call this can read all the way through: the receiver is `root` or something ending in `.root`,
+    # optionally wrapped in a `Root(...)` cast, and the argument names a contract. Covers both spellings the
+    # two halves use — `report.core.root.endorse(address(report.spoke))` in the action batchers,
+    # `root.endorse(spoke)` in RootFixes, which holds its targets as plain immutables.
+    _ROOT_CALL = re.compile(
+        r'\b(?:Root\s*\(\s*)?(?:[\w.]*\.)?[Rr]oot\s*\)?\s*\.\s*(' + "|".join(_ROOT_OPS) + r')'
+        r'\s*\(\s*(?:address\s*\(\s*)?(?:report\.)?(?:core\.)?(\w+)'
+    )
+
+    # The net. Same ops, but any receiver ending in `root`/`Root` and any argument at all, so it sees calls
+    # the reader above cannot parse. Everything it finds has to be accounted for: a Root call in an
+    # unrecognised form would otherwise switch every check below off rather than fail, since a call nothing
+    # reads is a call nothing demands a counterpart or an assertion for.
+    _ANY_ROOT_CALL = re.compile(
+        r'\b(?:Root\s*\(\s*)?[\w.]*[Rr]oot\s*\)?\s*\.\s*(' + "|".join(_ROOT_OPS) + r')\s*\('
+    )
+
+    # The positive assertions that a Root grant or endorsement landed. `assertFalse`/`, 0`/`, false` are
+    # deliberately not here: those assert the wiring a kept-Root deployment leaves undone.
+    _ROOT_ASSERTIONS = [
+        ("rely", re.compile(r'assertEq\s*\(\s*root\.wards\s*\(\s*address\s*\(\s*(\w+)\s*\)\s*\)\s*,\s*1\b')),
+        ("endorse", re.compile(r'assertEq\s*\(\s*root\.endorsed\s*\(\s*address\s*\(\s*(\w+)\s*\)\s*\)\s*,\s*true\b')),
+        ("endorse", re.compile(r'assertTrue\s*\(\s*root\.endorsed\s*\(\s*address\s*\(\s*(\w+)\s*\)\s*\)')),
+    ]
+
+    @staticmethod
+    def _matching_brace(content: str, open_index: int) -> int:
+        """Index of the `}` closing the `{` at open_index, or the end of the file if it is unbalanced"""
+        depth = 0
+        for i in range(open_index, len(content)):
+            if content[i] == '{':
+                depth += 1
+            elif content[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    return i
+        return len(content)
+
+    def _wire_root_spans(self, content: str) -> List[Tuple[int, int]]:
+        """Character ranges an `if (wireRoot)` guards: its braced block, or its single statement"""
+        spans = []
+
+        for guard in re.finditer(r'\bif\s*\(\s*wireRoot\s*\)\s*', content):
+            start = guard.end()
+
+            if start < len(content) and content[start] == '{':
+                spans.append((start, self._matching_brace(content, start)))
+            else:
+                end = content.find(';', start)
+                spans.append((start, end if end != -1 else len(content)))
+
+        return spans
+
+    def find_root_wiring(self):
+        """
+        Find the Root calls in src/deployment, split four ways: the wiring the action batchers do, the
+        wiring RootFixes does, batcher calls that are not behind `wireRoot` (which a kept-Root deployment
+        would revert on), and calls in a form the reader could not parse.
+
+        The batchers only reach into a Root they deployed; a chain that already carried one gets RootFixes
+        instead. No deployment runs both, so the two halves can only be held together statically.
+        """
+        batchers, fixes, unguarded, unreadable = [], [], [], []
+        exempt = _ROOT_WIRING_EXEMPT | {"this"}
+
+        for sol_file in sorted(self.src_path.glob("deployment/*.sol")):
+            content = sol_file.read_text()
+            is_root_fixes = sol_file.name == "RootFixes.sol"
+            spans = self._wire_root_spans(content)
+            read = set()
+
+            for match in self._ROOT_CALL.finditer(content):
+                read.add(match.start(1))
+                op, target = match.group(1), match.group(2)
+
+                if op not in _ROOT_WIRING_OPS or normalize_name(target) in exempt:
+                    continue
+
+                wiring = RootWiring(op=op, target=target, location=self._at(sol_file, content, match.start()))
+
+                if is_root_fixes:
+                    fixes.append(wiring)
+                elif any(start <= match.start() < end for start, end in spans):
+                    batchers.append(wiring)
+                else:
+                    unguarded.append(wiring)
+
+            # Anything Root-shaped the reader above did not consume, keyed on the op so the two regexes
+            # line up however much of the receiver each of them matched
+            for match in self._ANY_ROOT_CALL.finditer(content):
+                if match.start(1) not in read:
+                    call = content[match.start():content.find(";", match.start())].strip()
+                    unreadable.append((match.group(1), self._at(sol_file, content, match.start()), call))
+
+        return batchers, fixes, unguarded, unreadable
+
+    def _at(self, sol_file: Path, content: str, index: int) -> str:
+        """`path:line` for a match at a character offset"""
+        return f"{sol_file.relative_to(self.repo_root)}:{content[:index].count(chr(10)) + 1}"
+
+    def _test_contracts(self, content: str) -> Dict[str, Tuple[str, List[str]]]:
+        """Every top-level contract in a test file, as name -> (body, base contracts)"""
+        contracts = {}
+
+        for decl in re.finditer(r'^(?:abstract\s+)?contract\s+(\w+)(?:\s+is\s+([^{]*))?\s*\{', content, re.MULTILINE):
+            bases = [b.strip() for b in (decl.group(2) or "").split(",") if b.strip()]
+            body = content[decl.end() - 1:self._matching_brace(content, decl.end() - 1)]
+            contracts[decl.group(1)] = (body, bases)
+
+        return contracts
+
+    def find_root_wiring_assertions(self) -> Tuple[Set[Tuple[str, str]], Set[Tuple[str, str]]]:
+        """
+        Find the Root wiring assertions in Deployer.t.sol, split by the deployment they were made against.
+
+        Which path a test covers is a property of its fixture, not of where the assertion sits, so the
+        split is by contract: one that sets `existingRoot_`, or inherits from one that does, is a
+        kept-Root suite. Those deployments leave Root untouched, so nothing in them is evidence for the
+        own-Root path, and only assertions past a `rootFixes.cast()` are evidence for the deferred one.
+        """
+        own_root: Set[Tuple[str, str]] = set()
+        after_cast: Set[Tuple[str, str]] = set()
+
+        deployer_test = self.test_path / "Deployer.t.sol"
+        if not deployer_test.exists():
+            return own_root, after_cast
+
+        content = deployer_test.read_text()
+        contracts = self._test_contracts(content)
+
+        def keeps_its_root(name: str, seen=None) -> bool:
+            body, bases = contracts.get(name, ("", []))
+            seen = (seen or set()) | {name}
+
+            return bool(re.search(r'\bexistingRoot_\s*=', body)) or any(
+                base not in seen and keeps_its_root(base, seen) for base in bases
+            )
+
+        for name, (body, _) in contracts.items():
+            kept_root = keeps_its_root(name)
+
+            for func in re.finditer(r'\bfunction\s+(test\w*)\s*\([^)]*\)[^{;]*\{', body):
+                func_body = body[func.end() - 1:self._matching_brace(body, func.end() - 1)]
+                cast = func_body.find("rootFixes.cast()")
+
+                if kept_root and cast == -1:
+                    continue
+
+                found = after_cast if kept_root else own_root
+                region = func_body[cast:] if kept_root else func_body
+
+                for op, pattern in self._ROOT_ASSERTIONS:
+                    for match in pattern.finditer(region):
+                        found.add((op, normalize_name(match.group(1))))
+
+        return own_root, after_cast
 
     def find_all_file_parameters(self) -> List[FileParameter]:
         """Find ALL possible file() parameters defined in contracts"""
@@ -572,6 +779,46 @@ class WardCoverageChecker:
             if not found:
                 result.missing_tests.append((wg.target, wg.granter, wg.location))
 
+        # Step 8: Check the two halves of the Root wiring against each other, against what the tests
+        # assert, and against the set a human last acknowledged
+        (
+            result.batcher_root_wiring,
+            result.root_fixes_wiring,
+            result.unguarded_root_wiring,
+            result.unreadable_root_calls,
+        ) = self.find_root_wiring()
+
+        batcher_set = {(w.op, normalize_name(w.target)) for w in result.batcher_root_wiring}
+        fixes_set = {(w.op, normalize_name(w.target)) for w in result.root_fixes_wiring}
+
+        for op, target in sorted((batcher_set | fixes_set) - _EXPECTED_ROOT_WIRING):
+            result.unacknowledged_root_wiring.append((op, target, "wired but not in _EXPECTED_ROOT_WIRING"))
+
+        for op, target in sorted(_EXPECTED_ROOT_WIRING - (batcher_set | fixes_set)):
+            result.unacknowledged_root_wiring.append((op, target, "in _EXPECTED_ROOT_WIRING but wired nowhere"))
+
+        for w in result.batcher_root_wiring:
+            if (w.op, normalize_name(w.target)) not in fixes_set:
+                result.missing_root_fixes.append((w.op, w.target, w.location))
+
+        for w in result.root_fixes_wiring:
+            if (w.op, normalize_name(w.target)) not in batcher_set:
+                result.orphaned_root_fixes.append((w.op, w.target, w.location))
+
+        own_root_asserts, after_cast_asserts = self.find_root_wiring_assertions()
+
+        seen = set()
+        for w in result.batcher_root_wiring + result.root_fixes_wiring:
+            key = (w.op, normalize_name(w.target))
+            if key in seen:
+                continue
+            seen.add(key)
+
+            if key not in own_root_asserts:
+                result.missing_root_wiring_tests.append((w.op, w.target, "a deployment that deployed its own Root"))
+            if key not in after_cast_asserts:
+                result.missing_root_wiring_tests.append((w.op, w.target, "a deployment that kept the chain's Root"))
+
         return result
 
     def print_report(self, result: AnalysisResult):
@@ -588,10 +835,16 @@ class WardCoverageChecker:
         print(f"  File() initializations found:    {len(result.file_initializations)}")
         print(f"  Ward grants in deployment:       {len(result.ward_grants)}")
         print(f"  Test assertions found:           {len(result.test_assertions)}")
+        print(f"  Root wiring in the batchers:     {len(result.batcher_root_wiring)}")
+        print(f"  Root wiring in RootFixes:        {len(result.root_fixes_wiring)}")
         print()
         print(f"  ❌ Uninitialized parameters:      {len(result.uninitialized_parameters)} (not in deployment OR constructor)")
         print(f"  ❌ Missing ward grants:           {len(result.missing_wards)}")
         print(f"  ❌ Missing test coverage:         {len(result.missing_tests)}")
+        print(f"  ❌ Root wiring drift:             {len(result.missing_root_fixes) + len(result.orphaned_root_fixes) + len(result.unguarded_root_wiring)}")
+        print(f"  ❌ Root wiring test coverage:     {len(result.missing_root_wiring_tests)}")
+        print(f"  ❌ Unreadable Root calls:         {len(result.unreadable_root_calls)}")
+        print(f"  ❌ Unacknowledged Root wiring:    {len(result.unacknowledged_root_wiring)}")
         print()
 
         # Uninitialized parameters
@@ -631,19 +884,122 @@ class WardCoverageChecker:
                 print(f"      Fix: Add to test/integration/Deployer.t.sol in test{target}() function")
                 print()
 
+        # A Root call in a form the reader cannot parse: reported first, because it is what makes every
+        # check under it unreliable rather than merely failing
+        if result.unreadable_root_calls:
+            print("❌ UNREADABLE ROOT CALLS")
+            print("-" * 80)
+            print("  These reach Root in a form this checker cannot parse, so it cannot tell what they wire.")
+            print("  Left alone they would pass silently: nothing reads them, so nothing demands a RootFixes")
+            print("  counterpart or a test assertion for them.")
+            print()
+            for op, location, call in result.unreadable_root_calls:
+                print(f"  ⚠️  root.{op}(...) at {location}")
+                print(f"      {call}")
+                print(f"      Fix: Write it as `report.root.{op}(address(report.<contract>))`, or teach")
+                print(f"           `_ROOT_CALL` in this script to read the form you need.")
+                print()
+
+        # Wiring that changed without anybody saying so
+        if result.unacknowledged_root_wiring:
+            print("❌ UNACKNOWLEDGED ROOT WIRING")
+            print("-" * 80)
+            print("  Root's permissions no longer match `_EXPECTED_ROOT_WIRING` in this script. The parity")
+            print("  check only proves the batchers and RootFixes agree, and they agree just as well when")
+            print("  both are wrong, so the set is spelled out and editing it is the acknowledgement.")
+            print()
+            for op, target, why in result.unacknowledged_root_wiring:
+                print(f'  ⚠️  ("{op}", "{target}") — {why}')
+                print()
+            print("      Fix: If the change is intended, update `_EXPECTED_ROOT_WIRING` to match.")
+            print()
+
+        # Root wiring the batchers do that nothing defers
+        if result.missing_root_fixes:
+            print("❌ ROOT WIRING MISSING FROM RootFixes")
+            print("-" * 80)
+            print("  The action batchers do this to a Root the deployment brought up. A chain that already")
+            print("  carried its Root never runs them, so RootFixes has to do the same or that chain ends up")
+            print("  without it — and no deployment exercises both paths, so nothing else catches this.")
+            print()
+            for op, target, location in result.missing_root_fixes:
+                print(f"  ⚠️  root.{op}({target})")
+                print(f"      Batcher call at: {location}")
+                print(f"      Fix: Add to `cast()` in src/deployment/RootFixes.sol:")
+                print(f"           root.{op}({target});")
+                print()
+
+        # And the other way around
+        if result.orphaned_root_fixes:
+            print("❌ ROOT WIRING ONLY RootFixes DOES")
+            print("-" * 80)
+            print("  RootFixes stands in for what the batchers skip, so anything it does that they do not")
+            print("  leaves the two kinds of chain wired differently.")
+            print()
+            for op, target, location in result.orphaned_root_fixes:
+                print(f"  ⚠️  root.{op}({target})")
+                print(f"      RootFixes call at: {location}")
+                print(f"      Fix: Add the same call behind `wireRoot` in src/deployment/ActionBatchers.sol,")
+                print(f"           or drop it from RootFixes.")
+                print()
+
+        # Root wiring in the batchers that is not behind the flag
+        if result.unguarded_root_wiring:
+            print("❌ UNGUARDED ROOT WIRING IN THE BATCHERS")
+            print("-" * 80)
+            print("  A batcher only wards Root when the deployment deployed it. An unguarded call reverts the")
+            print("  whole launch on a chain that already carried its Root.")
+            print()
+            for w in result.unguarded_root_wiring:
+                print(f"  ⚠️  root.{w.op}({w.target}) at {w.location}")
+                print(f"      Fix: Put it behind `if (wireRoot)` and mirror it in RootFixes.cast().")
+                print()
+
+        # Test coverage for both halves
+        if result.missing_root_wiring_tests:
+            print("❌ MISSING ROOT WIRING TEST COVERAGE")
+            print("-" * 80)
+            print("  Each half of the Root wiring is asserted where it happens: the batchers' in a test that")
+            print("  deploys its own Root, RootFixes' after the `rootFixes.cast()` in its own.")
+            print()
+            for op, target, path in result.missing_root_wiring_tests:
+                assertion = (
+                    f"assertEq(root.wards(address({target})), 1);" if op == "rely"
+                    else f"assertTrue(root.endorsed(address({target})));"
+                )
+                print(f"  ⚠️  {assertion}")
+                print(f"      Missing for: {path}")
+                print(f"      Fix: Add to test/integration/Deployer.t.sol")
+                print()
+
         # Success message
-        if not result.missing_wards and not result.missing_tests and not result.uninitialized_parameters:
+        if (not result.missing_wards and not result.missing_tests and not result.uninitialized_parameters
+                and not result.missing_root_fixes and not result.orphaned_root_fixes
+                and not result.unguarded_root_wiring and not result.missing_root_wiring_tests
+                and not result.unreadable_root_calls and not result.unacknowledged_root_wiring):
             print("✅ ALL CHECKS PASSED")
             print("-" * 80)
             print("  All file() parameters are initialized (deployment or constructor)!")
             print("  All ward/file relationships are properly covered!")
             print("  All ward grants have corresponding test assertions!")
+            print("  The batchers and RootFixes wire Root identically, and both are asserted!")
+            print("  Every Root call is readable, and the wiring matches what was last acknowledged!")
             print()
 
         print("=" * 80)
 
         # Fail if any issues found (now including uninitialized params since we filter out constructor-set ones)
-        return len(result.missing_wards) == 0 and len(result.missing_tests) == 0 and len(result.uninitialized_parameters) == 0
+        return (
+            len(result.missing_wards) == 0
+            and len(result.missing_tests) == 0
+            and len(result.uninitialized_parameters) == 0
+            and len(result.missing_root_fixes) == 0
+            and len(result.orphaned_root_fixes) == 0
+            and len(result.unguarded_root_wiring) == 0
+            and len(result.missing_root_wiring_tests) == 0
+            and len(result.unreadable_root_calls) == 0
+            and len(result.unacknowledged_root_wiring) == 0
+        )
 
 
 def main():

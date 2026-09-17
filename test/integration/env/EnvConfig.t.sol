@@ -30,7 +30,7 @@ contract EnvRootIsReadOffTheChainHalfTest is Test {
     string constant ROOT_ONLY = '{"contracts":{"root":{'
         '"address":"0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f","blockNumber":22924235,"version":"3"}}}';
 
-    function test_theChainHalfAnswersWithTheRecordedRoot() public pure {
+    function test_theChainHalfAnswersWithTheRecordedRoot() public view {
         assertEq(Chains.parseRootAddress(ROOT_ONLY), 0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f);
     }
 

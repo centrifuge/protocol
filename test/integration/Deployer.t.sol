@@ -473,7 +473,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(asyncRequestManager.subsidyManager()), address(subsidyManager));
 
         // root endorsements
-        assertEq(root.endorsed(address(spoke)), true);
+        assertEq(root.endorsed(address(asyncRequestManager)), true);
     }
 
     function testAsyncVaultFactory(address nonWard) public view {
@@ -1267,6 +1267,8 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
         assertFalse(root.endorsed(address(spoke)), "spoke endorsed");
         assertFalse(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
+        assertFalse(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
+        assertFalse(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
         assertFalse(root.endorsed(address(shareManager)), "shareManager endorsed");
     }
 
