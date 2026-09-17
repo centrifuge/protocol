@@ -5,6 +5,7 @@ import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IGateway} from "./interfaces/IGateway.sol";
 import {IMultiAdapter} from "./interfaces/IMultiAdapter.sol";
 import {IScheduleAuth} from "./interfaces/IScheduleAuth.sol";
+import {IMessageParser} from "./interfaces/IMessageParser.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {ISpokeGatewayHandler, IHubGatewayHandler} from "./interfaces/IGatewayHandlers.sol";
@@ -57,6 +58,30 @@ contract MessageProcessor is Auth, IMessageProcessor {
         else revert FileUnrecognizedParam();
 
         emit File(what, data);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Message framing
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IMessageParser
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return message.messageLength();
+    }
+
+    /// @inheritdoc IMessageParser
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return message.messagePoolId();
+    }
+
+    /// @inheritdoc IMessageParser
+    function routePoolId(bytes calldata message, bool poolConfigured) external pure returns (PoolId) {
+        return message.routePoolId(poolConfigured);
+    }
+
+    /// @inheritdoc IMessageParser
+    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16) {
+        return message.messageSourceCentrifugeId();
     }
 
     //----------------------------------------------------------------------------------------------

@@ -60,7 +60,7 @@ abstract contract Setup is BaseSetup {
         gateway.file("messageProperties", address(mockMessageProperties));
         gateway.file("adapter", address(multiAdapter));
 
-        multiAdapter.file("messageProperties", address(mockMessageProperties));
+        multiAdapter.file("parser", address(countingProcessor));
 
         IAdapter[] memory addrs = new IAdapter[](ADAPTER_COUNT);
         addrs[0] = IAdapter(address(adapter0));

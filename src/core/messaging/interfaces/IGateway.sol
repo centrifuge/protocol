@@ -4,6 +4,7 @@ pragma solidity >=0.5.0;
 import {IAdapter} from "./IAdapter.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 import {IProtocolPauser} from "./IProtocolPauser.sol";
+import {IMessageProcessor} from "./IMessageProcessor.sol";
 import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
@@ -209,10 +210,11 @@ interface IGateway is IMessageHandler, IRecoverable {
     /// @notice MultiAdapter used for outbound message dispatch and inbound quorum verification
     function adapter() external view returns (IAdapter);
 
-    /// @notice Handler that routes confirmed inbound cross-chain messages to their target contracts
-    function processor() external view returns (IMessageHandler);
+    /// @notice Handler that routes confirmed inbound cross-chain messages to their target contracts, and the
+    ///         sole authority on how a message is framed, routed and attributed to a source chain
+    function processor() external view returns (IMessageProcessor);
 
-    /// @notice Provides gas cost estimates and message type metadata for cross-chain messages
+    /// @notice Provides gas cost estimates for cross-chain messages
     function messageProperties() external view returns (IMessageProperties);
 
     /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging

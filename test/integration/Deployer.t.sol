@@ -158,8 +158,17 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(multiAdapter.gateway()), address(gateway));
-        assertEq(address(multiAdapter.messageProperties()), address(gasService));
+        assertEq(address(multiAdapter.parser()), address(messageProcessor));
         assertEq(multiAdapter.localCentrifugeId(), CENTRIFUGE_ID);
+
+        // Nothing in either contract enforces it, but the two must agree: the Gateway checks a message
+        // against the source its processor requires, while MultiAdapter verifies it against the adapter set
+        // its parser routes it to. Filed apart, a message could be routed by one framing and checked by another.
+        assertEq(
+            address(multiAdapter.parser()),
+            address(gateway.processor()),
+            "MultiAdapter.parser and Gateway.processor must be the same contract"
+        );
     }
 
     function testGasService() public pure {

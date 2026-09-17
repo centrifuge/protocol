@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IMessageParser} from "./interfaces/IMessageParser.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IAdapterEntrypoint} from "./interfaces/IAdapterEntrypoint.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "./interfaces/IMultiAdapter.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -29,7 +29,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     // Dependencies
     IMessageHandler public gateway;
-    IMessageProperties public messageProperties;
+    IMessageParser public parser;
 
     // Authorization
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -64,7 +64,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     /// @inheritdoc IMultiAdapter
     function file(bytes32 what, address instance) external auth {
         if (what == "gateway") gateway = IMessageHandler(instance);
-        else if (what == "messageProperties") messageProperties = IMessageProperties(instance);
+        else if (what == "parser") parser = IMessageParser(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);
@@ -357,9 +357,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
 
     /// @dev Send and handle apply the same rule, so both chains agree on the carrying set.
     function _routePoolId(uint16 centrifugeId, bytes calldata payload) internal view returns (PoolId) {
-        PoolId poolId = messageProperties.messagePoolId(payload);
+        PoolId poolId = parser.messagePoolId(payload);
         bool poolConfigured = activeSessionId[centrifugeId][poolId] != 0;
-        return messageProperties.routePoolId(payload, poolConfigured);
+        return parser.routePoolId(payload, poolConfigured);
     }
 
     function _getFirstAdapterDetails(uint16 centrifugeId, PoolId poolId) internal view returns (Adapter memory) {

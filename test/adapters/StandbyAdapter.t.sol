@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {MockGateway, MockMessageProperties, POOL_0} from "../core/unit/MultiAdapter.t.sol";
+import {MockGateway, MockMessageParser, POOL_0} from "../core/unit/MultiAdapter.t.sol";
 
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
@@ -294,10 +294,10 @@ contract StandbyAdapterMultiAdapterTest is Test {
     uint16 constant LOCAL = 1;
     uint16 constant REMOTE = 2;
     uint256 constant GAS = 100_000;
-    bytes constant PAYLOAD = hex"c0ffee"; // length < 6 -> POOL_0 in MockMessageProperties
+    bytes constant PAYLOAD = hex"c0ffee"; // length < 6 -> POOL_0 in MockMessageParser
 
     MockGateway gateway = new MockGateway();
-    MockMessageProperties props = new MockMessageProperties();
+    MockMessageParser props = new MockMessageParser();
     MultiAdapter multi;
 
     MockUnderlying activeA = new MockUnderlying();
@@ -307,7 +307,7 @@ contract StandbyAdapterMultiAdapterTest is Test {
 
     function setUp() public {
         multi = new MultiAdapter(LOCAL, gateway, address(this));
-        multi.file("messageProperties", address(props));
+        multi.file("parser", address(props));
 
         standby = new StandbyAdapter(multi, standbyUnderlying);
 

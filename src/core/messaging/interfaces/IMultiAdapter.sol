@@ -2,9 +2,9 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
+import {IMessageParser} from "./IMessageParser.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 import {IAdapterEntrypoint} from "./IAdapterEntrypoint.sol";
-import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
@@ -218,8 +218,8 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     /// @notice Gateway that receives confirmed messages once adapter quorum is reached
     function gateway() external view returns (IMessageHandler);
 
-    /// @notice Provides gas cost estimates and message type metadata for cross-chain messages
-    function messageProperties() external view returns (IMessageProperties);
+    /// @notice Determines how a message is framed and which pool's adapter set carries it
+    function parser() external view returns (IMessageParser);
 
     /// @notice Returns whether an address is a manager for a given pool
     /// @param poolId The pool to check

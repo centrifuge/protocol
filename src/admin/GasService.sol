@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import {IGasService} from "./interfaces/IGasService.sol";
 
-import {PoolId} from "../core/types/PoolId.sol";
 import {IMessageProperties} from "../core/messaging/interfaces/IMessageProperties.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../core/messaging/libraries/MessageLib.sol";
 
@@ -98,32 +97,32 @@ contract GasService is IGasService {
             [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 18, 12, 13, 0, 14, 11, 12, 17, 9, 9, 15, 9, 9, 9, 9, 14, 9, 9]
         );
 
-        scheduleUpgrade = _gasValue(162119);
-        cancelUpgrade = _gasValue(142612);
-        registerAsset = _gasValue(169115);
-        setPoolAdapters = _gasValue(791178); // using MAX_ADAPTER_COUNT
-        request = _gasValue(282863);
-        notifyPool = _gasValue(1379253);
-        notifyShareClass = _gasValue(1876074);
-        notifyPricePoolPerShare = _gasValue(177813);
-        notifyPricePoolPerAsset = _gasValue(184348);
-        notifyShareMetadata = _gasValue(199958);
-        initiateTransferShares = _gasValue(370837);
-        executeTransferShares = _gasValue(254780);
-        updateRestriction = _gasValue(214524);
-        managerCallFromHub = _gasValue(379085);
-        requestCallback = _gasValue(465113); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2870035);
-        updateVaultLink = _gasValue(192281);
-        updateVaultUnlink = _gasValue(173041);
-        setRequestManager = _gasValue(176628);
-        setPolicy = _gasValue(177680);
-        authorizeSpokeCall = _gasValue(184741);
-        unauthorizeSpokeCall = _gasValue(162402);
-        updateManager = _gasValue(178827);
-        updateAssets = _gasValue(392025);
-        updateShares = _gasValue(265719);
-        managerCallFromSpoke = _gasValue(151429);
+        scheduleUpgrade = _gasValue(160832);
+        cancelUpgrade = _gasValue(141325);
+        registerAsset = _gasValue(167829);
+        setPoolAdapters = _gasValue(789892); // using MAX_ADAPTER_COUNT
+        request = _gasValue(281002);
+        notifyPool = _gasValue(1377994);
+        notifyShareClass = _gasValue(1874788);
+        notifyPricePoolPerShare = _gasValue(176527);
+        notifyPricePoolPerAsset = _gasValue(183062);
+        notifyShareMetadata = _gasValue(198672);
+        initiateTransferShares = _gasValue(369551);
+        executeTransferShares = _gasValue(253494);
+        updateRestriction = _gasValue(213238);
+        managerCallFromHub = _gasValue(377799);
+        requestCallback = _gasValue(463827); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2868749);
+        updateVaultLink = _gasValue(190995);
+        updateVaultUnlink = _gasValue(171755);
+        setRequestManager = _gasValue(175342);
+        setPolicy = _gasValue(176394);
+        authorizeSpokeCall = _gasValue(183459);
+        unauthorizeSpokeCall = _gasValue(161120);
+        updateManager = _gasValue(177541);
+        updateAssets = _gasValue(390739);
+        updateShares = _gasValue(264433);
+        managerCallFromSpoke = _gasValue(150143);
     }
 
     /// @inheritdoc IMessageProperties
@@ -214,26 +213,6 @@ contract GasService is IGasService {
         // txLimitsPerCentrifugeId counts millions of gas units, then we need to multiply by 1_000_000
         return (centrifugeId < 32 ? uint8(bytes32(txLimitsPerCentrifugeId)[centrifugeId]) : DEFAULT_SUPPORTED_TX_LIMIT)
             * 1_000_000;
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messageLength(bytes calldata message) external pure returns (uint16) {
-        return message.messageLength();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
-        return message.messagePoolId();
-    }
-
-    /// @inheritdoc IMessageProperties
-    function routePoolId(bytes calldata message, bool poolConfigured) external pure returns (PoolId) {
-        return message.routePoolId(poolConfigured);
-    }
-
-    /// @inheritdoc IMessageProperties
-    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16) {
-        return message.messageSourceCentrifugeId();
     }
 
     function _gasValue(uint128 value) internal pure returns (uint128) {

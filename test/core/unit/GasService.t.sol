@@ -220,30 +220,6 @@ contract GasServiceTest is Test {
         }
     }
 
-    function testMessageLength() public view {
-        bytes memory message = MessageLib.NotifyPool({poolId: 1}).serialize();
-        assertEq(service.messageLength(message), message.messageLength());
-    }
-
-    function testMessagePoolId() public view {
-        bytes memory message = MessageLib.NotifyPool({poolId: 1}).serialize();
-        assertEq(service.messagePoolId(message).raw(), message.messagePoolId().raw());
-    }
-
-    function testRoutePoolId() public view {
-        bytes memory message = MessageLib.SetPoolAdapters({
-                poolId: 1, threshold: 1, targetSessionId: 1, adapterList: new bytes32[](0)
-            }).serialize();
-
-        assertEq(service.routePoolId(message, true).raw(), message.messagePoolId().raw());
-        assertEq(service.routePoolId(message, false).raw(), 0);
-    }
-
-    function testMessageSourceCentrifugeId() public view {
-        bytes memory message = MessageLib.NotifyPool({poolId: uint64(CENTRIFUGE_ID) << 48}).serialize();
-        assertEq(service.messageSourceCentrifugeId(message), message.messageSourceCentrifugeId());
-    }
-
     function _updateVault(VaultUpdateKind kind, bytes memory payload) internal pure returns (bytes memory) {
         return MessageLib.UpdateVault({
                 poolId: 1,

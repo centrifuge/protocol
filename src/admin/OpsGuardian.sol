@@ -56,7 +56,6 @@ contract OpsGuardian is IOpsGuardian {
     /// @inheritdoc IOpsGuardian
     function setGasService(IGasService gasService) external onlySafe {
         IGateway(address(multiAdapter.gateway())).file("messageProperties", address(gasService));
-        multiAdapter.file("messageProperties", address(gasService));
     }
 
     //----------------------------------------------------------------------------------------------

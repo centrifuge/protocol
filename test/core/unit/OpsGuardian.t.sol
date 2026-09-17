@@ -247,11 +247,6 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
             abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService)),
             abi.encode()
         );
-        vm.mockCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService)),
-            abi.encode()
-        );
     }
 
     function testSetGasServiceSuccess() public {
@@ -261,12 +256,17 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
             address(gateway),
             abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
         );
-        vm.expectCall(
-            address(multiAdapter),
-            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageProperties"), address(gasService))
-        );
+        vm.prank(address(SAFE));
+        opsGuardian.setGasService(gasService);
+    }
+
+    /// @dev The framing view Gateway and MultiAdapter authenticate with is filed by Root, not by ops, so
+    ///      setGasService must not reach MultiAdapter at all.
+    function testSetGasServiceDoesNotTouchMultiAdapterProcessor() public {
+        _mockSetGasService(address(gateway));
 
         vm.prank(address(SAFE));
+        vm.expectCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.file.selector), 0);
         opsGuardian.setGasService(gasService);
     }
 

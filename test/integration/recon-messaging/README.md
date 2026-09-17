@@ -15,7 +15,7 @@ Mocks exist only at the four peripheral interfaces the two contracts talk to, pl
 | Interface | Mock | Why |
 |---|---|---|
 | `IAdapter` | `mocks/SimpleAdapter.sol` | no real bridge in-process |
-| `IMessageHandler` | `mocks/CountingProcessor.sol` | observable per-payload execution count |
+| `IMessageHandler`, `IMessageParser` | `mocks/CountingProcessor.sol` | observable per-payload execution count; the framing view Gateway/MultiAdapter authenticate with |
 | `IMessageProperties` | `mocks/MockMessageProperties.sol` | controllable routing / source restriction / gas limits |
 | `IProtocolPauser` | `mocks/MockProtocolPauser.sol` | freely togglable pause |
 | n/a | `mocks/ManagerActor.sol` | a non-ward caller, to exercise the manager role |
@@ -43,8 +43,8 @@ Consequence for coverage reports: `src/core/messaging/{Gateway,MultiAdapter}.sol
 | `CryticMessagingTester.sol` | Fuzzer entry point. Run with `--config echidna-messaging.yaml` from the project root. |
 | `CryticToFoundry.sol` | Foundry harness. 38 deterministic tests: smoke, C1/H3 regressions, M6.a-f negatives, vote-key pinning, vote/execute, blockSession, clearFailedMessage, source enforcement, Alex-1, M1c cross-session retry. |
 | `mocks/SimpleAdapter.sol` | Stub `IAdapter`. `deliver`→handle, `deliverVote`→vote, `deliverExecute`→execute, all expecting session-WRAPPED payloads. `send` records `sendCount` + `lastSentPayloadHash` for S1/S2 observability and returns `bytes32(0)`; `estimate` returns `0`. |
-| `mocks/CountingProcessor.sol` | `IMessageHandler` mock. `callCount[cId][hash]` per (cId, UNWRAPPED payloadHash). `setFail(...)` is intentionally unauthenticated. |
-| `mocks/MockMessageProperties.sol` | `IMessageProperties` mock. Single-message batches only (`messageLength == payload.length`). All payloads route to `GLOBAL_POOL` (`routePoolId` ignores the fallback flag). `messageSourceCentrifugeId`: messages starting with magic `0xFE` + `bytes2(source)` are source-restricted, everything else returns 0 meaning any. `messageProcessingGasLimit=200_000`, `messageFailureGasReserve=35_000`, `maxBatchGasLimit=10_000_000`. |
+| `mocks/CountingProcessor.sol` | `IMessageHandler` + `IMessageParser` mock. `callCount[cId][hash]` per (cId, UNWRAPPED payloadHash). `setFail(...)` is intentionally unauthenticated. Single-message batches only (`messageLength == payload.length`); all payloads route to `GLOBAL_POOL` (`routePoolId` ignores the fallback flag). `messageSourceCentrifugeId`: messages starting with magic `0xFE` + `bytes2(source)` are source-restricted, everything else returns 0 meaning any. |
+| `mocks/MockMessageProperties.sol` | `IMessageProperties` mock. Gas values only: `messageProcessingGasLimit=200_000`, `messageFailureGasReserve=35_000`, `maxBatchGasLimit=10_000_000`. |
 | `mocks/MockProtocolPauser.sol` | Trivial. `setPaused` is intentionally unauthenticated. |
 | `mocks/ManagerActor.sol` | A non-ward address used to exercise the manager role on `MultiAdapter`. |
 

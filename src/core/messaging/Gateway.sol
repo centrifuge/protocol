@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IAdapter} from "./interfaces/IAdapter.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
+import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
 import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "./interfaces/IGateway.sol";
 
@@ -38,7 +39,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Dependencies
     IAdapter public adapter;
-    IMessageHandler public processor;
+    IMessageProcessor public processor;
     IMessageProperties public messageProperties;
     IProtocolPauser public immutable pauser;
 
@@ -76,7 +77,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
         if (what == "messageProperties") messageProperties = IMessageProperties(instance);
-        else if (what == "processor") processor = IMessageHandler(instance);
+        else if (what == "processor") processor = IMessageProcessor(instance);
         else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
 
@@ -92,7 +93,7 @@ contract Gateway is Auth, Recoverable, IGateway {
     /// @inheritdoc IGateway
     function clearFailedMessage(uint16 centrifugeId, bytes memory message)
         external
-        onlyAuthOrManager(messageProperties.messagePoolId(message))
+        onlyAuthOrManager(processor.messagePoolId(message))
     {
         bytes32 messageHash = keccak256(message);
         require(failedMessages[centrifugeId][messageHash] > 0, NotFailedMessage());
@@ -109,23 +110,23 @@ contract Gateway is Auth, Recoverable, IGateway {
     function handle(uint16 centrifugeId, bytes memory batch)
         public
         pauseable
-        onlyAuthOrManager(messageProperties.messagePoolId(batch))
+        onlyAuthOrManager(processor.messagePoolId(batch))
     {
         require(centrifugeId != localCentrifugeId, CannotBeReceivedLocally());
 
-        PoolId batchPoolId = messageProperties.messagePoolId(batch);
+        PoolId batchPoolId = processor.messagePoolId(batch);
         uint128 failureGasReserve = messageProperties.messageFailureGasReserve();
         bytes memory remaining = batch;
         while (remaining.length > 0) {
-            uint256 length = messageProperties.messageLength(remaining);
+            uint256 length = processor.messageLength(remaining);
             bytes memory message = remaining.slice(0, length);
 
             if (remaining.length != batch.length) {
                 // Only check if batching
-                require(batchPoolId == messageProperties.messagePoolId(message), MalformedBatch());
+                require(batchPoolId == processor.messagePoolId(message), MalformedBatch());
             }
 
-            uint16 requiredSource = messageProperties.messageSourceCentrifugeId(message);
+            uint16 requiredSource = processor.messageSourceCentrifugeId(message);
             require(requiredSource == 0 || requiredSource == centrifugeId, SourceMismatch());
 
             remaining = remaining.slice(length, remaining.length - length);
@@ -192,7 +193,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(message.length <= MESSAGE_MAX_LENGTH, TooLongMessage());
         require(!_isSendingBatch, ReentrantBatchCreation());
 
-        PoolId poolId = messageProperties.messagePoolId(message);
+        PoolId poolId = processor.messagePoolId(message);
         emit PrepareMessage(centrifugeId, poolId, message);
 
         uint128 gasLimit = messageProperties.messageOverallGasLimit(centrifugeId, message);

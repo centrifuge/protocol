@@ -51,7 +51,9 @@ interface IOpsGuardian {
     /// @param data New value for the parameter
     function file(bytes32 what, address data) external;
 
-    /// @notice Atomically updates the gas service used by the system
+    /// @notice Updates the gas service used by the system
+    /// @dev    Gas values only. How a message is framed and which source chain it must come from is read from
+    ///         the processor, a Root-filed dependency, so this cannot weaken source-chain authentication.
     /// @param gasService the new gas service to use
     function setGasService(IGasService gasService) external;
 
