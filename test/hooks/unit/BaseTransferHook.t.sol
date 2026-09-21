@@ -148,7 +148,6 @@ contract BaseTransferHookTestBase is Test {
     function _setEndorsedUsers() internal {
         mockRoot.setEndorsed(endorsedUser, true);
         mockRoot.setEndorsed(spoke, true);
-        mockRoot.setEndorsed(poolEscrow, true);
         mockRoot.setEndorsed(crosschainSource, true);
     }
 
@@ -314,6 +313,14 @@ contract BaseTransferHookTestFreeze is BaseTransferHookTestBase {
         hook.freeze(address(mockShareToken), endorsedUser);
     }
 
+    function testFreezePoolEscrow() public {
+        assertFalse(mockRoot.endorsed(poolEscrow));
+
+        vm.expectRevert(IFreezable.EndorsedUserCannotBeFrozen.selector);
+        vm.prank(deployer);
+        hook.freeze(address(mockShareToken), poolEscrow);
+    }
+
     function testFreezeUnauthorized() public {
         vm.expectRevert(IAuth.NotAuthorized.selector);
         vm.prank(user1);
@@ -378,6 +385,25 @@ contract BaseTransferHookTestMember is BaseTransferHookTestBase {
         vm.expectRevert(IMemberlist.EndorsedUserCannotBeUpdated.selector);
         vm.prank(deployer);
         hook.updateMember(address(mockShareToken), endorsedUser, FUTURE_TIMESTAMP);
+    }
+
+    function testUpdateMemberPoolEscrow() public {
+        assertFalse(mockRoot.endorsed(poolEscrow));
+        assertTrue(hook.isPoolEscrow(poolEscrow));
+
+        _updateMemberValidUntil(poolEscrow, FUTURE_TIMESTAMP);
+
+        (bool isValid, uint64 validUntil) = hook.isMember(address(mockShareToken), poolEscrow);
+        assertTrue(isValid);
+        assertEq(validUntil, FUTURE_TIMESTAMP);
+    }
+
+    function testUpdateMemberClearsEveryBitButFreeze() public {
+        mockShareToken.setHookData(user1, bytes16(type(uint128).max));
+
+        _updateMemberValidUntil(user1, FUTURE_TIMESTAMP);
+
+        assertEq(mockShareToken.hookDataOf(user1), bytes16((uint128(FUTURE_TIMESTAMP) << 64) | 1));
     }
 
     function testUpdateMemberUnauthorized() public {
@@ -740,6 +766,15 @@ contract BaseTransferHookTestPoolEscrowResolution is BaseTransferHookTestBase {
         vm.assume(random != address(poolEscrow) && random != otherEscrowAddr);
 
         assertFalse(hook.isPoolEscrow(random), "escrow not registered in poolEscrowProvider must be rejected");
+    }
+
+    function testUpdateMemberForeignPoolEscrow() public {
+        assertTrue(hook.isPoolEscrow(otherEscrowAddr));
+
+        _updateMemberValidUntil(otherEscrowAddr, FUTURE_TIMESTAMP);
+
+        (bool isValid,) = hook.isMember(address(mockShareToken), otherEscrowAddr);
+        assertTrue(isValid, "a token admits an escrow of another pool");
     }
 
     function testRejectsSelfDeclaredEscrow() public {

@@ -157,6 +157,42 @@ contract HookLatticeTest is Test {
         );
     }
 
+    /// @dev Every hookData consumer short-circuits on `isPoolEscrow`, so an escrow's own entry is read
+    ///      by no branch of any hook.
+    function testPoolEscrowMembershipIsInert(uint8 fromSel, uint8 toSel, bytes16 counterparty, uint64 validUntil)
+        public
+        view
+    {
+        (address from, address to) = _pair(fromSel, toSel);
+        vm.assume(from == poolEscrow || to == poolEscrow);
+
+        bytes16 entry = bytes16(uint128(validUntil) << 64);
+        HookData memory without_ = _escrowData(from, to, bytes16(0), counterparty);
+        HookData memory with_ = _escrowData(from, to, entry, counterparty);
+
+        assertEq(_check(full, from, to, with_), _check(full, from, to, without_), "FullRestrictions");
+        assertEq(_check(freely, from, to, with_), _check(freely, from, to, without_), "FreelyTransferable");
+        assertEq(_check(redemption, from, to, with_), _check(redemption, from, to, without_), "RedemptionRestrictions");
+        assertEq(_check(freeze, from, to, with_), _check(freeze, from, to, without_), "FreezeOnly");
+    }
+
+    /// @dev Control: inertness above would also hold if the harness saw no membership at all.
+    function testMembershipBindsANonEscrowTarget() public view {
+        bytes16 member = bytes16(uint128(type(uint64).max) << 64);
+
+        assertFalse(_check(full, holderA, holderB, HookData(bytes16(0), bytes16(0))), "a non-member target passed");
+        assertTrue(_check(full, holderA, holderB, HookData(bytes16(0), member)), "a member target was refused");
+    }
+
+    function _escrowData(address from, address to, bytes16 escrowData, bytes16 counterparty)
+        internal
+        view
+        returns (HookData memory d)
+    {
+        d.from = from == poolEscrow ? escrowData : counterparty;
+        d.to = to == poolEscrow ? escrowData : counterparty;
+    }
+
     /// @dev The one rule every hook shares: a frozen party blocks the transfer, unless it is a pool
     ///      escrow, which is exempt on both legs so a freeze cannot strand a pool's own custody.
     function testFreezeBindsEveryHook(uint8 fromSel, uint8 toSel, bool freezeFrom) public view {

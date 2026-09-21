@@ -1,5 +1,5 @@
 {
-  "BENCHMARKING_RUN_ID": 1789639295,
+  "BENCHMARKING_RUN_ID": 1789654485,
   "scheduleUpgradeSlots": 14,
   "scheduleUpgradeAccounts": 7,
   "cancelUpgradeSlots": 13,
@@ -24,8 +24,8 @@
   "initiateTransferSharesAccounts": 18,
   "executeTransferSharesSlots": 23,
   "executeTransferSharesAccounts": 12,
-  "updateRestrictionSlots": 23,
-  "updateRestrictionAccounts": 13,
+  "updateRestrictionSlots": 22,
+  "updateRestrictionAccounts": 12,
   "requestCallbackSlots": 41,
   "requestCallbackAccounts": 17,
   "updateVaultDeployAndLinkSlots": 35,

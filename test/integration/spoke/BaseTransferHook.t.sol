@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
+
+import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
 
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 
 import {FullRestrictions} from "../../../src/token/hooks/FullRestrictions.sol";
+import {IMemberlist} from "../../../src/token/hooks/interfaces/IMemberlist.sol";
+
+import {AsyncVault, VaultBaseTest} from "../vaults/VaultBaseTest.sol";
 
 import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../../script/deploy/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
 import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
-import {ESCROW_HOOK_ID} from "../../../src/token/interfaces/ITransferHook.sol";
+import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
+import {HookData, ESCROW_HOOK_ID} from "../../../src/token/interfaces/ITransferHook.sol";
 
 contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     uint16 constant LOCAL_CENTRIFUGE_ID = IntegrationConstants.LOCAL_CENTRIFUGE_ID;
@@ -266,5 +272,95 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
 
         assertFalse(root.endorsed(poolEscrow));
         assertFalse(root.endorsed(notEndorsed));
+    }
+}
+
+contract BaseTransferHookMembershipIntegrationTest is VaultBaseTest {
+    using CastLib for *;
+
+    PoolId immutable POOL_B = newPoolId(OTHER_CHAIN_ID, 2);
+
+    AsyncVault vault;
+    FullRestrictions hook;
+    address shareToken;
+    address ownEscrow;
+    address foreignEscrow;
+
+    function setUp() public override {
+        super.setUp();
+
+        (, address vault_,) =
+            deployVault(asyncVaultFactory, 6, address(fullRestrictionsHook), bytes16(bytes("1")), address(erc20), 0);
+        vault = AsyncVault(vault_);
+        hook = FullRestrictions(address(fullRestrictionsHook));
+        shareToken = address(vault.share());
+
+        centrifugeChain.addPool(POOL_B.raw());
+
+        ownEscrow = address(spoke.escrow(vault.poolId()));
+        foreignEscrow = address(spoke.escrow(POOL_B));
+    }
+
+    function testForeignPoolEscrowCanBecomeMember() public {
+        assertTrue(hook.isPoolEscrow(foreignEscrow), "pool B escrow must be a registered escrow");
+        assertTrue(foreignEscrow != ownEscrow, "pool B escrow must differ from pool A's");
+        assertFalse(root.endorsed(foreignEscrow), "escrows are never endorsed");
+
+        (bool isMember,) = hook.isMember(shareToken, foreignEscrow);
+        assertFalse(isMember, "not a member before the update");
+
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), foreignEscrow, type(uint64).max);
+
+        uint64 validUntil;
+        (isMember, validUntil) = hook.isMember(shareToken, foreignEscrow);
+        assertTrue(isMember, "pool A's token admits pool B's escrow");
+        assertEq(validUntil, type(uint64).max);
+    }
+
+    function testOwnPoolEscrowCanBecomeMember() public {
+        assertTrue(hook.isPoolEscrow(ownEscrow), "pool A escrow must be a registered escrow");
+
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), ownEscrow, type(uint64).max);
+
+        (bool isMember,) = hook.isMember(shareToken, ownEscrow);
+        assertTrue(isMember, "a token admits its own pool escrow");
+    }
+
+    function testEndorsedAddressStillCannotBecomeMember() public {
+        assertTrue(root.endorsed(address(spoke)), "spoke must be endorsed");
+        (uint64 poolId, bytes16 scId) = (vault.poolId().raw(), vault.scId().raw());
+
+        vm.expectRevert(IMemberlist.EndorsedUserCannotBeUpdated.selector);
+        centrifugeChain.updateMember(poolId, scId, address(spoke), type(uint64).max);
+    }
+
+    function testMembershipDoesNotChangeAnyDecisionForAnEscrow() public {
+        address investor = makeAddr("Investor");
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), investor, type(uint64).max);
+
+        bool[6] memory before = _decisions(investor);
+
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), foreignEscrow, type(uint64).max);
+        assertTrue(IShareToken(shareToken).hookDataOf(foreignEscrow) != bytes16(0), "the entry was written");
+
+        bool[6] memory afterUpdate = _decisions(investor);
+        for (uint256 i; i < before.length; ++i) {
+            assertEq(afterUpdate[i], before[i], "escrow membership changed a transfer decision");
+        }
+    }
+
+    function _decisions(address investor) internal view returns (bool[6] memory out) {
+        out[0] = _check(address(0), foreignEscrow);
+        out[1] = _check(foreignEscrow, investor);
+        out[2] = _check(foreignEscrow, ESCROW_HOOK_ID);
+        out[3] = _check(foreignEscrow, address(0));
+        out[4] = _check(investor, foreignEscrow);
+        out[5] = _check(foreignEscrow, ownEscrow);
+    }
+
+    function _check(address from, address to) internal view returns (bool) {
+        return hook.checkERC20Transfer(
+            from, to, 1, HookData(IShareToken(shareToken).hookDataOf(from), IShareToken(shareToken).hookDataOf(to))
+        );
     }
 }

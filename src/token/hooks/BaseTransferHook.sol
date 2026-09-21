@@ -243,7 +243,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
     /// @inheritdoc IMemberlist
     function updateMember(address token, address user, uint64 validUntil) public authOrManager(token) {
         require(block.timestamp <= validUntil, InvalidValidUntil());
-        require(!root.endorsed(user) && !isPoolEscrow(user), EndorsedUserCannotBeUpdated());
+        require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 
         uint128 hookData = uint128(validUntil) << 64;
         hookData = uint128(uint256(hookData).withBit(FREEZE_BIT, isFrozen(token, user)));
