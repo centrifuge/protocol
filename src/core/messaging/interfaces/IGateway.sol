@@ -2,10 +2,10 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
+import {IMessageGas} from "./IMessageGas.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 import {IProtocolPauser} from "./IProtocolPauser.sol";
 import {IMessageProcessor} from "./IMessageProcessor.sol";
-import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {IRecoverable} from "../../../misc/interfaces/IRecoverable.sol";
 
@@ -215,7 +215,7 @@ interface IGateway is IMessageHandler, IRecoverable {
     function processor() external view returns (IMessageProcessor);
 
     /// @notice Provides gas cost estimates for cross-chain messages
-    function messageProperties() external view returns (IMessageProperties);
+    function messageGas() external view returns (IMessageGas);
 
     /// @notice ProtocolGuardian that can pause/unpause all cross-chain messaging
     function pauser() external view returns (IProtocolPauser);

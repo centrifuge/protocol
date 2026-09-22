@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.28;
 
-import {IMessageProperties} from "../../../../src/core/messaging/interfaces/IMessageProperties.sol";
+import {IMessageGas} from "../../../../src/core/messaging/interfaces/IMessageGas.sol";
 
 /// @dev Gas values only; the framing view lives on CountingProcessor.
-contract MockMessageProperties is IMessageProperties {
+contract MockMessageGas is IMessageGas {
     /// @dev Must exceed FAILURE_GAS_RESERVE so `_safeProcess` forwards positive gas to the processor
     uint128 public constant PROCESSING_GAS_LIMIT = 200_000;
     uint128 public constant MAX_BATCH_GAS = 10_000_000;

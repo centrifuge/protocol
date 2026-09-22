@@ -250,8 +250,10 @@ release is in question; `live-v3.3` is the one main's triggers currently name.
   against. Two consequences already: `check_foundry_networks.py` ships with the configs, because the tables it
   derives are theirs (main's hold only the two anvil aliases), and `script/deploy/README.md` keeps the verifier
   *mechanism* while the list of which chains verify where sits on live. Where it cannot be helped, say why: `src/`'s
-  six `MONAD_CENTRIFUGE_ID` constants are bytecode, not documentation, and they are the one place main still
-  branches on a named chain.
+  `MONAD_CENTRIFUGE_ID` in `GasService` is bytecode, not documentation, and it is the one place main still
+  branches on a named chain. It used to be six, one per adapter as well; adapters now name themselves and let
+  the gas service hold both what their receive path consumes and what each chain charges for it, so the chain
+  is named once, where the prices are.
 
 The rule's sharpest instance: `Env.load()` is strict and describes exactly what `LaunchDeployer` deploys
 from the current branch — the reader is the schema and lives on main; the configs it rejects or accepts are
@@ -307,10 +309,10 @@ There is no direct Root access on testnet or mainnet. All privileged operations 
 
 ### Guardian Types
 
-| Guardian         | Mainnet       | Testnet                        | Use Case                          |
-| ---------------- | ------------- | ------------------------------ | --------------------------------- |
-| ProtocolGuardian | Multisig Safe | EOA                            | Protocol upgrades, adapter config |
-| OpsGuardian      | Multisig Safe | EOA (same as ProtocolGuardian) | Pool operations, manager updates  |
+| Guardian         | Mainnet       | Testnet                        | Use Case                                            |
+| ---------------- | ------------- | ------------------------------ | --------------------------------------------------- |
+| ProtocolGuardian | Multisig Safe | EOA                            | Protocol upgrades, re-wiring adapters already wired |
+| OpsGuardian      | Multisig Safe | EOA (same as ProtocolGuardian) | Pool operations, adapter sets, first-time wiring    |
 
 ## Coding Style
 

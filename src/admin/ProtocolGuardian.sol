@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IRoot} from "./interfaces/IRoot.sol";
 import {ISafe} from "./interfaces/ISafe.sol";
+import {IAdapterWiring} from "./interfaces/IAdapterWiring.sol";
 import {IProtocolGuardian} from "./interfaces/IProtocolGuardian.sol";
 
 import {CastLib} from "../misc/libraries/CastLib.sol";
@@ -78,6 +79,16 @@ contract ProtocolGuardian is IProtocolGuardian {
     /// @inheritdoc IProtocolGuardian
     function cancelRely(address target) external onlySafe {
         root.cancelRely(target);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Adapter Management
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IProtocolGuardian
+    function wire(IAdapterWiring adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+        require(centrifugeId != sender.localCentrifugeId(), CannotWireLocalChain());
+        adapter.wire(centrifugeId, data);
     }
 
     //----------------------------------------------------------------------------------------------

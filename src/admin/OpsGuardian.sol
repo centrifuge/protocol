@@ -55,7 +55,8 @@ contract OpsGuardian is IOpsGuardian {
 
     /// @inheritdoc IOpsGuardian
     function setGasService(IGasService gasService) external onlySafe {
-        IGateway(address(multiAdapter.gateway())).file("messageProperties", address(gasService));
+        IGateway(address(multiAdapter.gateway())).file("messageGas", address(gasService));
+        multiAdapter.file("messageGas", address(gasService));
     }
 
     //----------------------------------------------------------------------------------------------
@@ -72,10 +73,11 @@ contract OpsGuardian is IOpsGuardian {
     }
 
     /// @inheritdoc IOpsGuardian
-    function wire(address adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
+    function wire(IAdapterWiring adapter, uint16 centrifugeId, bytes memory data) external onlySafe {
         require(centrifugeId != multiAdapter.localCentrifugeId(), CannotWireLocalChain());
-        require(centrifugeId != MAINNET_CENTRIFUGE_ID, CannotWireMainnet());
-        IAdapterWiring(adapter).wire(centrifugeId, data);
+        require(!adapter.isWired(centrifugeId, data), AdapterAlreadyWired());
+
+        adapter.wire(centrifugeId, data);
     }
 
     /// @inheritdoc IOpsGuardian

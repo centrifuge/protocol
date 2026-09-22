@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IMessageGas} from "../../../src/core/messaging/interfaces/IMessageGas.sol";
+import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {GasService} from "../../../src/admin/GasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -22,15 +25,31 @@ interface ICcipErrors {
     error InvalidRequestedFinality(bytes4 requestedFinality, bytes4 allowedFinality);
 }
 
-contract RecordingHandler is IMessageHandler {
+/// @dev Stands in for the MultiAdapter, which the adapter asks for the gas service when it prices its own
+///      receive path. A real one is filed, so a quote here goes through the same chain a quote in production does.
+contract RecordingHandler is IAdapterEntrypoint {
+    IMessageGas public immutable messageGas;
+
     uint16 public lastCentrifugeId;
     bytes public lastPayload;
     uint256 public handled;
+
+    constructor(IMessageGas messageGas_) {
+        messageGas = messageGas_;
+    }
 
     function handle(uint16 centrifugeId, bytes memory payload) external {
         lastCentrifugeId = centrifugeId;
         lastPayload = payload;
         handled++;
+    }
+
+    function vote(uint16, bytes calldata) external pure {
+        revert("not used");
+    }
+
+    function execute(uint16, bytes calldata) external pure {
+        revert("not used");
     }
 }
 
@@ -71,8 +90,9 @@ contract ChainlinkAdapterFinalityForkTest is Test {
         if (bytes(rpc).length == 0) vm.skip(true);
         vm.createSelectFork(rpc);
 
-        handler = new RecordingHandler();
-        adapter = new ChainlinkAdapter(IMessageHandler(address(handler)), CCIP_ROUTER, address(this));
+        uint8[32] memory txLimits;
+        handler = new RecordingHandler(new GasService(txLimits, BASE_CENTRIFUGE_ID));
+        adapter = new ChainlinkAdapter(handler, CCIP_ROUTER, address(this));
 
         _wire(BASE_CENTRIFUGE_ID, BASE_CHAIN_SELECTOR, WAIT_FOR_FINALITY_FLAG, WAIT_FOR_FINALITY_FLAG);
         _wire(ARC_CENTRIFUGE_ID, ARC_CHAIN_SELECTOR, WAIT_FOR_FINALITY_FLAG, WAIT_FOR_FINALITY_FLAG);

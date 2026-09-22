@@ -35,8 +35,10 @@ The pool and vault setup it uses lives in `BaseTestData.s.sol`.
 Contract addresses come out of `env/<environment>/<network>.json` → `contracts`.
 
 ```bash
-# Is this adapter wired to the remote centrifugeId?
-cast call $AXELAR_ADAPTER "isWired(uint16)(bool)" 2 --rpc-url local-a
+# Would wiring this adapter to the remote centrifugeId overwrite anything? True once the chain has a
+# destination or the bridge id in the data already has a source; the OpsGuardian refuses to wire while true
+cast call $AXELAR_ADAPTER "isWired(uint16,bytes)(bool)" 2 \
+  $(cast abi-encode "f(string,string)" "<axelar-chain-id>" "<remote-adapter-address>") --rpc-url local-a
 
 # Does a pool still have subsidies to pay for outgoing messages?
 cast call $SUBSIDY_MANAGER "subsidies(uint64)(uint256)" 562949953512312 --rpc-url local-a

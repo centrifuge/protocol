@@ -2,10 +2,10 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IMessageGas} from "./interfaces/IMessageGas.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IProtocolPauser} from "./interfaces/IProtocolPauser.sol";
 import {IMessageProcessor} from "./interfaces/IMessageProcessor.sol";
-import {IMessageProperties} from "./interfaces/IMessageProperties.sol";
 import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "./interfaces/IGateway.sol";
 
 import {Auth} from "../../misc/Auth.sol";
@@ -39,8 +39,8 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     // Dependencies
     IAdapter public adapter;
+    IMessageGas public messageGas;
     IMessageProcessor public processor;
-    IMessageProperties public messageProperties;
     IProtocolPauser public immutable pauser;
 
     // Outbound & payments
@@ -76,7 +76,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
     /// @inheritdoc IGateway
     function file(bytes32 what, address instance) external auth {
-        if (what == "messageProperties") messageProperties = IMessageProperties(instance);
+        if (what == "messageGas") messageGas = IMessageGas(instance);
         else if (what == "processor") processor = IMessageProcessor(instance);
         else if (what == "adapter") adapter = IAdapter(instance);
         else revert FileUnrecognizedParam();
@@ -115,7 +115,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         require(centrifugeId != localCentrifugeId, CannotBeReceivedLocally());
 
         PoolId batchPoolId = processor.messagePoolId(batch);
-        uint128 failureGasReserve = messageProperties.messageFailureGasReserve();
+        uint128 failureGasReserve = messageGas.messageFailureGasReserve();
         bytes memory remaining = batch;
         while (remaining.length > 0) {
             uint256 length = processor.messageLength(remaining);
@@ -131,7 +131,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             remaining = remaining.slice(length, remaining.length - length);
             bytes32 messageHash = keccak256(message);
-            uint128 gasLimit = messageProperties.messageProcessingGasLimit(localCentrifugeId, message);
+            uint128 gasLimit = messageGas.messageProcessingGasLimit(localCentrifugeId, message);
             require(gasleft() >= gasLimit, NotEnoughGas());
 
             _safeProcess(centrifugeId, message, messageHash, gasLimit, failureGasReserve);
@@ -196,7 +196,7 @@ contract Gateway is Auth, Recoverable, IGateway {
         PoolId poolId = processor.messagePoolId(message);
         emit PrepareMessage(centrifugeId, poolId, message);
 
-        uint128 gasLimit = messageProperties.messageOverallGasLimit(centrifugeId, message);
+        uint128 gasLimit = messageGas.messageOverallGasLimit(centrifugeId, message);
         if (isBatching) {
             require(msg.value == 0, NotPayable());
 
@@ -205,7 +205,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             bytes32 gasLimitSlot = _gasLimitSlot(centrifugeId, poolId);
             uint128 newGasLimit = gasLimitSlot.tloadUint128() + gasLimit;
-            require(newGasLimit <= messageProperties.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
+            require(newGasLimit <= messageGas.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
             gasLimitSlot.tstore(uint256(newGasLimit));
 
             if (previousMessage.length == 0) {
@@ -214,7 +214,7 @@ contract Gateway is Auth, Recoverable, IGateway {
 
             TransientBytesLib.append(batchSlot, message);
         } else {
-            require(gasLimit <= messageProperties.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
+            require(gasLimit <= messageGas.maxBatchGasLimit(centrifugeId), BatchTooExpensive());
 
             uint256 cost = _send(centrifugeId, message, gasLimit, refund, unpaidMode, msg.value);
             SafeTransferLib.safeTransferETH(refund, msg.value - cost);

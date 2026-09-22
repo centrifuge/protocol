@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IGasService} from "./interfaces/IGasService.sol";
+import {IGasService, IAdapterGasService} from "./interfaces/IGasService.sol";
 
-import {IMessageProperties} from "../core/messaging/interfaces/IMessageProperties.sol";
+import {IMessageGas} from "../core/messaging/interfaces/IMessageGas.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../core/messaging/libraries/MessageLib.sol";
 
 /// @title  GasService
@@ -34,6 +34,16 @@ contract GasService is IGasService {
     uint128 public constant MONAD_COLD_SLOT_SURCHARGE = 6000;
     uint128 public constant MONAD_COLD_ACCOUNT_SURCHARGE = 7500;
 
+    // What an adapter's own receive path, up to the entrypoint.handle() it wraps, costs on the schedule
+    // the benchmarks were taken on, and the cold accesses it makes. Held here rather than in the adapter
+    // so that rebenchmarking one, or pricing it for a chain that reprices access, is a change to this
+    // contract: adapters are deployed per network and rewired per pool, this is replaced every release.
+    uint128 public constant AXELAR_RECEIVE_COST = 26_000;
+    uint128 public constant CHAINLINK_RECEIVE_COST = 10_000;
+    uint128 public constant HYPERLANE_RECEIVE_COST = 10_000;
+    uint128 public constant LAYER_ZERO_RECEIVE_COST = 10_000;
+    uint128 public constant STANDBY_RECEIVE_COST = 3_500;
+
     /// @dev One entry per benchmarked message: every MessageType, then UpdateVault's three VaultUpdateKind
     ///      variants from UPDATE_VAULT_COUNT_OFFSET on, which leaves UpdateVault's own index unused.
     ///      Kept a literal because solc rejects a derived expression as an array length, so a stale value
@@ -41,7 +51,7 @@ contract GasService is IGasService {
     uint256 internal constant COLD_COUNT_ENTRIES = 28;
     uint256 internal constant UPDATE_VAULT_COUNT_OFFSET = uint256(uint8(type(MessageType).max)) + 1;
 
-    /// @inheritdoc IMessageProperties
+    /// @inheritdoc IMessageGas
     uint128 public immutable messageFailureGasReserve;
 
     /// @dev An encoded array of the block limits of the first 32 centrifugeId.
@@ -97,35 +107,35 @@ contract GasService is IGasService {
             [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 18, 12, 12, 0, 14, 11, 12, 17, 9, 9, 15, 9, 9, 9, 9, 14, 9, 9]
         );
 
-        scheduleUpgrade = _gasValue(160832);
-        cancelUpgrade = _gasValue(141325);
-        registerAsset = _gasValue(167829);
-        setPoolAdapters = _gasValue(789892); // using MAX_ADAPTER_COUNT
-        request = _gasValue(281002);
-        notifyPool = _gasValue(1377994);
-        notifyShareClass = _gasValue(1874788);
-        notifyPricePoolPerShare = _gasValue(176527);
-        notifyPricePoolPerAsset = _gasValue(183062);
-        notifyShareMetadata = _gasValue(198672);
-        initiateTransferShares = _gasValue(369551);
-        executeTransferShares = _gasValue(253494);
-        updateRestriction = _gasValue(207430);
-        managerCallFromHub = _gasValue(377799);
-        requestCallback = _gasValue(463827); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2868749);
-        updateVaultLink = _gasValue(190995);
-        updateVaultUnlink = _gasValue(171755);
-        setRequestManager = _gasValue(175342);
-        setPolicy = _gasValue(176394);
-        authorizeSpokeCall = _gasValue(183459);
-        unauthorizeSpokeCall = _gasValue(161120);
-        updateManager = _gasValue(177541);
-        updateAssets = _gasValue(390739);
-        updateShares = _gasValue(264433);
-        managerCallFromSpoke = _gasValue(150143);
+        scheduleUpgrade = _gasValue(161033);
+        cancelUpgrade = _gasValue(141526);
+        registerAsset = _gasValue(168030);
+        setPoolAdapters = _gasValue(790115); // using MAX_ADAPTER_COUNT
+        request = _gasValue(281382);
+        notifyPool = _gasValue(1378195);
+        notifyShareClass = _gasValue(1874989);
+        notifyPricePoolPerShare = _gasValue(176728);
+        notifyPricePoolPerAsset = _gasValue(183263);
+        notifyShareMetadata = _gasValue(198873);
+        initiateTransferShares = _gasValue(369752);
+        executeTransferShares = _gasValue(253695);
+        updateRestriction = _gasValue(207631);
+        managerCallFromHub = _gasValue(378000);
+        requestCallback = _gasValue(464028); // approve deposit case
+        updateVaultDeployAndLink = _gasValue(2868950);
+        updateVaultLink = _gasValue(191196);
+        updateVaultUnlink = _gasValue(171956);
+        setRequestManager = _gasValue(175543);
+        setPolicy = _gasValue(176595);
+        authorizeSpokeCall = _gasValue(183660);
+        unauthorizeSpokeCall = _gasValue(161321);
+        updateManager = _gasValue(177742);
+        updateAssets = _gasValue(390940);
+        updateShares = _gasValue(264634);
+        managerCallFromSpoke = _gasValue(150344);
     }
 
-    /// @inheritdoc IMessageProperties
+    /// @inheritdoc IMessageGas
     function messageOverallGasLimit(uint16 centrifugeId, bytes calldata message) public view returns (uint128) {
         uint128 value = messageProcessingGasLimit(centrifugeId, message) + BASE_ADAPTER_COST;
         // Multiply by 64/63 is because EIP-150 pass 63/64 gas to each method call
@@ -133,7 +143,7 @@ contract GasService is IGasService {
         return value * 262144 / 250047; // Equivalent to: value * 64 * 64 * 64 / (63 * 63 * 63)
     }
 
-    /// @inheritdoc IMessageProperties
+    /// @inheritdoc IMessageGas
     /// @dev No 64/63 correction needed: benchmarks are taken at the same call depth this is invoked.
     ///      Adds _chainFailureReserve(centrifugeId) so the destination Gateway always has enough gas
     ///      to record a processor revert regardless of which chain is executing the message.
@@ -161,8 +171,21 @@ contract GasService is IGasService {
             ? UPDATE_VAULT_COUNT_OFFSET + uint256(message.deserializeUpdateVault().kind)
             : uint256(uint8(kind));
 
-        uint128 slots = uint8(bytes32(coldSlotsPerMessageType)[index]);
-        uint128 accounts = uint8(bytes32(coldAccountsPerMessageType)[index]);
+        return _coldAccessSurcharge(
+            centrifugeId,
+            uint8(bytes32(coldSlotsPerMessageType)[index]),
+            uint8(bytes32(coldAccountsPerMessageType)[index])
+        );
+    }
+
+    /// @dev The benchmarked chain is the reference and pays nothing; chains that reprice cold access pay
+    ///      the delta per slot and per account.
+    function _coldAccessSurcharge(uint16 centrifugeId, uint128 slots, uint128 accounts)
+        internal
+        pure
+        returns (uint128)
+    {
+        if (centrifugeId != MONAD_CENTRIFUGE_ID) return 0;
         return slots * MONAD_COLD_SLOT_SURCHARGE + accounts * MONAD_COLD_ACCOUNT_SURCHARGE;
     }
 
@@ -208,7 +231,34 @@ contract GasService is IGasService {
         revert InvalidMessageType(); // Unreachable
     }
 
-    /// @inheritdoc IMessageProperties
+    /// @inheritdoc IAdapterGasService
+    function receiveCost(uint16 centrifugeId, bytes32 adapter) external pure returns (uint128) {
+        (uint128 baseCost, uint128 coldSlots, uint128 coldAccounts) = _adapterProfile(adapter);
+        return baseCost + _coldAccessSurcharge(centrifugeId, coldSlots, coldAccounts);
+    }
+
+    /// @dev What each adapter's receive path costs on the benchmarked schedule, and what it first touches.
+    ///      Axelar: 2 cold SLOADs (`sources`, a uint16 and a bytes32 over two slots) + 2 cold CALLs
+    ///      (validateContractCall, entrypoint). The gateway's own cold writes are not reserved, so this
+    ///      may be low. Tested in production against the real validateContractCall.
+    ///      Chainlink, Hyperlane, LayerZero: 1 cold SLOAD (`sources`) + 1 cold CALL (entrypoint) at 4_700,
+    ///      plus a flat 5_300 for dispatch, calldata decode, mapping hash, memory and call setup.
+    ///      Standby: 1 cold CALL (entrypoint) at 2_600, plus a flat 900 for dispatch, calldata copy and
+    ///      call setup. Measured at ~3_000 relaying a 1KB message.
+    function _adapterProfile(bytes32 adapter)
+        internal
+        pure
+        returns (uint128 baseCost, uint128 coldSlots, uint128 coldAccounts)
+    {
+        if (adapter == "axelar") return (AXELAR_RECEIVE_COST, 2, 2);
+        if (adapter == "chainlink") return (CHAINLINK_RECEIVE_COST, 1, 1);
+        if (adapter == "hyperlane") return (HYPERLANE_RECEIVE_COST, 1, 1);
+        if (adapter == "layerZero") return (LAYER_ZERO_RECEIVE_COST, 1, 1);
+        if (adapter == "standby") return (STANDBY_RECEIVE_COST, 0, 1);
+        revert UnknownAdapter();
+    }
+
+    /// @inheritdoc IMessageGas
     function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {
         // txLimitsPerCentrifugeId counts millions of gas units, then we need to multiply by 1_000_000
         return (centrifugeId < 32 ? uint8(bytes32(txLimitsPerCentrifugeId)[centrifugeId]) : DEFAULT_SUPPORTED_TX_LIMIT)

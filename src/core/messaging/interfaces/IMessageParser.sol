@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {PoolId} from "../../types/PoolId.sol";
 
 /// @notice Defines how a raw message is framed, routed and attributed to a source chain.
-/// @dev    Deliberately separate from `IMessageProperties`: these answers authenticate a message, so they are
+/// @dev    Deliberately separate from `IMessageGas`: these answers authenticate a message, so they are
 ///         read from the processor that deserializes it (a Root-filed dependency) rather than from the
 ///         ops-filed gas service. Splitting them also makes the two views structurally unable to disagree.
 interface IMessageParser {

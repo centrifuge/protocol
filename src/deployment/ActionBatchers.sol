@@ -244,10 +244,11 @@ contract CoreActionBatcher is Constants {
 
         // File methods
         report.gateway.file("adapter", address(report.multiAdapter));
-        report.gateway.file("messageProperties", address(report.gasService));
+        report.gateway.file("messageGas", address(report.gasService));
         report.gateway.file("processor", address(report.messageProcessor));
 
         report.multiAdapter.file("parser", address(report.messageProcessor));
+        report.multiAdapter.file("messageGas", address(report.gasService));
 
         report.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
         report.messageDispatcher.file("multiAdapter", address(report.multiAdapter));

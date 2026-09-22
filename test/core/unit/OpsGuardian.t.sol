@@ -244,7 +244,12 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
         );
         vm.mockCall(
             gatewayAddr,
-            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService)),
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageGas"), address(gasService)),
+            abi.encode()
+        );
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageGas"), address(gasService)),
             abi.encode()
         );
     }
@@ -253,20 +258,33 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
         _mockSetGasService(address(gateway));
 
         vm.expectCall(
-            address(gateway),
-            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
+            address(gateway), abi.encodeWithSelector(IGateway.file.selector, bytes32("messageGas"), address(gasService))
+        );
+        vm.prank(address(SAFE));
+        opsGuardian.setGasService(gasService);
+    }
+
+    /// @dev Both holders of the reference move together, or adapters would price their receive path
+    ///      against a gas service the Gateway no longer uses.
+    function testSetGasServiceFilesMultiAdapter() public {
+        _mockSetGasService(address(gateway));
+
+        vm.expectCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.file.selector, bytes32("messageGas"), address(gasService))
         );
         vm.prank(address(SAFE));
         opsGuardian.setGasService(gasService);
     }
 
     /// @dev The framing view Gateway and MultiAdapter authenticate with is filed by Root, not by ops, so
-    ///      setGasService must not reach MultiAdapter at all.
-    function testSetGasServiceDoesNotTouchMultiAdapterProcessor() public {
+    ///      setGasService must reach MultiAdapter exactly once, with the gas values asserted above and
+    ///      nothing else. Counted on the bare selector, since expectCall matches calldata by prefix.
+    function testSetGasServiceFilesMultiAdapterOnlyOnce() public {
         _mockSetGasService(address(gateway));
 
         vm.prank(address(SAFE));
-        vm.expectCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.file.selector), 0);
+        vm.expectCall(address(multiAdapter), abi.encodeWithSelector(IMultiAdapter.file.selector), 1);
         opsGuardian.setGasService(gasService);
     }
 
@@ -276,7 +294,7 @@ contract OpsGuardianTestSetGasService is OpsGuardianTest {
 
         vm.expectCall(
             address(newGateway),
-            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageProperties"), address(gasService))
+            abi.encodeWithSelector(IGateway.file.selector, bytes32("messageGas"), address(gasService))
         );
 
         vm.prank(address(SAFE));
@@ -301,10 +319,19 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         );
     }
 
+    function _mockIsWired(bool isWired) internal {
+        vm.mockCall(
+            address(ADAPTER),
+            abi.encodeWithSelector(IAdapterWiring.isWired.selector, REMOTE_CENTRIFUGE_ID),
+            abi.encode(isWired)
+        );
+    }
+
     function testWireSuccess() public {
         bytes memory data = abi.encode("some", "data");
 
         _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
+        _mockIsWired(false);
         vm.mockCall(
             address(ADAPTER),
             abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data),
@@ -316,10 +343,13 @@ contract OpsGuardianTestWire is OpsGuardianTest {
         );
 
         vm.prank(address(SAFE));
-        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
     }
 
-    function testWireCanBeCalledMultipleTimes() public {
+    /// @dev The whole lifecycle, since a frozen `isWired` proves nothing about a second call: ops wires what
+    ///      is unwired, is refused once it is wired, and may wire again only after a clear it cannot perform
+    ///      itself. Re-pointing a live lane is therefore the ProtocolGuardian's in one step or two.
+    function testWireOnlyWhileUnwired() public {
         bytes memory data = abi.encode("some", "data");
 
         _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
@@ -329,10 +359,29 @@ contract OpsGuardianTestWire is OpsGuardianTest {
             abi.encode()
         );
 
-        vm.startPrank(address(SAFE));
-        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
-        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
-        vm.stopPrank();
+        _mockIsWired(false);
+        vm.prank(address(SAFE));
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
+
+        _mockIsWired(true);
+        vm.prank(address(SAFE));
+        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
+
+        _mockIsWired(false);
+        vm.prank(address(SAFE));
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
+    }
+
+    function testWireRevertWhenAlreadyWired() public {
+        bytes memory data = abi.encode("some", "data");
+
+        _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
+        _mockIsWired(true);
+
+        vm.prank(address(SAFE));
+        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenLocalChain() public {
@@ -342,20 +391,26 @@ contract OpsGuardianTestWire is OpsGuardianTest {
 
         vm.prank(address(SAFE));
         vm.expectRevert(IOpsGuardian.CannotWireLocalChain.selector);
-        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
     }
 
-    function testWireRevertWhenMainnet() public {
+    function testWireMainnetFirstTime() public {
         bytes memory data = abi.encode("some", "data");
 
-        // CENTRIFUGE_ID == 1 == MAINNET_CENTRIFUGE_ID
+        // CENTRIFUGE_ID == 1 == MAINNET_CENTRIFUGE_ID: wiring is not restricted by chain, only by isWired
         assertEq(CENTRIFUGE_ID, opsGuardian.MAINNET_CENTRIFUGE_ID());
 
         _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
+        vm.mockCall(
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.isWired.selector, CENTRIFUGE_ID), abi.encode(false)
+        );
+        vm.mockCall(
+            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
+        );
+        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
 
         vm.prank(address(SAFE));
-        vm.expectRevert(IOpsGuardian.CannotWireMainnet.selector);
-        opsGuardian.wire(address(ADAPTER), CENTRIFUGE_ID, data);
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), CENTRIFUGE_ID, data);
     }
 
     function testWireRevertWhenNotSafe() public {
@@ -363,7 +418,7 @@ contract OpsGuardianTestWire is OpsGuardianTest {
 
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IOpsGuardian.NotTheAuthorizedSafe.selector);
-        opsGuardian.wire(address(ADAPTER), REMOTE_CENTRIFUGE_ID, data);
+        opsGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
     }
 }
 

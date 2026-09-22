@@ -24,7 +24,7 @@ class OpsGuardian
 class ProtocolGuardian
 class Root
 
-OpsGuardian --> IMultiAdapter : blockSession/setAdapters
+OpsGuardian --> IMultiAdapter : blockSession/setAdapters/setGasService
 OpsGuardian --> IGateway : setGasService
 OpsGuardian --> IAdapterWiring : wire
 OpsGuardian --> ICreatePool : createPool
@@ -33,6 +33,7 @@ OpsGuardian --> ITokenBridge : fileTokenBridgeCentrifugeId
 ProtocolGuardian --> Root : scheduleRely
 ProtocolGuardian -right-> IScheduleAuthMessageSender : scheduleUpgrade
 ProtocolGuardian --> ITokenBridge : fileTokenBridgeRelayer
+ProtocolGuardian --> IAdapterWiring : wire
 
 Root .[dotted].> IAuth
 

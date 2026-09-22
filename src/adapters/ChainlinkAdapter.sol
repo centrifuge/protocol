@@ -19,33 +19,23 @@ import {
 import {Auth} from "../misc/Auth.sol";
 import {IERC165} from "../misc/interfaces/IERC7575.sol";
 
-import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+import {IAdapterGasService} from "../admin/interfaces/IAdapterGasService.sol";
 
 /// @title  Chainlink Adapter
 /// @notice Routing contract that integrates with Chainlink CCIP
 /// @dev    Replay protection is enforced by the CCIP stack (Router/OffRamp),
 ///         which tracks message IDs and prevents duplicate delivery.
 contract ChainlinkAdapter is Auth, IChainlinkAdapter {
-    /// @dev Cost of executing `ccipReceive()` except entrypoint.handle(), reserved per destination chain.
-    ///      Covers 1 cold SLOAD (single-slot `sources` struct) + 1 cold CALL (entrypoint) at 4_700, plus
-    ///      a flat 5_300 for dispatch, calldata decode, mapping hash, memory and call setup.
-    uint256 public constant DEFAULT_RECEIVE_COST = 10_000;
-
-    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
-    // Monad reprices cold storage access (2100→8100) and cold account access (2600→10100) per its
-    // published opcode schedule (docs.monad.xyz), putting those same two accesses at 18_200 => +13_500
-    // over DEFAULT, wrapper allowance unchanged. Mirrors GasService's per-chain reserve.
-    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 13_500;
-
     IRouterClient public immutable ccipRouter;
-    IMessageHandler public immutable entrypoint;
+    IAdapterEntrypoint public immutable entrypoint;
 
     mapping(uint64 chainSelector => ChainlinkSource) public sources;
     mapping(uint16 centrifugeId => ChainlinkDestination) public destinations;
 
-    constructor(IMessageHandler entrypoint_, address ccipRouter_, address deployer) Auth(deployer) {
+    constructor(IAdapterEntrypoint entrypoint_, address ccipRouter_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         ccipRouter = IRouterClient(ccipRouter_);
     }
@@ -64,6 +54,12 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         sources[chainSelector] = ChainlinkSource(centrifugeId, adapter, allowedFinality);
         destinations[centrifugeId] = ChainlinkDestination(chainSelector, adapter, requestedFinality);
         emit Wire(centrifugeId, chainSelector, adapter, requestedFinality, allowedFinality);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId, bytes memory data) external view returns (bool) {
+        (uint64 chainSelector,) = abi.decode(data, (uint64, address));
+        return destinations[centrifugeId].chainSelector != 0 || sources[chainSelector].addr != address(0);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -112,10 +108,11 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         );
     }
 
-    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
-    ///      repricing needs a larger reserve than other chains.
-    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
-        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
+    /// @dev Receive reserve added to the requested gas limit. The gas service holds what this path costs
+    ///      and what each destination charges for it, so the adapter only names itself.
+    function _receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        IAdapterGasService gasService = IAdapterGasService(address(entrypoint.messageGas()));
+        return gasService.receiveCost(centrifugeId, "chainlink");
     }
 
     function _createMessage(ChainlinkDestination memory destination, bytes calldata payload, uint256 gasLimit)

@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {IAdapter} from "./interfaces/IAdapter.sol";
+import {IMessageGas} from "./interfaces/IMessageGas.sol";
 import {IMessageParser} from "./interfaces/IMessageParser.sol";
 import {IMessageHandler} from "./interfaces/IMessageHandler.sol";
 import {IAdapterEntrypoint} from "./interfaces/IAdapterEntrypoint.sol";
@@ -28,8 +29,9 @@ contract MultiAdapter is Auth, IMultiAdapter {
     uint16 public immutable localCentrifugeId;
 
     // Dependencies
-    IMessageHandler public gateway;
     IMessageParser public parser;
+    IMessageGas public messageGas;
+    IMessageHandler public gateway;
 
     // Authorization
     mapping(PoolId => mapping(address => bool)) public manager;
@@ -65,6 +67,7 @@ contract MultiAdapter is Auth, IMultiAdapter {
     function file(bytes32 what, address instance) external auth {
         if (what == "gateway") gateway = IMessageHandler(instance);
         else if (what == "parser") parser = IMessageParser(instance);
+        else if (what == "messageGas") messageGas = IMessageGas(instance);
         else revert FileUnrecognizedParam();
 
         emit File(what, instance);

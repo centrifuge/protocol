@@ -11,9 +11,9 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageGas} from "../../../src/core/messaging/interfaces/IMessageGas.sol";
 import {IMessageParser} from "../../../src/core/messaging/interfaces/IMessageParser.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
-import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
@@ -81,9 +81,9 @@ contract MockProcessor is IMessageParser {
 
     mapping(uint16 => bytes[]) public processed;
     bool shouldNotFail;
-    MockMessageProperties properties;
+    MockMessageGas properties;
 
-    constructor(MockMessageProperties properties_) {
+    constructor(MockMessageGas properties_) {
         properties = properties_;
     }
 
@@ -152,7 +152,7 @@ contract MockProcessor is IMessageParser {
     }
 }
 
-contract MockMessageProperties is IMessageProperties {
+contract MockMessageGas is IMessageGas {
     using BytesLib for bytes;
 
     function messageOverallGasLimit(uint16 centrifugeId, bytes calldata message) external pure returns (uint128) {
@@ -228,8 +228,8 @@ contract GatewayTest is Test {
     IRoot root = IRoot(makeAddr("Root"));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
-    MockMessageProperties messageProperties = new MockMessageProperties();
-    MockProcessor processor = new MockProcessor(messageProperties);
+    MockMessageGas messageGas = new MockMessageGas();
+    MockProcessor processor = new MockProcessor(messageGas);
     GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
@@ -260,7 +260,7 @@ contract GatewayTest is Test {
     function setUp() public virtual {
         gateway.file("adapter", address(adapter));
         gateway.file("processor", address(processor));
-        gateway.file("messageProperties", address(messageProperties));
+        gateway.file("messageGas", address(messageGas));
 
         _mockPause(false);
     }
@@ -284,8 +284,8 @@ contract GatewayTestFile is GatewayTest {
         gateway.file("processor", address(23));
         assertEq(address(gateway.processor()), address(23));
 
-        gateway.file("messageProperties", address(42));
-        assertEq(address(gateway.messageProperties()), address(42));
+        gateway.file("messageGas", address(42));
+        assertEq(address(gateway.messageGas()), address(42));
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));

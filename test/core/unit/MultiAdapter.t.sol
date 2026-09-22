@@ -203,6 +203,13 @@ contract MultiAdapterTestFile is MultiAdapterTest {
         multiAdapter.file("parser", address(23));
         assertEq(address(multiAdapter.parser()), address(23));
     }
+
+    function testMultiAdapterFileMessageGas() public {
+        vm.expectEmit();
+        emit IMultiAdapter.File("messageGas", address(23));
+        multiAdapter.file("messageGas", address(23));
+        assertEq(address(multiAdapter.messageGas()), address(23));
+    }
 }
 
 contract MultiAdapterTestSetAdapters is MultiAdapterTest {

@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 /// @notice Defines the gas properties of raw messages.
 /// @dev    Values only: how a message is framed or attributed is `IMessageParser`, which is read from the
 ///         processor instead, so that filing this interface cannot alter source-chain authentication.
-interface IMessageProperties {
+interface IMessageGas {
     /// @notice Gas limit for the execution cost of an individual message in a remote chain from the adapter.
     /// @dev    NOTE: In the future we could want to dispatch:
     ///         - by destination chain (for non-EVM chains)

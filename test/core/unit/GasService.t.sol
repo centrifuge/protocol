@@ -6,6 +6,7 @@ import {BytesLib} from "../../../src/misc/libraries/BytesLib.sol";
 import {MessageLib, MessageType, VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {GasService} from "../../../src/admin/GasService.sol";
+import {IAdapterGasService} from "../../../src/admin/interfaces/IAdapterGasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -38,6 +39,42 @@ contract GasServiceTest is Test {
         GasService monadService = new GasService(txLimits, service.MONAD_CENTRIFUGE_ID());
         assertEq(monadService.messageFailureGasReserve(), monadService.MONAD_FAILURE_GAS_RESERVE());
         assertTrue(monadService.MONAD_FAILURE_GAS_RESERVE() != monadService.DEFAULT_FAILURE_GAS_RESERVE());
+    }
+
+    /// @dev The counts behind each adapter's reserve are asserted nowhere else: the adapter tests build
+    ///      their expectation by calling this same table, so a flipped tuple passes them unnoticed. Spelled
+    ///      out here against literals, and read through Monad, which is the only schedule that prices the
+    ///      counts and so the only place they are observable.
+    function testAdapterReceiveCosts() public view {
+        _assertReceiveCost("axelar", service.AXELAR_RECEIVE_COST(), 2, 2);
+        _assertReceiveCost("chainlink", service.CHAINLINK_RECEIVE_COST(), 1, 1);
+        _assertReceiveCost("hyperlane", service.HYPERLANE_RECEIVE_COST(), 1, 1);
+        _assertReceiveCost("layerZero", service.LAYER_ZERO_RECEIVE_COST(), 1, 1);
+        _assertReceiveCost("standby", service.STANDBY_RECEIVE_COST(), 0, 1);
+    }
+
+    function testReceiveCostErrUnknownAdapter(bytes32 adapter) public {
+        vm.assume(
+            adapter != "axelar" && adapter != "chainlink" && adapter != "hyperlane" && adapter != "layerZero"
+                && adapter != "standby"
+        );
+
+        vm.expectRevert(IAdapterGasService.UnknownAdapter.selector);
+        service.receiveCost(CENTRIFUGE_ID, adapter);
+    }
+
+    function _assertReceiveCost(bytes32 adapter, uint128 baseCost, uint128 coldSlots, uint128 coldAccounts)
+        internal
+        view
+    {
+        assertEq(service.receiveCost(CENTRIFUGE_ID, adapter), baseCost, "benchmarked schedule pays the base cost");
+
+        assertEq(
+            service.receiveCost(service.MONAD_CENTRIFUGE_ID(), adapter),
+            baseCost + coldSlots * service.MONAD_COLD_SLOT_SURCHARGE() + coldAccounts
+                * service.MONAD_COLD_ACCOUNT_SURCHARGE(),
+            "Monad pays for every cold access the receive path makes"
+        );
     }
 
     function testDefaultChainHasNoColdAccessSurcharge() public view {

@@ -3,9 +3,9 @@ pragma solidity 0.8.28;
 
 import {ManagerActor} from "./mocks/ManagerActor.sol";
 import {SimpleAdapter} from "./mocks/SimpleAdapter.sol";
+import {MockMessageGas} from "./mocks/MockMessageGas.sol";
 import {CountingProcessor} from "./mocks/CountingProcessor.sol";
 import {MockProtocolPauser} from "./mocks/MockProtocolPauser.sol";
-import {MockMessageProperties} from "./mocks/MockMessageProperties.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
@@ -31,7 +31,7 @@ abstract contract Setup is BaseSetup {
     MultiAdapter internal multiAdapter;
 
     CountingProcessor internal countingProcessor;
-    MockMessageProperties internal mockMessageProperties;
+    MockMessageGas internal mockMessageGas;
     MockProtocolPauser internal mockProtocolPauser;
 
     // Adapters: deliver() is the inbound entrypoint for the fuzzer
@@ -43,7 +43,7 @@ abstract contract Setup is BaseSetup {
     ManagerActor internal managerActor;
 
     function setup() internal virtual override {
-        mockMessageProperties = new MockMessageProperties();
+        mockMessageGas = new MockMessageGas();
         mockProtocolPauser = new MockProtocolPauser();
         countingProcessor = new CountingProcessor();
 
@@ -57,7 +57,7 @@ abstract contract Setup is BaseSetup {
         managerActor = new ManagerActor(multiAdapter); // starts WITHOUT the manager role
 
         gateway.file("processor", address(countingProcessor));
-        gateway.file("messageProperties", address(mockMessageProperties));
+        gateway.file("messageGas", address(mockMessageGas));
         gateway.file("adapter", address(multiAdapter));
 
         multiAdapter.file("parser", address(countingProcessor));

@@ -9,6 +9,9 @@ import {Mock} from "../../core/mocks/Mock.sol";
 
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {GasService} from "../../../src/admin/GasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -59,9 +62,22 @@ contract ChainlinkAdapterTestBase is Test {
     uint64 constant CHAINLINK_CHAIN_SELECTOR = 2;
     address immutable REMOTE_CHAINLINK_ADDR = makeAddr("remoteAddress");
 
-    IMessageHandler constant GATEWAY = IMessageHandler(address(1));
+    IAdapterEntrypoint constant GATEWAY = IAdapterEntrypoint(address(1));
+
+    GasService gasService;
+
+    /// @dev Mirrors what the adapter declares, so a count that drifts from the adapter's own fails here.
+    function receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        return gasService.receiveCost(centrifugeId, "chainlink");
+    }
 
     function setUp() public {
+        uint8[32] memory txLimits;
+        gasService = new GasService(txLimits, CENTRIFUGE_ID);
+        vm.mockCall(
+            address(GATEWAY), abi.encodeWithSelector(IAdapterEntrypoint.messageGas.selector), abi.encode(gasService)
+        );
+
         ccipRouter = new MockCCIPRouter();
         adapter = new ChainlinkAdapter(GATEWAY, address(ccipRouter), address(this));
     }
@@ -80,6 +96,8 @@ contract ChainlinkAdapterTestWire is ChainlinkAdapterTestBase {
     }
 
     function testWire() public {
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR)), false);
+
         vm.expectEmit();
         emit IChainlinkAdapter.Wire(
             CENTRIFUGE_ID,
@@ -101,6 +119,18 @@ contract ChainlinkAdapterTestWire is ChainlinkAdapterTestBase {
         (uint64 chainSelector, address addr2, bytes4 requestedFinality) = adapter.destinations(CENTRIFUGE_ID);
         assertEq(chainSelector, CHAINLINK_CHAIN_SELECTOR);
         assertEq(addr2, REMOTE_CHAINLINK_ADDR);
+
+        // Wired on both sides: the chain has a destination, and the bridge id has a source
+        bytes memory wired =
+            abi.encode(CHAINLINK_CHAIN_SELECTOR, REMOTE_CHAINLINK_ADDR, WAIT_FOR_FINALITY_FLAG, WAIT_FOR_FINALITY_FLAG);
+        bytes memory otherSelector = abi.encode(
+            CHAINLINK_CHAIN_SELECTOR + 1, REMOTE_CHAINLINK_ADDR, WAIT_FOR_FINALITY_FLAG, WAIT_FOR_FINALITY_FLAG
+        );
+
+        assertEq(adapter.isWired(CENTRIFUGE_ID, wired), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID, otherSelector), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID + 1, wired), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID + 1, otherSelector), false);
         assertEq(requestedFinality, WAIT_FOR_FINALITY_FLAG);
     }
 }
@@ -204,7 +234,7 @@ contract ChainlinkAdapterTestFinality is ChainlinkAdapterTestBase {
             abi.encodeWithSelector(
                 GENERIC_EXTRA_ARGS_V2_TAG,
                 IClient.GenericExtraArgsV2({
-                    gasLimit: uint256(gasLimit) + adapter.DEFAULT_RECEIVE_COST(), allowOutOfOrderExecution: true
+                    gasLimit: uint256(gasLimit) + receiveCost(CENTRIFUGE_ID), allowOutOfOrderExecution: true
                 })
             )
         );
@@ -214,7 +244,7 @@ contract ChainlinkAdapterTestFinality is ChainlinkAdapterTestBase {
     ///      finality config, then seven zero length prefixes. Byte-for-byte against
     ///      ExtraArgsCodec._getBasicEncodedExtraArgsV3FastConfirmationRule.
     function testSendUsesV3ArgsWhenFinalityRequested(bytes calldata payload, uint32 gasLimit) public {
-        gasLimit = uint32(bound(gasLimit, 0, type(uint32).max - adapter.MONAD_RECEIVE_COST()));
+        gasLimit = uint32(bound(gasLimit, 0, type(uint32).max - receiveCost(gasService.MONAD_CENTRIFUGE_ID())));
         _wire(WAIT_FOR_SAFE_FLAG, WAIT_FOR_FINALITY_FLAG);
 
         vm.deal(address(GATEWAY), 0.1 ether);
@@ -225,10 +255,7 @@ contract ChainlinkAdapterTestFinality is ChainlinkAdapterTestBase {
         assertEq(
             extraArgs,
             abi.encodePacked(
-                GENERIC_EXTRA_ARGS_V3_TAG,
-                uint32(gasLimit + adapter.DEFAULT_RECEIVE_COST()),
-                WAIT_FOR_SAFE_FLAG,
-                bytes7(0)
+                GENERIC_EXTRA_ARGS_V3_TAG, uint32(gasLimit + receiveCost(CENTRIFUGE_ID)), WAIT_FOR_SAFE_FLAG, bytes7(0)
             )
         );
         assertEq(extraArgs.length, 19);
@@ -321,7 +348,9 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
         assumeNotZeroAddress(invalidAddress);
 
         vm.mockCall(
-            address(GATEWAY), abi.encodeWithSelector(GATEWAY.handle.selector, CENTRIFUGE_ID, payload), abi.encode()
+            address(GATEWAY),
+            abi.encodeWithSelector(IMessageHandler.handle.selector, CENTRIFUGE_ID, payload),
+            abi.encode()
         );
 
         IClient.Any2EVMMessage memory message = IClient.Any2EVMMessage({
@@ -367,7 +396,7 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
     }
 
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint256 gasLimit, address refund) public {
-        vm.assume(gasLimit < adapter.DEFAULT_RECEIVE_COST());
+        vm.assume(gasLimit < receiveCost(CENTRIFUGE_ID));
         vm.assume(invalidOrigin != address(GATEWAY));
 
         vm.deal(address(this), 0.1 ether);
@@ -401,7 +430,7 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
         bytes memory expectedExtraArgs = abi.encodeWithSelector(
             GENERIC_EXTRA_ARGS_V2_TAG,
             IClient.GenericExtraArgsV2({
-                gasLimit: gasLimit + adapter.DEFAULT_RECEIVE_COST(), allowOutOfOrderExecution: true
+                gasLimit: gasLimit + receiveCost(CENTRIFUGE_ID), allowOutOfOrderExecution: true
             })
         );
         assertEq(ccipRouter.values_bytes("extraArgs"), expectedExtraArgs);
@@ -410,7 +439,7 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
     /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
     function testSendUsesMonadReceiveCost(bytes calldata payload, uint256 gasLimit, address refund) public {
         gasLimit = bound(gasLimit, 0, type(uint64).max);
-        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        uint16 monadId = gasService.MONAD_CENTRIFUGE_ID();
         adapter.wire(
             monadId,
             abi.encode(
@@ -424,9 +453,7 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
 
         bytes memory expectedExtraArgs = abi.encodeWithSelector(
             GENERIC_EXTRA_ARGS_V2_TAG,
-            IClient.GenericExtraArgsV2({
-                gasLimit: gasLimit + adapter.MONAD_RECEIVE_COST(), allowOutOfOrderExecution: true
-            })
+            IClient.GenericExtraArgsV2({gasLimit: gasLimit + receiveCost(monadId), allowOutOfOrderExecution: true})
         );
         assertEq(ccipRouter.values_bytes("extraArgs"), expectedExtraArgs);
     }

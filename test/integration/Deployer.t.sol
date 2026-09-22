@@ -5,6 +5,8 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
 import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
+import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
+import {IProtocolGuardian} from "../../src/admin/interfaces/IProtocolGuardian.sol";
 
 import {DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
@@ -134,7 +136,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(gateway.localCentrifugeId(), CENTRIFUGE_ID);
         assertEq(address(gateway.processor()), address(messageProcessor));
         assertEq(address(gateway.adapter()), address(multiAdapter));
-        assertEq(address(gateway.messageProperties()), address(gasService));
+        assertEq(address(gateway.messageGas()), address(gasService));
     }
 
     function testMultiAdapter(address nonWard) public view {
@@ -168,6 +170,16 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
             address(multiAdapter.parser()),
             address(gateway.processor()),
             "MultiAdapter.parser and Gateway.processor must be the same contract"
+        );
+
+        // The same again for what prices execution: an adapter reads it off MultiAdapter to price its own
+        // receive path, and Gateway reads it to size the message. Filed apart, an adapter would reserve
+        // against one schedule while the message was budgeted against another.
+        assertEq(address(multiAdapter.messageGas()), address(gasService));
+        assertEq(
+            address(multiAdapter.messageGas()),
+            address(gateway.messageGas()),
+            "MultiAdapter.messageGas and Gateway.messageGas must be the same contract"
         );
     }
 
@@ -721,6 +733,47 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
 }
 
 contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
+    /// @dev The launch wires no connections, so the OpsGuardian may wire each adapter once per chain and is
+    ///      then frozen for that binding, which the ProtocolGuardian re-points.
+    function testGuardiansWireOnceThenRepoint() public {
+        uint16 remoteCentrifugeId = 5;
+        address remoteAdapter = makeAddr("RemoteLayerZeroAdapter");
+        address rotatedRemoteAdapter = makeAddr("RotatedRemoteLayerZeroAdapter");
+        bytes memory data = abi.encode(uint32(30_005), remoteAdapter);
+
+        assertEq(layerZeroAdapter.isWired(remoteCentrifugeId, data), false);
+
+        vm.startPrank(address(OPS_SAFE));
+        opsGuardian.wire(layerZeroAdapter, remoteCentrifugeId, data);
+        assertEq(layerZeroAdapter.isWired(remoteCentrifugeId, data), true);
+
+        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        opsGuardian.wire(layerZeroAdapter, remoteCentrifugeId, data);
+
+        // A different adapter is a different binding, so it is still wireable for the same chain
+        opsGuardian.wire(hyperlaneAdapter, remoteCentrifugeId, data);
+        assertEq(hyperlaneAdapter.isWired(remoteCentrifugeId, data), true);
+
+        // A bridge id that already serves a chain cannot be handed to another chain by a first-time wire
+        uint16 mainnetCentrifugeId = opsGuardian.MAINNET_CENTRIFUGE_ID();
+        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        opsGuardian.wire(layerZeroAdapter, mainnetCentrifugeId, data);
+
+        // Ethereum is a remote chain like any other for wiring; the local chain is not
+        opsGuardian.wire(layerZeroAdapter, mainnetCentrifugeId, abi.encode(uint32(30_101), remoteAdapter));
+        vm.expectRevert(IOpsGuardian.CannotWireLocalChain.selector);
+        opsGuardian.wire(layerZeroAdapter, CENTRIFUGE_ID, data);
+
+        vm.startPrank(address(ADMIN_SAFE));
+        protocolGuardian.wire(layerZeroAdapter, remoteCentrifugeId, abi.encode(uint32(30_005), rotatedRemoteAdapter));
+        (, address destination) = layerZeroAdapter.destinations(remoteCentrifugeId);
+        assertEq(destination, rotatedRemoteAdapter);
+
+        protocolGuardian.wire(layerZeroAdapter, mainnetCentrifugeId, abi.encode(uint32(30_101), rotatedRemoteAdapter));
+        vm.expectRevert(IProtocolGuardian.CannotWireLocalChain.selector);
+        protocolGuardian.wire(layerZeroAdapter, CENTRIFUGE_ID, data);
+    }
+
     function testAxelarAdapter(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));

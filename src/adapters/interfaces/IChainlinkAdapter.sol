@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import {IERC165} from "../../misc/interfaces/IERC7575.sol";
 
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
@@ -197,7 +197,7 @@ interface IChainlinkAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiver
     function ccipRouter() external view returns (IRouterClient);
 
     /// @notice The MultiAdapter that receives decoded inbound messages from this adapter
-    function entrypoint() external view returns (IMessageHandler);
+    function entrypoint() external view returns (IAdapterEntrypoint);
 
     /// @notice Returns the source configuration for a given Chainlink chain id
     /// @param chainSelector The Chainlink chain selector
