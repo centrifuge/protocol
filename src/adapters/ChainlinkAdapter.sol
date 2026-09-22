@@ -9,7 +9,11 @@ import {
     IRouterClient,
     IClient,
     GENERIC_EXTRA_ARGS_V2_TAG,
-    IAny2EVMMessageReceiver
+    GENERIC_EXTRA_ARGS_V3_TAG,
+    WAIT_FOR_FINALITY_FLAG,
+    BLOCK_DEPTH_MASK,
+    IAny2EVMMessageReceiver,
+    IAny2EVMMessageReceiverV2
 } from "./interfaces/IChainlinkAdapter.sol";
 
 import {Auth} from "../misc/Auth.sol";
@@ -52,10 +56,14 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
 
     /// @inheritdoc IAdapterWiring
     function wire(uint16 centrifugeId, bytes memory data) external auth {
-        (uint64 chainSelector, address adapter) = abi.decode(data, (uint64, address));
-        sources[chainSelector] = ChainlinkSource(centrifugeId, adapter);
-        destinations[centrifugeId] = ChainlinkDestination(chainSelector, adapter);
-        emit Wire(centrifugeId, chainSelector, adapter);
+        (uint64 chainSelector, address adapter, bytes4 requestedFinality, bytes4 allowedFinality) =
+            abi.decode(data, (uint64, address, bytes4, bytes4));
+        require(uint32(requestedFinality) & BLOCK_DEPTH_MASK == 0, BlockDepthNotSupported());
+        require(uint32(allowedFinality) & BLOCK_DEPTH_MASK == 0, BlockDepthNotSupported());
+
+        sources[chainSelector] = ChainlinkSource(centrifugeId, adapter, allowedFinality);
+        destinations[centrifugeId] = ChainlinkDestination(chainSelector, adapter, requestedFinality);
+        emit Wire(centrifugeId, chainSelector, adapter, requestedFinality, allowedFinality);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -120,13 +128,33 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
             data: payload,
             tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0),
-            extraArgs: _argsToBytes(IClient.GenericExtraArgsV2({gasLimit: gasLimit, allowOutOfOrderExecution: true}))
+            extraArgs: _extraArgs(destination.requestedFinality, gasLimit)
         });
     }
 
-    // Based on https://github.com/smartcontractkit/chainlink-ccip/blob/06f2720ee9a0c987a18a9bb226c672adfcf24bcd/chains/evm/contracts/libraries/Client.sol#L36
-    function _argsToBytes(IClient.GenericExtraArgsV2 memory extraArgs) internal pure returns (bytes memory bts) {
-        return abi.encodeWithSelector(GENERIC_EXTRA_ARGS_V2_TAG, extraArgs);
+    function _extraArgs(bytes4 requestedFinality, uint256 gasLimit) internal pure returns (bytes memory) {
+        if (requestedFinality == WAIT_FOR_FINALITY_FLAG) {
+            return abi.encodeWithSelector(
+                GENERIC_EXTRA_ARGS_V2_TAG,
+                IClient.GenericExtraArgsV2({gasLimit: gasLimit, allowOutOfOrderExecution: true})
+            );
+        }
+
+        require(gasLimit <= type(uint32).max, GasLimitTooHigh());
+        return abi.encodePacked(GENERIC_EXTRA_ARGS_V3_TAG, uint32(gasLimit), requestedFinality, bytes7(0));
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IAny2EVMMessageReceiverV2
+    function getCCVsAndFinalityConfig(uint64 sourceChainSelector, bytes calldata)
+        external
+        view
+        returns (address[] memory, address[] memory, uint8, bytes4)
+    {
+        return (new address[](0), new address[](0), 0, sources[sourceChainSelector].allowedFinality);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -135,6 +163,7 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId
+            || interfaceId == type(IAny2EVMMessageReceiverV2).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 }

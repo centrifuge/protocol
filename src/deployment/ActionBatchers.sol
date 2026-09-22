@@ -470,7 +470,11 @@ contract AdapterActionBatcher {
 
             if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
                 report.chainlinkAdapter
-                    .wire(connections.centrifugeId, abi.encode(connections.chainlinkId, report.chainlinkAdapter));
+                    .wire(
+                        connections.centrifugeId,
+                        // Full finality both ways; a lane is migrated to faster-than-finality by governance, not at launch
+                        abi.encode(connections.chainlinkId, report.chainlinkAdapter, bytes4(0), bytes4(0))
+                    );
 
                 adapters[n++] = report.chainlinkAdapter;
             }
