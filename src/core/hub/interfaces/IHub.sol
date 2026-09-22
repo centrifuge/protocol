@@ -160,6 +160,9 @@ interface IHub is IBatchedMulticall {
     function setPolicy(PoolId poolId, IHubPolicy policy_) external;
 
     /// @notice Pre-authorize a future, out-of-policy call against the Hub's timelock ledger. Manager only.
+    /// @dev    The policy is still consulted downstream: {IHubRegistry.initiateAuthorization} prices the
+    ///         delay through {IHubPolicy.authorizationDelay}, which refuses a caller confined away from
+    ///         the selector.
     /// @param poolId The pool the call targets
     /// @param data The exact future calldata being authorized
     function initiateAuthorization(PoolId poolId, bytes calldata data) external;
@@ -307,8 +310,10 @@ interface IHub is IBatchedMulticall {
         external
         payable;
 
-    /// @notice Revoke a previously-authorized, not-yet-consumed spoke call. Manager-gated and immediate (no
-    ///         timelock): it only reduces capability, letting a manager retire a stale authorization.
+    /// @notice Revoke a previously-authorized, not-yet-consumed spoke call. Manager-gated and subject to the
+    ///         pool's policy. Under the standard policy it carries no delay of its own, since revoking only
+    ///         reduces capability, but the policy may still block it: a caller confined to a selector set must
+    ///         have this selector listed. The spoke-side effect lands with the message.
     /// @param poolId The pool identifier
     /// @param centrifugeId Chain of the spoke the authorized call targets
     /// @param data The exact spoke calldata whose authorization is revoked

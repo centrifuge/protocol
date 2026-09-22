@@ -201,6 +201,21 @@ contract TestMainMethodsChecks is TestCommon {
         vm.expectRevert(IHub.NotManager.selector);
         hub.cancelAuthorization(POOL_A, bytes(""));
 
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setBridgingHook(POOL_A, address(0));
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.updateShareClassMetadata(POOL_A, ShareClassId.wrap(0), "", "");
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.setSpokePolicy(POOL_A, 0, bytes32(0), REFUND);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.authorizeSpokeCall(POOL_A, 0, bytes(""), REFUND);
+
+        vm.expectRevert(IHub.NotManager.selector);
+        hub.unauthorizeSpokeCall(POOL_A, 0, bytes(""), REFUND);
+
         vm.stopPrank();
     }
 }

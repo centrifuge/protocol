@@ -17,6 +17,8 @@ interface IStdHubPolicy is IHubPolicy {
     /// @notice Confines a caller to a fixed set of selectors for a pool. A (pool, caller) with any
     ///         entry may invoke only its listed selectors; everything else is blocked outright. Set
     ///         once at construction.
+    /// @dev    Denies the instant, capability-reducing selectors too: a confined caller that must be able
+    ///         to veto or revoke needs `cancelAuthorization` / `unauthorizeSpokeCall` listed explicitly.
     struct Entry {
         PoolId poolId;
         address caller;

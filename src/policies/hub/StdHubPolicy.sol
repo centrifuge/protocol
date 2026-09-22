@@ -31,7 +31,8 @@ import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 ///         past `delay`, and are consumed by {enforce} within `expiry` (else they fail closed). Sentinels
 ///         get a veto window via {Supervisor.cancelAuthorization}. One instance can serve many pools.
 ///         `escalation` (a longer delay) applies only to replacing the policy; a construction-time
-///         allowlist can additionally confine a caller to a fixed selector set.
+///         allowlist can additionally confine a caller to a fixed selector set, and being construction-time
+///         it is corrected only by installing a new instance over `escalation`.
 ///
 ///         Per-selector policy (see {_authorizationDelay} for the exhaustive dispatch):
 ///         - Accounting/price writes, when `onchainAccounting` is set, are gated to the NAVManager /
@@ -39,6 +40,9 @@ import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 ///           {_checkSharePrice}.
 ///         - `updateHubManager`, `setRequestManager`, `updateVault`, `updateCurrency`, `addShareClass`,
 ///           `notifyShareClass`, `updateManager`, `setAdapters`, and `authorizeSpokeCall` are always out of policy.
+///         - `cancelAuthorization` and `unauthorizeSpokeCall` are in policy and stay instant, but still pass
+///           the allowlist, so a pool confining a caller that must be able to veto or revoke has to list that
+///           selector for it.
 ///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
 ///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
 ///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
@@ -225,9 +229,11 @@ contract StdHubPolicy is IStdHubPolicy {
         if (selector == IHub.updateRestriction.selector) return _checkRestriction(payload);
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
-        // The sentinel veto path runs instantly, but still passes through the per-caller confinement
-        // above, so a restricted manager can't wield it as a pool-wide governance-DoS primitive.
-        if (selector == IHub.cancelAuthorization.selector) return 0;
+        // Instant only where the action races something itself instant: cancelAuthorization races a maturing
+        // authorization, unauthorizeSpokeCall a spoke authorization consumable at any block that never stales.
+        // Both still pass the confinement above, so a restricted manager can't wield either as a
+        // governance-DoS primitive.
+        if (selector == IHub.cancelAuthorization.selector || selector == IHub.unauthorizeSpokeCall.selector) return 0;
 
         // Replacing a policy (the local hub one, or a spoke's pushed one) disables all future policy on
         // that side, so it uses the longer `escalation`.
