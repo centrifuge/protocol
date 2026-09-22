@@ -54,6 +54,13 @@ abstract contract BaseVault is Auth, Recoverable, IBaseVault {
     mapping(address controller => mapping(bytes32 nonce => bool used)) public authorizations;
 
     /// @inheritdoc IERC7540Operator
+    /// @dev Approval covers the controller's whole position, not this vault's share of it: an operator can
+    ///      move the controller's free balance into a request and claim the proceeds to any receiver. The hub
+    ///      keys requests by (pool, share class, asset) and investor, so vaults linked to one such tuple share
+    ///      a single position. A settlement for that position is applied to the vault named by the share
+    ///      token's pointer, and an operator approved on that vault reaches the investor's whole tuple
+    ///      position, including requests made through the other linked vaults. An operator approved only
+    ///      elsewhere reaches nothing unless the pool re-points.
     mapping(address => mapping(address => bool)) public isOperator;
 
     constructor(
