@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
+import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {Holdings} from "../../../../src/core/hub/Holdings.sol";
@@ -37,9 +38,12 @@ contract HubRegistryMock {
 }
 
 contract TestCommon is Test {
+    uint16 constant CENT_A = 5;
+
     IHubRegistry immutable hubRegistry = IHubRegistry(address(new HubRegistryMock()));
     IValuation immutable itemValuation = IValuation(address(23));
     Holdings holdings = new Holdings(hubRegistry, address(this));
+    AssetId a1 = newAssetId(CENT_A, 1);
 
     function mockGetQuote(IValuation valuation, uint128 baseAmount, uint128 quoteAmount) public {
         vm.mockCall(
@@ -309,6 +313,66 @@ contract TestDecrease is TestCommon {
     }
 }
 
+/// @dev Both counters only ever go up, so headroom is spent by activity rather than by what is held:
+///      deposits and withdrawals that net to nothing still spend it, and one report of type(uint128).max
+///      spends all of it in a single message. Nothing lowers either counter, and the overflow lands before
+///      the nonce advances, so on a uint128 counter the chain's whole reporting stream stopped for good.
+contract TestCounterHeadroom is TestCommon {
+    uint128 constant MAX = type(uint128).max;
+
+    function testMaxReportDoesNotWedgeTheHolding() public {
+        holdings.increase(POOL_A, SC_1, a1, CENT_A, MAX);
+
+        // Still reports, so the retraction and everything behind it can still land
+        holdings.increase(POOL_A, SC_1, a1, CENT_A, 100);
+        holdings.decrease(POOL_A, SC_1, a1, CENT_A, MAX);
+
+        (uint256 increased, uint256 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
+        assertEq(increased, uint256(MAX) + 100);
+        assertEq(decreased, MAX);
+        assertEq(holdings.amount(POOL_A, SC_1, a1), 100);
+    }
+
+    /// @dev A net wider than an asset amount is now reachable, so the narrowing bites on the valuation path
+    ///      instead: `update()` re-quotes the whole amount, and it is reached from a remote price push
+    ///      (`OracleValuation.fromSpoke`). The reporting path stays open, so a retraction clears it, which is
+    ///      the difference between this and the counter wedge.
+    function testUpdateRefusesToTruncateUntilRetracted() public {
+        holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
+
+        mockGetQuote(itemValuation, MAX, 1);
+        holdings.increase(POOL_A, SC_1, ASSET_A, CENT_A, MAX);
+        mockGetQuote(itemValuation, 1, 1);
+        holdings.increase(POOL_A, SC_1, ASSET_A, CENT_A, 1);
+
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
+        holdings.update(POOL_A, SC_1, ASSET_A);
+
+        // The chain can still report, so the retraction lands and the holding is readable again
+        holdings.decrease(POOL_A, SC_1, ASSET_A, CENT_A, MAX);
+
+        mockGetQuote(itemValuation, 1, 7);
+        holdings.update(POOL_A, SC_1, ASSET_A);
+        assertEq(holdings.amount(POOL_A, SC_1, ASSET_A), 1);
+    }
+
+    /// @dev The counters hold more than an asset amount can, so the netted view says so rather than wrap.
+    function testAmountRefusesToTruncate() public {
+        holdings.increase(POOL_A, SC_1, a1, CENT_A, MAX);
+        holdings.increase(POOL_A, SC_1, a1, CENT_A, 1);
+
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
+        holdings.amount(POOL_A, SC_1, a1);
+
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
+        holdings.holding(POOL_A, SC_1, a1);
+
+        // The counters themselves stay readable, so the figure can still be seen and reconciled
+        (uint256 increased, uint256 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
+        assertEq(increased - decreased, uint256(MAX) + 1);
+    }
+}
+
 contract TestUpdate is TestCommon {
     function testUpdateMore() public {
         holdings.initialize(POOL_A, SC_1, ASSET_A, itemValuation, _validAccounts());
@@ -494,11 +558,9 @@ contract TestExists is TestCommon {
 /// @dev Deficit = decreasedAmount > increasedAmount (exact equality is not a deficit). Holdings are left
 ///      uninitialized since amount tracking is valuation-independent.
 contract TestDeficitCount is TestCommon {
-    uint16 constant CENT_A = 5;
     uint16 constant CENT_B = 6;
     ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("2"));
 
-    AssetId a1 = newAssetId(CENT_A, 1);
     AssetId a2 = newAssetId(CENT_A, 2);
     AssetId b1 = newAssetId(CENT_B, 1);
 
@@ -512,7 +574,7 @@ contract TestDeficitCount is TestCommon {
         assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 1);
         assertEq(holdings.amount(POOL_A, SC_1, a1), 0);
 
-        (uint128 increased, uint128 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
+        (uint256 increased, uint256 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
         assertEq(increased, 100);
         assertEq(decreased, 150);
     }
@@ -662,7 +724,7 @@ contract TestDeficitCount is TestCommon {
         holdings.increase(POOL_A, SC_1, a1, CENT_A, 20); // back to zero, not deficit
         assertEq(holdings.deficitCount(POOL_A, SC_1, CENT_A), 0);
 
-        (uint128 increased, uint128 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
+        (uint256 increased, uint256 decreased) = holdings.holdingAmounts(POOL_A, SC_1, a1);
         assertEq(increased, 120);
         assertEq(decreased, 120);
     }

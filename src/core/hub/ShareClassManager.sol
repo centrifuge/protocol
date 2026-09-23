@@ -6,6 +6,7 @@ import {IShareClassManager, ShareClassMetadata, Price, IssuanceCounters} from ".
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
+import {MathLib} from "../../misc/libraries/MathLib.sol";
 
 import {PoolId} from "../types/PoolId.sol";
 import {ShareClassId, newShareClassId} from "../types/ShareClassId.sol";
@@ -13,6 +14,8 @@ import {ShareClassId, newShareClassId} from "../types/ShareClassId.sol";
 /// @title  Share Class Manager
 /// @notice Manager for the share classes of a pool - handles share class creation, metadata, and share tracking
 contract ShareClassManager is Auth, IShareClassManager {
+    using MathLib for uint256;
+
     IHubRegistry public immutable hubRegistry;
 
     mapping(bytes32 salt => bool) public salts;
@@ -91,21 +94,25 @@ contract ShareClassManager is Auth, IShareClassManager {
     {
         require(exists(poolId, scId_), ShareClassNotFound());
 
-        IssuanceCounters storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
         IssuanceCounters storage total = issuanceAcrossNetworks[poolId][scId_];
-        bool wasNegative = ipn.revocations > ipn.issuances;
+        if (isIssuance) total.issuances += amount;
+        else total.revocations += amount;
 
-        if (isIssuance) {
-            ipn.issuances += amount;
-            total.issuances += amount;
-            emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
-        } else {
-            ipn.revocations += amount;
-            total.revocations += amount;
-            emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
-        }
+        _updateNetwork(poolId, scId_, centrifugeId, amount, isIssuance);
+    }
 
-        _updateNegativeCount(poolId, scId_, centrifugeId, wasNegative, ipn.revocations > ipn.issuances);
+    /// @inheritdoc IShareClassManager
+    function transferShares(
+        PoolId poolId,
+        ShareClassId scId_,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
+        uint128 amount
+    ) external auth {
+        require(exists(poolId, scId_), ShareClassNotFound());
+
+        _updateNetwork(poolId, scId_, fromCentrifugeId, amount, false);
+        _updateNetwork(poolId, scId_, toCentrifugeId, amount, true);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -131,23 +138,40 @@ contract ShareClassManager is Auth, IShareClassManager {
     function issuance(PoolId poolId, ShareClassId scId_, uint16 centrifugeId) public view returns (uint128) {
         IssuanceCounters storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
         require(ipn.issuances >= ipn.revocations, NegativeIssuance());
-        return ipn.issuances - ipn.revocations;
+        return (ipn.issuances - ipn.revocations).toUint128();
     }
 
     /// @inheritdoc IShareClassManager
     function totalIssuance(PoolId poolId, ShareClassId scId_) public view returns (uint128) {
         IssuanceCounters storage total = issuanceAcrossNetworks[poolId][scId_];
         require(total.issuances >= total.revocations, NegativeIssuance());
-        return total.issuances - total.revocations;
+        return (total.issuances - total.revocations).toUint128();
     }
 
     //----------------------------------------------------------------------------------------------
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
+    /// @dev Moves one network's counters, and the negative count with them.
+    function _updateNetwork(PoolId poolId, ShareClassId scId_, uint16 centrifugeId, uint128 amount, bool isIssuance)
+        internal
+    {
+        IssuanceCounters storage ipn = issuancePerNetwork[poolId][scId_][centrifugeId];
+        bool wasNegative = ipn.revocations > ipn.issuances;
+
+        if (isIssuance) {
+            ipn.issuances += amount;
+            emit RemoteIssueShares(centrifugeId, poolId, scId_, amount);
+        } else {
+            ipn.revocations += amount;
+            emit RemoteRevokeShares(centrifugeId, poolId, scId_, amount);
+        }
+
+        _updateNegativeCount(poolId, scId_, centrifugeId, wasNegative, ipn.revocations > ipn.issuances);
+    }
+
     /// @dev Moves the count of networks that have revoked more than they have reported issuing, on a crossing
-    ///      in either direction; no-op otherwise. Every change to any network's counters comes through
-    ///      `updateShares`, so this is the one place a crossing can be seen.
+    ///      in either direction; no-op otherwise.
     function _updateNegativeCount(
         PoolId poolId,
         ShareClassId scId_,

@@ -15,8 +15,9 @@ struct Holding {
     ///      `increasedAmount - decreasedAmount`, saturating at zero. Tracking both (rather than a single
     ///      clamped balance) lets an over-decrease from rounding net against later increases instead of
     ///      being silently lost, so the hub amount stays reconciled with the spoke's cumulative net.
-    uint128 increasedAmount;
-    uint128 decreasedAmount;
+    ///      Wider than the uint128 amounts that feed them, since they only ever go up.
+    uint256 increasedAmount;
+    uint256 decreasedAmount;
     uint128 assetAmountValue;
     IValuation valuation; // Used for existence
 }
@@ -261,7 +262,7 @@ interface IHoldings {
     function holdingAmounts(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
-        returns (uint128 increasedAmount, uint128 decreasedAmount);
+        returns (uint256 increasedAmount, uint256 decreasedAmount);
 
     /// @notice Returns the number of holdings currently in deficit on a share class-network
     /// @dev    Non-zero means at least one holding of this share class has its amount saturated at zero. Reporting

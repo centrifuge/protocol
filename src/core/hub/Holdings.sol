@@ -145,9 +145,9 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = _holding[poolId][scId][assetId];
 
         bool wasDeficit = holding_.decreasedAmount > holding_.increasedAmount;
-        uint128 oldAmount = _amount(holding_);
+        uint256 oldAmount = _amount(holding_);
         holding_.increasedAmount += amount_;
-        uint128 realized = _amount(holding_) - oldAmount;
+        uint128 realized = (_amount(holding_) - oldAmount).toUint128();
 
         // Value only the realized increase (a preceding over-decrease is netted off first) at the hub-side
         // valuation. Uninitialized holdings track amount only; their value is established at initialization.
@@ -170,9 +170,9 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = _holding[poolId][scId][assetId];
 
         bool wasDeficit = holding_.decreasedAmount > holding_.increasedAmount;
-        uint128 oldAmount = _amount(holding_);
+        uint256 oldAmount = _amount(holding_);
         holding_.decreasedAmount += amount_;
-        uint128 removedAmount = oldAmount - _amount(holding_);
+        uint128 removedAmount = (oldAmount - _amount(holding_)).toUint128();
 
         // Remove carrying value pro-rata to the realized decrease (an over-decrease is capped at the current
         // amount and its excess carried on `decreasedAmount`), so the returned value always mirrors the
@@ -196,7 +196,7 @@ contract Holdings is Auth, IHoldings {
         Holding storage holding_ = _holding[poolId][scId][assetId];
         require(address(holding_.valuation) != address(0), HoldingNotFound());
 
-        uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, _amount(holding_));
+        uint128 currentAmountValue = holding_.valuation.getQuote(poolId, scId, assetId, _amount(holding_).toUint128());
 
         isPositive = currentAmountValue >= holding_.assetAmountValue;
         diffValue = isPositive ? currentAmountValue - holding_.assetAmountValue : holding_.assetAmountValue - currentAmountValue; // forgefmt: disable-line
@@ -223,14 +223,14 @@ contract Holdings is Auth, IHoldings {
 
     /// @inheritdoc IHoldings
     function amount(PoolId poolId, ShareClassId scId, AssetId assetId) external view returns (uint128 amount_) {
-        return _amount(_holding[poolId][scId][assetId]);
+        return _amount(_holding[poolId][scId][assetId]).toUint128();
     }
 
     /// @inheritdoc IHoldings
     function holdingAmounts(PoolId poolId, ShareClassId scId, AssetId assetId)
         external
         view
-        returns (uint128 increasedAmount, uint128 decreasedAmount)
+        returns (uint256 increasedAmount, uint256 decreasedAmount)
     {
         Holding storage holding_ = _holding[poolId][scId][assetId];
         return (holding_.increasedAmount, holding_.decreasedAmount);
@@ -251,7 +251,7 @@ contract Holdings is Auth, IHoldings {
         returns (uint128 assetAmount, uint128 assetAmountValue, IValuation valuation_)
     {
         Holding storage holding_ = _holding[poolId][scId][assetId];
-        return (_amount(holding_), holding_.assetAmountValue, holding_.valuation);
+        return (_amount(holding_).toUint128(), holding_.assetAmountValue, holding_.valuation);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -281,7 +281,7 @@ contract Holdings is Auth, IHoldings {
     }
 
     /// @dev Current amount, derived from the cumulative counters and floored at zero.
-    function _amount(Holding storage holding_) internal view returns (uint128) {
+    function _amount(Holding storage holding_) internal view returns (uint256) {
         return
             holding_.increasedAmount >= holding_.decreasedAmount
                 ? holding_.increasedAmount - holding_.decreasedAmount

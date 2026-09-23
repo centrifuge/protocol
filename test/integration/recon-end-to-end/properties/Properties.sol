@@ -927,7 +927,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         for (uint256 a; a < assetIds.length; a++) {
             if (assetIds[a].centrifugeId() != centrifugeId) continue;
-            (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, scId, assetIds[a]);
+            (uint256 increased, uint256 decreased) = holdings.holdingAmounts(poolId, scId, assetIds[a]);
             if (decreased > increased) count++;
         }
     }

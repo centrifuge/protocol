@@ -26,9 +26,9 @@ struct Price {
 
 struct IssuanceCounters {
     /// @dev Total accumulated amount of shares issued
-    uint128 issuances;
+    uint256 issuances;
     /// @dev Total accumulated amount of shares revoked
-    uint128 revocations;
+    uint256 revocations;
 }
 
 interface IShareClassManager {
@@ -83,6 +83,22 @@ interface IShareClassManager {
     /// @param isIssuance Whether it is an issuance or revocation
     function updateShares(uint16 centrifugeId, PoolId poolId, ShareClassId scId, uint128 amount, bool isIssuance)
         external;
+
+    /// @notice Move issuance from one network to another
+    /// @dev    Moves the two per-network counters only. A transfer mints and burns nothing, so the counters
+    ///         across networks are left alone rather than counting movement between networks as supply.
+    /// @param  poolId Identifier of the pool
+    /// @param  scId Identifier of the share class
+    /// @param  fromCentrifugeId Chain the shares leave
+    /// @param  toCentrifugeId Chain the shares arrive on
+    /// @param  amount The amount of shares moved
+    function transferShares(
+        PoolId poolId,
+        ShareClassId scId,
+        uint16 fromCentrifugeId,
+        uint16 toCentrifugeId,
+        uint128 amount
+    ) external;
 
     /// @notice Adds a new share class to the given pool
     /// @param poolId Identifier of the pool
@@ -175,7 +191,7 @@ interface IShareClassManager {
     function issuanceAcrossNetworks(PoolId poolId, ShareClassId scId)
         external
         view
-        returns (uint128 issuances, uint128 revocations);
+        returns (uint256 issuances, uint256 revocations);
 
     /// @notice Returns the combined issuance (issuances and revocations) for a share class on a given network
     /// @param poolId Identifier of the pool
@@ -186,7 +202,7 @@ interface IShareClassManager {
     function issuancePerNetwork(PoolId poolId, ShareClassId scId, uint16 centrifugeId)
         external
         view
-        returns (uint128 issuances, uint128 revocations);
+        returns (uint256 issuances, uint256 revocations);
 
     /// @notice Determines the next share class id for the given pool
     /// @param poolId Identifier of the pool
