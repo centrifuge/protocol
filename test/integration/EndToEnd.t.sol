@@ -70,6 +70,7 @@ import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../
 import "forge-std/Test.sol";
 
 import {MAX_MESSAGE_COST} from "../utils/GasConstants.sol";
+import {USD_ID} from "../../src/deployment/Currencies.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
 import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
@@ -181,7 +182,6 @@ contract EndToEndDeployment is Test {
 
     PoolId constant GLOBAL_POOL = PoolId.wrap(0);
 
-    AssetId USD_ID;
     PoolId POOL_A;
     ShareClassId SC_1;
 
@@ -252,7 +252,6 @@ contract EndToEndDeployment is Test {
         });
 
         // Initialize default values
-        USD_ID = deployA.USD_ID();
         POOL_A = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 1);
         SC_1 = h.shareClassManager.previewNextShareClassId(POOL_A);
 

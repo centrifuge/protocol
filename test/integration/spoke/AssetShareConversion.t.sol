@@ -15,6 +15,7 @@ import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/Up
 import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {RequestCallbackMessageLib} from "../../../src/vaults/libraries/RequestCallbackMessageLib.sol";
 
+import {USD_ID} from "../../../src/deployment/Currencies.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";

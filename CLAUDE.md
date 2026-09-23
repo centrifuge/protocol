@@ -65,6 +65,7 @@ src/
 │       └── BatchedMulticall.sol
 ├── deployment/             # Deploy-time only; nothing here is part of the running protocol
 │   ├── ActionBatchers.sol  # Wires the protocol from their constructors; warded while deploying, then revokes itself
+│   ├── Currencies.sol      # The ISO 4217 currencies every deployment registers for pools to denominate in
 │   └── RootFixes.sol       # The same wiring, deferred: what only Root can do when Root was already on the chain
 ├── admin/                  # Admin & governance
 │   ├── Root.sol           # Root authority

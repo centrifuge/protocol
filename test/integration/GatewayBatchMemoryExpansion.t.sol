@@ -9,6 +9,8 @@ import {IManagerCallFromSpoke} from "../../src/core/utils/interfaces/IManagerCal
 
 import "forge-std/Test.sol";
 
+import {USD_ID} from "../../src/deployment/Currencies.sol";
+
 /// @notice Simple mock that accepts ManagerCallFromSpoke calls
 contract MockSpokeTarget is IManagerCallFromSpoke {
     function fromSpoke(PoolId, bytes calldata, uint16, bytes32) external payable {}

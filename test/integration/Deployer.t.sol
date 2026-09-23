@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
+import {AssetId} from "../../src/core/types/AssetId.sol";
+
 import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
@@ -24,6 +26,7 @@ import {
 import "forge-std/Test.sol";
 
 import {RootFixes} from "../../src/deployment/RootFixes.sol";
+import {ISO4217_DECIMALS, iso4217Codes} from "../../src/deployment/Currencies.sol";
 import {CoreReport, CoreActionBatcher, RootAccessMismatch} from "../../src/deployment/ActionBatchers.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
@@ -81,6 +84,22 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     ///      contract owns the namespace it deploys under because it is the one that commits in it
     function _bootstrap() internal {
         namespace_ = address(this);
+    }
+
+    /// @dev Every listed currency is registered at the ISO 4217 precision. A duplicate in the list would
+    ///      have reverted the deployment, `registerAsset` refusing one, so the list needs no check of its own.
+    ///      The count is pinned rather than merely non-zero: registering a currency after the fact costs a
+    ///      spell on every live chain, so a list that quietly loses one should fail here and not on a chain.
+    ///      `isRegistered` before `decimals`, which reverts with `AssetNotFound` on an unregistered asset and
+    ///      would otherwise take the run down without saying which currency was missing.
+    function _assertCurrenciesRegistered() internal view {
+        AssetId[] memory currencies = iso4217Codes();
+        assertEq(currencies.length, 46, "currency list changed");
+
+        for (uint256 i; i < currencies.length; i++) {
+            assertTrue(hubRegistry.isRegistered(currencies[i]), "unregistered ISO 4217 code");
+            assertEq(hubRegistry.decimals(currencies[i]), ISO4217_DECIMALS, "wrong ISO 4217 precision");
+        }
     }
 
     /// @dev Deployed by whoever is named here, in the namespace this contract commits in
@@ -378,8 +397,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(hubRegistry.wards(nonWard), 0);
 
         // initial values set correctly
-        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
-        assertEq(hubRegistry.decimals(EUR_ID), ISO4217_DECIMALS);
+        _assertCurrenciesRegistered();
     }
 
     function testShareClassManager(address nonWard) public view {
@@ -1169,8 +1187,7 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(messageDispatcher)), 1);
         assertTrue(root.endorsements(address(spoke)) == 1);
 
-        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
-        assertEq(hubRegistry.decimals(EUR_ID), ISO4217_DECIMALS);
+        _assertCurrenciesRegistered();
     }
 
     /// @dev The action batchers must give up their permissions, exactly as in a direct deployment
@@ -1259,7 +1276,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
         assertEq(root.wards(address(deployGate)), 0, "the gate must gain nothing");
         assertEq(root.wards(EXECUTOR), 0, "nor the executor that deployed it");
-        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
+        _assertCurrenciesRegistered();
     }
 
     /// @dev Deploying needs a commitment, so the executor cannot deploy a set the admin never committed to.
@@ -1301,7 +1318,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(hub.wards(address(hubHandler)), 1, "hubHandler on hub");
         assertEq(address(spoke.sender()), address(messageDispatcher));
         assertEq(gateway.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
-        assertEq(hubRegistry.decimals(USD_ID), ISO4217_DECIMALS);
+        _assertCurrenciesRegistered();
     }
 
     /// @dev Deploy-time only, like the action batchers, so it stays out of `env/<network>.json`. The Root it

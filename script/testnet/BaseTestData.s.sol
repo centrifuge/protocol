@@ -44,6 +44,7 @@ import "forge-std/Script.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 import {EnvConfig} from "../utils/EnvConfig.s.sol";
+import {USD_ID} from "../../src/deployment/Currencies.sol";
 import {LaunchDeployer} from "../deploy/LaunchDeployer.s.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";

@@ -68,7 +68,6 @@ import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
 import {ShareTokenRegistrar} from "../../src/token/ShareTokenRegistrar.sol";
 import {
-    Constants,
     CoreReport,
     CoreActionBatcher,
     NonCoreActionBatcher,
@@ -127,7 +126,7 @@ struct DeployerInput {
     AdaptersInput adapters;
 }
 
-contract FullDeployer is GatedDeployer, Constants {
+contract FullDeployer is GatedDeployer {
     Root public root;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
