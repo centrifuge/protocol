@@ -19,23 +19,34 @@ import "forge-std/Test.sol";
 ///
 /// @dev    Configs come from the roots `Chains.configRoots()` names, so this covers whatever the branch
 ///         holds: two anvil fixtures here, every real network on `live`, and both without either side
-///         being edited. Names are deduplicated with the first root winning, because a local run copies the
-///         fixtures into `env/anvil-<id>/` and both copies then describe the same chain.
+///         being edited. Each config is handed over with the deployment it sits in, because the name alone
+///         no longer picks one out: a second deployment of the same chains — `env/testnet-rev2/` beside
+///         `env/testnet/`, or a local run's copy beside the fixture it came from — carries the same names,
+///         and reading one of them under no deployment in particular is exactly the ambiguity
+///         `Chains.pathOf` refuses. So every read is `Chains.load(name, environment)`, and the fixture and
+///         its copy are both walked, each under its own.
 ///
 ///         Not everything under those roots describes a chain — the connections files parse fine and name
 ///         none — so the chainId key is what tells them apart. That is the one filter `Chains.detect()`
 ///         also applies, which is as far as this can stay independent of it.
 abstract contract ChainConfigBase is Test {
+    /// @dev One config as the walk sees it: the name a run reaches it by, and the deployment to read it under
+    struct ConfigRef {
+        string name;
+        string environment;
+    }
+
     /// @dev What `vm.indexOf` answers when the key is not in the string
     uint256 internal constant NOT_FOUND = type(uint256).max;
 
-    function _configNames() internal view returns (string[] memory) {
+    function _configs() internal view returns (ConfigRef[] memory) {
         string[] memory roots = Chains.configRoots();
 
         uint256 count;
-        string[] memory names = new string[](64);
+        ConfigRef[] memory configs = new ConfigRef[](64);
         for (uint256 r; r < roots.length; r++) {
             Vm.DirEntry[] memory entries = Chains.entriesOf(roots[r]);
+            string memory environment = Chains.environmentOf(roots[r]);
 
             for (uint256 i; i < entries.length; i++) {
                 if (entries[i].isDir) continue;
@@ -49,25 +60,21 @@ abstract contract ChainConfigBase is Test {
                 if (!vm.keyExistsJson(json, ".network.chainId")) continue;
 
                 string memory name = vm.replace(vm.replace(file, roots[r], ""), ".json", "");
-                if (_seen(names, count, name)) continue;
-
-                names[count++] = name;
+                configs[count++] = ConfigRef(name, environment);
             }
         }
-        return _truncate(names, count);
+        return _truncate(configs, count);
     }
 
-    function _seen(string[] memory names, uint256 count, string memory name) private pure returns (bool) {
-        for (uint256 i; i < count; i++) {
-            if (keccak256(bytes(names[i])) == keccak256(bytes(name))) return true;
-        }
-        return false;
+    /// @dev How a failure names a config: by deployment as well as name, since a name may be in several
+    function _label(ConfigRef memory config) internal pure returns (string memory) {
+        return string.concat(config.environment, "/", config.name);
     }
 
-    function _truncate(string[] memory names, uint256 count) private pure returns (string[] memory found) {
-        found = new string[](count);
+    function _truncate(ConfigRef[] memory configs, uint256 count) private pure returns (ConfigRef[] memory found) {
+        found = new ConfigRef[](count);
         for (uint256 i; i < count; i++) {
-            found[i] = names[i];
+            found[i] = configs[i];
         }
     }
 }
@@ -255,6 +262,45 @@ contract ChainConfigDeploymentIdTest is ChainConfigBase {
         assertFalse(Chains.inScope("env/testnet-rev-2/", "testnet-rev"), "and a prefix of it is not it");
     }
 
+    /// @dev What a walk reads a root's configs under: the directory itself, id and all — and for the one
+    ///      root outside `env/`, the environment the fixtures declare
+    function test_environmentOfARootIsItsDirectory() public pure {
+        assertEq(Chains.environmentOf("env/testnet/"), "testnet");
+        assertEq(Chains.environmentOf("env/testnet-rev2/"), "testnet-rev2");
+        assertEq(Chains.environmentOf("env/anvil-1787683343/"), "anvil-1787683343");
+        assertEq(Chains.environmentOf(Chains.FIXTURE_ROOT), Chains.FIXTURE_ENVIRONMENT);
+    }
+
+    /// @dev And the way back: where a read that names its deployment looks, without probing the other roots
+    function test_rootOfAnEnvironmentIsItsDirectory() public pure {
+        assertEq(Chains.rootOf("testnet"), "env/testnet/");
+        assertEq(Chains.rootOf("testnet-rev2"), "env/testnet-rev2/");
+        assertEq(Chains.rootOf("anvil-1787683343"), "env/anvil-1787683343/");
+        assertEq(Chains.rootOf(Chains.FIXTURE_ENVIRONMENT), Chains.FIXTURE_ROOT, "the fixtures are not under env/");
+    }
+
+    /// @dev A read that names its deployment gets that deployment's file or nothing. `DEPLOY_ENVIRONMENT`
+    ///      narrows — it hides the siblings and leaves every other base environment readable — and that is
+    ///      the rule for the one config a run is addressed by, not for a peer its connections file names:
+    ///      answering a testnet's peer with a config only `env/mainnet/` carries would wire the testnet to
+    ///      mainnet's centrifugeId and addresses without a word. The fixtures make the case here, being the
+    ///      one root every scope leaves in.
+    function test_aNamedDeploymentAnswersOnlyWithItsOwnConfigs() public {
+        assertEq(
+            Chains.pathOf("local-a", Chains.FIXTURE_ENVIRONMENT),
+            string.concat(Chains.FIXTURE_ROOT, "local-a.json"),
+            "the deployment that carries the name answers"
+        );
+
+        vm.expectRevert(bytes("No config named local-a in environment testnet: expected env/testnet/local-a.json"));
+        this.pathOf("local-a", "testnet");
+    }
+
+    /// @dev `expectRevert` needs a call boundary, and `Chains` is a library
+    function pathOf(string memory network, string memory environment) external view returns (string memory) {
+        return Chains.pathOf(network, environment);
+    }
+
     /// @dev What policy reads: mainnet is mainnet however many deployments it holds
     function test_baseEnvironmentIsTheHeadOfIt() public pure {
         assertEq(Chains.baseEnvironmentOf("testnet"), "testnet");
@@ -281,16 +327,25 @@ contract ChainConfigDeploymentIdTest is ChainConfigBase {
 contract ChainConfigDirectoryTest is ChainConfigBase {
     /// @dev Every config states the directory it sits in, so the pair can be checked on every read: a
     ///      directory renamed without the field, or a rev copied without editing it, would otherwise move
-    ///      every address the chain deploys to and say nothing about it
+    ///      every address the chain deploys to and say nothing about it.
+    ///
+    ///      The fixtures are the exception, declaring an environment no directory under `env/` carries — so
+    ///      what is asserted of them is the other half: read under that environment they answer themselves,
+    ///      not the copy a local run may have left beside them, which is a sibling and out of scope.
     function test_everyConfigRestatesItsDirectory() public view {
-        string[] memory names = _configNames();
+        ConfigRef[] memory configs = _configs();
 
-        for (uint256 i; i < names.length; i++) {
-            string memory path = Chains.pathOf(names[i]);
-            if (vm.indexOf(path, Chains.FIXTURE_ROOT) == 0) continue;
+        for (uint256 i; i < configs.length; i++) {
+            string memory path = Chains.pathOf(configs[i].name, configs[i].environment);
+            string memory label = _label(configs[i]);
 
-            ChainConfig memory config = Chains.load(names[i]);
-            assertEq(path, string.concat("env/", config.network.environment, "/", names[i], ".json"), names[i]);
+            if (_is(configs[i].environment, Chains.FIXTURE_ENVIRONMENT)) {
+                assertEq(path, string.concat(Chains.FIXTURE_ROOT, configs[i].name, ".json"), label);
+                continue;
+            }
+
+            ChainConfig memory config = Chains.load(configs[i].name, configs[i].environment);
+            assertEq(path, string.concat("env/", config.network.environment, "/", configs[i].name, ".json"), label);
         }
     }
 
@@ -318,19 +373,20 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
     ///      deployment can be pointed at. Vacuous on a branch holding no configs, which is the point: the
     ///      rule belongs with the parser, the configs it is applied to belong with the deployments.
     function test_everyConfigParses() public view {
-        string[] memory names = _configNames();
+        ConfigRef[] memory configs = _configs();
 
-        for (uint256 i; i < names.length; i++) {
-            ChainConfig memory config = Chains.load(names[i]);
+        for (uint256 i; i < configs.length; i++) {
+            ChainConfig memory config = Chains.load(configs[i].name, configs[i].environment);
+            string memory label = _label(configs[i]);
 
-            assertEq(config.network.name, names[i], names[i]);
-            assertGt(config.network.chainId, 0, names[i]);
-            assertGt(config.network.centrifugeId, 0, names[i]);
-            assertGt(bytes(config.network.environment).length, 0, names[i]);
-            assertNotEq(config.network.protocolAdmin, address(0), names[i]);
-            assertNotEq(config.network.opsAdmin, address(0), names[i]);
-            assertNotEq(config.network.namespace, address(0), names[i]);
-            assertGt(bytes(config.network.explorerApiUrl).length, 0, names[i]);
+            assertEq(config.network.name, configs[i].name, label);
+            assertGt(config.network.chainId, 0, label);
+            assertGt(config.network.centrifugeId, 0, label);
+            assertGt(bytes(config.network.environment).length, 0, label);
+            assertNotEq(config.network.protocolAdmin, address(0), label);
+            assertNotEq(config.network.opsAdmin, address(0), label);
+            assertNotEq(config.network.namespace, address(0), label);
+            assertGt(bytes(config.network.explorerApiUrl).length, 0, label);
         }
     }
 
@@ -339,7 +395,7 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
     ///      entry lost, say — and `entriesOf`'s catch would otherwise convert that into every test above
     ///      passing vacuously over an empty list.
     function test_theWalkAlwaysSeesTheFixtures() public view {
-        assertGe(_configNames().length, 2, "the config walk is blind: check fs_permissions for the roots");
+        assertGe(_configs().length, 2, "the config walk is blind: check fs_permissions for the roots");
     }
 
     /// @dev The name is the key a run reaches a chain by, `--rpc-url <network>`, and it may resolve to more
@@ -349,8 +405,8 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
     ///      deployments of one environment and nothing else, so a testnet acquiring a config named like one of
     ///      a mainnet's would leave the name unresolvable — `pathOf` reverts as ambiguous under every value —
     ///      and with it every remote-config read the connections make. Fail-closed, and this is what says why.
-    ///      `_configNames()` deduplicates by name — deliberately, for the anvil copy — which is exactly why
-    ///      this test walks the roots itself: the dedupe would hide the collision this exists to catch.
+    ///      Walked by root rather than through `_configs()`, because the collision is between roots: what
+    ///      has to be compared is the twin a name has under another root, not each config on its own.
     function test_aNameResolvesToOneChain() public view {
         string[] memory roots = Chains.configRoots();
 
@@ -407,22 +463,43 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
     }
 
     /// @dev `Chains.detect()` answers by chain id, so two configs claiming one chain would make which config
-    ///      a run reads depend on directory order.
+    ///      a run reads depend on directory order — unless they are two deployments of that chain, the one
+    ///      shape allowed to share an id: `env/testnet/` beside `env/testnet-rev2/`, or the fixture beside a
+    ///      local run's copy of it, each hidden from the other by the deployment a run names. Across base
+    ///      environments the id has to be unique outright, because that is the one distinction
+    ///      `DEPLOY_ENVIRONMENT` never draws: a testnet claiming a mainnet's chain would leave `detect()` with
+    ///      two answers under every value of it.
     function test_chainIdsAreUnique() public view {
-        string[] memory names = _configNames();
+        ConfigRef[] memory configs = _configs();
 
-        // One load per name: `Chains.load` is an internal call, so the pairwise form would accumulate
+        // One load per config: `Chains.load` is an internal call, so the pairwise form would accumulate
         // 2n(n-1) full config reads in this frame — harmless on two fixtures, needless on live's seventeen
-        uint256[] memory ids = new uint256[](names.length);
-        for (uint256 i; i < names.length; i++) {
-            ids[i] = Chains.load(names[i]).network.chainId;
+        uint256[] memory ids = new uint256[](configs.length);
+        for (uint256 i; i < configs.length; i++) {
+            ids[i] = Chains.load(configs[i].name, configs[i].environment).network.chainId;
         }
 
         for (uint256 i; i < ids.length; i++) {
             for (uint256 j = i + 1; j < ids.length; j++) {
-                assertTrue(ids[i] != ids[j], string.concat(names[i], " and ", names[j], " claim the same chainId"));
+                if (ids[i] != ids[j]) continue;
+
+                assertTrue(
+                    _siblingDeployments(configs[i].environment, configs[j].environment),
+                    string.concat(_label(configs[i]), " and ", _label(configs[j]), " claim the same chainId")
+                );
             }
         }
+    }
+
+    /// @dev Two deployments of one base environment, and not the same one: what a run tells apart with
+    ///      `DEPLOY_ENVIRONMENT`, so what may describe one chain twice
+    function _siblingDeployments(string memory a, string memory b) private pure returns (bool) {
+        if (_is(a, b)) return false;
+        return _is(Chains.baseEnvironmentOf(a), Chains.baseEnvironmentOf(b));
+    }
+
+    function _is(string memory a, string memory b) private pure returns (bool) {
+        return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }
 
@@ -445,13 +522,16 @@ contract ConnectionsPathTest is Test {
 
 contract ChainDetectTest is ChainConfigBase {
     /// @dev `Chains.detect()` is what turns `--rpc-url <network>` into the config a deploy script reads, so
-    ///      a mistake here does not fail — it silently deploys against another chain's addresses.
+    ///      a mistake here does not fail — it silently deploys against another chain's addresses. Each config
+    ///      is detected under the deployment it sits in, as a run confined by `DEPLOY_ENVIRONMENT` would see
+    ///      it: with two deployments of one chain checked in, the unconfined `detect()` has two answers and
+    ///      refuses rather than picking one, which is the right behaviour for a run and no test of this.
     function test_detectsEveryNetworkByChainId() public {
-        string[] memory names = _configNames();
+        ConfigRef[] memory configs = _configs();
 
-        for (uint256 i; i < names.length; i++) {
-            vm.chainId(Chains.load(names[i]).network.chainId);
-            assertEq(this.detect(), names[i], names[i]);
+        for (uint256 i; i < configs.length; i++) {
+            vm.chainId(Chains.load(configs[i].name, configs[i].environment).network.chainId);
+            assertEq(this.detect(configs[i].environment), configs[i].name, _label(configs[i]));
         }
     }
 
@@ -470,5 +550,9 @@ contract ChainDetectTest is ChainConfigBase {
     /// @dev An external hop, so that `vm.expectRevert` sees the revert at a lower depth than its own call
     function detect() external view returns (string memory) {
         return Chains.detect();
+    }
+
+    function detect(string memory environment) external view returns (string memory) {
+        return Chains.detect(environment);
     }
 }

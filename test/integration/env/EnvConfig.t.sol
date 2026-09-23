@@ -11,13 +11,16 @@ import {FullDeploymentConfigTest} from "../Deployer.t.sol";
 
 /// @dev That every config resolves the peers it is wired to, which is a property of the pair — a connections
 ///      file naming a network that is gone, or a peer whose centrifugeId no longer fits the 32-slot array,
-///      fails here. Empty on a branch holding no configs, like the rest of the directory-driven rules.
+///      fails here. Each config is read under the deployment it sits in, and its peers follow it there on
+///      their own: the connections file is that deployment's, so `buildBatchLimits` reads them from the same
+///      directory rather than by bare name. Empty on a branch holding no configs, like the rest of the
+///      directory-driven rules.
 contract EnvConnectionsTest is ChainConfigBase {
     function test_everyConfigResolvesItsConnections() public view {
-        string[] memory names = _configNames();
+        ConfigRef[] memory configs = _configs();
 
-        for (uint256 i; i < names.length; i++) {
-            Chains.load(names[i]).network.buildBatchLimits();
+        for (uint256 i; i < configs.length; i++) {
+            Chains.load(configs[i].name, configs[i].environment).network.buildBatchLimits();
         }
     }
 }

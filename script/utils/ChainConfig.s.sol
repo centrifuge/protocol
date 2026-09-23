@@ -200,12 +200,18 @@ library Chains {
     ///         own. (`pathOf` probes by reading, so the winning file is read twice end to end — measured at
     ///         well under a percent of the gas limit across a full deployer walk, and left that way.)
     function jsonOf(string memory network) internal view returns (string memory) {
-        string memory path = pathOf(network);
-        string memory json = vm.readFile(path);
+        return _jsonAt(pathOf(network));
+    }
+
+    /// @notice Same, read from one deployment — see `pathOf(network, environment)`
+    function jsonOf(string memory network, string memory environment) internal view returns (string memory) {
+        return _jsonAt(pathOf(network, environment));
+    }
+
+    function _jsonAt(string memory path) private view returns (string memory json) {
+        json = vm.readFile(path);
 
         _assertDirectoryRestatesTheEnvironment(path, json);
-
-        return json;
     }
 
     /// @dev A config's `.network.environment` names the directory it sits in, deployment id and all, so the
@@ -262,6 +268,31 @@ library Chains {
         revert(string.concat("No env config named ", network, ": expected env/<environment>/", network, ".json"));
     }
 
+    /// @notice Where a network's config lives inside one deployment, which is a rule and not a search:
+    ///         `rootOf(environment)` and the name. A deployment that does not carry the name has no config
+    ///         for it — never another deployment's, however it is filed.
+    ///
+    /// @dev    What a read that already knows its deployment uses, instead of the process-wide variable —
+    ///         and stricter than it, deliberately. `DEPLOY_ENVIRONMENT` *narrows*: it hides the siblings of
+    ///         the deployment it names and leaves every other base environment readable, which is right for
+    ///         the one config a run is addressed by and wrong for everything read off that config. A
+    ///         config's peers are the names its own connections file lists, and that file is the
+    ///         deployment's, so a peer is read from that directory or not at all: a testnet wired to a name
+    ///         only `env/mainnet/` carries has a broken connections file, and answering it with the mainnet
+    ///         config would build a testnet's batch limits and adapter wiring out of mainnet's centrifugeId
+    ///         and addresses. Same for a test walking every directory, which reads each config under the one
+    ///         it sits in — what lets two deployments of the same chains be checked in side by side.
+    function pathOf(string memory network, string memory environment) internal view returns (string memory) {
+        string memory path = string.concat(rootOf(environment), network, ".json");
+
+        require(
+            _readable(path),
+            string.concat("No config named ", network, " in environment ", environment, ": expected ", path)
+        );
+
+        return path;
+    }
+
     /// @dev The environment a run is confined to, or nothing. `DEPLOY_ENVIRONMENT` is what a run says when a
     ///      chain is described more than once — `env/testnet/` beside `env/testnet-rev2/` — and needs to
     ///      name which of the two it means. Unset until that happens. It settles that one question and no
@@ -293,13 +324,36 @@ library Chains {
     function inScope(string memory root, string memory scope) internal pure returns (bool) {
         if (bytes(scope).length == 0 || vm.indexOf(root, FIXTURE_ROOT) == 0) return true;
 
-        // `env/testnet-rev2/` → `testnet-rev2`: the segment after `env/`, not everything that is not `env/` —
-        // `vm.replace` strips every occurrence, and an id may end in `env`
-        string memory environment = vm.split(root, "/")[1];
+        string memory environment = environmentOf(root);
         if (keccak256(bytes(baseEnvironmentOf(environment))) != keccak256(bytes(baseEnvironmentOf(scope)))) {
             return true;
         }
         return keccak256(bytes(environment)) == keccak256(bytes(scope));
+    }
+
+    /// @notice The environment a config root holds, deployment id and all: `env/testnet-rev2/` is
+    ///         `testnet-rev2`, and the fixture root is the environment the fixtures declare. What a walk over
+    ///         `configRoots()` reads each root's configs under.
+    function environmentOf(string memory root) internal pure returns (string memory) {
+        if (vm.indexOf(root, FIXTURE_ROOT) == 0) return FIXTURE_ENVIRONMENT;
+
+        // The segment after `env/`, not everything that is not `env/` — `vm.replace` strips every
+        // occurrence, and an id may end in `env`
+        return vm.split(root, "/")[1];
+    }
+
+    /// @notice The root an environment's configs sit in, `environmentOf` the other way round:
+    ///         `testnet-rev2` is `env/testnet-rev2/`, and the environment the fixtures declare is the one
+    ///         root outside `env/`. What a read that names its deployment resolves through, rather than
+    ///         probing every root for the name.
+    ///
+    /// @dev    A rule, not a lookup: it answers for a directory that is not there — which is what makes
+    ///         `pathOf(network, environment)` say which file it wanted, and keeps a deployment whose
+    ///         directory is missing from quietly resolving through someone else's.
+    function rootOf(string memory environment) internal pure returns (string memory) {
+        if (keccak256(bytes(environment)) == keccak256(bytes(FIXTURE_ENVIRONMENT))) return FIXTURE_ROOT;
+
+        return string.concat("env/", environment, "/");
     }
 
     /// @dev Whether two hits for one name are the sanctioned pair: a run's copy under `env/anvil-<id>/` and
@@ -370,6 +424,11 @@ library Chains {
         return parse(jsonOf(network), network);
     }
 
+    /// @notice Same, read from one deployment — see `pathOf(network, environment)`
+    function load(string memory network, string memory environment) internal view returns (ChainConfig memory) {
+        return parse(jsonOf(network, environment), network);
+    }
+
     /// @notice Same, from JSON already read: what `Env` uses so a full load opens the file once
     function parse(string memory json, string memory network) internal pure returns (ChainConfig memory config) {
         config.network = _parseNetworkConfig(json);
@@ -421,17 +480,46 @@ library Chains {
     ///         has to choose a network *before* it has a chain — one that reads a config to know where to
     ///         fork — passes the name to `load(name)` instead.
     function detect() internal view returns (string memory) {
+        return _detectIn(_rootsInScope(_scope()));
+    }
+
+    /// @notice Same, read from one deployment — see `pathOf(network, environment)`: only that deployment's
+    ///         root is walked, so the answer is a chain it describes itself. What a walk over every
+    ///         deployment asks, one directory at a time, where the run itself asks `detect()` and lets
+    ///         `DEPLOY_ENVIRONMENT` settle which one it is for.
+    function detect(string memory environment) internal view returns (string memory) {
+        string[] memory roots = new string[](1);
+        roots[0] = rootOf(environment);
+
+        return _detectIn(roots);
+    }
+
+    /// @dev The roots a walk is left with, `configRoots()` narrowed by what `DEPLOY_ENVIRONMENT` said —
+    ///      taken before the walk rather than inside it, so `_detectIn` reasons over a list and not over a
+    ///      list plus the rule that made it
+    function _rootsInScope(string memory scope) private view returns (string[] memory kept) {
+        string[] memory roots = configRoots();
+
+        uint256 found;
+        string[] memory all = new string[](roots.length);
+        for (uint256 i; i < roots.length; i++) {
+            if (inScope(roots[i], scope)) all[found++] = roots[i];
+        }
+
+        kept = new string[](found);
+        for (uint256 i; i < found; i++) {
+            kept[i] = all[i];
+        }
+    }
+
+    function _detectIn(string[] memory roots) private view returns (string memory) {
         // readDir answers with absolute paths; everything below reasons relative to the project root
         string memory root = string.concat(vm.projectRoot(), "/");
 
         string memory name;
         string memory foundAt;
 
-        string memory scope = _scope();
-        string[] memory roots = configRoots();
         for (uint256 r; r < roots.length; r++) {
-            if (!inScope(roots[r], scope)) continue;
-
             Vm.DirEntry[] memory entries = entriesOf(roots[r]);
             for (uint256 i; i < entries.length; i++) {
                 if (entries[i].isDir) continue;
@@ -644,9 +732,10 @@ library ChainConfigLib {
     ///
     /// @dev    The one deployed address `ChainConfig` answers for, because `ContractsConfig` cannot: until a
     ///         release is deployed a config records `contracts.root` and nothing else, which
-    ///         `Env.parseContracts` rejects. Re-reads the file, a `ChainConfig` carrying no JSON
+    ///         `Env.parseContracts` rejects. Re-reads the file, a `ChainConfig` carrying no JSON — from the
+    ///         deployment the config sits in, so it is the same file however many describe the chain
     function rootAddress(ChainConfig memory config) internal view returns (address) {
-        return Chains.parseRootAddress(Chains.jsonOf(config.network.name));
+        return Chains.parseRootAddress(Chains.jsonOf(config.network.name, config.network.environment));
     }
 
     /// @dev Live-branch consumer only (see `GraphQLConstants`). The ignored receiver is the attachment
@@ -696,7 +785,7 @@ library ChainConfigLib {
         for (uint256 i; i < connections.length; i++) {
             if (!connections[i].layerZero) continue;
 
-            ChainConfig memory remoteConfig = Chains.load(connections[i].network);
+            ChainConfig memory remoteConfig = Chains.load(connections[i].network, config.network.environment);
 
             require(
                 config.adapters.layerZero.blockConfirmations == remoteConfig.adapters.layerZero.blockConfirmations,
@@ -728,7 +817,7 @@ library ChainConfigLib {
         adapterConnections_ = new AdapterConnections[](connections.length);
 
         for (uint256 i; i < connections.length; i++) {
-            ChainConfig memory remoteConfig = Chains.load(connections[i].network);
+            ChainConfig memory remoteConfig = Chains.load(connections[i].network, config.network.environment);
             Connection memory connection = connections[i];
 
             adapterConnections_[i] = AdapterConnections({
@@ -747,7 +836,7 @@ library NetworkConfigLib {
     function buildBatchLimits(NetworkConfig memory config) internal view returns (uint8[32] memory batchLimits) {
         Connection[] memory connections_ = config.connections();
         for (uint256 i; i < connections_.length; i++) {
-            ChainConfig memory remoteConfig = Chains.load(connections_[i].network);
+            ChainConfig memory remoteConfig = Chains.load(connections_[i].network, config.environment);
 
             uint16 centrifugeId = remoteConfig.network.centrifugeId;
             require(centrifugeId <= 31, "centrifugeId value higher than 31");
@@ -756,6 +845,11 @@ library NetworkConfigLib {
         }
     }
 
+    /// @dev The connections file is the deployment's own — `env/<environment>/connections.json` — so the
+    ///      peers it names are configs of that same directory, and every reader above loads them under
+    ///      `config.environment` rather than under whatever `DEPLOY_ENVIRONMENT` the run did or did not set.
+    ///      A second deployment of the same chains beside the first would otherwise make every peer read
+    ///      ambiguous, or worse, answer with the sibling's addresses.
     function connections(NetworkConfig memory config) internal view returns (Connection[] memory) {
         return EnvConnections.load(config.environment).connectionsWith(config.name);
     }

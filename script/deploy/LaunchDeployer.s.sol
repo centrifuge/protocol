@@ -142,7 +142,9 @@ contract LaunchDeployer is FullDeployer {
         if (!committing) {
             require(address(protocolGuardian.safe()) == config.network.protocolAdmin, "wrong safe admin");
             require(address(opsGuardian.opsSafe()) == config.network.opsAdmin, "wrong ops admin");
-            saveDeploymentOutput(Chains.pathOf(config.network.name));
+            // Written back to the file it was read from, named by the deployment the config declares: the
+            // run's output belongs to that directory and to no sibling of it
+            saveDeploymentOutput(Chains.pathOf(config.network.name, config.network.environment));
         }
 
         if (broadcasting) vm.stopBroadcast();
