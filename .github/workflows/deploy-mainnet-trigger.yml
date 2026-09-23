@@ -1,0 +1,63 @@
+# Deploy mainnet — the trigger, and nothing else. The deployment lives on the release's live branch
+# (deploy-mainnet.yml there: the phases, the gate probing, the KMS executor, the record PR), pinned to the
+# deployed version; this file sits on main because workflows are only dispatchable from the default branch,
+# and it knows no chains — the branch's own `plan` derives the matrix from its env/mainnet/.
+#
+# The `uses:` ref is the current release's branch, updated when a release is cut (see CLAUDE.md, "Cutting a
+# release branch"): the workflow file always comes from that ref, while the `branch` input stays overridable
+# so a run can still be dispatched against an older release — the called workflow checks out the input
+# branch everywhere, but the job definitions are the ref's: the foundry pin and the shape of the
+# `DeployAll.sh` calls come from there, so an older branch runs only while its scripts still match them.
+#
+# A mainnet campaign is dispatched twice — `phase: commit`, then `phase: deploy` — so no runner ever waits
+# on a human; `phase: verify` re-runs verification from a past run's receipts as often as needed. The
+# called workflow documents each phase.
+
+name: Deploy mainnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "The release's live branch — its head is what deploys, and it receives the record PR"
+        required: false
+        default: "live-v3.3"
+        type: string
+      phase:
+        description: "commit: probe and ask for the commitments that are missing. deploy: deploy what the gate allows, refuse what it does not. verify: re-run verification from a past deploy run's receipts."
+        required: true
+        type: choice
+        options:
+          - commit
+          - deploy
+          - verify
+      run_id:
+        description: "verify, or deploy when resuming a stopped chain: the run whose artifacts hold the broadcast receipts"
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    # One campaign at a time, held here: GitHub documents `concurrency` for the job that calls a reusable
+    # workflow, and a top-level declaration inside the called one is not documented as honored
+    concurrency:
+      group: deploy-mainnet
+      cancel-in-progress: false
+    uses: centrifuge/protocol-internal/.github/workflows/deploy-mainnet.yml@live-v3.3
+    # The ceiling the called workflow's jobs work under: a caller granting nothing would cap the record-PR
+    # job's writes at the repository default
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      actions: read
+      checks: read
+    with:
+      branch: ${{ inputs.branch }}
+      phase: ${{ inputs.phase }}
+      run_id: ${{ inputs.run_id }}
+    # `inherit` hands the called ref every repo secret, and the ref is a mutable branch: whoever can push
+    # live-v3.3 can change what runs here. Kept because the called workflow declares SLACK_WEBHOOK_URL as
+    # its one optional secret and the executor key never exists as a secret at all (KMS over workload
+    # identity). Branch protection on live-* is the real boundary either way.
+    secrets: inherit

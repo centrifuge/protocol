@@ -1,7 +1,11 @@
 name: "CI"
 
 on:
+  # Not on PRs into the release branches: live only adds files on top of main, so everything here is already
+  # green on main, and live-checks.yml covers the added surface there
   pull_request:
+    branches-ignore:
+      - "live-v*"
   push:
     branches:
       - main
@@ -158,10 +162,8 @@ jobs:
 
 
   check-benchmarks:
-    # `pull_request` here carries no branch filter, so this fires on PRs into the release branches too —
-    # where `src/` is byte-identical to main and the benchmark can only reach the same numbers. Skipped
-    # there rather than spending the run: it is the most expensive job in the file, and the release
-    # branches enforce that byte-identity themselves.
+    # Only PRs into main: on a PR between two feature branches `src/` reaches main through the second PR,
+    # which meters it. Skipped rather than spent, being the most expensive job in the file
     if: github.event_name == 'push' || github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:

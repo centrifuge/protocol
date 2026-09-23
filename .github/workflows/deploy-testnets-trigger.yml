@@ -1,0 +1,48 @@
+# Deploy testnets — the trigger, and nothing else. The deployment lives on the release's live branch
+# (deploy-testnets.yml there: the matrix, the phases, the record PR), pinned to the deployed version; this
+# file sits on main because workflows are only dispatchable from the default branch, and it knows no chains.
+#
+# The `uses:` ref is the current release's branch, updated when a release is cut (see CLAUDE.md, "Cutting a
+# release branch"): the workflow file always comes from that ref, while the `branch` input stays overridable
+# so a run can still be dispatched against an older release.
+
+name: Deploy testnets
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch holding the deployment — its head is what deploys, and it receives the record PR"
+        required: false
+        default: "live-v3.3"
+        type: string
+      deploymentId:
+        description: "Isolates the deployment onto its own addresses (e.g. PR-123), 27 chars at most: the branch deploys it as environment testnet-<id>, from env/testnet-<id>/ configs it derives from env/testnet/. TEST generates <your login>-<run number>, unique to this dispatch. Leave EMPTY for the canonical addresses under env/testnet/, the one deployment that gets recorded."
+        required: false
+        type: string
+        default: "TEST"
+      test_data:
+        description: "Populate each chain with the test pools and vaults (script/testnet/TestData) after the protocol lands"
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    # One dispatch at a time: every run signs with the same key on the same chains, so two in flight
+    # collide on nonces however their deployment ids differ. Held here rather than in the called workflow,
+    # where a top-level declaration of the same group is not documented as honored
+    concurrency:
+      group: deploy-testnets
+      cancel-in-progress: false
+    uses: centrifuge/protocol-internal/.github/workflows/deploy-testnets.yml@live-v3.3
+    # The ceiling the called workflow's jobs work under: a caller granting nothing would cap the record-PR
+    # job's writes at the repository default
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    with:
+      branch: ${{ inputs.branch }}
+      deploymentId: ${{ inputs.deploymentId }}
+      test_data: ${{ inputs.test_data }}

@@ -60,9 +60,9 @@ wins, and a connection only counts when that rule still has adapters — fiddly 
 implementation would eventually disagree with the first.
 
 Anything that needs the list asks that function: the deploy and wiring scripts call it directly, and
-the live branch's `deploy-testnet.sh` entrypoint derives its network matrix from the same file with jq,
-mirroring what the function
-does so the two cannot disagree.
+the live branch's `deploy-testnets.yml` workflow derives its network matrix from the same file with jq,
+mirroring `_collectNetworks` — the networks the rules name, which is all a matrix needs — so the two cannot
+disagree.
 
 `connections_viewer.html` is the other copy, and the warning above is why it is worth naming: it
 re-implements the rule in JavaScript to draw the graph, so it can drift. Nothing deploys from it — it
