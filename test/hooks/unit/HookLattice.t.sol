@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {MockPoolEscrowProvider} from "../../core/mocks/MockPoolEscrowProvider.sol";
+import {MockEscrowProvider} from "../../core/mocks/MockEscrowProvider.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 
@@ -68,7 +68,7 @@ contract HookLatticeTest is Test {
         LatticeRoot root = new LatticeRoot();
         root.endorse(endorsedAddr);
 
-        MockPoolEscrowProvider provider = new MockPoolEscrowProvider();
+        MockEscrowProvider provider = new MockEscrowProvider();
         provider.setEscrow(PoolId.wrap(1), poolEscrow);
 
         address registry = makeAddr("spokeRegistry");

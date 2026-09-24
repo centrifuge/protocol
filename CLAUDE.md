@@ -48,7 +48,7 @@ src/
 │   │   ├── SpokeRegistry.sol # Pool/share-class/asset/vault registry + prices + policy + manager roles
 │   │   ├── SpokeHandler.sol # Inbound cross-chain message handling
 │   │   ├── SnapshotQueue.sol      # Queued share/asset deltas pending submission to the Hub (Spoke → SnapshotQueue, mirrors Hub → Holdings)
-│   │   ├── PoolEscrow.sol  # Pool-specific escrow
+│   │   ├── Escrow.sol      # Pool-specific escrow, holding assets and shares per share class
 │   │   ├── factories/      # Escrow & vault factories
 │   │   └── interfaces/
 │   ├── messaging/          # Message infrastructure
@@ -134,7 +134,6 @@ src/
 └── misc/                  # Utilities & types
     ├── Auth.sol          # Auth mixin
     ├── ERC20.sol         # Token standard
-    ├── Escrow.sol        # Escrow logic
     ├── types/            # Custom types
     ├── libraries/        # Utility libraries
     └── interfaces/       # Standard interfaces
@@ -198,32 +197,32 @@ Async vaults implement a three-phase deposit flow:
 **Phase 1: REQUEST** (`vault.requestDeposit`)
 - User deposits assets into vault
 - `BatchRequestManager` stores pending request
-- Assets transfer to PoolEscrow (for vaults launched prior to v3.1.0, the ABI still references `globalEscrow()` which returns the pool-specific PoolEscrow)
-- State: PoolEscrow ✅ receives assets | maxMint ❌
+- Assets transfer to Escrow (for vaults launched prior to v3.1.0, the ABI still references `globalEscrow()` which returns the pool-specific Escrow)
+- State: Escrow ✅ receives assets | maxMint ❌
 
 **Phase 2: PROCESS** (Two sub-phases)
 - **Phase 2a: APPROVE** (`batchRequestManager.approveDeposits → spoke.noteDeposit`)
   - Admin approves pending deposits
   - `spoke.noteDeposit()` calls `escrow(poolId).deposit()` to account for assets
-  - `spoke.issue()` mints shares to PoolEscrow address
-  - State: PoolEscrow ✅ assets accounted, shares minted to PoolEscrow
+  - `spoke.issue()` mints shares to Escrow address
+  - State: Escrow ✅ assets accounted, shares minted to Escrow
 
 - **Phase 2b: NOTIFY** (`batchRequestManager.notifyDeposit`)
   - Notifies users deposits are ready to claim
   - Updates `AsyncRequestManager.maxMint` allocations
-  - State: PoolEscrow ❌ NO CHANGE | maxMint ✅ UPDATED
+  - State: Escrow ❌ NO CHANGE | maxMint ✅ UPDATED
 
 **Phase 3: CLAIM** (`vault.deposit/mint`)
 - User claims allocated shares
-- Shares transfer from PoolEscrow to user via `spoke.withdrawShares()`
+- Shares transfer from Escrow to user via `spoke.withdrawShares()`
 - `AsyncRequestManager.maxMint` decreases (allocation consumed)
-- State: PoolEscrow ✅ shares decrease | User balance ✅
+- State: Escrow ✅ shares decrease | User balance ✅
 
 **Async Redeem:** Analogous flow in reverse (`requestRedeem` → `approveRedeems`/`notifyRedeem` → `redeem/withdraw`), where user sends shares and receives assets.
 
 **Sync Vaults:** All phases execute atomically in single call.
 
-**Key Insight:** PoolEscrow holds both assets and shares. Assets are accounted during APPROVAL (Phase 2a), shares are claimed during CLAIM (Phase 3).
+**Key Insight:** Escrow holds both assets and shares. Assets are accounted during APPROVAL (Phase 2a), shares are claimed during CLAIM (Phase 3).
 
 ## Branch Model: main vs live
 
@@ -313,8 +312,10 @@ There is no direct Root access on testnet or mainnet. All privileged operations 
 
 | Guardian         | Mainnet       | Testnet                        | Use Case                                            |
 | ---------------- | ------------- | ------------------------------ | --------------------------------------------------- |
-| ProtocolGuardian | Multisig Safe | EOA                            | Protocol upgrades, re-wiring adapters already wired |
+| ProtocolGuardian | Multisig Safe | EOA                            | Protocol upgrades                                   |
 | OpsGuardian      | Multisig Safe | EOA (same as ProtocolGuardian) | Pool operations, adapter sets, first-time wiring    |
+
+Re-pointing an adapter that is already wired is nobody's: it takes a spell, through `Root`.
 
 ## Coding Style
 

@@ -5,11 +5,11 @@ pragma solidity 0.8.28;
 
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
+import {Escrow} from "../../../../src/core/spoke/Escrow.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
 import {ManagerKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
 
@@ -109,13 +109,13 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier
     /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their
     /// depositRequest[..].lastUpdate equals the nowDepositEpoch for the deposit
-    /// @dev Property: PoolEscrow.total increases by exactly totalPaymentAssetAmount
-    /// @dev Property: PoolEscrow.reserved does not change during deposit processing
+    /// @dev Property: Escrow.total increases by exactly totalPaymentAssetAmount
+    /// @dev Property: Escrow.reserved does not change during deposit processing
     ///
     /// @notice Deposit Flow Tracking:
     /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
     /// - Tracks maxMint changes for symmetry with redeem flow
-    /// - Validates PoolEscrow state changes
+    /// - Validates Escrow state changes
     /// - Uses BatchRequestManagerHarness.notifyDepositWithReturn() return values for reliable state tracking
     /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
     function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
@@ -162,10 +162,10 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
     function _executeNotifyDepositAndValidate(NotifyDepositParams memory params) private {
         IBaseVault vault = _getVault();
 
-        IPoolEscrow poolEscrow = poolEscrowFactory.escrow(params.poolId);
+        IEscrow poolEscrow = escrowFactory.escrow(params.poolId);
         address asset = address(vault.asset());
         (uint128 escrowTotalBefore, uint128 escrowReservedBefore) =
-            PoolEscrow(address(poolEscrow)).holding(params.scId, asset, 0);
+            Escrow(address(poolEscrow)).holding(params.scId, asset, 0);
 
         vm.prank(params.actor);
         (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 totalCancelledAssetAmount) = BatchRequestManagerHarness(
@@ -176,12 +176,12 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             );
 
         (uint128 escrowTotalAfter, uint128 escrowReservedAfter) =
-            PoolEscrow(payable(address(poolEscrow))).holding(params.scId, asset, 0);
+            Escrow(payable(address(poolEscrow))).holding(params.scId, asset, 0);
         t(
             escrowTotalAfter == escrowTotalBefore,
-            "hub_notifyDeposit: PoolEscrow.total must not change (updates happen in approval phase)"
+            "hub_notifyDeposit: Escrow.total must not change (updates happen in approval phase)"
         );
-        t(escrowReservedAfter == escrowReservedBefore, "hub_notifyDeposit: PoolEscrow.reserved must not change");
+        t(escrowReservedAfter == escrowReservedBefore, "hub_notifyDeposit: Escrow.reserved must not change");
 
         _updateDepositGhostVariables(totalPayoutShareAmount, totalPaymentAssetAmount, totalCancelledAssetAmount);
 

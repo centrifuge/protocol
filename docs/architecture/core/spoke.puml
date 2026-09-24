@@ -9,8 +9,8 @@ package "Messaging" <<cloud>> {
     interface IMessageProcessor
 }
 
-class PoolEscrowFactory
-class PoolEscrow
+class EscrowFactory
+class Escrow
 class Spoke
 class SpokeHandler
 class SpokeRegistry
@@ -35,15 +35,15 @@ Spoke .[dotted].> IPolicy
 IMessageProcessor --> SpokeHandler
 SpokeHandler --> SpokeRegistry
 SpokeHandler --> IRegistrar
-SpokeHandler --> PoolEscrowFactory
+SpokeHandler --> EscrowFactory
 
-Spoke --> PoolEscrowFactory
+Spoke --> EscrowFactory
 
 SpokeRegistry o-- "n" ShareToken
 
 ShareTokenRegistrar -up-|> IRegistrar
 ShareTokenRegistrar ..> "n" ShareToken
-PoolEscrowFactory ..> "n" PoolEscrow
+EscrowFactory ..> "n" Escrow
 ShareToken o--> ITransferHook
 
 @enduml

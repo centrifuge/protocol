@@ -35,7 +35,7 @@ interface IOpsGuardian {
     /// @notice Wire an adapter to a remote chain it is not yet wired to
     /// @dev First-time only, per adapter: reverts once `adapter.isWired(centrifugeId, data)` holds, that is when
     ///      the chain already has a destination or the bridge id in `data` already serves another chain, so a
-    ///      binding that exists can only be re-pointed or reset through the ProtocolGuardian. A newly deployed
+    ///      binding that exists can only be re-pointed or reset by a spell, through Root. A newly deployed
     ///      adapter is unwired for every chain, so the OpsGuardian can still connect it to any chain.
     /// @dev Reverts if centrifugeId is the local chain, which is never a valid remote wiring target.
     /// @param adapter Address of the adapter to wire

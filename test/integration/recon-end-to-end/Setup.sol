@@ -38,9 +38,9 @@ import {IAccounting} from "../../../src/core/hub/interfaces/IAccounting.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {ShareClassManager} from "../../../src/core/hub/ShareClassManager.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
+import {EscrowFactory} from "../../../src/core/spoke/factories/EscrowFactory.sol";
 import {MessageDispatcher} from "../../../src/core/messaging/MessageDispatcher.sol";
 import {IMultiAdapter} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
-import {PoolEscrowFactory} from "../../../src/core/spoke/factories/PoolEscrowFactory.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassManager.sol";
 
@@ -90,7 +90,7 @@ abstract contract Setup is
     AsyncVaultFactory asyncVaultFactory;
     SyncDepositVaultFactory syncVaultFactory;
     ShareTokenRegistrar shareTokenRegistrar;
-    PoolEscrowFactory poolEscrowFactory;
+    EscrowFactory escrowFactory;
     RefundEscrowFactory refundEscrowFactory;
 
     AsyncRequestManager asyncRequestManager;
@@ -207,10 +207,10 @@ abstract contract Setup is
         asyncVaultFactory = new AsyncVaultFactory(address(this), asyncRequestManager, address(this));
         syncVaultFactory = new SyncDepositVaultFactory(address(root), syncManager, asyncRequestManager, address(this));
         shareTokenRegistrar = new ShareTokenRegistrar(address(this), address(this));
-        poolEscrowFactory = new PoolEscrowFactory(address(root), address(this));
+        escrowFactory = new EscrowFactory(address(root), address(this));
         spokeRegistry = new SpokeRegistry(address(this));
-        spokeHandler = new SpokeHandler(spokeRegistry, poolEscrowFactory, address(this));
-        spoke = new Spoke(IGateway(address(gateway)), snapshotQueue, spokeRegistry, poolEscrowFactory, address(this));
+        spokeHandler = new SpokeHandler(spokeRegistry, escrowFactory, address(this));
+        spoke = new Spoke(IGateway(address(gateway)), snapshotQueue, spokeRegistry, escrowFactory, address(this));
         fullRestrictions = new FullRestrictions(
             address(root),
             address(this), // envoy_
@@ -218,7 +218,7 @@ abstract contract Setup is
             address(spoke),
             address(spokeHandler), // crosschainSource_
             address(this),
-            address(poolEscrowFactory)
+            address(escrowFactory)
         );
 
         messageDispatcher = new MessageDispatcher(
@@ -235,7 +235,7 @@ abstract contract Setup is
         syncManager.file("spokeRegistry", address(spokeRegistry));
         spoke.file("sender", address(messageDispatcher));
         snapshotQueue.rely(address(spoke));
-        poolEscrowFactory.file("spoke", address(spoke));
+        escrowFactory.file("spoke", address(spoke));
 
         // Set up all spoke permissions
         setupSpokePermissions();
@@ -288,7 +288,7 @@ abstract contract Setup is
         batchRequestManager.rely(address(hubHandler));
         batchRequestManager.rely(address(messageDispatcher));
         batchRequestManager.file("hub", address(hub));
-        poolEscrowFactory.rely(address(hub));
+        escrowFactory.rely(address(hub));
 
         // Add missing Root permissions (matching HubDeployer)
         hubRegistry.rely(address(root));
@@ -343,14 +343,14 @@ abstract contract Setup is
 
     /// === Helper Functions === ///
 
-    /// @dev Returns the PoolEscrow address for the current pool
+    /// @dev Returns the Escrow address for the current pool
     function _getPoolEscrowAddress() internal view returns (address) {
-        return address(poolEscrowFactory.escrow(_getPool()));
+        return address(escrowFactory.escrow(_getPool()));
     }
 
-    /// @dev Returns the PoolEscrow address for a specific vault's pool
+    /// @dev Returns the Escrow address for a specific vault's pool
     function _getPoolEscrowForVault(IBaseVault vault) internal view returns (address) {
-        return address(poolEscrowFactory.escrow(vault.poolId()));
+        return address(escrowFactory.escrow(vault.poolId()));
     }
 
     /// @dev Returns a random actor from the list of actors
@@ -385,7 +385,7 @@ abstract contract Setup is
         shareTokenRegistrar.file("spokeRegistry", address(spokeRegistry));
         asyncRequestManager.rely(address(spokeHandler));
         fullRestrictions.rely(address(shareTokenRegistrar));
-        poolEscrowFactory.rely(address(spokeHandler));
+        escrowFactory.rely(address(spokeHandler));
 
         // Rely Spoke
         asyncVaultFactory.rely(address(spoke));
@@ -434,7 +434,7 @@ abstract contract Setup is
         shareTokenRegistrar.rely(address(root));
         fullRestrictions.rely(address(root));
         gateway.rely(address(root));
-        poolEscrowFactory.rely(address(root));
+        escrowFactory.rely(address(root));
 
         // Rely gateway
         spoke.rely(address(gateway));

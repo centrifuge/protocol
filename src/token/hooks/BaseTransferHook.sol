@@ -18,7 +18,7 @@ import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol";
-import {IPoolEscrowProvider} from "../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IEscrowProvider} from "../../core/spoke/factories/interfaces/IEscrowFactory.sol";
 
 import {IRoot} from "../../admin/interfaces/IRoot.sol";
 
@@ -48,7 +48,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
     ISpokeRegistry public immutable spokeRegistry;
     address public immutable crosschainSource;
     ISpoke public immutable spoke;
-    IPoolEscrowProvider public immutable poolEscrowProvider;
+    IEscrowProvider public immutable escrowProvider;
 
     mapping(address token => mapping(address => bool)) public manager;
 
@@ -59,7 +59,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_
+        address escrowProvider_
     ) Auth(deployer) {
         require(spoke_ != crosschainSource_, InvalidInputs());
 
@@ -68,7 +68,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         spokeRegistry = ISpokeRegistry(spokeRegistry_);
         spoke = ISpoke(spoke_);
         crosschainSource = crosschainSource_;
-        poolEscrowProvider = IPoolEscrowProvider(poolEscrowProvider_);
+        escrowProvider = IEscrowProvider(escrowProvider_);
     }
 
     /// @dev Check if the msg.sender is ward or a manager
@@ -120,7 +120,7 @@ abstract contract BaseTransferHook is Auth, IMemberlist, IFreezable, IManagerCal
         returns (bool);
 
     function isPoolEscrow(address addr) public view returns (bool) {
-        return !poolEscrowProvider.poolId(addr).isNull();
+        return !escrowProvider.poolId(addr).isNull();
     }
 
     function isDepositRequestOrIssuance(address from, address to) public view returns (bool) {

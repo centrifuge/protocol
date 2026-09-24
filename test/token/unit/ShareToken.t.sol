@@ -8,7 +8,7 @@ import {IERC20} from "../../../src/misc/interfaces/IERC20.sol";
 import {IERC165, IERC7575Share} from "../../../src/misc/interfaces/IERC7575.sol";
 
 import {MockRoot} from "../../core/mocks/MockRoot.sol";
-import {MockPoolEscrowProvider} from "../../core/mocks/MockPoolEscrowProvider.sol";
+import {MockEscrowProvider} from "../../core/mocks/MockEscrowProvider.sol";
 import {MockFullRestrictions} from "../../core/spoke/mocks/MockFullRestrictions.sol";
 
 import "forge-std/Test.sol";
@@ -44,7 +44,7 @@ contract ShareTokenTest is Test {
             makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
-            address(new MockPoolEscrowProvider())
+            address(new MockEscrowProvider())
         );
         token.file("hook", address(fullRestrictionsHook));
     }

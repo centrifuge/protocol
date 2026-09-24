@@ -5,8 +5,8 @@ import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {ISpokeHandler} from "./interfaces/ISpokeHandler.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
+import {IEscrowFactory} from "./factories/interfaces/IEscrowFactory.sol";
 import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
-import {IPoolEscrowFactory} from "./factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {D18} from "../../misc/types/D18.sol";
@@ -29,11 +29,11 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     using CastLib for *;
 
     ISpokeRegistry public spokeRegistry;
-    IPoolEscrowFactory public poolEscrowFactory;
+    IEscrowFactory public escrowFactory;
 
-    constructor(ISpokeRegistry spokeRegistry_, IPoolEscrowFactory poolEscrowFactory_, address deployer) Auth(deployer) {
+    constructor(ISpokeRegistry spokeRegistry_, IEscrowFactory escrowFactory_, address deployer) Auth(deployer) {
         spokeRegistry = spokeRegistry_;
-        poolEscrowFactory = poolEscrowFactory_;
+        escrowFactory = escrowFactory_;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
     /// @inheritdoc ISpokeHandler
     function file(bytes32 what, address data) external auth {
         if (what == "spokeRegistry") spokeRegistry = ISpokeRegistry(data);
-        else if (what == "poolEscrowFactory") poolEscrowFactory = IPoolEscrowFactory(data);
+        else if (what == "escrowFactory") escrowFactory = IEscrowFactory(data);
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
@@ -54,7 +54,7 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
 
     /// @inheritdoc ISpokeGatewayHandler
     function addPool(PoolId poolId) external auth {
-        poolEscrowFactory.newEscrow(poolId);
+        escrowFactory.newEscrow(poolId);
         spokeRegistry.addPool(poolId);
     }
 

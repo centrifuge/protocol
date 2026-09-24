@@ -348,7 +348,7 @@ contract OpsGuardianTestWire is OpsGuardianTest {
 
     /// @dev The whole lifecycle, since a frozen `isWired` proves nothing about a second call: ops wires what
     ///      is unwired, is refused once it is wired, and may wire again only after a clear it cannot perform
-    ///      itself. Re-pointing a live lane is therefore the ProtocolGuardian's in one step or two.
+    ///      itself. Re-pointing a live lane is therefore a spell's, through Root.
     function testWireOnlyWhileUnwired() public {
         bytes memory data = abi.encode("some", "data");
 

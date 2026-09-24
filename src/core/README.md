@@ -20,9 +20,9 @@ Because `Hub` consolidates all of this in one place, a manager acting on any poo
 
 ### [`spoke`](./spoke)
 
-The local counterpart to `hub`, deployed on every chain a pool operates on. `Spoke` mirrors `Hub`'s role for local operations: asset registration, cross-chain share transfers, request forwarding, and balance-sheet management (share issuance/revocation, asset deposits/withdrawals), with share token deployment and vault registration arriving from the hub through `SpokeHandler`, all backed by `SpokeRegistry`, `PoolEscrow`, and `SnapshotQueue`. The two sides deliberately mirror each other: `Spoke` ↔ `Hub`, `SpokeHandler` ↔ `HubHandler`, `SpokeRegistry` ↔ `HubRegistry`, `SnapshotQueue` ↔ `Holdings`.
+The local counterpart to `hub`, deployed on every chain a pool operates on. `Spoke` mirrors `Hub`'s role for local operations: asset registration, cross-chain share transfers, request forwarding, and balance-sheet management (share issuance/revocation, asset deposits/withdrawals), with share token deployment and vault registration arriving from the hub through `SpokeHandler`, all backed by `SpokeRegistry`, `Escrow`, and `SnapshotQueue`. The two sides deliberately mirror each other: `Spoke` ↔ `Hub`, `SpokeHandler` ↔ `HubHandler`, `SpokeRegistry` ↔ `HubRegistry`, `SnapshotQueue` ↔ `Holdings`.
 
-`PoolEscrow` custodies assets per pool and per share class rather than pooling them together. `SnapshotQueue` nets share deltas and accumulates asset deltas locally before flushing a single update to `Hub`, so routine activity on a chain does not have to cross a chain boundary for every deposit or withdrawal.
+`Escrow` custodies assets per pool and per share class rather than pooling them together. `SnapshotQueue` nets share deltas and accumulates asset deltas locally before flushing a single update to `Hub`, so routine activity on a chain does not have to cross a chain boundary for every deposit or withdrawal.
 
 Because a spoke is a complete local deployment, everything it does executes synchronously and atomically: issuing a share, moving an asset, and a call into another protocol can happen in one transaction that either wholly succeeds or wholly reverts. This is what lets share tokens compose with the rest of onchain finance without a settlement gap.
 

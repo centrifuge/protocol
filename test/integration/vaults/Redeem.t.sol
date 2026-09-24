@@ -70,7 +70,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.pendingRedeemRequest(0, self), 0);
         assertEq(vault.claimableRedeemRequest(0, self), amount);
         assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assets);
+        assertEq(erc20.balanceOf(address(escrowFactory.escrow(vault.poolId()))), assets);
 
         // can redeem to self
         vault.redeem(amount / 2, self, self); // redeem half the amount to own wallet
@@ -122,7 +122,7 @@ contract RedeemTest is BaseTest {
         assertEq(vault.maxWithdraw(self), assets); // max deposit
         assertEq(vault.maxRedeem(self), amount); // max deposit
         assertEq(shareToken.balanceOf(address(spoke.escrow(vault.poolId()))), 0);
-        assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), assets);
+        assertEq(erc20.balanceOf(address(escrowFactory.escrow(vault.poolId()))), assets);
 
         // can redeem to self
         vault.withdraw(amount / 2, self, self); // redeem half the amount to own wallet
@@ -132,7 +132,7 @@ contract RedeemTest is BaseTest {
         vault.withdraw(amount / 2, investor, self); // redeem half the amount to investor wallet
 
         assertTrue(shareToken.balanceOf(self) <= 1);
-        assertTrue(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))) <= 1);
+        assertTrue(erc20.balanceOf(address(escrowFactory.escrow(vault.poolId()))) <= 1);
         assertApproxEqAbs(erc20.balanceOf(self), assets / 2, 1);
         assertApproxEqAbs(erc20.balanceOf(investor), assets / 2, 1);
         assertTrue(vault.maxRedeem(self) <= 1);
@@ -265,7 +265,7 @@ contract RedeemTest is BaseTest {
         uint128 assets = 75000000; // 150*10**6
 
         // mint approximate interest amount into escrow
-        asset.mint(address(poolEscrowFactory.escrow(vault.poolId())), assets * 2 - investmentAmount);
+        asset.mint(address(escrowFactory.escrow(vault.poolId())), assets * 2 - investmentAmount);
 
         centrifugeChain.isFulfilledRedeemRequest(
             poolId.raw(), scId.raw(), bytes32(bytes20(self)), assetId, assets, shares / 2, 0

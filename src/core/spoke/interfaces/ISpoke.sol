@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IPoolEscrow} from "./IPoolEscrow.sol";
+import {IEscrow} from "./IEscrow.sol";
 import {IRequestRouter} from "./IRequestRouter.sol";
 import {ISnapshotQueue} from "./ISnapshotQueue.sol";
 import {ISpokeRegistry} from "./ISpokeRegistry.sol";
@@ -12,8 +12,8 @@ import {PoolId} from "../../types/PoolId.sol";
 import {AssetId} from "../../types/AssetId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
 import {IPolicy} from "../../utils/interfaces/IPolicy.sol";
+import {IEscrowProvider} from "../factories/interfaces/IEscrowFactory.sol";
 import {IBatchedMulticall} from "../../utils/interfaces/IBatchedMulticall.sol";
-import {IPoolEscrowProvider} from "../factories/interfaces/IPoolEscrowFactory.sol";
 
 interface ISpoke is IBatchedMulticall, IRequestRouter {
     //----------------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @param amount The amount to deposit
     function deposit(PoolId poolId, ShareClassId scId, address asset, uint256 tokenId, uint128 amount) external payable;
 
-    /// @notice Count assets already held by the pool escrow into the hub-accounted holding, without moving tokens.
+    /// @notice Count assets already held by the pool's escrow into the hub-accounted holding, without moving tokens.
     /// @dev    For reconciling assets that reached the escrow outside a `deposit` (donation, accidental transfer,
     ///         surplus). Does not verify the escrow balance, so a manager can over-credit: use with care.
     /// @param poolId The pool identifier
@@ -141,7 +141,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
         external
         payable;
 
-    /// @notice Withdraw assets from the pool escrow, decreasing the hub-accounted holding.
+    /// @notice Withdraw assets from the pool's escrow, decreasing the hub-accounted holding.
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
     /// @param asset The asset address
@@ -193,7 +193,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     /// @param asset The asset address
     /// @param tokenId The token ID
     /// @param amount The amount to reserve
-    /// @param reserver The address recorded as the reservation's owner in PoolEscrow (an accounting key, not an
+    /// @param reserver The address recorded as the reservation's owner in Escrow (an accounting key, not an
     ///                 authenticated identity)
     /// @param reason The reservation bucket; an accounting key, not an authenticated identity
     function reserve(
@@ -372,14 +372,14 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     function snapshotQueue() external view returns (ISnapshotQueue);
 
     /// @notice Returns the pool escrow provider
-    function poolEscrowProvider() external view returns (IPoolEscrowProvider);
+    function escrowProvider() external view returns (IEscrowProvider);
 
     /// @notice Returns the policy installed for a pool (address(0) if none)
     function policy(PoolId poolId) external view returns (IPolicy);
 
     /// @notice Returns the pool escrow.
     /// @dev    Assets for pending deposit requests are not held by the pool escrow.
-    function escrow(PoolId poolId) external view returns (IPoolEscrow);
+    function escrow(PoolId poolId) external view returns (IEscrow);
 
     /// @notice Returns the amount of assets that can be withdrawn from the balance sheet.
     /// @dev    Assets that are locked (reserved) are not available for withdrawals.

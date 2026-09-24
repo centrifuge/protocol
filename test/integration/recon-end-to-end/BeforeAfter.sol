@@ -301,7 +301,7 @@ abstract contract BeforeAfter is Setup {
             _structToUpdate.escrowAssetBalance[address(vault)] =
                 MockERC20(vault.asset()).balanceOf(_getPoolEscrowForVault(vault));
             _structToUpdate.poolEscrowAssetBalance =
-                MockERC20(vault.asset()).balanceOf(address(poolEscrowFactory.escrow(vault.poolId())));
+                MockERC20(vault.asset()).balanceOf(address(escrowFactory.escrow(vault.poolId())));
             _structToUpdate.actualAssets = MockERC20(vault.asset()).balanceOf(address(vault));
         }
     }

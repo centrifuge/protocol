@@ -7,7 +7,7 @@ skinparam linetype ortho
 skinparam nodesep 25
 
 package core {
-    class "Escrow" as PoolEscrow<<pool>>
+    class "Escrow" as Escrow<<pool>>
     class Envoy
     interface IManagerCallFromHub
 }
@@ -30,7 +30,7 @@ Envoy --> IManagerCallFromHub
 
 AsyncRequestManager -up-> Spoke
 AsyncRequestManager -up-|> IAsyncRequestManager
-Spoke -up-> PoolEscrow
+Spoke -up-> Escrow
 Spoke -up-> SnapshotQueue
 
 SyncManager -up-|> ISyncManager

@@ -50,7 +50,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         );
 
         vm.prank(address(spokeHandler));
-        poolEscrow = address(poolEscrowFactory.newEscrow(TEST_POOL_ID));
+        poolEscrow = address(escrowFactory.newEscrow(TEST_POOL_ID));
 
         vm.startPrank(address(protocolGuardian.safe()));
         correctHook = new FullRestrictions(
@@ -60,7 +60,7 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
             address(spoke),
             address(spokeHandler),
             address(protocolGuardian.safe()),
-            address(poolEscrowFactory)
+            address(escrowFactory)
         );
         vm.stopPrank();
     }
@@ -109,8 +109,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     }
 
     function testDepositFlow() public view {
-        assertTrue(correctHook.isDepositFulfillment(address(0), poolEscrow), "mint to PoolEscrow is fulfillment");
-        assertTrue(correctHook.isDepositClaim(poolEscrow, USER), "transfer from PoolEscrow to user is claim");
+        assertTrue(correctHook.isDepositFulfillment(address(0), poolEscrow), "mint to Escrow is fulfillment");
+        assertTrue(correctHook.isDepositClaim(poolEscrow, USER), "transfer from Escrow to user is claim");
         assertTrue(
             correctHook.isDepositRequestOrIssuance(address(0), USER), "mint to non-endorsed user is direct issuance"
         );
@@ -141,10 +141,8 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
     }
 
     function testCompleteInvestmentFlowSequence() public view {
-        assertTrue(
-            correctHook.isDepositFulfillment(address(0), poolEscrow), "deposit: mint to PoolEscrow is fulfillment"
-        );
-        assertTrue(correctHook.isDepositClaim(poolEscrow, USER), "deposit: PoolEscrow to user is claim");
+        assertTrue(correctHook.isDepositFulfillment(address(0), poolEscrow), "deposit: mint to Escrow is fulfillment");
+        assertTrue(correctHook.isDepositClaim(poolEscrow, USER), "deposit: Escrow to user is claim");
 
         assertTrue(correctHook.isDepositRequestOrIssuance(address(0), USER), "mint to user is direct issuance");
 

@@ -3,7 +3,6 @@ pragma solidity >=0.5.0;
 
 import {IRoot} from "./IRoot.sol";
 import {ISafe} from "./ISafe.sol";
-import {IAdapterWiring} from "./IAdapterWiring.sol";
 
 import {IScheduleAuthMessageSender} from "../../core/messaging/interfaces/IGatewaySenders.sol";
 
@@ -13,7 +12,6 @@ interface IProtocolGuardian {
     error NotTheAuthorizedSafe();
     error FileUnrecognizedParam();
     error NotTheAuthorizedSafeOrItsOwner();
-    error CannotWireLocalChain();
 
     event File(bytes32 indexed what, address data);
 
@@ -46,15 +44,6 @@ interface IProtocolGuardian {
     /// @param target The address to cancel the scheduled rely for
     /// @param refund Address to receive unused gas refund
     function cancelUpgrade(uint16 centrifugeId, address target, address refund) external payable;
-
-    /// @notice Wire an adapter to a remote chain, or re-point a binding that already exists
-    /// @dev callable by safe only. The OpsGuardian wires each adapter to a chain once; changing that binding
-    ///      afterwards decides which remote contract the protocol trusts, so it is the protocol safe's call.
-    ///      Any remote chain qualifies; the local chain is never a valid wiring target.
-    /// @param adapter Address of the adapter to wire
-    /// @param centrifugeId The chain ID to wire to
-    /// @param data ABI-encoded adapter-specific configuration data
-    function wire(IAdapterWiring adapter, uint16 centrifugeId, bytes memory data) external;
 
     /// @notice Configure TokenBridge relayer address
     /// @param relayer The relayer address to set

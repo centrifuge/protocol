@@ -24,7 +24,7 @@ The contract implements `IHubRequestManager` and receives request callbacks from
 
 ### `AsyncRequestManager`
 
-`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `Spoke` for share issuance/burning and pool-specific `PoolEscrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
+`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `Spoke` for share issuance/burning and pool-specific `Escrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status.
 
 The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It delegates gas subsidization for cross-chain requests to the `SubsidyManager`. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
 

@@ -8,7 +8,6 @@ import {AssetId} from "../../src/core/types/AssetId.sol";
 import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {IOpsGuardian} from "../../src/admin/interfaces/IOpsGuardian.sol";
-import {IProtocolGuardian} from "../../src/admin/interfaces/IProtocolGuardian.sol";
 
 import {DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
@@ -270,7 +269,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
 
         // dependencies set correctly
         assertEq(address(spokeHandler.spokeRegistry()), address(spokeRegistry));
-        assertEq(address(spokeHandler.poolEscrowFactory()), address(poolEscrowFactory));
+        assertEq(address(spokeHandler.escrowFactory()), address(escrowFactory));
     }
 
     function testSpoke(address nonWard) public view {
@@ -283,7 +282,7 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(address(spoke.spokeRegistry()), address(spokeRegistry));
         assertEq(address(spoke.sender()), address(messageDispatcher));
         assertEq(address(spoke.snapshotQueue()), address(snapshotQueue));
-        assertEq(address(spoke.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(spoke.escrowProvider()), address(escrowFactory));
 
         // root endorsements
         assertEq(root.endorsed(address(spoke)), true);
@@ -299,18 +298,18 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         assertEq(snapshotQueue.wards(nonWard), 0);
     }
 
-    function testPoolEscrowFactory(address nonWard) public view {
+    function testEscrowFactory(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spokeHandler));
 
-        assertEq(poolEscrowFactory.wards(address(root)), 1);
-        assertEq(poolEscrowFactory.wards(address(spokeHandler)), 1);
-        assertEq(poolEscrowFactory.wards(nonWard), 0);
+        assertEq(escrowFactory.wards(address(root)), 1);
+        assertEq(escrowFactory.wards(address(spokeHandler)), 1);
+        assertEq(escrowFactory.wards(nonWard), 0);
 
         // dependencies set correctly
-        assertEq(address(poolEscrowFactory.root()), address(root));
-        assertEq(address(poolEscrowFactory.spoke()), address(spoke));
+        assertEq(address(escrowFactory.root()), address(root));
+        assertEq(address(escrowFactory.spoke()), address(spoke));
     }
 
     function testShareTokenRegistrar(address nonWard) public view {
@@ -590,7 +589,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(freezeOnlyHook.root()), address(root));
         assertEq(freezeOnlyHook.envoy(), address(envoy));
-        assertEq(address(freezeOnlyHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(freezeOnlyHook.escrowProvider()), address(escrowFactory));
         assertFalse(freezeOnlyHook.isPoolEscrow(nonWard));
     }
 
@@ -606,7 +605,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(redemptionRestrictionsHook.root()), address(root));
         assertEq(redemptionRestrictionsHook.envoy(), address(envoy));
-        assertEq(address(redemptionRestrictionsHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(redemptionRestrictionsHook.escrowProvider()), address(escrowFactory));
         assertFalse(redemptionRestrictionsHook.isPoolEscrow(nonWard));
     }
 
@@ -622,7 +621,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(freelyTransferableHook.root()), address(root));
         assertEq(freelyTransferableHook.envoy(), address(envoy));
-        assertEq(address(freelyTransferableHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(freelyTransferableHook.escrowProvider()), address(escrowFactory));
         assertFalse(freelyTransferableHook.isPoolEscrow(nonWard));
     }
 
@@ -638,7 +637,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(fullRestrictionsHook.root()), address(root));
         assertEq(fullRestrictionsHook.envoy(), address(envoy));
-        assertEq(address(fullRestrictionsHook.poolEscrowProvider()), address(poolEscrowFactory));
+        assertEq(address(fullRestrictionsHook.escrowProvider()), address(escrowFactory));
         assertFalse(fullRestrictionsHook.isPoolEscrow(nonWard));
     }
 
@@ -752,8 +751,8 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
 
 contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
     /// @dev The launch wires no connections, so the OpsGuardian may wire each adapter once per chain and is
-    ///      then frozen for that binding, which the ProtocolGuardian re-points.
-    function testGuardiansWireOnceThenRepoint() public {
+    ///      then frozen for that binding. Re-pointing it is a spell's, through Root.
+    function testOpsWiresOnceThenRootRepoints() public {
         uint16 remoteCentrifugeId = 5;
         address remoteAdapter = makeAddr("RemoteLayerZeroAdapter");
         address rotatedRemoteAdapter = makeAddr("RotatedRemoteLayerZeroAdapter");
@@ -782,14 +781,12 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
         vm.expectRevert(IOpsGuardian.CannotWireLocalChain.selector);
         opsGuardian.wire(layerZeroAdapter, CENTRIFUGE_ID, data);
 
-        vm.startPrank(address(ADMIN_SAFE));
-        protocolGuardian.wire(layerZeroAdapter, remoteCentrifugeId, abi.encode(uint32(30_005), rotatedRemoteAdapter));
+        // Re-pointing an existing binding is no longer a guardian call: it goes through Root, which is what a
+        // spell holds while it executes.
+        vm.startPrank(address(root));
+        layerZeroAdapter.wire(remoteCentrifugeId, abi.encode(uint32(30_005), rotatedRemoteAdapter));
         (, address destination) = layerZeroAdapter.destinations(remoteCentrifugeId);
         assertEq(destination, rotatedRemoteAdapter);
-
-        protocolGuardian.wire(layerZeroAdapter, mainnetCentrifugeId, abi.encode(uint32(30_101), rotatedRemoteAdapter));
-        vm.expectRevert(IProtocolGuardian.CannotWireLocalChain.selector);
-        protocolGuardian.wire(layerZeroAdapter, CENTRIFUGE_ID, data);
     }
 
     function testAxelarAdapter(address nonWard) public view {
@@ -800,7 +797,8 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
 
         assertEq(axelarAdapter.wards(address(root)), 1);
         assertEq(axelarAdapter.wards(address(opsGuardian)), 1);
-        assertEq(axelarAdapter.wards(address(protocolGuardian)), 1);
+        // No ward: re-pointing a wired adapter is a spell, through Root, not a guardian call
+        assertEq(axelarAdapter.wards(address(protocolGuardian)), 0);
         assertEq(axelarAdapter.wards(address(ADMIN_SAFE)), 0);
         assertEq(axelarAdapter.wards(nonWard), 0);
 
@@ -819,7 +817,8 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
 
         assertEq(layerZeroAdapter.wards(address(root)), 1);
         assertEq(layerZeroAdapter.wards(address(opsGuardian)), 1);
-        assertEq(layerZeroAdapter.wards(address(protocolGuardian)), 1);
+        // No ward: re-pointing a wired adapter is a spell, through Root, not a guardian call
+        assertEq(layerZeroAdapter.wards(address(protocolGuardian)), 0);
         assertEq(layerZeroAdapter.wards(address(ADMIN_SAFE)), 1);
         assertEq(layerZeroAdapter.wards(nonWard), 0);
 
@@ -842,7 +841,8 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
 
         assertEq(chainlinkAdapter.wards(address(root)), 1);
         assertEq(chainlinkAdapter.wards(address(opsGuardian)), 1);
-        assertEq(chainlinkAdapter.wards(address(protocolGuardian)), 1);
+        // No ward: re-pointing a wired adapter is a spell, through Root, not a guardian call
+        assertEq(chainlinkAdapter.wards(address(protocolGuardian)), 0);
         assertEq(chainlinkAdapter.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -879,7 +879,8 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
 
         assertEq(hyperlaneAdapter.wards(address(root)), 1);
         assertEq(hyperlaneAdapter.wards(address(opsGuardian)), 1);
-        assertEq(hyperlaneAdapter.wards(address(protocolGuardian)), 1);
+        // No ward: re-pointing a wired adapter is a spell, through Root, not a guardian call
+        assertEq(hyperlaneAdapter.wards(address(protocolGuardian)), 0);
         assertEq(hyperlaneAdapter.wards(address(ADMIN_SAFE)), 1);
         assertEq(hyperlaneAdapter.wards(nonWard), 0);
 
@@ -1177,7 +1178,7 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertEq(address(hubHandler.sender()), address(messageDispatcher));
         assertEq(address(messageDispatcher.spokeHandler()), address(spokeHandler));
         assertEq(address(messageProcessor.hubHandler()), address(hubHandler));
-        assertEq(address(poolEscrowFactory.spoke()), address(spoke));
+        assertEq(address(escrowFactory.spoke()), address(spoke));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(address(opsGuardian.opsSafe()), address(OPS_SAFE));
 

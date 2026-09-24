@@ -18,7 +18,7 @@ struct ContractsConfig {
     address multiAdapter;
     address messageProcessor;
     address messageDispatcher;
-    address poolEscrowFactory;
+    address escrowFactory;
     address hubRegistry;
     address accounting;
     address holdings;
@@ -140,7 +140,7 @@ library Env {
         config.multiAdapter = _required(json, "multiAdapter");
         config.messageProcessor = _required(json, "messageProcessor");
         config.messageDispatcher = _required(json, "messageDispatcher");
-        config.poolEscrowFactory = _required(json, "poolEscrowFactory");
+        config.escrowFactory = _required(json, "escrowFactory");
         config.hubRegistry = _required(json, "hubRegistry");
         config.accounting = _required(json, "accounting");
         config.holdings = _required(json, "holdings");

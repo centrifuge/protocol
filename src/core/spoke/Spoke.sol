@@ -2,13 +2,13 @@
 pragma solidity 0.8.28;
 
 import {ISpoke} from "./interfaces/ISpoke.sol";
+import {IEscrow} from "./interfaces/IEscrow.sol";
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
-import {IPoolEscrow} from "./interfaces/IPoolEscrow.sol";
 import {IRequestRouter} from "./interfaces/IRequestRouter.sol";
 import {ISnapshotQueue} from "./interfaces/ISnapshotQueue.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
+import {IEscrowProvider} from "./factories/interfaces/IEscrowFactory.sol";
 import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
-import {IPoolEscrowProvider} from "./factories/interfaces/IPoolEscrowFactory.sol";
 
 import {Auth} from "../../misc/Auth.sol";
 import {Recoverable} from "../../misc/Recoverable.sol";
@@ -44,18 +44,18 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
 
     ISnapshotQueue public immutable snapshotQueue;
     ISpokeRegistry public immutable spokeRegistry;
-    IPoolEscrowProvider public immutable poolEscrowProvider;
+    IEscrowProvider public immutable escrowProvider;
 
     constructor(
         IGateway gateway_,
         ISnapshotQueue queues_,
         ISpokeRegistry spokeRegistry_,
-        IPoolEscrowProvider poolEscrowProvider_,
+        IEscrowProvider escrowProvider_,
         address deployer
     ) Auth(deployer) BatchedMulticall(gateway_) {
         snapshotQueue = queues_;
         spokeRegistry = spokeRegistry_;
-        poolEscrowProvider = poolEscrowProvider_;
+        escrowProvider = escrowProvider_;
     }
 
     /// @dev Manager-only, and must satisfy the pool's policy if one is installed.
@@ -122,7 +122,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         payable
         enforced(poolId)
     {
-        IPoolEscrow escrow_ = escrow(poolId);
+        IEscrow escrow_ = escrow(poolId);
         escrow_.deposit(scId, asset, tokenId, amount);
         _queueAssets(poolId, scId, asset, tokenId, amount, true);
 
@@ -155,7 +155,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         address receiver,
         uint128 amount
     ) external payable enforced(poolId) {
-        IPoolEscrow escrow_ = escrow(poolId);
+        IEscrow escrow_ = escrow(poolId);
 
         escrow_.withdraw(scId, asset, tokenId, receiver, amount);
         _queueAssets(poolId, scId, asset, tokenId, amount, false);
@@ -175,7 +175,7 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
         address reserver,
         bytes32 reason
     ) external payable enforced(poolId) {
-        IPoolEscrow escrow_ = escrow(poolId);
+        IEscrow escrow_ = escrow(poolId);
 
         escrow_.unreserve(scId, asset, tokenId, amount, reserver, reason);
         escrow_.withdraw(scId, asset, tokenId, receiver, amount);
@@ -392,8 +392,8 @@ contract Spoke is BatchedMulticall, Auth, Recoverable, ISpoke {
     }
 
     /// @inheritdoc ISpoke
-    function escrow(PoolId poolId) public view returns (IPoolEscrow) {
-        return poolEscrowProvider.escrow(poolId);
+    function escrow(PoolId poolId) public view returns (IEscrow) {
+        return escrowProvider.escrow(poolId);
     }
 
     /// @inheritdoc ISpoke

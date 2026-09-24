@@ -33,7 +33,7 @@ abstract contract SharedStorage {
 
     /**
      * @notice Enable exact balance checking for liquidity pool operations
-     * @dev Disabled due to rounding errors in PoolEscrow balance tracking.
+     * @dev Disabled due to rounding errors in Escrow balance tracking.
      *      Enabling requires precision fixes in pool balance calculations.
      */
     bool RECON_EXACT_BAL_CHECK = false;

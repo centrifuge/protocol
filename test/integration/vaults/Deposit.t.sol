@@ -235,7 +235,7 @@ contract DepositTest is BaseTest {
     //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
-    //     shareToken.mint(poolEscrowFactory.escrow(POOL_A), type(uint128).max); // mint buffer to the escrow.
+    //     shareToken.mint(escrowFactory.escrow(POOL_A), type(uint128).max); // mint buffer to the escrow.
     // Mock funds from other
     // users
 
@@ -246,7 +246,7 @@ contract DepositTest is BaseTest {
     //     vault.requestDeposit(totalAmount, self, self);
 
     //     // Ensure funds were locked in escrow
-    //     assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), totalAmount);
+    //     assertEq(erc20.balanceOf(address(escrowFactory.escrow(vault.poolId()))), totalAmount);
     //     assertEq(erc20.balanceOf(self), 0);
 
     //     // Gateway returns randomly generated values for amount of share class tokens and asset
@@ -297,7 +297,7 @@ contract DepositTest is BaseTest {
     //     IShareToken shareToken = IShareToken(address(vault.share()));
 
     //     root.relyContract(address(token), self);
-    //     shareToken.mint(poolEscrowFactory.escrow(POOL_A), type(uint128).max); // mint buffer to the escrow.
+    //     shareToken.mint(escrowFactory.escrow(POOL_A), type(uint128).max); // mint buffer to the escrow.
     // Mock funds from other
     // users
 
@@ -308,7 +308,7 @@ contract DepositTest is BaseTest {
     //     vault.requestDeposit(totalAmount, self, self);
 
     //     // Ensure funds were locked in escrow
-    //     assertEq(erc20.balanceOf(address(poolEscrowFactory.escrow(vault.poolId()))), totalAmount);
+    //     assertEq(erc20.balanceOf(address(escrowFactory.escrow(vault.poolId()))), totalAmount);
     //     assertEq(erc20.balanceOf(self), 0);
 
     //     // Gateway returns randomly generated values for amount of share class tokens and asset

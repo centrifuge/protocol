@@ -12,9 +12,9 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../../src/core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IEscrow} from "../../../src/core/spoke/interfaces/IEscrow.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
-import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {ISpokeRequestManager} from "../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
@@ -63,7 +63,7 @@ contract AsyncRequestManagerTest is Test {
     ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     ISubsidyManager subsidyManager = ISubsidyManager(address(new IsContract()));
     IShareToken shareToken = IShareToken(address(new IsContract()));
-    IPoolEscrow poolEscrow = IPoolEscrow(address(new IsContract()));
+    IEscrow poolEscrow = IEscrow(address(new IsContract()));
     IAsyncVault asyncVault = IAsyncVault(address(new IsContract()));
     IGateway gateway = IGateway(address(new IsContract()));
 

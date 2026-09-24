@@ -9,7 +9,6 @@ import {IScheduleAuthMessageSender} from "../../../src/core/messaging/interfaces
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
 import {ISafe} from "../../../src/admin/interfaces/ISafe.sol";
 import {ProtocolGuardian} from "../../../src/admin/ProtocolGuardian.sol";
-import {IAdapterWiring} from "../../../src/admin/interfaces/IAdapterWiring.sol";
 import {IProtocolGuardian} from "../../../src/admin/interfaces/IProtocolGuardian.sol";
 
 import "forge-std/Test.sol";
@@ -134,64 +133,6 @@ contract ProtocolGuardianTestCancelRely is ProtocolGuardianTest {
         vm.prank(UNAUTHORIZED);
         vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
         protocolGuardian.cancelRely(TARGET);
-    }
-}
-
-contract ProtocolGuardianTestWire is ProtocolGuardianTest {
-    uint16 constant REMOTE_CENTRIFUGE_ID = 2;
-    uint16 constant LOCAL_CENTRIFUGE_ID = 3;
-
-    function _mockLocalCentrifugeId(uint16 localId) internal {
-        vm.mockCall(address(sender), abi.encodeWithSelector(sender.localCentrifugeId.selector), abi.encode(localId));
-    }
-
-    function testWireSuccess() public {
-        bytes memory data = abi.encode("some", "data");
-
-        _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
-        vm.mockCall(
-            address(ADAPTER),
-            abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data),
-            abi.encode()
-        );
-        vm.expectCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, REMOTE_CENTRIFUGE_ID, data)
-        );
-
-        vm.prank(address(SAFE));
-        protocolGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
-    }
-
-    function testWireMainnet() public {
-        bytes memory data = abi.encode("some", "data");
-
-        // CENTRIFUGE_ID == 1 is Ethereum: the protocol safe may wire any remote chain, this one included
-        _mockLocalCentrifugeId(LOCAL_CENTRIFUGE_ID);
-        vm.mockCall(
-            address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data), abi.encode()
-        );
-        vm.expectCall(address(ADAPTER), abi.encodeWithSelector(IAdapterWiring.wire.selector, CENTRIFUGE_ID, data));
-
-        vm.prank(address(SAFE));
-        protocolGuardian.wire(IAdapterWiring(address(ADAPTER)), CENTRIFUGE_ID, data);
-    }
-
-    function testWireRevertWhenLocalChain() public {
-        bytes memory data = abi.encode("some", "data");
-
-        _mockLocalCentrifugeId(REMOTE_CENTRIFUGE_ID);
-
-        vm.prank(address(SAFE));
-        vm.expectRevert(IProtocolGuardian.CannotWireLocalChain.selector);
-        protocolGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
-    }
-
-    function testWireRevertWhenNotSafe() public {
-        bytes memory data = abi.encode("some", "data");
-
-        vm.prank(UNAUTHORIZED);
-        vm.expectRevert(IProtocolGuardian.NotTheAuthorizedSafe.selector);
-        protocolGuardian.wire(IAdapterWiring(address(ADAPTER)), REMOTE_CENTRIFUGE_ID, data);
     }
 }
 

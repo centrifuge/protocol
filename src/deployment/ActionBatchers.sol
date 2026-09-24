@@ -20,9 +20,9 @@ import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../core/hub/ShareClassManager.sol";
+import {EscrowFactory} from "../core/spoke/factories/EscrowFactory.sol";
 import {MessageProcessor} from "../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../core/messaging/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "../core/spoke/factories/PoolEscrowFactory.sol";
 import {MAX_ADAPTER_COUNT} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../admin/Root.sol";
@@ -68,7 +68,7 @@ struct CoreReport {
     MultiAdapter multiAdapter;
     MessageProcessor messageProcessor;
     MessageDispatcher messageDispatcher;
-    PoolEscrowFactory poolEscrowFactory;
+    EscrowFactory escrowFactory;
     Spoke spoke;
     SnapshotQueue snapshotQueue;
     ShareTokenRegistrar shareTokenRegistrar;
@@ -157,7 +157,7 @@ contract CoreActionBatcher {
         report.messageDispatcher.rely(root);
         report.messageProcessor.rely(root);
 
-        report.poolEscrowFactory.rely(root);
+        report.escrowFactory.rely(root);
         report.shareTokenRegistrar.rely(root);
         report.spoke.rely(root);
         report.snapshotQueue.rely(root);
@@ -200,7 +200,7 @@ contract CoreActionBatcher {
         // Rely spokeHandler
         report.spokeHandler.rely(address(report.messageProcessor));
         report.spokeHandler.rely(address(report.messageDispatcher));
-        report.poolEscrowFactory.rely(address(report.spokeHandler));
+        report.escrowFactory.rely(address(report.spokeHandler));
 
         // Rely shareTokenRegistrar: core contracts operate share tokens exclusively through the registrar
         report.shareTokenRegistrar.rely(address(report.spokeHandler));
@@ -256,7 +256,7 @@ contract CoreActionBatcher {
         report.messageProcessor.file("envoy", address(report.envoy));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
 
-        report.poolEscrowFactory.file("spoke", address(report.spoke));
+        report.escrowFactory.file("spoke", address(report.spoke));
 
         // Hook/vault/ward updates arrive via Hub.managerCall -> Envoy -> registrar.fromHub, resolving the token
         report.shareTokenRegistrar.file("envoy", address(report.envoy));
@@ -294,7 +294,7 @@ contract CoreActionBatcher {
         report.spoke.deny(address(this));
         report.snapshotQueue.deny(address(this));
         report.shareTokenRegistrar.deny(address(this));
-        report.poolEscrowFactory.deny(address(this));
+        report.escrowFactory.deny(address(this));
         report.spokeRegistry.deny(address(this));
         report.spokeHandler.deny(address(this));
         report.envoy.deny(address(this));
@@ -430,7 +430,6 @@ contract AdapterActionBatcher {
         address hyperlaneIsm
     ) {
         _relyAdapters(report, address(report.core.root));
-        _relyAdapters(report, address(report.core.protocolGuardian));
         _relyAdapters(report, address(report.core.opsGuardian));
 
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)

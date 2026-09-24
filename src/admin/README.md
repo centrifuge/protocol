@@ -10,11 +10,11 @@ The admin module provides protocol governance and emergency controls, including 
 
 ### `ProtocolGuardian`
 
-`ProtocolGuardian` provides emergency controls and protocol-level management, including pausing, permission scheduling, cross-chain upgrade coordination, and re-wiring adapters already wired by the `OpsGuardian`. It acts as an intermediary between a multisig safe and the `Root` contract, providing a structured interface for protocol-wide operations. The contract supports instant pause by safe owners (for emergencies) and safe-only unpause to prevent unauthorized resumption.
+`ProtocolGuardian` provides emergency controls and protocol-level management, including pausing, permission scheduling, and cross-chain upgrade coordination. It acts as an intermediary between a multisig safe and the `Root` contract, providing a structured interface for protocol-wide operations. The contract supports instant pause by safe owners (for emergencies) and safe-only unpause to prevent unauthorized resumption.
 
 ### `OpsGuardian`
 
-`OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions. Wiring is first-time only: it can wire an adapter to any remote chain that adapter is not yet wired to. Re-pointing a live binding decides which remote contract the protocol trusts, so it is the `ProtocolGuardian`'s.
+`OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions. Wiring is first-time only: it can wire an adapter to any remote chain that adapter is not yet wired to. Re-pointing a live binding decides which remote contract the protocol trusts, so it takes a spell: no guardian can do it.
 
 ### `GasService`
 

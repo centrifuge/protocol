@@ -33,7 +33,6 @@ OpsGuardian --> ITokenBridge : fileTokenBridgeCentrifugeId
 ProtocolGuardian --> Root : scheduleRely
 ProtocolGuardian -right-> IScheduleAuthMessageSender : scheduleUpgrade
 ProtocolGuardian --> ITokenBridge : fileTokenBridgeRelayer
-ProtocolGuardian --> IAdapterWiring : wire
 
 Root .[dotted].> IAuth
 

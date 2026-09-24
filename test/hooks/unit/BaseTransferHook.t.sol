@@ -6,7 +6,7 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {IERC165} from "../../../src/misc/interfaces/IERC7575.sol";
 import {BitmapLib} from "../../../src/misc/libraries/BitmapLib.sol";
 
-import {MockPoolEscrowProvider} from "../../core/mocks/MockPoolEscrowProvider.sol";
+import {MockEscrowProvider} from "../../core/mocks/MockEscrowProvider.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
@@ -57,8 +57,8 @@ contract TestableBaseTransferHook is BaseTransferHook {
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_
-    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_) {}
+        address escrowProvider_
+    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, escrowProvider_) {}
 
     function checkERC20Transfer(
         address from,
@@ -90,7 +90,7 @@ contract BaseTransferHookTestBase is Test {
     MockSpoke mockSpoke;
     MockShareToken mockShareToken;
     MockPoolEscrow mockPoolEscrow;
-    MockPoolEscrowProvider mockPoolEscrowProvider;
+    MockEscrowProvider mockPoolEscrowProvider;
 
     address deployer = makeAddr("deployer");
     address envoy = makeAddr("envoy");
@@ -120,7 +120,7 @@ contract BaseTransferHookTestBase is Test {
         poolEscrow = address(mockPoolEscrow);
 
         // Create mock pool escrow provider and configure it
-        mockPoolEscrowProvider = new MockPoolEscrowProvider();
+        mockPoolEscrowProvider = new MockEscrowProvider();
         mockPoolEscrowProvider.setEscrow(TEST_POOL_ID, poolEscrow);
 
         vm.prank(deployer);
@@ -758,14 +758,14 @@ contract BaseTransferHookTestPoolEscrowResolution is BaseTransferHookTestBase {
     }
 
     function testRecognizesFactoryEscrow() public view {
-        assertTrue(hook.isPoolEscrow(poolEscrow), "escrow registered in poolEscrowProvider must be recognized");
+        assertTrue(hook.isPoolEscrow(poolEscrow), "escrow registered in escrowProvider must be recognized");
         assertTrue(hook.isPoolEscrow(otherEscrowAddr), "every registered escrow must be recognized, not just one");
     }
 
     function testRejectsNonFactoryEscrow(address random) public view {
         vm.assume(random != address(poolEscrow) && random != otherEscrowAddr);
 
-        assertFalse(hook.isPoolEscrow(random), "escrow not registered in poolEscrowProvider must be rejected");
+        assertFalse(hook.isPoolEscrow(random), "escrow not registered in escrowProvider must be rejected");
     }
 
     function testUpdateMemberForeignPoolEscrow() public {

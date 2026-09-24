@@ -5,7 +5,6 @@ import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {IERC165} from "../../../../src/misc/interfaces/IERC165.sol";
-import {IEscrow} from "../../../../src/misc/interfaces/IEscrow.sol";
 import {IERC7751} from "../../../../src/misc/interfaces/IERC7751.sol";
 import {IERC6909ExclOperator} from "../../../../src/misc/interfaces/IERC6909.sol";
 
@@ -13,6 +12,7 @@ import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ISpoke} from "../../../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {OnOffRampFactory} from "../../../../src/managers/spoke/OnOffRamp.sol";

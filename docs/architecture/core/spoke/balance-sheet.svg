@@ -34,7 +34,7 @@
   <rect x="836" y="130" width="208" height="70" rx="10" fill="#f6f7f8"/>
   <circle cx="870" cy="165" r="17" fill="#fbe6b0"/>
   <text x="870" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
-  <text x="900" y="172" font-size="21" fill="#1f2a37">PoolEscrow</text>
+  <text x="900" y="172" font-size="21" fill="#1f2a37">Escrow</text>
   <rect x="1239" y="130" width="242" height="70" rx="10" fill="#f6f7f8"/>
   <circle cx="1273" cy="165" r="17" fill="#fbe6b0"/>
   <text x="1273" y="170" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>

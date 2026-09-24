@@ -15,8 +15,8 @@ contract MockFullRestrictions is FullRestrictions, Mock {
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_
-    ) FullRestrictions(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_) {}
+        address escrowProvider_
+    ) FullRestrictions(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, escrowProvider_) {}
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public

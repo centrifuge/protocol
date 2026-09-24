@@ -8,14 +8,14 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
 import {IPolicy} from "../../../../src/core/utils/interfaces/IPolicy.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
-import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {SpokeHandler, ISpokeHandler} from "../../../../src/core/spoke/SpokeHandler.sol";
+import {IEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IEscrowFactory.sol";
 import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
-import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import "forge-std/Test.sol";
 
@@ -32,9 +32,9 @@ contract SpokeHandlerTest is Test {
 
     ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     IRegistrar registrar = IRegistrar(address(new IsContract()));
-    IPoolEscrowFactory poolEscrowFactory = IPoolEscrowFactory(address(new IsContract()));
+    IEscrowFactory escrowFactory = IEscrowFactory(address(new IsContract()));
     address share = address(new IsContract());
-    IPoolEscrow escrow = IPoolEscrow(address(new IsContract()));
+    IEscrow escrow = IEscrow(address(new IsContract()));
     ISpokeRequestManager requestManager = ISpokeRequestManager(address(new IsContract()));
 
     address HOOK = makeAddr("hook");
@@ -58,7 +58,7 @@ contract SpokeHandlerTest is Test {
     uint64 immutable MAX_AGE = 10_000;
     uint64 immutable FUTURE = MAX_AGE + 1;
 
-    SpokeHandler handler = new SpokeHandler(spokeRegistry, poolEscrowFactory, AUTH);
+    SpokeHandler handler = new SpokeHandler(spokeRegistry, escrowFactory, AUTH);
 
     function setUp() public virtual {
         vm.warp(MAX_AGE);
@@ -93,8 +93,8 @@ contract SpokeHandlerTestFile is SpokeHandlerTest {
         handler.file("spokeRegistry", address(23));
         assertEq(address(handler.spokeRegistry()), address(23));
 
-        handler.file("poolEscrowFactory", address(88));
-        assertEq(address(handler.poolEscrowFactory()), address(88));
+        handler.file("escrowFactory", address(88));
+        assertEq(address(handler.escrowFactory()), address(88));
     }
 }
 
@@ -107,9 +107,7 @@ contract SpokeHandlerTestAddPool is SpokeHandlerTest {
 
     function testAddPool() public {
         vm.mockCall(
-            address(poolEscrowFactory),
-            abi.encodeWithSelector(poolEscrowFactory.newEscrow.selector, POOL_A),
-            abi.encode(escrow)
+            address(escrowFactory), abi.encodeWithSelector(escrowFactory.newEscrow.selector, POOL_A), abi.encode(escrow)
         );
         vm.mockCall(
             address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.addPool.selector, POOL_A), abi.encode()

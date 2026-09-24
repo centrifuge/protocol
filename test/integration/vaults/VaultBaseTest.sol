@@ -306,7 +306,7 @@ contract VaultBaseTest is CentrifugeIntegrationTest {
         multiAdapter.rely(address(this));
         messageDispatcher.rely(address(this));
         messageProcessor.rely(address(this));
-        poolEscrowFactory.rely(address(this));
+        escrowFactory.rely(address(this));
         shareTokenRegistrar.rely(address(this));
         spoke.rely(address(this));
         spokeHandler.rely(address(this));

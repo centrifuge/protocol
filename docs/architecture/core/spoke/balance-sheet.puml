@@ -19,7 +19,7 @@ skinparam sequence {
 
 actor "Pool Manager" as PM
 participant Spoke
-participant PoolEscrow
+participant Escrow
 participant SnapshotQueue
 participant HubHandler
 participant Holdings
@@ -30,7 +30,7 @@ note over Spoke, HubHandler
 end note
 
 == Initial State ==
-note over PoolEscrow
+note over Escrow
     **holding.total:** 2000 USDC
     **availableBalanceOf:** 2000 USDC
 end note
@@ -49,18 +49,18 @@ end note
 == Deposit Operation ==
 PM -> Spoke: deposit(poolId, scId, USDC, 0, 1000)
 activate Spoke
-Spoke -> PoolEscrow: deposit(scId, USDC, 0, 1000)
-activate PoolEscrow
-PoolEscrow --> PoolEscrow: holding.total: 2000 → 3000 USDC
-deactivate PoolEscrow
+Spoke -> Escrow: deposit(scId, USDC, 0, 1000)
+activate Escrow
+Escrow --> Escrow: holding.total: 2000 → 3000 USDC
+deactivate Escrow
 Spoke -> SnapshotQueue: queueAssets(poolId, scId, assetId, 1000, isIncrease: true)
 activate SnapshotQueue
 SnapshotQueue --> SnapshotQueue: queuedAssets.deposits: 500 → 1500 USDC
 deactivate SnapshotQueue
-Spoke -> PoolEscrow: safeTransferFrom(caller → escrow, 1000 USDC)
+Spoke -> Escrow: safeTransferFrom(caller → escrow, 1000 USDC)
 deactivate Spoke
 
-note over PoolEscrow, SnapshotQueue
+note over Escrow, SnapshotQueue
     **holding.total:** 3000 USDC
     **queuedAssets:** 1500 USDC deposits, 200 USDC withdrawals
 end note
@@ -68,18 +68,18 @@ end note
 == Withdraw Operation ==
 PM -> Spoke: withdraw(poolId, scId, USDC, 0, receiver, 800)
 activate Spoke
-Spoke -> PoolEscrow: withdraw(scId, USDC, 0, receiver, 800)
-activate PoolEscrow
-PoolEscrow --> PoolEscrow: holding.total: 3000 → 2200 USDC
-deactivate PoolEscrow
+Spoke -> Escrow: withdraw(scId, USDC, 0, receiver, 800)
+activate Escrow
+Escrow --> Escrow: holding.total: 3000 → 2200 USDC
+deactivate Escrow
 Spoke -> SnapshotQueue: queueAssets(poolId, scId, assetId, 800, isIncrease: false)
 activate SnapshotQueue
 SnapshotQueue --> SnapshotQueue: queuedAssets.withdrawals: 200 → 1000 USDC
 deactivate SnapshotQueue
-Spoke -> PoolEscrow: authTransferTo(USDC, 0, receiver, 800)
+Spoke -> Escrow: authTransferTo(USDC, 0, receiver, 800)
 deactivate Spoke
 
-note over PoolEscrow, SnapshotQueue
+note over Escrow, SnapshotQueue
     **holding.total:** 2200 USDC
     **queuedAssets:** 1500 USDC deposits, 1000 USDC withdrawals
 end note
@@ -109,7 +109,7 @@ end
 deactivate Spoke
 
 == Final State ==
-note over PoolEscrow
+note over Escrow
     **holding.total:** 2200 USDC
     **availableBalanceOf:** 2200 USDC
 end note
