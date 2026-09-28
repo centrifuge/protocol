@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {Chains, ChainConfig} from "../../../script/utils/ChainConfig.s.sol";
+import {Chains, ChainConfig, LayerZeroConfig} from "../../../script/utils/ChainConfig.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -105,6 +105,61 @@ contract ChainConfigDvnParsingTest is Test {
     function test_rejectsAConfigWithNoVerifierAtAll() public {
         vm.expectRevert(bytes("Must have at least one required DVN or a non-zero optional threshold"));
         this.parse(_config('"requiredDVNs":[],"optionalDVNs":[],"optionalDVNThreshold":0'));
+    }
+
+    // A lane-specific DVN set, keyed by a network name with a dash so the lookup path is exercised as written
+    string constant DEFAULT_DVNS = '"requiredDVNs":["0x00000000000000000000000000000000000000A1"],'
+        '"optionalDVNs":["0x00000000000000000000000000000000000000B1"],"optionalDVNThreshold":1';
+
+    function _withOverride(string memory lane) private pure returns (string memory) {
+        return _config(string.concat(DEFAULT_DVNS, ',"dvnOverrides":{"peer-b":{', lane, "}}"));
+    }
+
+    /// @dev The overridden lane gets its own set; every other lane keeps the default one
+    function test_aLaneOverrideReplacesTheDefaultSetForThatLaneOnly() public view {
+        string memory json = _withOverride(
+            '"requiredDVNs":["0x00000000000000000000000000000000000000C1",'
+            '"0x00000000000000000000000000000000000000C2"],'
+            '"optionalDVNs":["0x00000000000000000000000000000000000000D1"],"optionalDVNThreshold":1'
+        );
+        ChainConfig memory config = this.parse(json);
+
+        LayerZeroConfig memory lane = this.dvnsFor(config, json, "peer-b");
+        assertEq(lane.requiredDVNs.length, 2, "override required set");
+        assertEq(lane.requiredDVNs[0], address(0xC1));
+        assertEq(lane.optionalDVNs[0], address(0xD1));
+        assertEq(lane.layerZeroEid, 40001, "the rest of the adapter config is kept");
+
+        LayerZeroConfig memory other = this.dvnsFor(config, json, "peer-c");
+        assertEq(other.requiredDVNs.length, 1, "a lane with no override keeps the default");
+        assertEq(other.requiredDVNs[0], address(0xA1));
+
+        assertEq(config.adapters.layerZero.requiredDVNs[0], address(0xA1), "the default set is not mutated");
+    }
+
+    /// @dev An override is held to every rule the default set is
+    function test_rejectsAnUnsortedOverride() public {
+        vm.expectRevert(bytes("requiredDVNs must be sorted in ascending order"));
+        this.parse(
+            _withOverride(
+                '"requiredDVNs":["0x00000000000000000000000000000000000000C2",'
+                '"0x00000000000000000000000000000000000000C1"],"optionalDVNs":[],"optionalDVNThreshold":0'
+            )
+        );
+    }
+
+    /// @dev Without its required list an override would read as absent, and the lane silently fall back
+    function test_rejectsAnOverrideWithoutRequiredDVNs() public {
+        vm.expectRevert(bytes("dvnOverrides.peer-b must name requiredDVNs"));
+        this.parse(_withOverride('"optionalDVNs":[],"optionalDVNThreshold":0'));
+    }
+
+    function dvnsFor(ChainConfig memory config, string memory json, string memory remote)
+        external
+        pure
+        returns (LayerZeroConfig memory)
+    {
+        return config.dvnsFor(json, remote);
     }
 
     /// @dev An external hop, so that `vm.expectRevert` sees the revert at a lower depth than its own call

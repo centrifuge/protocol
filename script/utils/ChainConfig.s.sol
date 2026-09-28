@@ -621,6 +621,72 @@ library Chains {
         }
     }
 
+    /// @dev Mirrors the invariants LayerZero's `UlnBase` enforces, so a malformed set fails when the config is
+    ///      read rather than as an opaque revert while wiring. Applied to the default set and to every override.
+    function _validateDvnSet(address[] memory requiredDVNs, address[] memory optionalDVNs, uint8 threshold)
+        private
+        pure
+    {
+        // Bound list lengths to the uint8 cap LayerZero stores them in. Without this, a 256+
+        // entry list would silently truncate via `uint8(...length)` in `encodeUlnConfig`,
+        // collapsing optional DVNs to NIL or undercounting required DVNs
+        require(requiredDVNs.length <= 255, "too many requiredDVNs (uint8 cap)");
+        require(optionalDVNs.length <= 255, "too many optionalDVNs (uint8 cap)");
+
+        // Enforce the ascending-sort invariant LayerZero UlnBase expects, for each list independently.
+        for (uint256 i = 1; i < requiredDVNs.length; i++) {
+            require(requiredDVNs[i - 1] < requiredDVNs[i], "requiredDVNs must be sorted in ascending order");
+        }
+        for (uint256 i = 1; i < optionalDVNs.length; i++) {
+            require(optionalDVNs[i - 1] < optionalDVNs[i], "optionalDVNs must be sorted in ascending order");
+        }
+        // Disjoint check: LayerZero's UlnBase allows overlap between required and optional lists,
+        // but a DVN appearing in both collapses our "distinct operators to forge" guarantee — it
+        // would be counted as both a required attestation and a slot of the optional threshold
+        for (uint256 i; i < requiredDVNs.length; i++) {
+            for (uint256 j; j < optionalDVNs.length; j++) {
+                require(requiredDVNs[i] != optionalDVNs[j], "DVN appears in both required and optional lists");
+            }
+        }
+        // Mirror UlnBase.LZ_ULN_InvalidOptionalDVNThreshold: 0 < threshold <= optionalDVNs.length
+        // (when optionalDVNs is empty, threshold must be 0).
+        if (optionalDVNs.length == 0) {
+            require(threshold == 0, "optionalDVNThreshold must be 0 when no optional DVNs");
+        } else {
+            require(
+                threshold > 0 && threshold <= optionalDVNs.length,
+                "optionalDVNThreshold must be in (0, optionalDVNs.length]"
+            );
+        }
+        // Mirror UlnBase.LZ_ULN_AtLeastOneDVN: at least one required DVN or a non-zero optional threshold.
+        require(
+            requiredDVNs.length > 0 || threshold > 0,
+            "Must have at least one required DVN or a non-zero optional threshold"
+        );
+    }
+
+    /// @notice The DVN set a config uses for its lane to `remote`, when it overrides its default one there.
+    ///
+    /// @dev    A chain whose DVN operators do not all run on a peer cannot share its default set with that
+    ///         peer: each end of a lane must name the same operators, at each chain's own addresses. The
+    ///         override is how the peer names the chain's operators for that one lane.
+    function dvnOverride(string memory json, string memory remote)
+        internal
+        pure
+        returns (bool found, address[] memory requiredDVNs, address[] memory optionalDVNs, uint8 threshold)
+    {
+        // Bracket form, so a network name containing a dash is not read as a path operator
+        string memory path = string.concat(".adapters.layerZero.dvnOverrides.['", remote, "']");
+        try vm.parseJsonAddressArray(json, string.concat(path, ".requiredDVNs")) returns (address[] memory required) {
+            return (
+                true,
+                required,
+                vm.parseJsonAddressArray(json, string.concat(path, ".optionalDVNs")),
+                uint8(vm.parseJsonUint(json, string.concat(path, ".optionalDVNThreshold")))
+            );
+        } catch {}
+    }
+
     function _parseAdaptersConfig(string memory json) private pure returns (AdaptersConfig memory config) {
         try vm.parseJsonBool(json, ".adapters.layerZero.deploy") returns (bool val) {
             config.layerZero.deploy = val;
@@ -648,54 +714,23 @@ library Chains {
             config.layerZero.optionalDVNThreshold =
                 uint8(vm.parseJsonUint(json, ".adapters.layerZero.optionalDVNThreshold"));
 
-            // Bound list lengths to the uint8 cap LayerZero stores them in. Without this, a 256+
-            // entry list would silently truncate via `uint8(...length)` in `encodeUlnConfig`,
-            // collapsing optional DVNs to NIL or undercounting required DVNs
-            require(config.layerZero.requiredDVNs.length <= 255, "too many requiredDVNs (uint8 cap)");
-            require(config.layerZero.optionalDVNs.length <= 255, "too many optionalDVNs (uint8 cap)");
-
-            // Enforce the ascending-sort invariant LayerZero UlnBase expects, for each list independently.
-            for (uint256 i = 1; i < config.layerZero.requiredDVNs.length; i++) {
-                require(
-                    config.layerZero.requiredDVNs[i - 1] < config.layerZero.requiredDVNs[i],
-                    "requiredDVNs must be sorted in ascending order"
-                );
-            }
-            for (uint256 i = 1; i < config.layerZero.optionalDVNs.length; i++) {
-                require(
-                    config.layerZero.optionalDVNs[i - 1] < config.layerZero.optionalDVNs[i],
-                    "optionalDVNs must be sorted in ascending order"
-                );
-            }
-            // Disjoint check: LayerZero's UlnBase allows overlap between required and optional lists,
-            // but a DVN appearing in both collapses our "distinct operators to forge" guarantee — it
-            // would be counted as both a required attestation and a slot of the optional threshold
-            for (uint256 i; i < config.layerZero.requiredDVNs.length; i++) {
-                for (uint256 j; j < config.layerZero.optionalDVNs.length; j++) {
-                    require(
-                        config.layerZero.requiredDVNs[i] != config.layerZero.optionalDVNs[j],
-                        "DVN appears in both required and optional lists"
-                    );
-                }
-            }
-            // Mirror UlnBase.LZ_ULN_InvalidOptionalDVNThreshold: 0 < threshold <= optionalDVNs.length
-            // (when optionalDVNs is empty, threshold must be 0).
-            if (config.layerZero.optionalDVNs.length == 0) {
-                require(
-                    config.layerZero.optionalDVNThreshold == 0, "optionalDVNThreshold must be 0 when no optional DVNs"
-                );
-            } else {
-                require(
-                    config.layerZero.optionalDVNThreshold > 0
-                        && config.layerZero.optionalDVNThreshold <= config.layerZero.optionalDVNs.length,
-                    "optionalDVNThreshold must be in (0, optionalDVNs.length]"
-                );
-            }
-            // Mirror UlnBase.LZ_ULN_AtLeastOneDVN: at least one required DVN or a non-zero optional threshold.
-            require(
-                config.layerZero.requiredDVNs.length > 0 || config.layerZero.optionalDVNThreshold > 0,
-                "Must have at least one required DVN or a non-zero optional threshold"
+            _validateDvnSet(
+                config.layerZero.requiredDVNs, config.layerZero.optionalDVNs, config.layerZero.optionalDVNThreshold
             );
+
+            // Per-lane overrides, keyed by remote network. Validated here but not carried in the struct: a
+            // nested dynamic array cannot be copied to storage without via_ir, and scripts hold configs in
+            // storage. `ChainConfigLib.dvnsFor` re-reads them when a lane is built.
+            string[] memory overridden;
+            try vm.parseJsonKeys(json, ".adapters.layerZero.dvnOverrides") returns (string[] memory keys) {
+                overridden = keys;
+            } catch {}
+            for (uint256 i; i < overridden.length; i++) {
+                (bool found, address[] memory requiredDVNs, address[] memory optionalDVNs, uint8 threshold) =
+                    dvnOverride(json, overridden[i]);
+                require(found, string.concat("dvnOverrides.", overridden[i], " must name requiredDVNs"));
+                _validateDvnSet(requiredDVNs, optionalDVNs, threshold);
+            }
         }
 
         if (config.axelar.deploy) {
@@ -761,6 +796,43 @@ library ChainConfigLib {
         );
     }
 
+    /// @notice The LayerZero config this chain uses for its lane to `remote`: its override for that remote
+    ///         where it has one, its default DVN set otherwise.
+    ///
+    /// @dev    Re-reads the file, where the overrides stay (see `_parseAdaptersConfig`).
+    function dvnsFor(ChainConfig memory config, string memory remote) internal view returns (LayerZeroConfig memory) {
+        return dvnsFor(config, Chains.jsonOf(config.network.name, config.network.environment), remote);
+    }
+
+    /// @notice Same, from the config's JSON already read. Returns a new struct, so reassigning its fields
+    ///         leaves `config` alone; without an override its DVN arrays are `config`'s own, not copies.
+    function dvnsFor(ChainConfig memory config, string memory json, string memory remote)
+        internal
+        pure
+        returns (LayerZeroConfig memory lz)
+    {
+        LayerZeroConfig memory base = config.adapters.layerZero;
+        lz = LayerZeroConfig({
+            endpoint: base.endpoint,
+            layerZeroEid: base.layerZeroEid,
+            deploy: base.deploy,
+            blockConfirmations: base.blockConfirmations,
+            requiredDVNs: base.requiredDVNs,
+            optionalDVNs: base.optionalDVNs,
+            optionalDVNThreshold: base.optionalDVNThreshold
+        });
+
+        (bool found, address[] memory requiredDVNs, address[] memory optionalDVNs, uint8 threshold) =
+            Chains.dvnOverride(json, remote);
+        if (!found) return lz;
+
+        lz.requiredDVNs = requiredDVNs;
+        lz.optionalDVNs = optionalDVNs;
+        lz.optionalDVNThreshold = threshold;
+    }
+
+    /// @notice One `SetConfigParam` per connection, in `adapterConnections()` order, which is how the adapter
+    ///         batcher indexes them. A connection without LayerZero keeps its slot, left empty and never read.
     function buildLayerZeroConfigParams(ChainConfig memory config)
         internal
         view
@@ -769,42 +841,59 @@ library ChainConfigLib {
         if (!config.adapters.layerZero.deploy) return params;
 
         Connection[] memory connections = config.network.connections();
+        _requireOverridesNameLayerZeroPeers(config, connections);
 
-        // Count LZ-enabled connections
-        uint256 count;
-        for (uint256 i; i < connections.length; i++) {
-            if (connections[i].layerZero) count++;
-        }
-
-        params = new SetConfigParam[](count);
-
-        // UlnConfig is the same for all connections - only eid differs.
-        bytes memory encodedUln = encodeUlnConfig(config.adapters.layerZero);
-
-        uint256 idx;
+        params = new SetConfigParam[](connections.length);
         for (uint256 i; i < connections.length; i++) {
             if (!connections[i].layerZero) continue;
 
             ChainConfig memory remoteConfig = Chains.load(connections[i].network, config.network.environment);
+            LayerZeroConfig memory local = config.dvnsFor(connections[i].network);
+            LayerZeroConfig memory remote = remoteConfig.dvnsFor(config.network.name);
 
             require(
-                config.adapters.layerZero.blockConfirmations == remoteConfig.adapters.layerZero.blockConfirmations,
+                local.blockConfirmations == remote.blockConfirmations,
                 "blockConfirmations mismatch between local and remote config"
             );
-            // Enforce uniform DVN security shape across the bidirectional connection. DVN addresses
-            // legitimately differ per chain.
-            // NOTE: The shape (required count, optional count, threshold) must match such that each side
-            // counts the same number of attestations.
+            // Both ends of a lane must count the same number of attestations, so the shape (required count,
+            // optional count, threshold) of what each side uses for THIS lane has to match — either end may
+            // override. DVN addresses legitimately differ per chain.
+            // NOTE: the operators have to match too, since a DVN only serves a lane it runs on at both ends,
+            // but only the two configs can say who an address belongs to: a review concern, not a check.
             require(
-                config.adapters.layerZero.requiredDVNs.length == remoteConfig.adapters.layerZero.requiredDVNs.length
-                    && config.adapters.layerZero.optionalDVNs.length
-                        == remoteConfig.adapters.layerZero.optionalDVNs.length
-                    && config.adapters.layerZero.optionalDVNThreshold
-                        == remoteConfig.adapters.layerZero.optionalDVNThreshold,
+                local.requiredDVNs.length == remote.requiredDVNs.length
+                    && local.optionalDVNs.length == remote.optionalDVNs.length
+                    && local.optionalDVNThreshold == remote.optionalDVNThreshold,
                 "DVN config shape mismatch between local and remote"
             );
 
-            params[idx++] = SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodedUln);
+            params[i] =
+                SetConfigParam(remoteConfig.adapters.layerZero.layerZeroEid, ULN_CONFIG_TYPE, encodeUlnConfig(local));
+        }
+    }
+
+    /// @dev An override keyed by a network this chain has no LayerZero lane to is never applied, so the lane it
+    ///      was meant for would fall back to the default set without a word — a typo, a case mismatch or a peer
+    ///      dropped from the connections file. Refused instead.
+    function _requireOverridesNameLayerZeroPeers(ChainConfig memory config, Connection[] memory connections)
+        private
+        view
+    {
+        string memory json = Chains.jsonOf(config.network.name, config.network.environment);
+        string[] memory keys;
+        try vm.parseJsonKeys(json, ".adapters.layerZero.dvnOverrides") returns (string[] memory parsed) {
+            keys = parsed;
+        } catch {
+            return;
+        }
+
+        for (uint256 i; i < keys.length; i++) {
+            bool isPeer;
+            for (uint256 j; j < connections.length && !isPeer; j++) {
+                isPeer =
+                    connections[j].layerZero && keccak256(bytes(connections[j].network)) == keccak256(bytes(keys[i]));
+            }
+            require(isPeer, string.concat("dvnOverrides names no LayerZero peer: ", keys[i]));
         }
     }
 
