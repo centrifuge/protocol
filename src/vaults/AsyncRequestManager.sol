@@ -51,6 +51,14 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     ISpokeRegistry public spokeRegistry;
     ISubsidyManager public subsidyManager;
 
+    /// @dev Keyed per vault, while the hub aggregates the order it belongs to per pool, share class,
+    ///      asset and investor: vaults linked to one such tuple share a hub order but keep separate local
+    ///      amounts. Fulfillments settle on the vault the share token's pointer names, so requests are
+    ///      expected to originate there. One sent from another linked vault joins the shared order and is
+    ///      settled elsewhere, leaving that vault's pending amount stale; cancelling it then sets the
+    ///      pending-cancellation flag with nothing left for the hub to cancel, so no callback ever clears
+    ///      it and that vault stays blocked for that investor until the pool points back at it and
+    ///      force-cancels a fresh order. The position itself stays claimable on the pointed-at vault.
     mapping(IBaseVault vault => mapping(address investor => AsyncInvestmentState)) public investments;
 
     constructor(ISubsidyManager subsidyManager_, address deployer) Auth(deployer) {
