@@ -9,6 +9,7 @@ import {AccountId} from "../../../src/core/types/AccountId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../../src/core/types/AssetId.sol";
 
+import {USD_ID} from "../../../src/deployment/Currencies.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 contract TestCases is CentrifugeIntegrationTest {

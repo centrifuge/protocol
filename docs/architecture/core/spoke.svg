@@ -38,14 +38,14 @@
 
     <!-- SpokeHandler -> SpokeRegistry -->
     <path d="M800,690 H960 Q980,690 980,670 V625" marker-end="url(#arrow)"/>
-    <!-- SpokeHandler -> PoolEscrowFactory -->
+    <!-- SpokeHandler -> EscrowFactory -->
     <path d="M800,650 H860 Q880,650 880,630 V540 Q880,520 900,520 H1000 Q1020,520 1020,500 V465" marker-end="url(#arrow)"/>
     <!-- SpokeHandler -> IRegistrar -->
     <path d="M700,705 V730 Q700,750 720,750 H1380" marker-end="url(#arrow)"/>
 
     <!-- SpokeRegistry -> n ShareToken -->
     <path d="M1150,555 V520 Q1150,500 1170,500 H1700 Q1720,500 1720,480 V290 Q1720,270 1740,270 H1780" marker-end="url(#arrow)"/>
-    <!-- PoolEscrowFactory creates n PoolEscrow -->
+    <!-- EscrowFactory creates n Escrow -->
     <path d="M1280,430 H1380" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
 
     <!-- ShareTokenRegistrar creates n ShareToken -->
@@ -102,7 +102,7 @@
     <rect x="940" y="395" width="340" height="70" rx="10" fill="#f6f7f8"/>
     <circle cx="974" cy="430" r="17" fill="#fbe6b0"/>
     <text x="974" y="430" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
-    <text x="1004" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">PoolEscrowFactory</text>
+    <text x="1004" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">EscrowFactory</text>
 
     <rect x="940" y="555" width="340" height="70" rx="10" fill="#f6f7f8"/>
     <circle cx="974" cy="590" r="17" fill="#fbe6b0"/>
@@ -113,7 +113,7 @@
     <rect x="1380" y="395" width="320" height="70" rx="10" fill="#f6f7f8"/>
     <circle cx="1414" cy="430" r="17" fill="#fbe6b0"/>
     <text x="1414" y="430" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
-    <text x="1444" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">PoolEscrow</text>
+    <text x="1444" y="430" font-size="21" fill="#1f2a37" dominant-baseline="central">Escrow</text>
 
     <rect x="1380" y="715" width="320" height="70" rx="10" fill="#f6f7f8"/>
     <circle cx="1414" cy="750" r="17" fill="#d6f3d2"/>

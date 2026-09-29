@@ -354,25 +354,41 @@ contract HubRegistryTest is Test {
         assertEq(registry.decimals(poolId), 0);
     }
 
-    function testRegisterAssetRevertsOnDuplicate() public {
+    function testRegisterAssetRefreshesDecimals() public {
+        // A token registered before it was initialized reports 0 decimals.
+        registry.registerAsset(EUR, 0);
+        assertEq(registry.decimals(EUR), 0);
+
+        // Registering it again once initialized overwrites the entry with the truth.
+        vm.expectEmit();
+        emit IHubRegistry.NewAsset(EUR, 6);
         registry.registerAsset(EUR, 6);
 
-        vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
+        assertEq(registry.decimals(EUR), 6);
+
+        // Re-registering at the same value stays idempotent, so repeated registration is not a failure.
         registry.registerAsset(EUR, 6);
+        assertEq(registry.decimals(EUR), 6);
 
-        // A different decimals value does not change the outcome: still reverts, no overwrite.
-        vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
-        registry.registerAsset(EUR, 18);
-
+        // A refresh is still bounded, and a rejected one leaves the entry it would have replaced.
+        vm.expectRevert(IHubRegistry.TooManyDecimals.selector);
+        registry.registerAsset(EUR, 19);
         assertEq(registry.decimals(EUR), 6);
     }
 
-    function testRegisterAssetZeroDecimalsRevertsOnDuplicate() public {
+    /// @dev Only an unset entry may be replaced. RegisterAsset rides the global adapter set, so it reaches
+    ///      pools running their own adapters; a forged one must not retune what claim payouts convert
+    ///      through.
+    function testRegisterAssetCannotChangeNonZeroDecimals() public {
+        registry.registerAsset(EUR, 6);
+
+        vm.expectRevert(IHubRegistry.CannotChangeDecimals.selector);
+        registry.registerAsset(EUR, 18);
+
+        vm.expectRevert(IHubRegistry.CannotChangeDecimals.selector);
         registry.registerAsset(EUR, 0);
 
-        // The registered flag, not the decimals value, gates re-registration.
-        vm.expectRevert(IHubRegistry.AssetAlreadyRegistered.selector);
-        registry.registerAsset(EUR, 0);
+        assertEq(registry.decimals(EUR), 6);
     }
 
     function testDecimalsRevertsOnUnregistered() public {

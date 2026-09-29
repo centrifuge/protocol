@@ -8,9 +8,9 @@ import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {MultiAdapter} from "../../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {MessageType} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {IMessageParser} from "../../../src/core/messaging/interfaces/IMessageParser.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
 import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
-import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IMultiAdapter, MAX_ADAPTER_COUNT} from "../../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import "forge-std/Test.sol";
@@ -36,7 +36,7 @@ contract MockGateway is IMessageHandler {
     }
 }
 
-contract MockMessageProperties is IMessageProperties {
+contract MockMessageParser is IMessageParser {
     function messageLength(bytes calldata message) external pure returns (uint16) {}
 
     function messagePoolId(bytes calldata message) external pure returns (PoolId) {
@@ -65,14 +65,6 @@ contract MockMessageProperties is IMessageProperties {
         }
         return PoolId.wrap(0);
     }
-
-    function messageProcessingGasLimit(uint16, bytes calldata message) external pure returns (uint128) {}
-
-    function messageOverallGasLimit(uint16, bytes calldata message) external pure returns (uint128) {}
-
-    function maxBatchGasLimit(uint16 centrifugeId) external view returns (uint128) {}
-
-    function messageFailureGasReserve() external pure returns (uint128) {}
 }
 
 // -----------------------------------------
@@ -135,7 +127,7 @@ contract MultiAdapterTest is Test {
     IAdapter[] threeAdapters;
 
     MockGateway gateway = new MockGateway();
-    MockMessageProperties messageProperties = new MockMessageProperties();
+    MockMessageParser parser = new MockMessageParser();
     MultiAdapterExt multiAdapter = new MultiAdapterExt(LOCAL_CENT_ID, gateway, address(this));
 
     address immutable ANY = makeAddr("ANY");
@@ -176,13 +168,13 @@ contract MultiAdapterTest is Test {
         threeAdapters.push(adapter2);
         threeAdapters.push(adapter3);
 
-        multiAdapter.file("messageProperties", address(messageProperties));
+        multiAdapter.file("parser", address(parser));
     }
 
     function testConstructor() public view {
         assertEq(multiAdapter.localCentrifugeId(), LOCAL_CENT_ID);
         assertEq(address(multiAdapter.gateway()), address(gateway));
-        assertEq(address(multiAdapter.messageProperties()), address(messageProperties));
+        assertEq(address(multiAdapter.parser()), address(parser));
     }
 }
 
@@ -205,11 +197,18 @@ contract MultiAdapterTestFile is MultiAdapterTest {
         assertEq(address(multiAdapter.gateway()), address(23));
     }
 
-    function testMultiAdapterFileMessageProperties() public {
+    function testMultiAdapterFileParser() public {
         vm.expectEmit();
-        emit IMultiAdapter.File("messageProperties", address(23));
-        multiAdapter.file("messageProperties", address(23));
-        assertEq(address(multiAdapter.messageProperties()), address(23));
+        emit IMultiAdapter.File("parser", address(23));
+        multiAdapter.file("parser", address(23));
+        assertEq(address(multiAdapter.parser()), address(23));
+    }
+
+    function testMultiAdapterFileMessageGas() public {
+        vm.expectEmit();
+        emit IMultiAdapter.File("messageGas", address(23));
+        multiAdapter.file("messageGas", address(23));
+        assertEq(address(multiAdapter.messageGas()), address(23));
     }
 }
 

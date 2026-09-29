@@ -971,6 +971,39 @@ contract StdHubPolicyTest is Test {
         assertEq(_delayOf(_setAdaptersCall(local, remote)), DELAY);
     }
 
+    // ─── spoke-call classification ────────────────────────────────────────────────
+
+    function _authorizeCall(bytes memory spokeData) internal pure returns (bytes memory) {
+        return
+            abi.encodeWithSelector(IHub.authorizeSpokeCall.selector, POOL_A, LOCAL_CENTRIFUGE_ID, spokeData, address(0));
+    }
+
+    function _unauthorizeCall(bytes memory spokeData) internal pure returns (bytes memory) {
+        return
+            abi.encodeWithSelector(
+                IHub.unauthorizeSpokeCall.selector, POOL_A, LOCAL_CENTRIFUGE_ID, spokeData, address(0)
+            );
+    }
+
+    function testAuthorizeSpokeCallNeedsAuthorization() public {
+        assertEq(_delayOf(_authorizeCall(hex"1234")), DELAY);
+    }
+
+    function testUnauthorizeSpokeCallInPolicy() public view {
+        // Revoking only reduces capability, so it runs instantly rather than behind a delay of its own.
+        assertEq(policy.authorizationDelay(POOL_A, manager, _unauthorizeCall(hex"1234")), 0);
+    }
+
+    function testUnauthorizeSpokeCallInPolicyUnderOnchainAccounting() public {
+        StdHubPolicy policy_ = _onchainPolicy();
+        assertEq(policy_.authorizationDelay(POOL_A, manager, _unauthorizeCall(hex"1234")), 0);
+    }
+
+    function testUnauthorizeSpokeCallCannotBeAuthorized() public {
+        vm.expectRevert(IHubRegistry.InPolicy.selector);
+        hubRegistry.initiateAuthorization(POOL_A, manager, _unauthorizeCall(hex"1234"));
+    }
+
     // ─── deny-by-default ──────────────────────────────────────────────────────────
 
     function testUnknownSelectorOutOfPolicy() public {
@@ -1362,5 +1395,36 @@ contract StdHubPolicyTest is Test {
         // A selector blocked for KEEPER in POOL_A (notifyPool) is in policy for KEEPER in POOL_B.
         vm.prank(address(hub));
         policy_.enforce(poolB, KEEPER, abi.encodeWithSelector(IHub.notifyPool.selector, poolB, uint16(1), address(0)));
+    }
+
+    function testConfinedCallerBlockedFromUnauthorizeSpokeCall() public {
+        StdHubPolicy policy_ = _allowlistPolicy(_selectors(IHub.notifyPool.selector));
+
+        vm.prank(address(hub));
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
+        policy_.enforce(POOL_A, KEEPER, _unauthorizeCall(hex"1234"));
+    }
+
+    function testConfinedCallerCannotQueueUnauthorizeSpokeCall() public {
+        // Blocked outright rather than timelocked: the confined caller has no delayed fallback either.
+        _allowlistPolicy(_selectors(IHub.notifyPool.selector));
+
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
+        hubRegistry.initiateAuthorization(POOL_A, KEEPER, _unauthorizeCall(hex"1234"));
+    }
+
+    function testConfinedCallerListedForUnauthorizeSpokeCallPasses() public {
+        StdHubPolicy policy_ = _allowlistPolicy(_selectors(IHub.unauthorizeSpokeCall.selector));
+
+        vm.prank(address(hub));
+        policy_.enforce(POOL_A, KEEPER, _unauthorizeCall(hex"1234"));
+    }
+
+    function testListingAuthorizeSpokeCallDoesNotCarryTheRevoke() public {
+        StdHubPolicy authorizeOnly = _allowlistPolicy(_selectors(IHub.authorizeSpokeCall.selector));
+
+        vm.prank(address(hub));
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
+        authorizeOnly.enforce(POOL_A, KEEPER, _unauthorizeCall(hex"1234"));
     }
 }

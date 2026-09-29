@@ -8,12 +8,12 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 
+import {Escrow} from "../../../../src/core/spoke/Escrow.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
 import {VaultDetails} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
@@ -109,8 +109,8 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     /// @dev Property: depositing maxDeposit blocks the user from depositing more
     /// @dev Property: depositing maxDeposit does not increase the pendingDeposit
     /// @dev Property: depositing maxDeposit doesn't mint more than maxMint shares
-    /// @dev Property: For async vaults, validates PoolEscrow share transfers
-    /// @dev Property: For sync vaults, validates PoolEscrow state changes
+    /// @dev Property: For async vaults, validates Escrow share transfers
+    /// @dev Property: For sync vaults, validates Escrow state changes
     function vault_maxDeposit(
         uint64,
         /* poolEntropy */
@@ -152,7 +152,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
             uint256 maxDepositAfter = _getVault().maxDeposit(_getActor());
 
             if (isAsyncVault) {
-                // For async vaults, validate PoolEscrow share transfers
+                // For async vaults, validate Escrow share transfers
                 claimState.sharesReturned = shares;
                 _updateAsyncClaimStateAfter(claimState, _getVault(), _getActor());
                 _validateAsyncVaultClaim(claimState, "vault_maxDeposit");
@@ -163,7 +163,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
                     maxDepositBefore, maxDepositAfter, depositAmount, "Deposit", depositTolerance
                 );
             } else {
-                // For sync vaults, validate PoolEscrow changes due to immediate deposit
+                // For sync vaults, validate Escrow changes due to immediate deposit
                 _updatePoolEscrowStateAfter(escrowState);
                 _validateSyncMaxValueChange(maxDepositBefore, maxDepositAfter, depositAmount, "Deposit", escrowState);
 
@@ -227,7 +227,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         PoolId poolId = _getVault().poolId();
         ShareClassId scId = _getVault().scId();
 
-        // === PoolEscrow State Analysis Before Mint ===
+        // === Escrow State Analysis Before Mint ===
         PoolEscrowState memory escrowState = _analyzePoolEscrowState(poolId, scId);
 
         AsyncClaimState memory claimState;
@@ -253,7 +253,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
                     maxDepositBefore, maxDepositAfter, assets, "Deposit", _asyncRoundTripTolerance(true)
                 );
             } else {
-                // For sync vaults, validate PoolEscrow changes due to immediate mint
+                // For sync vaults, validate Escrow changes due to immediate mint
                 _updatePoolEscrowStateAfter(escrowState);
                 _validateSyncMaxValueChange(maxMintBefore, maxMintAfter, assets, "Mint", escrowState);
                 _validateSyncMaxValueChange(maxDepositBefore, maxDepositAfter, assets, "Deposit", escrowState);
@@ -418,9 +418,9 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
 
     /// === Helper Functions === ///
 
-    /// @dev Captures PoolEscrow state for validation analysis
+    /// @dev Captures Escrow state for validation analysis
     struct PoolEscrowState {
-        IPoolEscrow poolEscrow;
+        IEscrow poolEscrow;
         address asset;
         ShareClassId scId;
         uint256 tokenId;
@@ -437,7 +437,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     }
 
     /// @notice Tracks share balances for async vault claim operations
-    /// @dev During claim operations (vault.deposit/mint), shares transfer from PoolEscrow to receiver
+    /// @dev During claim operations (vault.deposit/mint), shares transfer from Escrow to receiver
     struct AsyncClaimState {
         uint256 poolEscrowSharesBefore;
         uint256 poolEscrowSharesAfter;
@@ -448,23 +448,23 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         uint128 maxMintAfter;
     }
 
-    /// @dev Analyzes PoolEscrow state before operations
+    /// @dev Analyzes Escrow state before operations
     /// @param poolId The pool identifier
     /// @param scId The share class identifier
-    /// @return state PoolEscrow state analysis results
+    /// @return state Escrow state analysis results
     function _analyzePoolEscrowState(PoolId poolId, ShareClassId scId)
         internal
         view
         returns (PoolEscrowState memory state)
     {
-        state.poolEscrow = poolEscrowFactory.escrow(poolId);
+        state.poolEscrow = escrowFactory.escrow(poolId);
         state.asset = address(_getVault().asset());
         state.scId = scId;
         state.tokenId = 0; // ERC20 tokens use tokenId 0
 
         // Capture raw holding values before operation
         (state.totalBefore, state.reservedBefore) =
-            PoolEscrow(payable(address(state.poolEscrow))).holding(scId, state.asset, state.tokenId);
+            Escrow(payable(address(state.poolEscrow))).holding(scId, state.asset, state.tokenId);
 
         // Calculate derived values before operation
         state.availableBalanceBefore = state.poolEscrow.availableBalanceOf(scId, state.asset, state.tokenId);
@@ -477,12 +477,12 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         state.isNormalStateAfter = state.isNormalStateBefore;
     }
 
-    /// @dev Updates PoolEscrow state after operation for post-validation
+    /// @dev Updates Escrow state after operation for post-validation
     /// @param state The state struct to update
     function _updatePoolEscrowStateAfter(PoolEscrowState memory state) internal view {
         // Capture raw holding values after operation
         (state.totalAfter, state.reservedAfter) =
-            PoolEscrow(payable(address(state.poolEscrow))).holding(state.scId, state.asset, state.tokenId);
+            Escrow(payable(address(state.poolEscrow))).holding(state.scId, state.asset, state.tokenId);
 
         // Calculate derived values after operation
         state.availableBalanceAfter = state.poolEscrow.availableBalanceOf(state.scId, state.asset, state.tokenId);
@@ -565,7 +565,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         );
     }
 
-    /// @dev Validates SyncVault max value changes with PoolEscrow state validation
+    /// @dev Validates SyncVault max value changes with Escrow state validation
     /// @param operationName The name of the operation ("Deposit" or "Mint")
     function _validateSyncMaxValueChange(
         uint256 maxValueBefore,
@@ -642,7 +642,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         } else if (!state.isNormalStateBefore && state.isNormalStateAfter) {
             // Scenario 3: Critical -> Normal (total ≤ reserved before, total > reserved after)
             // SyncVault: Both before and after follow maxReserve - availableBalance calculation
-            // The availableBalance calculation changes during PoolEscrow state transitions
+            // The availableBalance calculation changes during Escrow state transitions
 
             // SyncVault Critical->Normal: Calculate expected decrease based on actual availableBalance change
             // This is more accurate than using assetAmount directly
@@ -706,12 +706,12 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         }
     }
 
-    /// @dev Logs PoolEscrow analysis for debugging
+    /// @dev Logs Escrow analysis for debugging
     /// @param operationName The name of the operation ("Deposit" or "Mint")
     /// @param maxValueBefore The maximum operation value before
     /// @param maxValueAfter The maximum operation value after
     /// @param operationAmount The operation amount
-    /// @param state The PoolEscrow state
+    /// @param state The Escrow state
     function _logPoolEscrowAnalysis(
         string memory operationName,
         uint256 maxValueBefore,
@@ -719,7 +719,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         uint256 operationAmount,
         PoolEscrowState memory state
     ) internal pure {
-        console2.log(string.concat("=== PoolEscrow Analysis (", operationName, ") ==="));
+        console2.log(string.concat("=== Escrow Analysis (", operationName, ") ==="));
         console2.log(
             "Available balance before/after: %d / %d", state.availableBalanceBefore, state.availableBalanceAfter
         );
@@ -728,7 +728,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     }
 
     /// @dev Captures async claim state before vault.deposit() operation
-    /// @notice Tracks PoolEscrow and receiver share balances
+    /// @notice Tracks Escrow and receiver share balances
     function _captureAsyncClaimStateBefore(IBaseVault vault, address receiver)
         internal
         view
@@ -760,7 +760,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
     }
 
     /// @dev Validates async vault claim operations
-    /// @notice During claims, PoolEscrow shares transfer to receiver
+    /// @notice During claims, Escrow shares transfer to receiver
     /// @notice This validation works for all cases including when sharesReturned == 0
     function _validateAsyncVaultClaim(AsyncClaimState memory state, string memory operationName) internal {
         uint256 poolEscrowDecrease = state.poolEscrowSharesBefore - state.poolEscrowSharesAfter;
@@ -768,7 +768,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         eq(
             poolEscrowDecrease,
             state.sharesReturned,
-            string.concat(operationName, ": PoolEscrow must decrease by exact shares returned")
+            string.concat(operationName, ": Escrow must decrease by exact shares returned")
         );
         eq(
             receiverIncrease,
@@ -778,7 +778,7 @@ abstract contract VaultProperties is Setup, Asserts, ERC7540Properties {
         eq(
             poolEscrowDecrease,
             receiverIncrease,
-            string.concat(operationName, ": shares leaving PoolEscrow must equal shares received")
+            string.concat(operationName, ": shares leaving Escrow must equal shares received")
         );
 
         uint128 maxMintDecrease = state.maxMintBefore - state.maxMintAfter;

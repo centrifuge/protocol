@@ -21,7 +21,6 @@ import {Auth} from "../misc/Auth.sol";
 import {D18, d18} from "../misc/types/D18.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
-import {IEscrow} from "../misc/interfaces/IEscrow.sol";
 import {BytesLib} from "../misc/libraries/BytesLib.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
@@ -30,7 +29,7 @@ import {AssetId} from "../core/types/AssetId.sol";
 import {ISpoke} from "../core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../core/libraries/PricingLib.sol";
 import {ShareClassId} from "../core/types/ShareClassId.sol";
-import {IPoolEscrow} from "../core/spoke/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../core/spoke/interfaces/IEscrow.sol";
 import {ISpokeRequestManager} from "../core/spoke/interfaces/ISpokeRequestManager.sol";
 import {VaultDetails, ISpokeRegistry} from "../core/spoke/interfaces/ISpokeRegistry.sol";
 
@@ -643,7 +642,7 @@ contract AsyncRequestManager is Auth, IAsyncRequestManager {
     }
 
     /// @inheritdoc IBaseRequestManager
-    function poolEscrow(PoolId poolId) public view returns (IPoolEscrow) {
+    function poolEscrow(PoolId poolId) public view returns (IEscrow) {
         return spoke.escrow(poolId);
     }
 

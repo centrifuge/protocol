@@ -2,9 +2,9 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "./IAdapter.sol";
+import {IMessageParser} from "./IMessageParser.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 import {IAdapterEntrypoint} from "./IAdapterEntrypoint.sol";
-import {IMessageProperties} from "./IMessageProperties.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 
@@ -218,8 +218,8 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     /// @notice Gateway that receives confirmed messages once adapter quorum is reached
     function gateway() external view returns (IMessageHandler);
 
-    /// @notice Provides gas cost estimates and message type metadata for cross-chain messages
-    function messageProperties() external view returns (IMessageProperties);
+    /// @notice Determines how a message is framed and which pool's adapter set carries it
+    function parser() external view returns (IMessageParser);
 
     /// @notice Returns whether an address is a manager for a given pool
     /// @param poolId The pool to check
@@ -227,6 +227,9 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice Returns the currently active session id for a given chain and pool
+    /// @dev Monotonic and uint16, so a (chain, pool) pair supports 65,535 rotations and then `setAdapters`
+    ///      reverts on the overflow for good: nothing decrements it and no auth path resets it, so that
+    ///      pair's set can no longer be changed, by a manager or by Root
     /// @param centrifugeId The source chain identifier
     /// @param poolId The pool identifier
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint16);

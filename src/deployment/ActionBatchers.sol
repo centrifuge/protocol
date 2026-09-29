@@ -1,27 +1,28 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ISO4217_DECIMALS, iso4217Codes} from "./Currencies.sol";
 import {SetConfigParam, ILayerZeroEndpointV2Like} from "./interfaces/ILayerZeroEndpointV2Like.sol";
 
 import {Hub} from "../core/hub/Hub.sol";
 import {Envoy} from "../core/utils/Envoy.sol";
 import {Spoke} from "../core/spoke/Spoke.sol";
 import {PoolId} from "../core/types/PoolId.sol";
+import {AssetId} from "../core/types/AssetId.sol";
 import {Holdings} from "../core/hub/Holdings.sol";
 import {Accounting} from "../core/hub/Accounting.sol";
 import {Gateway} from "../core/messaging/Gateway.sol";
 import {HubHandler} from "../core/hub/HubHandler.sol";
 import {HubRegistry} from "../core/hub/HubRegistry.sol";
 import {SpokeHandler} from "../core/spoke/SpokeHandler.sol";
-import {AssetId, newAssetId} from "../core/types/AssetId.sol";
 import {SnapshotQueue} from "../core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../core/messaging/interfaces/IAdapter.sol";
 import {ShareClassManager} from "../core/hub/ShareClassManager.sol";
+import {EscrowFactory} from "../core/spoke/factories/EscrowFactory.sol";
 import {MessageProcessor} from "../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../core/messaging/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "../core/spoke/factories/PoolEscrowFactory.sol";
 import {MAX_ADAPTER_COUNT} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../admin/Root.sol";
@@ -67,7 +68,7 @@ struct CoreReport {
     MultiAdapter multiAdapter;
     MessageProcessor messageProcessor;
     MessageDispatcher messageDispatcher;
-    PoolEscrowFactory poolEscrowFactory;
+    EscrowFactory escrowFactory;
     Spoke spoke;
     SnapshotQueue snapshotQueue;
     ShareTokenRegistrar shareTokenRegistrar;
@@ -132,13 +133,7 @@ struct AdapterConnections {
 ///         deployment and the Root on the chain disagree about whether that Root was deployed by this run.
 error RootAccessMismatch();
 
-abstract contract Constants {
-    uint8 public constant ISO4217_DECIMALS = 18;
-    AssetId public immutable USD_ID = newAssetId(840);
-    AssetId public immutable EUR_ID = newAssetId(978);
-}
-
-contract CoreActionBatcher is Constants {
+contract CoreActionBatcher {
     constructor(
         CoreReport memory report,
         ISafe protocolSafe,
@@ -162,7 +157,7 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.rely(root);
         report.messageProcessor.rely(root);
 
-        report.poolEscrowFactory.rely(root);
+        report.escrowFactory.rely(root);
         report.shareTokenRegistrar.rely(root);
         report.spoke.rely(root);
         report.snapshotQueue.rely(root);
@@ -205,7 +200,7 @@ contract CoreActionBatcher is Constants {
         // Rely spokeHandler
         report.spokeHandler.rely(address(report.messageProcessor));
         report.spokeHandler.rely(address(report.messageDispatcher));
-        report.poolEscrowFactory.rely(address(report.spokeHandler));
+        report.escrowFactory.rely(address(report.spokeHandler));
 
         // Rely shareTokenRegistrar: core contracts operate share tokens exclusively through the registrar
         report.shareTokenRegistrar.rely(address(report.spokeHandler));
@@ -232,8 +227,6 @@ contract CoreActionBatcher is Constants {
         report.messageDispatcher.rely(address(report.hubHandler));
 
         // Rely protocolGuardian
-        report.gateway.rely(address(report.protocolGuardian));
-        report.multiAdapter.rely(address(report.protocolGuardian));
         report.messageDispatcher.rely(address(report.protocolGuardian));
         if (wireRoot) report.root.rely(address(report.protocolGuardian));
 
@@ -244,10 +237,11 @@ contract CoreActionBatcher is Constants {
 
         // File methods
         report.gateway.file("adapter", address(report.multiAdapter));
-        report.gateway.file("messageProperties", address(report.gasService));
+        report.gateway.file("messageGas", address(report.gasService));
         report.gateway.file("processor", address(report.messageProcessor));
 
-        report.multiAdapter.file("messageProperties", address(report.gasService));
+        report.multiAdapter.file("parser", address(report.messageProcessor));
+        report.multiAdapter.file("messageGas", address(report.gasService));
 
         report.messageDispatcher.file("spokeHandler", address(report.spokeHandler));
         report.messageDispatcher.file("multiAdapter", address(report.multiAdapter));
@@ -260,7 +254,7 @@ contract CoreActionBatcher is Constants {
         report.messageProcessor.file("envoy", address(report.envoy));
         report.messageProcessor.file("hubHandler", address(report.hubHandler));
 
-        report.poolEscrowFactory.file("spoke", address(report.spoke));
+        report.escrowFactory.file("spoke", address(report.spoke));
 
         // Hook/vault/ward updates arrive via Hub.managerCall -> Envoy -> registrar.fromHub, resolving the token
         report.shareTokenRegistrar.file("envoy", address(report.envoy));
@@ -279,8 +273,10 @@ contract CoreActionBatcher is Constants {
         if (wireRoot) report.root.endorse(address(report.spoke));
 
         // Initial configuration
-        report.hubRegistry.registerAsset(USD_ID, ISO4217_DECIMALS);
-        report.hubRegistry.registerAsset(EUR_ID, ISO4217_DECIMALS);
+        AssetId[] memory currencies = iso4217Codes();
+        for (uint256 i; i < currencies.length; i++) {
+            report.hubRegistry.registerAsset(currencies[i], ISO4217_DECIMALS);
+        }
 
         // Other batchers
         report.multiAdapter.rely(adapterBatcher_);
@@ -296,7 +292,7 @@ contract CoreActionBatcher is Constants {
         report.spoke.deny(address(this));
         report.snapshotQueue.deny(address(this));
         report.shareTokenRegistrar.deny(address(this));
-        report.poolEscrowFactory.deny(address(this));
+        report.escrowFactory.deny(address(this));
         report.spokeRegistry.deny(address(this));
         report.spokeHandler.deny(address(this));
         report.envoy.deny(address(this));
@@ -432,7 +428,6 @@ contract AdapterActionBatcher {
         address hyperlaneIsm
     ) {
         _relyAdapters(report, address(report.core.root));
-        _relyAdapters(report, address(report.core.protocolGuardian));
         _relyAdapters(report, address(report.core.opsGuardian));
 
         // Rely protocolSafe on LayerZero (needed for setDelegate calls)
@@ -470,7 +465,11 @@ contract AdapterActionBatcher {
 
             if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
                 report.chainlinkAdapter
-                    .wire(connections.centrifugeId, abi.encode(connections.chainlinkId, report.chainlinkAdapter));
+                    .wire(
+                        connections.centrifugeId,
+                        // Full finality both ways; a lane is migrated to faster-than-finality by governance, not at launch
+                        abi.encode(connections.chainlinkId, report.chainlinkAdapter, bytes4(0), bytes4(0))
+                    );
 
                 adapters[n++] = report.chainlinkAdapter;
             }

@@ -120,6 +120,11 @@ interface ISpokeRegistry {
     error ShareClassAlreadyRegistered();
     error TokenAlreadyRegistered();
     error NotAContract();
+    /// @notice Dispatched when a price is set with a `computedAt` ahead of this chain's clock. The
+    ///         monotonic check below is what makes that permanent if allowed: a timestamp no later update
+    ///         can match would wedge the entry for good, and nothing, Root included, can lower it again.
+    ///         Mirrors the hub-side bound in ShareClassManager.updateSharePrice
+    error CannotSetFuturePrice();
     error CannotSetOlderPrice();
     error UnknownAsset();
     error ShareTokenDoesNotExist();

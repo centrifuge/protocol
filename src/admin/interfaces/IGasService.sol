@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IMessageProperties} from "../../core/messaging/interfaces/IMessageProperties.sol";
+import {IAdapterGasService} from "./IAdapterGasService.sol";
 
 /// @title  IGasService
 /// @notice Interface for estimating gas costs for cross-chain messages
 /// @dev    Provides gas cost estimates for each message type in the protocol
-interface IGasService is IMessageProperties {
+interface IGasService is IAdapterGasService {
     error InvalidMessageType();
 
     /// @notice Packed uint8 array of per-chain block gas limits (in millions), indexed by centrifugeId (first 32 chains)

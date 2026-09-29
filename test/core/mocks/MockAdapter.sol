@@ -23,7 +23,7 @@ contract MockAdapter is Mock, IAdapter {
 
     function execute(bytes memory _message) external {
         MultiAdapter multiAdapter = MultiAdapter(address(gateway));
-        PoolId poolId = multiAdapter.messageProperties().messagePoolId(_message);
+        PoolId poolId = multiAdapter.parser().messagePoolId(_message);
         uint16 sessionId = multiAdapter.activeSessionId(centrifugeId, poolId);
         gateway.handle(centrifugeId, abi.encodePacked(sessionId, _message));
     }

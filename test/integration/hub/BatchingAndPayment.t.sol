@@ -6,6 +6,7 @@ import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IHubRegistry} from "../../../src/core/hub/interfaces/IHubRegistry.sol";
 
 import {MAX_MESSAGE_COST} from "../../utils/GasConstants.sol";
+import {USD_ID} from "../../../src/deployment/Currencies.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
 
 contract TestBatchingAndPayment is CentrifugeIntegrationTest {

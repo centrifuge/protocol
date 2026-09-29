@@ -4,23 +4,22 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
-import {IEscrow} from "../../../../src/misc/interfaces/IEscrow.sol";
 import {IERC20, IERC20Metadata} from "../../../../src/misc/interfaces/IERC20.sol";
 import {IERC6909, IERC6909MetadataExt, TransferFailed} from "../../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {Spoke, ISpoke} from "../../../../src/core/spoke/Spoke.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
+import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {SnapshotQueue} from "../../../../src/core/spoke/SnapshotQueue.sol";
 import {IGateway} from "../../../../src/core/messaging/interfaces/IGateway.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
-import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
 import {ISnapshotQueue} from "../../../../src/core/spoke/interfaces/ISnapshotQueue.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {ISpokeMessageSender} from "../../../../src/core/messaging/interfaces/IGatewaySenders.sol";
+import {IEscrowProvider} from "../../../../src/core/spoke/factories/interfaces/IEscrowFactory.sol";
 import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
-import {IPoolEscrowProvider} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
 
 import "forge-std/Test.sol";
 
@@ -48,7 +47,7 @@ contract SpokeTest is Test {
     address immutable RESERVER = makeAddr("RESERVER");
 
     IGateway gateway = IGateway(address(new IsContract()));
-    IPoolEscrowProvider escrowProvider = IPoolEscrowProvider(makeAddr("EscrowProvider"));
+    IEscrowProvider escrowProvider = IEscrowProvider(makeAddr("EscrowProvider"));
     ISpokeRegistry spokeRegistry = ISpokeRegistry(address(new IsContract()));
     ISpokeMessageSender sender = ISpokeMessageSender(address(new IsContract()));
     IShareToken share = IShareToken(address(new IsContract()));
@@ -139,9 +138,7 @@ contract SpokeTest is Test {
             abi.encode(share)
         );
         vm.mockCall(
-            address(escrowProvider),
-            abi.encodeWithSelector(IPoolEscrowProvider.escrow.selector, POOL_A),
-            abi.encode(escrow)
+            address(escrowProvider), abi.encodeWithSelector(IEscrowProvider.escrow.selector, POOL_A), abi.encode(escrow)
         );
     }
 
@@ -207,15 +204,13 @@ contract SpokeTest is Test {
 
     function _mockEscrowDeposit(address asset, uint256 tokenId, uint128 amount) internal {
         vm.mockCall(
-            escrow, abi.encodeWithSelector(IPoolEscrow.deposit.selector, SC_1, asset, tokenId, amount), abi.encode()
+            escrow, abi.encodeWithSelector(IEscrow.deposit.selector, SC_1, asset, tokenId, amount), abi.encode()
         );
     }
 
     function _mockEscrowWithdraw(address asset, uint256 tokenId, uint128 amount) internal {
         vm.mockCall(
-            escrow,
-            abi.encodeWithSelector(IPoolEscrow.withdraw.selector, SC_1, asset, tokenId, TO, amount),
-            abi.encode()
+            escrow, abi.encodeWithSelector(IEscrow.withdraw.selector, SC_1, asset, tokenId, TO, amount), abi.encode()
         );
         vm.mockCall(
             escrow, abi.encodeWithSelector(IEscrow.authTransferTo.selector, asset, tokenId, TO, amount), abi.encode()
@@ -227,7 +222,7 @@ contract SpokeTest is Test {
     {
         vm.mockCall(
             escrow,
-            abi.encodeWithSelector(IPoolEscrow.reserve.selector, SC_1, asset, tokenId, amount, reserver, reason),
+            abi.encodeWithSelector(IEscrow.reserve.selector, SC_1, asset, tokenId, amount, reserver, reason),
             abi.encode()
         );
     }
@@ -237,7 +232,7 @@ contract SpokeTest is Test {
     {
         vm.mockCall(
             escrow,
-            abi.encodeWithSelector(IPoolEscrow.unreserve.selector, SC_1, asset, tokenId, amount, reserver, reason),
+            abi.encodeWithSelector(IEscrow.unreserve.selector, SC_1, asset, tokenId, amount, reserver, reason),
             abi.encode()
         );
     }
@@ -740,7 +735,7 @@ contract SpokeTestWithdraw is SpokeTest {
         // The escrow itself enforces total - reserved >= amount; here we simulate that gating reverting.
         vm.mockCallRevert(
             escrow,
-            abi.encodeWithSelector(IPoolEscrow.withdraw.selector, SC_1, erc20, 0, TO, AMOUNT),
+            abi.encodeWithSelector(IEscrow.withdraw.selector, SC_1, erc20, 0, TO, AMOUNT),
             abi.encodeWithSelector(IEscrow.InsufficientBalance.selector, erc20, 0, AMOUNT, 0)
         );
 
@@ -754,12 +749,10 @@ contract SpokeTestWithdrawReserved is SpokeTest {
     function _mockEscrowWithdrawReserved(uint128 amount, address reserver, bytes32 reason) internal {
         vm.mockCall(
             escrow,
-            abi.encodeWithSelector(IPoolEscrow.unreserve.selector, SC_1, erc20, 0, amount, reserver, reason),
+            abi.encodeWithSelector(IEscrow.unreserve.selector, SC_1, erc20, 0, amount, reserver, reason),
             abi.encode()
         );
-        vm.mockCall(
-            escrow, abi.encodeWithSelector(IPoolEscrow.withdraw.selector, SC_1, erc20, 0, TO, amount), abi.encode()
-        );
+        vm.mockCall(escrow, abi.encodeWithSelector(IEscrow.withdraw.selector, SC_1, erc20, 0, TO, amount), abi.encode());
         vm.mockCall(escrow, abi.encodeWithSelector(IEscrow.authTransferTo.selector, erc20, 0, TO, amount), abi.encode());
     }
 
@@ -1066,7 +1059,7 @@ contract SpokeTestAvailableBalanceOf is SpokeTest {
 
         vm.mockCall(
             escrow,
-            abi.encodeWithSelector(IPoolEscrow.availableBalanceOf.selector, SC_1, erc20, 0),
+            abi.encodeWithSelector(IEscrow.availableBalanceOf.selector, SC_1, erc20, 0),
             abi.encode(expectedBalance)
         );
 

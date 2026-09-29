@@ -76,12 +76,12 @@ contract DeployGateAddressTest is Test, BaseDeployer {
     }
 
     /// @dev The salt names no sender, so CreateX derives the address from the salt alone, whoever calls it.
-    ///      address(0) is the single exception and only inside a prank: CreateX reads a salt as naming a
-    ///      sender when its first 20 bytes equal `msg.sender`, which a zero salt does for that one caller. No
-    ///      transaction is ever sent by address(0), so this assumes away a state the chain cannot reach —
-    ///      and it is the only such caller, which a non-zero salt could not claim
+    ///      Its own leading 20 bytes are the single exception and only inside a prank: CreateX reads a salt
+    ///      as naming a sender when those bytes equal `msg.sender`, which mining the salt for the gate's
+    ///      leading digits left non-zero. Nobody holds a key to that address, so this assumes away a state
+    ///      the chain cannot reach - and it is the only such caller
     function testAnyoneCanDeployTheGate(address anyone) public {
-        vm.assume(anyone != address(0));
+        vm.assume(anyone != address(bytes20(DEPLOY_GATE_SALT)));
 
         assertEq(DEPLOY_GATE_ADDRESS.code.length, 0, "nothing there yet");
 
@@ -131,11 +131,12 @@ contract DeployGateAddressTest is Test, BaseDeployer {
         assertTrue(DEPLOY_GATE_ADDRESS.codehash != DEPLOY_GATE_EXTCODEHASH, "nor the right address with wrong code");
     }
 
-    /// @dev What makes CreateX take the salt as it is, rather than scoping it to a caller or a chain. A zero
-    ///      guardian folds the chain id in only when the 21st byte asks for redeploy protection; held at
-    ///      zero it falls through to the salt alone
+    /// @dev What makes CreateX take the salt as it is, rather than scoping it to a chain: the 21st byte is
+    ///      what asks for redeploy protection and folds the chain id in, and the mining that opened the
+    ///      gate's leading digits kept its entropy in the high 11 bytes, leaving that byte and everything
+    ///      under it at zero. Which caller the salt goes unscoped to is testAnyoneCanDeployTheGate
     function testGateSaltIsUnscoped() public pure {
-        assertEq(DEPLOY_GATE_SALT, bytes32(0));
+        assertEq(DEPLOY_GATE_SALT << 88, bytes32(0), "the salt's entropy belongs in its high 11 bytes");
         assertEq(DEPLOY_GATE_SALT[20], bytes1(0x0), "redeploy protection should stay off");
     }
 

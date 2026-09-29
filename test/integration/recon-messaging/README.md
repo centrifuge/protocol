@@ -15,8 +15,8 @@ Mocks exist only at the four peripheral interfaces the two contracts talk to, pl
 | Interface | Mock | Why |
 |---|---|---|
 | `IAdapter` | `mocks/SimpleAdapter.sol` | no real bridge in-process |
-| `IMessageHandler` | `mocks/CountingProcessor.sol` | observable per-payload execution count |
-| `IMessageProperties` | `mocks/MockMessageProperties.sol` | controllable routing / source restriction / gas limits |
+| `IMessageHandler`, `IMessageParser` | `mocks/CountingProcessor.sol` | observable per-payload execution count; the framing view Gateway/MultiAdapter authenticate with |
+| `IMessageGas` | `mocks/MockMessageGas.sol` | controllable routing / source restriction / gas limits |
 | `IProtocolPauser` | `mocks/MockProtocolPauser.sol` | freely togglable pause |
 | n/a | `mocks/ManagerActor.sol` | a non-ward caller, to exercise the manager role |
 
@@ -43,8 +43,8 @@ Consequence for coverage reports: `src/core/messaging/{Gateway,MultiAdapter}.sol
 | `CryticMessagingTester.sol` | Fuzzer entry point. Run with `--config echidna-messaging.yaml` from the project root. |
 | `CryticToFoundry.sol` | Foundry harness. 38 deterministic tests: smoke, C1/H3 regressions, M6.a-f negatives, vote-key pinning, vote/execute, blockSession, clearFailedMessage, source enforcement, Alex-1, M1c cross-session retry. |
 | `mocks/SimpleAdapter.sol` | Stub `IAdapter`. `deliver`→handle, `deliverVote`→vote, `deliverExecute`→execute, all expecting session-WRAPPED payloads. `send` records `sendCount` + `lastSentPayloadHash` for S1/S2 observability and returns `bytes32(0)`; `estimate` returns `0`. |
-| `mocks/CountingProcessor.sol` | `IMessageHandler` mock. `callCount[cId][hash]` per (cId, UNWRAPPED payloadHash). `setFail(...)` is intentionally unauthenticated. |
-| `mocks/MockMessageProperties.sol` | `IMessageProperties` mock. Single-message batches only (`messageLength == payload.length`). All payloads route to `GLOBAL_POOL` (`routePoolId` ignores the fallback flag). `messageSourceCentrifugeId`: messages starting with magic `0xFE` + `bytes2(source)` are source-restricted, everything else returns 0 meaning any. `messageProcessingGasLimit=200_000`, `messageFailureGasReserve=35_000`, `maxBatchGasLimit=10_000_000`. |
+| `mocks/CountingProcessor.sol` | `IMessageHandler` + `IMessageParser` mock. `callCount[cId][hash]` per (cId, UNWRAPPED payloadHash). `setFail(...)` is intentionally unauthenticated. Single-message batches only (`messageLength == payload.length`); all payloads route to `GLOBAL_POOL` (`routePoolId` ignores the fallback flag). `messageSourceCentrifugeId`: messages starting with magic `0xFE` + `bytes2(source)` are source-restricted, everything else returns 0 meaning any. |
+| `mocks/MockMessageGas.sol` | `IMessageGas` mock. Gas values only: `messageProcessingGasLimit=200_000`, `messageFailureGasReserve=35_000`, `maxBatchGasLimit=10_000_000`. |
 | `mocks/MockProtocolPauser.sol` | Trivial. `setPaused` is intentionally unauthenticated. |
 | `mocks/ManagerActor.sol` | A non-ward address used to exercise the manager role on `MultiAdapter`. |
 
@@ -173,7 +173,7 @@ Measured on the same command, changing only the profile:
 | `Gateway.sol` | (same 1/312) | 80/162 |
 | `SimpleAdapter`, `ManagerActor` | 0 | 17/19, 5/6 |
 
-Contracts inherited into `CryticMessagingTester` itself (`Setup`, `BeforeAfter`, targets, properties) are attributed either way, because Echidna knows that deployment by name. Mocks without immutables (`CountingProcessor`, `MockMessageProperties`, `MockProtocolPauser`) are also attributed either way. So a report where the targets and properties look healthy but `Gateway` and `MultiAdapter` read 0 is diagnostic of a missing profile, not of an idle fuzzer.
+Contracts inherited into `CryticMessagingTester` itself (`Setup`, `BeforeAfter`, targets, properties) are attributed either way, because Echidna knows that deployment by name. Mocks without immutables (`CountingProcessor`, `MockMessageGas`, `MockProtocolPauser`) are also attributed either way. So a report where the targets and properties look healthy but `Gateway` and `MultiAdapter` read 0 is diagnostic of a missing profile, not of an idle fuzzer.
 
 The same missing metadata destabilises the coverage key, so every sequence looks like new coverage, which grows the corpus without bound and eventually OOMs.
 
@@ -207,10 +207,10 @@ Cloud jobs currently build with the default foundry profile, so treat `src/**` c
 
 These are deferred follow-ups rather than bugs in the existing suite. Each warrants its own PR, so don't add them ad-hoc. If you close one, update this section.
 
-- **Multi-message inbound batches** (`Gateway.handle` looping over `messageLength`). `MockMessageProperties` returns the full payload length, so batches are always single-message and the `MalformedBatch` revert path is unreachable.
+- **Multi-message inbound batches** (`Gateway.handle` looping over `messageLength`). `MockMessageGas` returns the full payload length, so batches are always single-message and the `MalformedBatch` revert path is unreachable.
 - **`withBatch` / `repay` / underpaid batches.** Outbound batching, transient slot clearing and batch locator parsing are not exercised, which is the bulk of the uncovered `Gateway` lines. `property_G1_isBatching_false` is a tautology as a result. Note that the end-to-end suite uses a `MockGateway`, so this suite's number is the protocol's total stateful `Gateway` coverage.
 - **`Gateway.file` and `Gateway.updateManager`** have no handler.
-- **Multi-remote / multi-pool.** Only `REMOTE_CENTRIFUGE_ID=2` and `GLOBAL_POOL` are configured, so per-(cId, pool) accounting bugs and the `routePoolId` SetPoolAdapters→global fallback are out of reach. This also leaves the vote key's pool namespacing untested: the whole point of `voteKey = keccak256(poolId ++ wrapped)` is that a global-set vote and a pool-set vote on identical bytes land in separate tallies, and with one pool the prefix is a constant. The missing property is to deliver the same payload under two pools with different adapter sets and assert neither tally counts toward the other's threshold. Closing it means teaching `MockMessageProperties.routePoolId` to route a payload subset to a second pool, configuring adapters for it, and re-keying `ghost_voteKey` and `_voteKey` by (cId, pool, hash).
+- **Multi-remote / multi-pool.** Only `REMOTE_CENTRIFUGE_ID=2` and `GLOBAL_POOL` are configured, so per-(cId, pool) accounting bugs and the `routePoolId` SetPoolAdapters→global fallback are out of reach. This also leaves the vote key's pool namespacing untested: the whole point of `voteKey = keccak256(poolId ++ wrapped)` is that a global-set vote and a pool-set vote on identical bytes land in separate tallies, and with one pool the prefix is a constant. The missing property is to deliver the same payload under two pools with different adapter sets and assert neither tally counts toward the other's threshold. Closing it means teaching `MockMessageGas.routePoolId` to route a payload subset to a second pool, configuring adapters for it, and re-keying `ghost_voteKey` and `_voteKey` by (cId, pool, hash).
 - **Manager paths, partially covered.** `MultiAdapter.updateManager` and the manager-driven `handle(cId, payload, adapter)` overload are fuzzed via the non-ward `ManagerActor`. Still unfuzzed: the manager-driven `vote`/`execute` overloads, and the gateway-side manager role (`gateway.updateManager`, manager-gated `gateway.handle`/`clearFailedMessage`).
 - **StandbyAdapter** (`src/adapters/StandbyAdapter.sol`): the forwardable-credit invariant (forwards ≤ sends), `estimate == 0`, and inbound relay via `underlying`. Model it as a 4th adapter configuration and reuse the mocks from `test/adapters/StandbyAdapter.t.sol`.
 - **AdapterFailover** (`src/managers/adapters/AdapterFailover.sol`): the steward/timelock failover lifecycle into `setAdapters`, plus hub veto. Replaces the old recoveryIndex model.

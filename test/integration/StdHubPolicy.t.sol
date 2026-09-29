@@ -9,6 +9,7 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {IPolicy} from "../../src/core/utils/interfaces/IPolicy.sol";
 import {IRegistrar} from "../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
 import {IManagerCallFromHub} from "../../src/core/utils/interfaces/IManagerCall.sol";
@@ -39,6 +40,8 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
     // `IHub.updateSharePrice` is overloaded; this is the no-timestamp one, whose calldata (and so authId)
     // is stable across the authorization delay.
     bytes4 constant UPDATE_SHARE_PRICE = bytes4(keccak256("updateSharePrice(uint64,bytes16,uint128)"));
+
+    bytes constant SPOKE_DATA = hex"deadbeef";
 
     address immutable operator = makeAddr("operator");
     address immutable mockUpdater = makeAddr("mockUpdater");
@@ -90,6 +93,8 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         // Install the policy via the ward (Root) break-glass path.
         vm.prank(address(root));
         hub.setPolicy(POOL_A, policy);
+
+        vm.deal(operator, 1 ether);
     }
 
     function _grantManagerCall() internal view returns (bytes memory) {
@@ -177,12 +182,16 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         allowlist[0] = IStdHubPolicy.Entry({poolId: POOL_A, caller: caller, selectors: selectors});
     }
 
+    function _confineOperator(bytes4 selector) internal {
+        StdHubPolicy confined = _policyWith(_confine(operator, selector));
+        vm.prank(address(root));
+        hub.setPolicy(POOL_A, confined);
+    }
+
     function testConfinedManagerCannotCancelArbitraryAuthorization() public {
         // Confine the operator to notifyPool only. cancelAuthorization now flows through the policy, so a
         // manager restricted to a narrow selector set can no longer wield it as a pool-wide governance-DoS.
-        StdHubPolicy confined = _policyWith(_confine(operator, IHub.notifyPool.selector));
-        vm.prank(address(root));
-        hub.setPolicy(POOL_A, confined);
+        _confineOperator(IHub.notifyPool.selector);
 
         vm.prank(operator);
         vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
@@ -224,6 +233,72 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         assertEq(
             hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, _grantManagerCall())), 0, "authorization cleared"
         );
+    }
+
+    // ─── unauthorizeSpokeCall confinement ──────────────────────────────────────
+
+    /// @dev Give the spoke an authorization ledger, then have the unconfined FM mature and land one
+    ///      authorization over the full delay, so the revoke has something real to destroy.
+    function _landSpokeAuthorization() internal returns (bytes32 id) {
+        _notifyPool();
+        vm.prank(address(spokeHandler));
+        spokeRegistry.setPolicy(POOL_A, IPolicy(makeAddr("spokePolicy")));
+
+        vm.prank(FM);
+        hub.initiateAuthorization(
+            POOL_A, abi.encodeCall(IHub.authorizeSpokeCall, (POOL_A, LOCAL_CENTRIFUGE_ID, SPOKE_DATA, FUNDED))
+        );
+
+        skip(POLICY_DELAY);
+        vm.prank(FM);
+        hub.authorizeSpokeCall{value: GAS}(POOL_A, LOCAL_CENTRIFUGE_ID, SPOKE_DATA, FUNDED);
+
+        id = spokeRegistry.authId(POOL_A, SPOKE_DATA);
+        assertEq(spokeRegistry.authorizations(id), 1, "authorization landed");
+    }
+
+    function testConfinedManagerCannotUnauthorizeSpokeCall() public {
+        bytes32 id = _landSpokeAuthorization();
+        _confineOperator(IHub.notifyPool.selector);
+
+        vm.prank(operator);
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
+        hub.unauthorizeSpokeCall{value: GAS}(POOL_A, LOCAL_CENTRIFUGE_ID, SPOKE_DATA, FUNDED);
+
+        assertEq(spokeRegistry.authorizations(id), 1, "authorization survives");
+    }
+
+    function testConfinedManagerCannotUnauthorizeThroughMulticall() public {
+        bytes32 id = _landSpokeAuthorization();
+        _confineOperator(IHub.notifyPool.selector);
+
+        bytes[] memory calls = new bytes[](1);
+        calls[0] = abi.encodeCall(IHub.unauthorizeSpokeCall, (POOL_A, LOCAL_CENTRIFUGE_ID, SPOKE_DATA, FUNDED));
+
+        vm.prank(operator);
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
+        hub.multicall{value: GAS}(calls);
+
+        assertEq(spokeRegistry.authorizations(id), 1, "batching does not launder the confinement");
+    }
+
+    function testConfinedManagerListedForUnauthorizeRevokesInstantly() public {
+        bytes32 id = _landSpokeAuthorization();
+        _confineOperator(IHub.unauthorizeSpokeCall.selector);
+
+        vm.prank(operator);
+        hub.unauthorizeSpokeCall{value: GAS}(POOL_A, LOCAL_CENTRIFUGE_ID, SPOKE_DATA, FUNDED);
+
+        assertEq(spokeRegistry.authorizations(id), 0, "in policy, so it carries no delay of its own");
+    }
+
+    function testUnrestrictedManagerUnauthorizeIsInstant() public {
+        bytes32 id = _landSpokeAuthorization();
+
+        vm.prank(operator);
+        hub.unauthorizeSpokeCall{value: GAS}(POOL_A, LOCAL_CENTRIFUGE_ID, SPOKE_DATA, FUNDED);
+
+        assertEq(spokeRegistry.authorizations(id), 0, "revoked in the same block");
     }
 
     function testReplacingPolicyUsesEscalation() public {

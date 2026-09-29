@@ -3,11 +3,9 @@ pragma solidity >=0.5.0;
 
 import {IBaseVault} from "./IBaseVault.sol";
 
-import {IEscrow} from "../../misc/interfaces/IEscrow.sol";
-
 import {PoolId} from "../../core/types/PoolId.sol";
 import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
-import {IPoolEscrow} from "../../core/spoke/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../../core/spoke/interfaces/IEscrow.sol";
 import {ISpokeRequestManager} from "../../core/spoke/interfaces/ISpokeRequestManager.sol";
 
 interface IBaseRequestManager is ISpokeRequestManager {
@@ -40,5 +38,7 @@ interface IBaseRequestManager is ISpokeRequestManager {
     function globalEscrow() external view returns (IEscrow escrow);
 
     /// @notice Escrow per pool. Funds are associated to a specific pool
-    function poolEscrow(PoolId poolId) external view returns (IPoolEscrow);
+    /// @dev Kept under this name for ABI backward compatibility with deployed vaults, like `globalEscrow` above,
+    ///      even though the contract it returns is now `Escrow` rather than `PoolEscrow`.
+    function poolEscrow(PoolId poolId) external view returns (IEscrow);
 }

@@ -23,7 +23,7 @@ interface ILocalCentrifugeId {
 }
 
 /// @notice Interface for dispatch-only gateway
-interface IScheduleAuthMessageSender {
+interface IScheduleAuthMessageSender is ILocalCentrifugeId {
     /// @notice Creates and send the message
     function sendScheduleUpgrade(uint16 centrifugeId, bytes32 target, address refund) external payable;
 

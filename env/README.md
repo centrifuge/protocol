@@ -29,6 +29,22 @@ canonical addresses are the id-less ones, but nothing keeps a rev off it. Where 
 chain, a run says which it means with `DEPLOY_ENVIRONMENT=testnet-rev2`; with only one, the chain id still
 answers on its own.
 
+That settles every read made by bare name, and the chain configs a connections file names are not among
+them: they are read from the directory the config naming them sits in, the connections file being that
+deployment's, and the tests walk every directory reading each config under the one it sits in — so two
+deployments of the same chains can be checked in side by side, each complete. Such a read resolves by rule
+and not by search — `Chains.pathOf(network, environment)` is `env/<environment>/<network>.json` and nothing
+else — so a name the deployment does not carry is an error rather than another deployment's file.
+`DEPLOY_ENVIRONMENT` only *narrows*, hiding the siblings of the environment it names and leaving
+`env/mainnet/` readable under a testnet value; that is right for the one config a run is addressed by, and
+would be wrong for a peer, where it would answer a testnet's connection with mainnet's centrifugeId and
+adapters.
+
+`Env` has no scoped form: `Env.load(name)` reads the deployed half by bare name, under whatever
+`DEPLOY_ENVIRONMENT` says, which is what the live branch's wiring scripts resolve a peer's addresses with.
+Correct while the peer is a deployment of the run's own environment, which it is wherever those scripts are
+pointed today; giving `Env` the overload `Chains` now has is what would close the rest.
+
 The network is named by the file, not by the path: a chain `<network>` lives at
 `env/<environment>/<network>.json` and is still reached as `--rpc-url <network>`. `Chains.pathOf` resolves one
 to the other, and `env/anvil-<id>/<network>.json` — written by `script/anvil/anvil.sh` from its fixtures,
@@ -44,9 +60,9 @@ wins, and a connection only counts when that rule still has adapters — fiddly 
 implementation would eventually disagree with the first.
 
 Anything that needs the list asks that function: the deploy and wiring scripts call it directly, and
-the live branch's `deploy-testnet.sh` entrypoint derives its network matrix from the same file with jq,
-mirroring what the function
-does so the two cannot disagree.
+the live branch's `deploy-testnets.yml` workflow derives its network matrix from the same file with jq,
+mirroring `_collectNetworks` — the networks the rules name, which is all a matrix needs — so the two cannot
+disagree.
 
 `connections_viewer.html` is the other copy, and the warning above is why it is worth naming: it
 re-implements the rule in JavaScript to draw the graph, so it can drift. Nothing deploys from it — it

@@ -1,7 +1,11 @@
 name: "Tests"
 
 on:
+  # Not on PRs into the release branches: live only adds files on top of main, so everything here is already
+  # green on main, and live-checks.yml covers the added surface there
   pull_request:
+    branches-ignore:
+      - "live-v*"
   push:
     branches:
       - main

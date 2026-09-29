@@ -5,10 +5,10 @@ pragma solidity 0.8.28;
 
 import {D18} from "../../../../src/misc/types/D18.sol";
 
+import {Escrow} from "../../../../src/core/spoke/Escrow.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
-import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
 
 import {BatchRequestManagerCallLib} from "../../../vaults/utils/BatchRequestManagerCallLib.sol";
@@ -238,7 +238,7 @@ abstract contract DoomsdayTargets is BaseTargetFunctions, Properties {
         address asset = vault.asset();
 
         (uint128 escrowTotal, uint128 escrowReserved) =
-            PoolEscrow(address(spoke.escrow(vault.poolId()))).holding(vault.scId(), asset, 0);
+            Escrow(address(spoke.escrow(vault.poolId()))).holding(vault.scId(), asset, 0);
         if (escrowTotal < escrowReserved) return;
 
         uint256 balBefore = MockERC20(asset).balanceOf(controller);

@@ -4,20 +4,18 @@ pragma solidity 0.8.28;
 import {MockERC6909} from "../../misc/mocks/MockERC6909.sol";
 
 import {ERC20} from "../../../src/misc/ERC20.sol";
-import {Escrow, IEscrow} from "../../../src/misc/Escrow.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
 import {TransferFailed} from "../../../src/misc/interfaces/IERC6909.sol";
 
 import {PoolId} from "../../../src/core/types/PoolId.sol";
+import {Escrow, IEscrow} from "../../../src/core/spoke/Escrow.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
-import {PoolEscrow, IPoolEscrow} from "../../../src/core/spoke/PoolEscrow.sol";
 
 import "forge-std/Test.sol";
 
-contract EscrowTestBase is Test {
+abstract contract EscrowTestBase is Test {
     address spender = makeAddr("spender");
     address randomUser = makeAddr("randomUser");
-    Escrow escrow = new Escrow(address(this));
     ERC20 erc20 = new ERC20(6);
     MockERC6909 erc6909 = new MockERC6909();
 
@@ -25,6 +23,10 @@ contract EscrowTestBase is Test {
     /// @dev A wide, derived reason (the shape the bytes32 widening exists for, e.g. per-request buckets)
     ///      alongside the narrow sentinel above.
     bytes32 constant RESERVE_REASON_DERIVED = keccak256(abi.encodePacked(bytes32(uint256(1)), uint256(42)));
+
+    /// @dev ERC20 is token id zero; ERC6909 turns the fuzzed seed into an id. Every test takes the seed, so both
+    ///      subclasses run the same bodies against their own token standard.
+    function _tokenId(uint8 seed) internal virtual returns (uint256);
 
     function _mint(address escrow_, uint256 tokenId, uint256 amount) internal {
         if (tokenId == 0) {
@@ -34,14 +36,61 @@ contract EscrowTestBase is Test {
         }
     }
 
+    function _balanceOf(address holder, uint256 tokenId) internal view returns (uint256) {
+        return tokenId == 0 ? erc20.balanceOf(holder) : erc6909.balanceOf(holder, tokenId);
+    }
+
     function _asset(uint256 tokenId) internal view returns (address) {
         return tokenId == 0 ? address(erc20) : address(erc6909);
     }
 }
 
-contract EscrowTestERC20 is EscrowTestBase {}
+abstract contract EscrowAuthTransferTestBase is EscrowTestBase {
+    Escrow escrow = new Escrow(PoolId.wrap(1), address(this));
 
-contract EscrowTestERC6909 is EscrowTestBase {
+    function testAuthTransferTo(uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
+        address asset = _asset(tokenId);
+        _mint(address(escrow), tokenId, 100);
+
+        vm.expectEmit();
+        emit IEscrow.AuthTransferTo(asset, tokenId, spender, 100);
+        escrow.authTransferTo(asset, tokenId, spender, 100);
+
+        assertEq(_balanceOf(spender, tokenId), 100, "receiver holds the transferred tokens");
+        assertEq(_balanceOf(address(escrow), tokenId), 0, "escrow holds nothing afterwards");
+    }
+
+    function testAuthTransferToRevertsOnInsufficientBalance(uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
+        address asset = _asset(tokenId);
+        _mint(address(escrow), tokenId, 100);
+
+        vm.expectRevert(abi.encodeWithSelector(IEscrow.InsufficientBalance.selector, asset, tokenId, 101, 100));
+        escrow.authTransferTo(asset, tokenId, spender, 101);
+    }
+
+    function testAuthTransferToRevertsOnUnauthorized(uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
+        _mint(address(escrow), tokenId, 100);
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        escrow.authTransferTo(_asset(tokenId), tokenId, spender, 100);
+    }
+}
+
+contract EscrowAuthTransferTestERC20 is EscrowAuthTransferTestBase {
+    function _tokenId(uint8) internal pure override returns (uint256) {
+        return 0;
+    }
+}
+
+contract EscrowAuthTransferTestERC6909 is EscrowAuthTransferTestBase {
+    function _tokenId(uint8 seed) internal pure override returns (uint256) {
+        return _bound(uint256(seed), 2, 18);
+    }
+
     function testAuthTransferToRevertsOnFalseReturn() public {
         uint256 tokenId = 2;
         _mint(address(escrow), tokenId, 100);
@@ -58,34 +107,37 @@ contract EscrowTestERC6909 is EscrowTestBase {
     }
 }
 
-contract PoolEscrowTestBase is EscrowTestBase {
-    function _testDeposit(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
+abstract contract EscrowHoldingTestBase is EscrowTestBase {
+    function testDeposit(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
+        Escrow escrow = new Escrow(poolId, address(this));
 
         vm.expectEmit();
-        emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 300);
+        emit IEscrow.Deposit(asset, tokenId, poolId, scId, 300);
         escrow.deposit(scId, asset, tokenId, 300);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "holdings should be 300 after deposit");
 
         vm.expectEmit();
-        emit IPoolEscrow.Deposit(asset, tokenId, poolId, scId, 200);
+        emit IEscrow.Deposit(asset, tokenId, poolId, scId, 200);
         escrow.deposit(scId, asset, tokenId, 200);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 500, "holdings should be 500 after deposit");
+        assertEq(_balanceOf(address(escrow), tokenId), 0, "deposit only notes the holding, it moves no tokens");
     }
 
-    function _testReserveIncrease(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
+    function testReserveIncrease(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
+        Escrow escrow = new Escrow(poolId, address(this));
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
         escrow.reserve(scId, asset, tokenId, 100, randomUser, RESERVE_REASON);
 
         vm.expectEmit();
-        emit IPoolEscrow.IncreaseReserve(asset, tokenId, poolId, scId, address(this), RESERVE_REASON, 100, 100);
+        emit IEscrow.IncreaseReserve(asset, tokenId, poolId, scId, address(this), RESERVE_REASON, 100, 100);
         escrow.reserve(scId, asset, tokenId, 100, address(this), RESERVE_REASON);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Still zero, nothing is in holdings");
@@ -99,13 +151,14 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 200, "300 - 100 = 200");
     }
 
-    function _testReserveDecrease(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
+    function testReserveDecrease(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
+        Escrow escrow = new Escrow(poolId, address(this));
 
         vm.prank(randomUser);
         vm.expectRevert(IAuth.NotAuthorized.selector);
-        escrow.reserve(scId, asset, tokenId, 100, randomUser, RESERVE_REASON);
+        escrow.unreserve(scId, asset, tokenId, 100, randomUser, RESERVE_REASON);
 
         escrow.reserve(scId, asset, tokenId, 100, address(this), RESERVE_REASON);
 
@@ -119,11 +172,11 @@ contract PoolEscrowTestBase is EscrowTestBase {
         escrow.deposit(scId, asset, tokenId, 200);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 200, "300 - 100 = 200");
 
-        vm.expectRevert(IPoolEscrow.InsufficientReserve.selector);
+        vm.expectRevert(IEscrow.InsufficientReserve.selector);
         escrow.unreserve(scId, asset, tokenId, 200, address(this), RESERVE_REASON);
 
         vm.expectEmit();
-        emit IPoolEscrow.DecreaseReserve(asset, tokenId, poolId, scId, address(this), RESERVE_REASON, 100, 0);
+        emit IEscrow.DecreaseReserve(asset, tokenId, poolId, scId, address(this), RESERVE_REASON, 100, 0);
         escrow.unreserve(scId, asset, tokenId, 100, address(this), RESERVE_REASON);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 300, "300 - 0 = 300");
     }
@@ -131,9 +184,10 @@ contract PoolEscrowTestBase is EscrowTestBase {
     /// @dev Two distinct reasons under the same reserver must keep independent balances: unreserving against
     ///      one bucket must not be payable out of the other, and `holding.reserved` must be their sum. This is
     ///      what the bytes32 reason widening is for, so it is asserted against a keccak-derived reason too.
-    function _testReserveBucketIsolation(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
+    function testReserveBucketIsolation(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
+        Escrow escrow = new Escrow(poolId, address(this));
 
         _mint(address(escrow), tokenId, 1000);
         escrow.deposit(scId, asset, tokenId, 1000);
@@ -148,7 +202,7 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 500, "1000 - (300 + 200) = 500");
 
         // Bucket B cannot be drained against bucket A's reservation, even though the holding total covers it.
-        vm.expectRevert(IPoolEscrow.InsufficientReserve.selector);
+        vm.expectRevert(IEscrow.InsufficientReserve.selector);
         escrow.unreserve(scId, asset, tokenId, 300, address(this), RESERVE_REASON_DERIVED);
 
         // The same amount against its own bucket succeeds and leaves the other bucket untouched.
@@ -163,9 +217,10 @@ contract PoolEscrowTestBase is EscrowTestBase {
         assertEq(escrow.reservedBy(scId, address(this), RESERVE_REASON, asset, tokenId), 0, "own bucket still 0");
     }
 
-    function _testWithdraw(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
+    function testWithdraw(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
+        Escrow escrow = new Escrow(poolId, address(this));
 
         _mint(address(escrow), tokenId, 1000);
         escrow.deposit(scId, asset, tokenId, 1000);
@@ -184,15 +239,34 @@ contract PoolEscrowTestBase is EscrowTestBase {
         escrow.unreserve(scId, asset, tokenId, 600, address(this), RESERVE_REASON);
 
         vm.expectEmit();
-        emit IPoolEscrow.Withdraw(asset, tokenId, poolId, scId, randomUser, 500);
+        emit IEscrow.Withdraw(asset, tokenId, poolId, scId, randomUser, 500);
         escrow.withdraw(scId, asset, tokenId, randomUser, 500);
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0);
     }
 
-    function _testAvailableBalanceOf(PoolId poolId, ShareClassId scId, uint256 tokenId) internal {
+    function testWithdrawRevertsOnUnauthorized(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
+        Escrow escrow = new Escrow(poolId, address(this));
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        escrow.withdraw(scId, _asset(tokenId), tokenId, randomUser, 1);
+    }
+
+    function testDepositRevertsOnUnauthorized(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
+        Escrow escrow = new Escrow(poolId, address(this));
+
+        vm.prank(randomUser);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        escrow.deposit(scId, _asset(tokenId), tokenId, 1);
+    }
+
+    function testAvailableBalanceOf(PoolId poolId, ShareClassId scId, uint8 seed) public {
+        uint256 tokenId = _tokenId(seed);
         address asset = _asset(tokenId);
-        PoolEscrow escrow = new PoolEscrow(poolId, address(this));
+        Escrow escrow = new Escrow(poolId, address(this));
 
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Default available balance should be zero");
 
@@ -209,72 +283,20 @@ contract PoolEscrowTestBase is EscrowTestBase {
         escrow.reserve(scId, asset, tokenId, 300, address(this), RESERVE_REASON);
         assertEq(escrow.availableBalanceOf(scId, asset, tokenId), 0, "Should be zero if pendingWithdraw >= holdings");
     }
-}
 
-contract PoolEscrowTestERC20 is PoolEscrowTestBase {
-    uint256 tokenId = 0;
-
-    function testDeposit(PoolId poolId, ShareClassId scId) public {
-        _testDeposit(poolId, scId, tokenId);
-    }
-
-    function testReserveIncrease(PoolId poolId, ShareClassId scId) public {
-        _testReserveIncrease(poolId, scId, tokenId);
-    }
-
-    function testReserveDecrease(PoolId poolId, ShareClassId scId) public {
-        _testReserveDecrease(poolId, scId, tokenId);
-    }
-
-    function testWithdraw(PoolId poolId, ShareClassId scId) public {
-        _testWithdraw(poolId, scId, tokenId);
-    }
-
-    function testReserveBucketIsolation(PoolId poolId, ShareClassId scId) public {
-        _testReserveBucketIsolation(poolId, scId, tokenId);
-    }
-
-    function testAvailableBalanceOf(PoolId poolId, ShareClassId scId) public {
-        _testAvailableBalanceOf(poolId, scId, tokenId);
+    function testPoolId(PoolId poolId) public {
+        assertEq(new Escrow(poolId, address(this)).poolId().raw(), poolId.raw(), "poolId is the one constructed with");
     }
 }
 
-contract PoolEscrowTestERC6909 is PoolEscrowTestBase {
-    function testDeposit(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testDeposit(poolId, scId, tokenId);
-
-        assertEq(erc6909.balanceOf(address(escrow), tokenId), 0, "Escrow should not hold any tokens after noting");
+contract EscrowHoldingTestERC20 is EscrowHoldingTestBase {
+    function _tokenId(uint8) internal pure override returns (uint256) {
+        return 0;
     }
+}
 
-    function testReserveIncrease(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testReserveIncrease(poolId, scId, tokenId);
-    }
-
-    function testReserveDecrease(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testReserveDecrease(poolId, scId, tokenId);
-    }
-
-    function testWithdraw(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testWithdraw(poolId, scId, tokenId);
-    }
-
-    function testReserveBucketIsolation(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testReserveBucketIsolation(poolId, scId, tokenId);
-    }
-
-    function testAvailableBalanceOf(PoolId poolId, ShareClassId scId, uint8 tokenId_) public {
-        uint256 tokenId = uint256(bound(tokenId_, 2, 18));
-
-        _testAvailableBalanceOf(poolId, scId, tokenId);
+contract EscrowHoldingTestERC6909 is EscrowHoldingTestBase {
+    function _tokenId(uint8 seed) internal pure override returns (uint256) {
+        return _bound(uint256(seed), 2, 18);
     }
 }

@@ -5,7 +5,7 @@ import {ISpokeRegistry} from "./ISpokeRegistry.sol";
 
 import {PoolId} from "../../types/PoolId.sol";
 import {ShareClassId} from "../../types/ShareClassId.sol";
-import {IPoolEscrowFactory} from "../factories/interfaces/IPoolEscrowFactory.sol";
+import {IEscrowFactory} from "../factories/interfaces/IEscrowFactory.sol";
 
 /// @notice Interface for SpokeHandler admin/config
 interface ISpokeHandler {
@@ -36,14 +36,14 @@ interface ISpokeHandler {
     function spokeRegistry() external view returns (ISpokeRegistry);
 
     /// @notice Deploys pool-specific escrow contracts that custody assets and shares
-    function poolEscrowFactory() external view returns (IPoolEscrowFactory);
+    function escrowFactory() external view returns (IEscrowFactory);
 
     //----------------------------------------------------------------------------------------------
     // Administration
     //----------------------------------------------------------------------------------------------
 
     /// @notice Updates a contract parameter
-    /// @param what Accepts "spokeRegistry", "poolEscrowFactory"
+    /// @param what Accepts "spokeRegistry", "escrowFactory"
     /// @param data The new address
     function file(bytes32 what, address data) external;
 }

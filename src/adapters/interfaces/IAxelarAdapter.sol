@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
@@ -96,7 +96,7 @@ interface IAxelarAdapter is IAdapter, IAdapterWiring, IAxelarExecutable {
     //----------------------------------------------------------------------------------------------
 
     /// @notice The MultiAdapter that receives decoded inbound messages from this adapter
-    function entrypoint() external view returns (IMessageHandler);
+    function entrypoint() external view returns (IAdapterEntrypoint);
 
     /// @notice Axelar's General Message Passing gateway used for cross-chain message dispatch and validation
     function axelarGateway() external view returns (IAxelarGateway);

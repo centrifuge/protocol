@@ -25,8 +25,8 @@ paths:
 | `test/` | `node:test` suite, no extra deps: `cd script/registry && npm test`. |
 | `utils/abi-cache.js` | Per-tag Forge ABI cache (worktree + build + `out/` copy); `collectContractTags`, `findAbiInOutput`, `resolveArtifactName` / `artifactNamesForContractKey` (single `ABI_NAME_ALIASES` table) — reusable outside the registry script. |
 | `build-abi-cache.js` | CLI: `node script/registry/build-abi-cache.js <tag> [...]` to warm `cache/abi-registry/`. |
-| `utils/tag-resolution.js` | Maps env contract `version` → local git tag (`resolveVersionTag`, candidates). |
-| `utils/validate-env-contract-version-tags.js` | CI: every mainnet/testnet contract object must have `version` resolving to a git tag. |
+| `utils/tag-resolution.js` | Maps env contract `version` → local git tag (`resolveVersionTag`, candidates); an `env/<dir>/versions.json` alias replaces the candidates. |
+| `utils/validate-env-contract-version-tags.js` | CI: every mainnet/testnet contract object must have `version` resolving to a git tag, and an aliased tag must hold the source the deployment recorded. |
 | `validate-env-schema.js` | CI: structural validation of `env/*.json` before generation. |
 | `validate-registry.js` | Post-generation indexer checks; `.validation.json` sidecar for PR comments. Skips ABI/address rules for `address: null` deprecations. |
 | `pin-to-ipfs.js`, `validate-api-keys.js`, etc. | Pinning and local API checks; see README table. |
@@ -35,6 +35,7 @@ paths:
 
 - **`utils/abi-cache.js`** owns the per-tag cache (`ensureAbiCache`, `collectContractTags`, …); `abi-registry.js` and `build-abi-cache.js` call into it.
 - ABIs come from **per-contract `version` in env** → resolved git tag → `cache/abi-registry/<tag>/out/` (worktree + `forge build --skip test`). Not from a single deployment commit’s `out/`.
+- **`env/<dir>/versions.json`** (`{ "tags": { "v3.3": "v3.3.0-rc2" } }`, `versionAliasesOf` in `utils/env-dirs.js`) is how a deployment made before its release was tagged points at the candidate it runs. Scoped to that directory, replaces the candidate list, and the tag must carry the same `src/` as the recorded deployment commit.
 - **`DEPLOYMENT_COMMIT`** (env) is metadata only (`registry.deploymentInfo.gitCommit`), not ABI selection.
 - After `packAbis`, **`stripContractVersionsForRegistryOutput`** removes per-contract `version` from serialized JSON (smaller artifacts); **`version` stays in repo `env/*.json`**.
 

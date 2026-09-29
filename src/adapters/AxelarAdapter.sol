@@ -14,9 +14,10 @@ import {
 import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 
-import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+import {IAdapterGasService} from "../admin/interfaces/IAdapterGasService.sol";
 
 /// @title  Axelar Adapter
 /// @notice Routing contract that integrates with an Axelar Gateway
@@ -25,26 +26,14 @@ import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 contract AxelarAdapter is Auth, IAxelarAdapter {
     using CastLib for *;
 
-    /// @dev Cost of executing `execute()` except entrypoint.handle(), reserved per destination chain.
-    /// NOTE: Tested in production using real `validateContractCall()` implementation.
-    uint256 public constant DEFAULT_RECEIVE_COST = 26000;
-
-    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
-    // Monad reprices cold storage access (2100→8100, +6000/slot) and cold account access (2600→10100,
-    // +7500/call) per its published opcode schedule (docs.monad.xyz). execute() makes 2 cold SLOADs (a
-    // uint16 + a bytes32 spanning two slots) + 2 cold CALLs (validateContractCall, entrypoint) =>
-    // +27_000 over DEFAULT. The gateway's own internal cold writes aren't separately reserved, so this
-    // figure may be low. Mirrors GasService.
-    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 27_000;
-
-    IMessageHandler public immutable entrypoint;
+    IAdapterEntrypoint public immutable entrypoint;
     IAxelarGateway public immutable axelarGateway;
     IAxelarGasService public immutable axelarGasService;
 
     mapping(string axelarId => AxelarSource) public sources;
     mapping(uint16 centrifugeId => AxelarDestination) public destinations;
 
-    constructor(IMessageHandler entrypoint_, address axelarGateway_, address axelarGasService_, address deployer)
+    constructor(IAdapterEntrypoint entrypoint_, address axelarGateway_, address axelarGasService_, address deployer)
         Auth(deployer)
     {
         entrypoint = entrypoint_;
@@ -59,9 +48,17 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
     /// @inheritdoc IAdapterWiring
     function wire(uint16 centrifugeId, bytes memory data) external auth {
         (string memory axelarId, string memory adapter) = abi.decode(data, (string, string));
-        sources[axelarId] = AxelarSource(centrifugeId, keccak256(bytes(adapter)));
+        // keccak256("") is not empty, so a cleared source would still match a sender with no address
+        sources[axelarId] =
+            AxelarSource(centrifugeId, bytes(adapter).length == 0 ? bytes32(0) : keccak256(bytes(adapter)));
         destinations[centrifugeId] = AxelarDestination(axelarId, adapter);
         emit Wire(centrifugeId, axelarId, adapter);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId, bytes memory data) external view returns (bool) {
+        (string memory axelarId,) = abi.decode(data, (string, string));
+        return bytes(destinations[centrifugeId].axelarId).length != 0 || sources[axelarId].addressHash != bytes32(0);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -127,9 +124,10 @@ contract AxelarAdapter is Auth, IAxelarAdapter {
         );
     }
 
-    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
-    ///      repricing needs a larger reserve than other chains.
-    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
-        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
+    /// @dev Receive reserve added to the requested gas limit. The gas service holds what this path costs
+    ///      and what each destination charges for it, so the adapter only names itself.
+    function _receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        IAdapterGasService gasService = IAdapterGasService(address(entrypoint.messageGas()));
+        return gasService.receiveCost(centrifugeId, "axelar");
     }
 }

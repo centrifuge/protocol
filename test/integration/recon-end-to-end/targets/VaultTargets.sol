@@ -8,7 +8,7 @@ import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IPoolEscrow} from "../../../../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
 
 import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
 import {IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -117,7 +117,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         uint128 pendingDeposit = batchRequestManager.pendingDeposit(poolId, scId, assetId);
         IBaseVault vault = _getVault();
         (uint128 escrowTotal, uint128 escrowReserved) =
-            IPoolEscrow(_getPoolEscrowForVault(vault)).holding(scId, vault.asset(), 0);
+            IEscrow(_getPoolEscrowForVault(vault)).holding(scId, vault.asset(), 0);
         (uint128 queuedDeposits,) = snapshotQueue.queuedAssets(poolId, scId, assetId);
 
         bool wouldOverflow = uint256(pendingDeposit) + assets >= uint256(type(uint128).max)
@@ -574,7 +574,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         _captureShareQueueState(vault.poolId(), vault.scId());
 
         address to = _getRandomActor(toEntropy);
-        address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
+        address escrow = address(escrowFactory.escrow(vault.poolId()));
 
         // Bal b4. `redeem` pays `to`, not the controller, so the delta below has to be measured on `to` or a
         // payout to another actor reads as a zero-delta fee-on-transfer.
@@ -628,7 +628,7 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         _captureShareQueueState(vault.poolId(), vault.scId());
 
         address to = _getRandomActor(toEntropy);
-        address escrow = address(poolEscrowFactory.escrow(vault.poolId()));
+        address escrow = address(escrowFactory.escrow(vault.poolId()));
 
         // Bal b4. `withdraw` pays `to`, not the controller, so measure `to` (see vault_redeem).
         uint256 tokenUserB4 = MockERC20(_getVault().asset()).balanceOf(to);

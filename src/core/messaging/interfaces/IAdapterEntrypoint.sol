@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {IMessageGas} from "./IMessageGas.sol";
 import {IMessageHandler} from "./IMessageHandler.sol";
 
 /// @notice Thin entrypoint that adapters use to reach the MultiAdapter. Extends {IMessageHandler} (the regular
@@ -33,4 +34,13 @@ interface IAdapterEntrypoint is IMessageHandler {
     /// @param  centrifugeId Source chain identifier
     /// @param  payload The wrapped payload (session-id prefixed) to execute
     function execute(uint16 centrifugeId, bytes calldata payload) external;
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Gas properties of the messages this carries. An adapter that prices its own receive path
+    ///         reads the reference from here and casts to the interface that prices it, so replacing it
+    ///         is a single file() and never an adapter redeploy.
+    function messageGas() external view returns (IMessageGas);
 }

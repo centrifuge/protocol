@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../../admin/interfaces/IAdapterWiring.sol";
 
@@ -103,7 +103,7 @@ interface IHyperlaneAdapter is IAdapter, IAdapterWiring, IMessageRecipient, ISpe
     //----------------------------------------------------------------------------------------------
 
     /// @notice The MultiAdapter that receives decoded inbound messages from this adapter
-    function entrypoint() external view returns (IMessageHandler);
+    function entrypoint() external view returns (IAdapterEntrypoint);
 
     /// @notice Hyperlane Mailbox used for cross-chain message dispatch and fee quoting
     function mailbox() external view returns (IMailbox);

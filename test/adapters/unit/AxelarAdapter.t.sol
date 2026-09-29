@@ -7,6 +7,9 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {Mock} from "../../core/mocks/Mock.sol";
 
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {GasService} from "../../../src/admin/GasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -68,9 +71,22 @@ contract AxelarAdapterTestBase is Test {
     MockAxelarGasService axelarGasService;
     AxelarAdapter adapter;
 
-    IMessageHandler constant GATEWAY = IMessageHandler(address(1));
+    IAdapterEntrypoint constant GATEWAY = IAdapterEntrypoint(address(1));
+
+    GasService gasService;
+
+    /// @dev Mirrors what the adapter declares, so a count that drifts from the adapter's own fails here.
+    function receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        return gasService.receiveCost(centrifugeId, "axelar");
+    }
 
     function setUp() public {
+        uint8[32] memory txLimits;
+        gasService = new GasService(txLimits, CENTRIFUGE_CHAIN_ID);
+        vm.mockCall(
+            address(GATEWAY), abi.encodeWithSelector(IAdapterEntrypoint.messageGas.selector), abi.encode(gasService)
+        );
+
         axelarGateway = new MockAxelarGateway();
         axelarGasService = new MockAxelarGasService();
         adapter = new AxelarAdapter(GATEWAY, address(axelarGateway), address(axelarGasService), address(this));
@@ -86,6 +102,8 @@ contract AxelarAdapterTestWire is AxelarAdapterTestBase {
     }
 
     function testWire() public {
+        assertEq(adapter.isWired(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR)), false);
+
         bytes memory data = abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR);
         adapter.wire(CENTRIFUGE_CHAIN_ID, data);
 
@@ -96,6 +114,26 @@ contract AxelarAdapterTestWire is AxelarAdapterTestBase {
         (uint16 centrifugeId, bytes32 remoteAddressHash) = adapter.sources(AXELAR_CHAIN_ID);
         assertEq(centrifugeId, CENTRIFUGE_CHAIN_ID);
         assertEq(remoteAddressHash, keccak256(bytes(REMOTE_AXELAR_ADDR)));
+
+        // Wired on both sides: the chain has a destination, and the bridge id has a source
+        assertEq(adapter.isWired(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_CHAIN_ID, abi.encode("otherBridge", REMOTE_AXELAR_ADDR)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_CHAIN_ID + 1, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_CHAIN_ID + 1, abi.encode("otherBridge", REMOTE_AXELAR_ADDR)), false);
+    }
+
+    /// @dev A reset passes an empty adapter, and keccak256("") is not empty: stored as it comes, the binding
+    ///      would go on matching a sender whose address is the empty string rather than matching nothing.
+    function testWireClearingASourceMatchesNothing() public {
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
+        adapter.wire(CENTRIFUGE_CHAIN_ID, abi.encode(AXELAR_CHAIN_ID, ""));
+
+        (, bytes32 remoteAddressHash) = adapter.sources(AXELAR_CHAIN_ID);
+        assertEq(remoteAddressHash, bytes32(0), "a cleared source holds no hash at all");
+
+        axelarGateway.setReturn("validateContractCall", true);
+        vm.expectRevert(IAxelarExecutable.InvalidAddress.selector);
+        adapter.execute(bytes32(""), AXELAR_CHAIN_ID, "", "");
     }
 }
 
@@ -117,18 +155,18 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
 
         // The mock echoes the gasLimit it received, so this asserts the default receive cost is added.
         uint256 estimation = adapter.estimate(CENTRIFUGE_CHAIN_ID, "irrelevant", gasLimit);
-        assertEq(estimation, gasLimit + adapter.DEFAULT_RECEIVE_COST());
+        assertEq(estimation, gasLimit + receiveCost(CENTRIFUGE_CHAIN_ID));
     }
 
     /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
     function testEstimateUsesMonadReceiveCost(uint256 gasLimit) public {
         gasLimit = bound(gasLimit, 0, type(uint128).max);
-        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        uint16 monadId = gasService.MONAD_CENTRIFUGE_ID();
 
         adapter.wire(monadId, abi.encode(AXELAR_CHAIN_ID, REMOTE_AXELAR_ADDR));
 
         uint256 estimation = adapter.estimate(monadId, "irrelevant", gasLimit);
-        assertEq(estimation, gasLimit + adapter.MONAD_RECEIVE_COST());
+        assertEq(estimation, gasLimit + receiveCost(monadId));
     }
 
     function testIncomingCalls(
@@ -149,7 +187,7 @@ contract AxelarAdapterTest is AxelarAdapterTestBase {
 
         vm.mockCall(
             address(GATEWAY),
-            abi.encodeWithSelector(GATEWAY.handle.selector, CENTRIFUGE_CHAIN_ID, payload),
+            abi.encodeWithSelector(IMessageHandler.handle.selector, CENTRIFUGE_CHAIN_ID, payload),
             abi.encode()
         );
 

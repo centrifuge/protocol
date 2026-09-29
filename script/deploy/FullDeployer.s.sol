@@ -16,9 +16,9 @@ import {SnapshotQueue} from "../../src/core/spoke/SnapshotQueue.sol";
 import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {ShareClassManager} from "../../src/core/hub/ShareClassManager.sol";
+import {EscrowFactory} from "../../src/core/spoke/factories/EscrowFactory.sol";
 import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
-import {PoolEscrowFactory} from "../../src/core/spoke/factories/PoolEscrowFactory.sol";
 
 import {Root} from "../../src/admin/Root.sol";
 import {GasService} from "../../src/admin/GasService.sol";
@@ -68,7 +68,6 @@ import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
 import {ShareTokenRegistrar} from "../../src/token/ShareTokenRegistrar.sol";
 import {
-    Constants,
     CoreReport,
     CoreActionBatcher,
     NonCoreActionBatcher,
@@ -127,7 +126,7 @@ struct DeployerInput {
     AdaptersInput adapters;
 }
 
-contract FullDeployer is GatedDeployer, Constants {
+contract FullDeployer is GatedDeployer {
     Root public root;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
@@ -145,7 +144,7 @@ contract FullDeployer is GatedDeployer, Constants {
     SpokeRegistry public spokeRegistry;
     SpokeHandler public spokeHandler;
     Envoy public envoy;
-    PoolEscrowFactory public poolEscrowFactory;
+    EscrowFactory public escrowFactory;
 
     HubRegistry public hubRegistry;
     Accounting public accounting;
@@ -252,7 +251,7 @@ contract FullDeployer is GatedDeployer, Constants {
 
             // NOTE. Coverage compiles without optimizations.
             // This means that the gas costs are higher than the calibrated gasService limits,
-            // causing message processing to silently fail (e.g. PoolEscrow creation via CREATE).
+            // causing message processing to silently fail (e.g. Escrow creation via CREATE).
             // We mock messageProcessingGasLimit with a higher value large enough for unoptimized code.
             if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
                 vm.mockCall(
@@ -391,12 +390,8 @@ contract FullDeployer is GatedDeployer, Constants {
             )
         );
 
-        poolEscrowFactory = PoolEscrowFactory(
-            submit(
-                "poolEscrowFactory",
-                V3_3,
-                abi.encodePacked(type(PoolEscrowFactory).creationCode, abi.encode(root, batcher))
-            )
+        escrowFactory = EscrowFactory(
+            submit("escrowFactory", V3_3, abi.encodePacked(type(EscrowFactory).creationCode, abi.encode(root, batcher)))
         );
 
         spokeRegistry = SpokeRegistry(
@@ -412,8 +407,7 @@ contract FullDeployer is GatedDeployer, Constants {
                 "spoke",
                 V3_3,
                 abi.encodePacked(
-                    type(Spoke).creationCode,
-                    abi.encode(gateway, snapshotQueue, spokeRegistry, poolEscrowFactory, batcher)
+                    type(Spoke).creationCode, abi.encode(gateway, snapshotQueue, spokeRegistry, escrowFactory, batcher)
                 )
             )
         );
@@ -422,7 +416,7 @@ contract FullDeployer is GatedDeployer, Constants {
             submit(
                 "spokeHandler",
                 V3_3,
-                abi.encodePacked(type(SpokeHandler).creationCode, abi.encode(spokeRegistry, poolEscrowFactory, batcher))
+                abi.encodePacked(type(SpokeHandler).creationCode, abi.encode(spokeRegistry, escrowFactory, batcher))
             )
         );
 
@@ -574,7 +568,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory)
+                        address(escrowFactory)
                     )
                 )
             )
@@ -593,7 +587,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory)
+                        address(escrowFactory)
                     )
                 )
             )
@@ -612,7 +606,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory)
+                        address(escrowFactory)
                     )
                 )
             )
@@ -631,7 +625,7 @@ contract FullDeployer is GatedDeployer, Constants {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(poolEscrowFactory)
+                        address(escrowFactory)
                     )
                 )
             )
@@ -849,7 +843,7 @@ contract FullDeployer is GatedDeployer, Constants {
             multiAdapter,
             messageProcessor,
             messageDispatcher,
-            poolEscrowFactory,
+            escrowFactory,
             spoke,
             snapshotQueue,
             shareTokenRegistrar,

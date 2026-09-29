@@ -3,15 +3,15 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 
+import {Escrow} from "../../../../src/core/spoke/Escrow.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
-import {PoolEscrowFactory} from "../../../../src/core/spoke/factories/PoolEscrowFactory.sol";
-import {IPoolEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {EscrowFactory} from "../../../../src/core/spoke/factories/EscrowFactory.sol";
+import {IEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IEscrowFactory.sol";
 
 import "forge-std/Test.sol";
 
-contract PoolEscrowFactoryTest is Test {
-    PoolEscrowFactory factory;
+contract EscrowFactoryTest is Test {
+    EscrowFactory factory;
 
     address deployer = address(this);
     address root = makeAddr("root");
@@ -19,12 +19,15 @@ contract PoolEscrowFactoryTest is Test {
     address randomUser = makeAddr("randomUser");
 
     function setUp() public {
-        factory = new PoolEscrowFactory(root, deployer);
+        factory = new EscrowFactory(root, deployer);
         factory.file("spoke", spoke);
     }
 
     function testDeployEscrowAtDeterministicAddress(PoolId poolId) public {
         address expectedEscrow = address(factory.escrow(poolId));
+
+        vm.expectEmit();
+        emit IEscrowFactory.DeployEscrow(poolId, expectedEscrow);
         address actual = address(factory.newEscrow(poolId));
 
         assertEq(expectedEscrow, actual, "Escrow address mismatch");
@@ -54,7 +57,7 @@ contract PoolEscrowFactoryTest is Test {
         vm.assume(nonWard != root && nonWard != spoke);
         address escrowAddr = address(factory.newEscrow(poolId));
 
-        PoolEscrow escrow = PoolEscrow(payable(escrowAddr));
+        Escrow escrow = Escrow(payable(escrowAddr));
 
         assertEq(escrow.wards(root), 1, "root not authorized");
         assertEq(escrow.wards(spoke), 1, "spoke not authorized");
@@ -69,7 +72,7 @@ contract PoolEscrowFactoryTest is Test {
     }
 
     function testFileWithUnknownParamReverts() public {
-        vm.expectRevert(IPoolEscrowFactory.FileUnrecognizedParam.selector);
+        vm.expectRevert(IEscrowFactory.FileUnrecognizedParam.selector);
         factory.file("unknown", randomUser);
     }
 

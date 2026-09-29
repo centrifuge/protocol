@@ -10,11 +10,11 @@ The admin module provides protocol governance and emergency controls, including 
 
 ### `ProtocolGuardian`
 
-`ProtocolGuardian` provides emergency controls and protocol-level management, including pausing, permission scheduling, cross-chain upgrade coordination, and adapter configuration. It acts as an intermediary between a multisig safe and the `Root` contract, providing a structured interface for protocol-wide operations. The contract supports instant pause by safe owners (for emergencies) and safe-only unpause to prevent unauthorized resumption.
+`ProtocolGuardian` provides emergency controls and protocol-level management, including pausing, permission scheduling, and cross-chain upgrade coordination. It acts as an intermediary between a multisig safe and the `Root` contract, providing a structured interface for protocol-wide operations. The contract supports instant pause by safe owners (for emergencies) and safe-only unpause to prevent unauthorized resumption.
 
 ### `OpsGuardian`
 
-`OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions.
+`OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions. Both are first-time only: it installs a network's first global adapter set, and wires an adapter to a remote chain that adapter is not yet wired to. Replacing a live set or re-pointing a live binding decides which remote contracts the protocol trusts, so each takes a spell: no guardian can do it. Containment is the exception, and deliberately so: `blockSession` remains the ops safe's, because taking a bad set offline must not wait on a timelock.
 
 ### `GasService`
 

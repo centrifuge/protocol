@@ -144,8 +144,7 @@ contract HubHandler is Auth, IHubHandler, IHubGatewayHandler {
             (result.receiver, result.amount, result.extraGasLimit, result.refund);
         }
 
-        shareClassManager.updateShares(targetCentrifugeId, poolId, scId, amount, true);
-        shareClassManager.updateShares(originCentrifugeId, poolId, scId, amount, false);
+        shareClassManager.transferShares(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
 
         holdings.callOnTransferSnapshot(poolId, scId, originCentrifugeId, targetCentrifugeId, amount);
 

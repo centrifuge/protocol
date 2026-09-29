@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IPoolEscrowProvider, IPoolEscrowFactory} from "./interfaces/IPoolEscrowFactory.sol";
+import {IEscrowProvider, IEscrowFactory} from "./interfaces/IEscrowFactory.sol";
 
 import {Auth} from "../../../misc/Auth.sol";
 
-import {PoolEscrow} from "../PoolEscrow.sol";
+import {Escrow} from "../Escrow.sol";
 import {PoolId} from "../../types/PoolId.sol";
-import {IPoolEscrow} from "../interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../interfaces/IEscrow.sol";
 
-contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
+contract EscrowFactory is Auth, IEscrowFactory {
     address public immutable root;
 
     address public spoke;
@@ -20,16 +20,16 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
         root = root_;
     }
 
-    /// @inheritdoc IPoolEscrowFactory
+    /// @inheritdoc IEscrowFactory
     function file(bytes32 what, address data) external auth {
         if (what == "spoke") spoke = data;
         else revert FileUnrecognizedParam();
         emit File(what, data);
     }
 
-    /// @inheritdoc IPoolEscrowFactory
-    function newEscrow(PoolId poolId_) public auth returns (IPoolEscrow) {
-        PoolEscrow escrow_ = new PoolEscrow{salt: bytes32(uint256(poolId_.raw()))}(poolId_, address(this));
+    /// @inheritdoc IEscrowFactory
+    function newEscrow(PoolId poolId_) public auth returns (IEscrow) {
+        Escrow escrow_ = new Escrow{salt: bytes32(uint256(poolId_.raw()))}(poolId_, address(this));
 
         poolId[address(escrow_)] = poolId_;
 
@@ -38,22 +38,22 @@ contract PoolEscrowFactory is Auth, IPoolEscrowFactory {
 
         escrow_.deny(address(this));
 
-        emit DeployPoolEscrow(poolId_, address(escrow_));
-        return IPoolEscrow(escrow_);
+        emit DeployEscrow(poolId_, address(escrow_));
+        return IEscrow(escrow_);
     }
 
-    /// @inheritdoc IPoolEscrowProvider
-    function escrow(PoolId poolId_) external view returns (IPoolEscrow) {
+    /// @inheritdoc IEscrowProvider
+    function escrow(PoolId poolId_) external view returns (IEscrow) {
         bytes32 salt = bytes32(uint256(poolId_.raw()));
         bytes32 hash = keccak256(
             abi.encodePacked(
                 bytes1(0xff),
                 address(this),
                 salt,
-                keccak256(abi.encodePacked(type(PoolEscrow).creationCode, abi.encode(poolId_, address(this))))
+                keccak256(abi.encodePacked(type(Escrow).creationCode, abi.encode(poolId_, address(this))))
             )
         );
 
-        return IPoolEscrow(address(uint160(uint256(hash))));
+        return IEscrow(address(uint160(uint256(hash))));
     }
 }

@@ -20,6 +20,7 @@ import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../
 
 import "forge-std/Test.sol";
 
+import {USD_ID} from "../../src/deployment/Currencies.sol";
 import {MAX_MESSAGE_COST as GAS} from "../utils/GasConstants.sol";
 
 /// @notice The base contract for integrators that want to tests their contracts.

@@ -685,7 +685,7 @@ contract CryticSanity is Test, TargetFunctions, FoundryAsserts {
         uint256 toleranceAtFulfillment = _asyncRoundTripTolerance(true);
         assertGt(toleranceAtFulfillment, 1, "tolerance should carry a share-price term");
 
-        spoke_updatePricePoolPerShare(1, 1e6);
+        spoke_updatePricePoolPerShare(1, uint64(block.timestamp));
 
         assertEq(_asyncRoundTripTolerance(true), toleranceAtFulfillment, "tolerance must not follow current price");
     }

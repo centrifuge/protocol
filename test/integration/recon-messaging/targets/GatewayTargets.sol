@@ -128,7 +128,7 @@ abstract contract GatewayTargets is MultiAdapterTargets {
         precondition(!mockProtocolPauser.paused());
         precondition(wrongSource != 0 && wrongSource != REMOTE_CENTRIFUGE_ID);
 
-        bytes memory message = abi.encodePacked(mockMessageProperties.SOURCE_RESTRICTED_MAGIC(), wrongSource, payload);
+        bytes memory message = abi.encodePacked(countingProcessor.SOURCE_RESTRICTED_MAGIC(), wrongSource, payload);
 
         try gateway.handle(REMOTE_CENTRIFUGE_ID, message) {
             t(false, "G9: handle accepted a message from the wrong source chain");

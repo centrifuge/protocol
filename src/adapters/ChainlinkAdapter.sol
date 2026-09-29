@@ -9,39 +9,33 @@ import {
     IRouterClient,
     IClient,
     GENERIC_EXTRA_ARGS_V2_TAG,
-    IAny2EVMMessageReceiver
+    GENERIC_EXTRA_ARGS_V3_TAG,
+    WAIT_FOR_FINALITY_FLAG,
+    BLOCK_DEPTH_MASK,
+    IAny2EVMMessageReceiver,
+    IAny2EVMMessageReceiverV2
 } from "./interfaces/IChainlinkAdapter.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {IERC165} from "../misc/interfaces/IERC7575.sol";
 
-import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+import {IAdapterGasService} from "../admin/interfaces/IAdapterGasService.sol";
 
 /// @title  Chainlink Adapter
 /// @notice Routing contract that integrates with Chainlink CCIP
 /// @dev    Replay protection is enforced by the CCIP stack (Router/OffRamp),
 ///         which tracks message IDs and prevents duplicate delivery.
 contract ChainlinkAdapter is Auth, IChainlinkAdapter {
-    /// @dev Cost of executing `ccipReceive()` except entrypoint.handle(), reserved per destination chain.
-    ///      Covers 1 cold SLOAD (single-slot `sources` struct) + 1 cold CALL (entrypoint) at 4_700, plus
-    ///      a flat 5_300 for dispatch, calldata decode, mapping hash, memory and call setup.
-    uint256 public constant DEFAULT_RECEIVE_COST = 10_000;
-
-    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
-    // Monad reprices cold storage access (2100→8100) and cold account access (2600→10100) per its
-    // published opcode schedule (docs.monad.xyz), putting those same two accesses at 18_200 => +13_500
-    // over DEFAULT, wrapper allowance unchanged. Mirrors GasService's per-chain reserve.
-    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 13_500;
-
     IRouterClient public immutable ccipRouter;
-    IMessageHandler public immutable entrypoint;
+    IAdapterEntrypoint public immutable entrypoint;
 
     mapping(uint64 chainSelector => ChainlinkSource) public sources;
     mapping(uint16 centrifugeId => ChainlinkDestination) public destinations;
 
-    constructor(IMessageHandler entrypoint_, address ccipRouter_, address deployer) Auth(deployer) {
+    constructor(IAdapterEntrypoint entrypoint_, address ccipRouter_, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         ccipRouter = IRouterClient(ccipRouter_);
     }
@@ -52,10 +46,20 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
 
     /// @inheritdoc IAdapterWiring
     function wire(uint16 centrifugeId, bytes memory data) external auth {
-        (uint64 chainSelector, address adapter) = abi.decode(data, (uint64, address));
-        sources[chainSelector] = ChainlinkSource(centrifugeId, adapter);
-        destinations[centrifugeId] = ChainlinkDestination(chainSelector, adapter);
-        emit Wire(centrifugeId, chainSelector, adapter);
+        (uint64 chainSelector, address adapter, bytes4 requestedFinality, bytes4 allowedFinality) =
+            abi.decode(data, (uint64, address, bytes4, bytes4));
+        require(uint32(requestedFinality) & BLOCK_DEPTH_MASK == 0, BlockDepthNotSupported());
+        require(uint32(allowedFinality) & BLOCK_DEPTH_MASK == 0, BlockDepthNotSupported());
+
+        sources[chainSelector] = ChainlinkSource(centrifugeId, adapter, allowedFinality);
+        destinations[centrifugeId] = ChainlinkDestination(chainSelector, adapter, requestedFinality);
+        emit Wire(centrifugeId, chainSelector, adapter, requestedFinality, allowedFinality);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId, bytes memory data) external view returns (bool) {
+        (uint64 chainSelector,) = abi.decode(data, (uint64, address));
+        return destinations[centrifugeId].chainSelector != 0 || sources[chainSelector].addr != address(0);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -104,10 +108,11 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
         );
     }
 
-    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
-    ///      repricing needs a larger reserve than other chains.
-    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
-        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
+    /// @dev Receive reserve added to the requested gas limit. The gas service holds what this path costs
+    ///      and what each destination charges for it, so the adapter only names itself.
+    function _receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        IAdapterGasService gasService = IAdapterGasService(address(entrypoint.messageGas()));
+        return gasService.receiveCost(centrifugeId, "chainlink");
     }
 
     function _createMessage(ChainlinkDestination memory destination, bytes calldata payload, uint256 gasLimit)
@@ -120,13 +125,33 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
             data: payload,
             tokenAmounts: new IClient.EVMTokenAmount[](0),
             feeToken: address(0),
-            extraArgs: _argsToBytes(IClient.GenericExtraArgsV2({gasLimit: gasLimit, allowOutOfOrderExecution: true}))
+            extraArgs: _extraArgs(destination.requestedFinality, gasLimit)
         });
     }
 
-    // Based on https://github.com/smartcontractkit/chainlink-ccip/blob/06f2720ee9a0c987a18a9bb226c672adfcf24bcd/chains/evm/contracts/libraries/Client.sol#L36
-    function _argsToBytes(IClient.GenericExtraArgsV2 memory extraArgs) internal pure returns (bytes memory bts) {
-        return abi.encodeWithSelector(GENERIC_EXTRA_ARGS_V2_TAG, extraArgs);
+    function _extraArgs(bytes4 requestedFinality, uint256 gasLimit) internal pure returns (bytes memory) {
+        if (requestedFinality == WAIT_FOR_FINALITY_FLAG) {
+            return abi.encodeWithSelector(
+                GENERIC_EXTRA_ARGS_V2_TAG,
+                IClient.GenericExtraArgsV2({gasLimit: gasLimit, allowOutOfOrderExecution: true})
+            );
+        }
+
+        require(gasLimit <= type(uint32).max, GasLimitTooHigh());
+        return abi.encodePacked(GENERIC_EXTRA_ARGS_V3_TAG, uint32(gasLimit), requestedFinality, bytes7(0));
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IAny2EVMMessageReceiverV2
+    function getCCVsAndFinalityConfig(uint64 sourceChainSelector, bytes calldata)
+        external
+        view
+        returns (address[] memory, address[] memory, uint8, bytes4)
+    {
+        return (new address[](0), new address[](0), 0, sources[sourceChainSelector].allowedFinality);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -135,6 +160,7 @@ contract ChainlinkAdapter is Auth, IChainlinkAdapter {
 
     /// @inheritdoc IERC165
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId
+            || interfaceId == type(IAny2EVMMessageReceiverV2).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 }

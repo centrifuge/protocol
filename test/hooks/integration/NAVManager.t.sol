@@ -14,6 +14,7 @@ import {IShareClassManager} from "../../../src/core/hub/interfaces/IShareClassMa
 
 import {INAVManager} from "../../../src/hooks/accounting/interfaces/INAVManager.sol";
 
+import {USD_ID} from "../../../src/deployment/Currencies.sol";
 import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
 import {IStdHubPolicy} from "../../../src/policies/hub/interfaces/IStdHubPolicy.sol";
 import {StdHubPolicy, StdHubPolicyFactory} from "../../../src/policies/hub/StdHubPolicy.sol";

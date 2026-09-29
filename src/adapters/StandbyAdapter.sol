@@ -3,7 +3,10 @@ pragma solidity 0.8.28;
 
 import {IStandbyAdapter, IAdapter} from "./interfaces/IStandbyAdapter.sol";
 
-import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
+import {IMessageGas} from "../core/messaging/interfaces/IMessageGas.sol";
+import {IAdapterEntrypoint} from "../core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {IAdapterGasService} from "../admin/interfaces/IAdapterGasService.sol";
 
 /// @title  StandbyAdapter
 /// @notice A low-cost cross-chain adapter that wraps another adapter. On `send` it records the message
@@ -21,19 +24,8 @@ import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol"
 ///         StandbyAdapter (so its inbound `handle` lands here), while this adapter's `entrypoint` is the
 ///         MultiAdapter. A shared underlying would route its votes to the wrong place.
 contract StandbyAdapter is IStandbyAdapter {
-    /// @dev Cost of executing `handle()` except entrypoint.handle(), reserved per destination chain.
-    ///      Covers 1 cold CALL (entrypoint) at 2_600, plus a flat 900 for dispatch, calldata copy and
-    ///      call setup. Measured at ~3_000 relaying a 1KB message.
-    uint256 public constant DEFAULT_RECEIVE_COST = 3_500;
-
-    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
-    // Monad reprices cold account access (2600→10100) per its published opcode schedule (docs.monad.xyz),
-    // putting `handle()`'s single cold CALL at 10_100 => +7_500 over DEFAULT. Mirrors the same per-chain
-    // reserve the carrying adapters and GasService keep.
-    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 7_500;
-
     IAdapter public immutable underlying;
-    IMessageHandler public immutable entrypoint;
+    IAdapterEntrypoint public immutable entrypoint;
 
     /// @dev Credits are keyed on (centrifugeId, gasLimit, payload). The payload is what {MultiAdapter.send}
     ///      dispatched, which carries the session id in its leading bytes, so a credit is session-scoped in
@@ -41,7 +33,7 @@ contract StandbyAdapter is IStandbyAdapter {
     ///      sends, so the standby vote stays bounded by what was actually sent.
     mapping(bytes32 id => uint256) public forwardable;
 
-    constructor(IMessageHandler entrypoint_, IAdapter underlying_) {
+    constructor(IAdapterEntrypoint entrypoint_, IAdapter underlying_) {
         entrypoint = entrypoint_;
         underlying = underlying_;
     }
@@ -104,9 +96,15 @@ contract StandbyAdapter is IStandbyAdapter {
     ///      which corrects for those 3 EIP-150 boundaries), but relaying through this adapter inserts a
     ///      4th frame. Reserves this contract's own cost and adds the 64/63 that frame's boundary needs,
     ///      so the entrypoint is entered with as much gas as it would have been on the normal path.
-    function _forwardGasLimit(uint16 centrifugeId, uint256 gasLimit) internal pure returns (uint256) {
-        uint256 receiveCost = centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
-        return (gasLimit + receiveCost) * 64 / 63;
+    function _forwardGasLimit(uint16 centrifugeId, uint256 gasLimit) internal view returns (uint256) {
+        return (gasLimit + _receiveCost(centrifugeId)) * 64 / 63;
+    }
+
+    /// @dev Receive reserve added to the requested gas limit. The gas service holds what this path costs
+    ///      and what each destination charges for it, so the adapter only names itself.
+    function _receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        IAdapterGasService gasService = IAdapterGasService(address(entrypoint.messageGas()));
+        return gasService.receiveCost(centrifugeId, "standby");
     }
 
     //----------------------------------------------------------------------------------------------
@@ -117,5 +115,23 @@ contract StandbyAdapter is IStandbyAdapter {
     function handle(uint16 centrifugeId, bytes calldata message) external {
         require(msg.sender == address(underlying), NotUnderlying());
         entrypoint.handle(centrifugeId, message);
+    }
+
+    /// @inheritdoc IAdapterEntrypoint
+    /// @dev The vote is the standby's, which is the adapter the MultiAdapter holds in its set.
+    function vote(uint16 centrifugeId, bytes calldata payload) external {
+        require(msg.sender == address(underlying), NotUnderlying());
+        entrypoint.vote(centrifugeId, payload);
+    }
+
+    /// @inheritdoc IAdapterEntrypoint
+    function execute(uint16 centrifugeId, bytes calldata payload) external {
+        require(msg.sender == address(underlying), NotUnderlying());
+        entrypoint.execute(centrifugeId, payload);
+    }
+
+    /// @inheritdoc IAdapterEntrypoint
+    function messageGas() external view returns (IMessageGas) {
+        return entrypoint.messageGas();
     }
 }
