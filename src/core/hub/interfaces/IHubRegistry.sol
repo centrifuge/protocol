@@ -60,7 +60,10 @@ interface IHubRegistry is IERC6909Decimals {
 
     error NonExistingPool();
     error InvalidPool();
-    error AssetAlreadyRegistered();
+    /// @notice Dispatched when {registerAsset} would move an asset's decimals off a nonzero value. Only
+    ///         an unset entry (0) may be replaced; anything else may be re-registered at the value it
+    ///         already holds, and at nothing else.
+    error CannotChangeDecimals();
     error PoolAlreadyRegistered();
     error EmptyAccount();
     error EmptyCurrency();
@@ -91,7 +94,21 @@ interface IHubRegistry is IERC6909Decimals {
     // Registration methods
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Register a new asset
+    /// @notice Register an asset, or re-register one whose decimals are unset or unchanged
+    /// @dev Re-registering is how a value the spoke read off a token that had not been initialized yet is
+    ///      corrected: a stored 0 may be replaced. Anything else may only be re-registered at the value it
+    ///      already holds, which keeps repeated registration idempotent without letting a decimals change
+    ///      reach an asset that live pools price against. {NewAsset} is emitted every time, not only the
+    ///      first, so consumers must treat it as an upsert.
+    /// @dev The bound is the point rather than caution. RegisterAsset routes over the global adapter set,
+    ///      so it reaches pools running adapters of their own; a forged one must not be able to retune the
+    ///      decimals that claim payouts convert through.
+    /// @dev Not covered: a token reporting a wrong nonzero `decimals()` before initialization rather than
+    ///      0, whose entry is then final. Both reported cases report 0.
+    /// @dev A parked RegisterAsset carrying a value since superseded — a `0` read before the token was
+    ///      initialized, retried after a later registration wrote the real decimals — now reverts rather
+    ///      than applying. That is the intent: a stale message must not walk the entry backwards. It stays
+    ///      in `failedMessages` and is inert there, RegisterAsset being nonce-free.
     /// @param assetId The asset identifier; must not be the null AssetId
     /// @param decimals_ The number of decimals for the asset, at most 18
     function registerAsset(AssetId assetId, uint8 decimals_) external;

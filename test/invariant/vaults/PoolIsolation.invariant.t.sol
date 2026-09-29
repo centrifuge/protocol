@@ -8,7 +8,7 @@ import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {PoolId, newPoolId} from "../../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../../src/core/spoke/SpokeHandler.sol";
-import {IPoolEscrow} from "../../../src/core/spoke/interfaces/IPoolEscrow.sol";
+import {IEscrow} from "../../../src/core/spoke/interfaces/IEscrow.sol";
 import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {VaultBaseTest} from "../../integration/vaults/VaultBaseTest.sol";
@@ -285,7 +285,7 @@ contract PoolIsolationInvariantTest is VaultBaseTest {
     }
 
     function _footprintFields(PoolId poolId) internal view returns (Footprint memory f) {
-        IPoolEscrow escrow = spoke.escrow(poolId);
+        IEscrow escrow = spoke.escrow(poolId);
         (f.escrowHolding, f.escrowReserved) = escrow.holding(scIdB, address(erc20), 0);
 
         IShareToken shareToken = IShareToken(address(spokeRegistry.shareToken(poolId, scIdB)));

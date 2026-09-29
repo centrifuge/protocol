@@ -9,8 +9,8 @@ Status column: ✅ holds under fuzzing · ❌ known to break, see `.claude/docs/
 | 4 | vault_maxDeposit | depositing maxDeposit blocks the user from depositing more | ✅ |
 | 5 | vault_maxDeposit | depositing maxDeposit does not increase the pendingDeposit | ✅ |
 | 6 | vault_maxDeposit | depositing maxDeposit doesn't mint more than maxMint shares | ✅ |
-| 7 | vault_maxDeposit | For async vaults, validates PoolEscrow share transfers | ✅ |
-| 8 | vault_maxDeposit | For sync vaults, validates PoolEscrow state changes | ✅ |
+| 7 | vault_maxDeposit | For async vaults, validates Escrow share transfers | ✅ |
+| 8 | vault_maxDeposit | For sync vaults, validates Escrow state changes | ✅ |
 | 9 | vault_maxMint | user can always maxMint if they have > 0 assets and are approved | ✅ |
 | 10 | vault_maxMint | user can always mint an amount between 1 and maxMint if they have > 0 assets and are approved | ✅ |
 | 11 | vault_maxMint | maxMint should be 0 after using maxMint as mintAmount | ✅ |
@@ -100,16 +100,16 @@ Status column: ✅ holds under fuzzing · ❌ known to break, see `.claude/docs/
 | 93 | property_authorizationLevel | successful authorized calls must be made by authorized accounts | ✅ |
 | 94 | property_authorizationChange | authorization changes are correctly tracked | ✅ |
 | 95 | property_shareTransferRestrictions | Transfers from endorsed contracts are blocked | ✅ |
-| 96 | property_shareTokenSupplyConsistency | Total supply equals sum of all tracked balances (actors + PoolEscrow) | ✅ |
+| 96 | property_shareTokenSupplyConsistency | Total supply equals sum of all tracked balances (actors + Escrow) | ✅ |
 | 97 | property_shareTokenCountedInSupply | share token should always be included if it's been supplied | ✅ |
 | 98 | property_assetShareProportionalityDeposits | Asset-Share Proportionality on Deposits | ✅ |
 | 99 | property_assetShareProportionalityWithdrawals | Asset-Share Proportionality on Withdrawals | ✅ |
 | 100 | hub_issueShares | After FM performs approveDeposits and issueShares with non-zero navPerShare, the total issuance increases | ✅ |
 | 101 | hub_revokeShares | After FM performs approveRedeems and revokeShares with non-zero navPerShare, the total issuance decreases | ✅ |
-| 102 | balanceSheet_noteDeposit | PoolEscrow.total increases by exactly the amount deposited | ✅ |
-| 103 | balanceSheet_noteDeposit | PoolEscrow.reserved does not change during noteDeposit | ✅ |
+| 102 | balanceSheet_noteDeposit | Escrow.total increases by exactly the amount deposited | ✅ |
+| 103 | balanceSheet_noteDeposit | Escrow.reserved does not change during noteDeposit | ✅ |
 | 104 | balanceSheet_withdraw | Withdrawals should not fail when there's sufficient balance | ✅ |
-| 104a | balanceSheet_withdrawReserved | PoolEscrow.total and PoolEscrow.reserved both decrease by exactly the amount withdrawn | ✅ |
+| 104a | balanceSheet_withdrawReserved | Escrow.total and Escrow.reserved both decrease by exactly the amount withdrawn | ✅ |
 | 104b | balanceSheet_withdrawReserved | withdrawReserved does not queue a Hub holding decrease (already queued when reserved) | ✅ |
 | 104c | balanceSheet_withdrawShares | withdrawShares moves shares out of the pool escrow with no change to queuedShares — handler is `internal`, reachable only via `balanceSheet_withdrawShares_clamped` or a reproducer | ✅ |
 | 104d | property_escrowBalanceMatchesHoldingTotal | The pool escrow's raw token balance for an asset equals the sum of holding.total across share classes | ✅ |
@@ -132,8 +132,8 @@ Status column: ✅ holds under fuzzing · ❌ known to break, see `.claude/docs/
 | 116a | doomsday_claimCancelDepositRequest_always_claimable | If claimableCancelDeposit > 0, the claim succeeds and pays exactly that amount (EW3, DOS) | ✅ |
 | 116b | doomsday_claimCancelRedeemRequest_always_claimable | If claimableCancelRedeem > 0, the claim succeeds and returns exactly those shares (EW3, DOS) | ✅ |
 | 117 | hub_notifyDeposit | After successfully calling claimDeposit for an investor (via notifyDeposit), their allocation decreases | ✅ |
-| 118 | hub_notifyDeposit | PoolEscrow.total increases by exactly totalPaymentAssetAmount | ✅ |
-| 119 | hub_notifyDeposit | PoolEscrow.reserved does not change during deposit processing | ✅ |
+| 118 | hub_notifyDeposit | Escrow.total increases by exactly totalPaymentAssetAmount | ✅ |
+| 119 | hub_notifyDeposit | Escrow.reserved does not change during deposit processing | ✅ |
 | 120 | hub_notifyRedeem | After successfully calling claimRedeem for an investor (via notifyRedeem), their allocation decreases | ✅ |
 | 121 | token_transfer | must revert if sending to or from a frozen user | ✅ |
 | 122 | token_transfer | must revert if sending to a non-member who is not endorsed | ✅ |

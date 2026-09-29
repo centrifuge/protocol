@@ -2,7 +2,7 @@
 pragma solidity >=0.5.0;
 
 import {ISpoke} from "../../../core/spoke/interfaces/ISpoke.sol";
-import {IPoolEscrowProvider} from "../../../core/spoke/factories/interfaces/IPoolEscrowFactory.sol";
+import {IEscrowProvider} from "../../../core/spoke/factories/interfaces/IEscrowFactory.sol";
 
 import {IRoot} from "../../../admin/interfaces/IRoot.sol";
 
@@ -47,7 +47,7 @@ interface IBaseTransferHook is ITransferHook {
     function spoke() external view returns (ISpoke);
 
     /// @notice Factory that maps pool IDs to escrow addresses
-    function poolEscrowProvider() external view returns (IPoolEscrowProvider);
+    function escrowProvider() external view returns (IEscrowProvider);
 
     /// @notice Whether an address has manager permissions for a specific share token
     function manager(address token, address addr) external view returns (bool);
@@ -56,7 +56,7 @@ interface IBaseTransferHook is ITransferHook {
     // Transfer type classification
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Whether the address is a pool escrow deployed by the pool escrow factory
+    /// @notice Whether the address is a pool escrow deployed by the escrow factory
     function isPoolEscrow(address addr) external view returns (bool);
 
     /// @notice True when `from` is zero-address and `to` is not the pool escrow or cross-chain source (mint to user/vault)

@@ -219,7 +219,7 @@ contract TestInitiateTransferSharesHook is TestCommon {
             abi.encodeWithSelector(IHubRegistry.bridgingHook.selector, POOL_A),
             abi.encode(address(hook))
         );
-        vm.mockCall(address(scm), abi.encodeWithSelector(IShareClassManager.updateShares.selector), abi.encode());
+        vm.mockCall(address(scm), abi.encodeWithSelector(IShareClassManager.transferShares.selector), abi.encode());
         vm.mockCall(address(holdings), abi.encodeWithSelector(IHoldings.callOnTransferSnapshot.selector), abi.encode());
         vm.mockCall(
             mockSender,
@@ -235,6 +235,13 @@ contract TestInitiateTransferSharesHook is TestCommon {
     }
 
     function testHookIsCalledAndResultForwarded() public {
+        // One relocation between the two networks, rather than an issuance and a revocation that would also
+        // grow the across-networks counters by an amount that nets to nothing
+        vm.expectCall(
+            address(scm), abi.encodeCall(IShareClassManager.transferShares, (POOL_A, SC_A, CHAIN_A, CHAIN_B, 100))
+        );
+        vm.expectCall(address(scm), abi.encodeWithSelector(IShareClassManager.updateShares.selector), 0);
+
         vm.prank(AUTH);
         hubHandler.initiateTransferShares{value: COST}(
             CHAIN_A, CHAIN_B, POOL_A, SC_A, bytes32("sender"), bytes32("receiver"), 100, 0, REFUND

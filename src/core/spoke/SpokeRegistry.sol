@@ -353,6 +353,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
     function updatePricePoolPerShare(PoolId poolId, ShareClassId scId, D18 price, uint64 computedAt) external auth {
         require(hasShareClass(poolId, scId), ShareTokenDoesNotExist());
         Price storage poolPerShare = shareClass[poolId][scId].pricePoolPerShare;
+        require(computedAt <= block.timestamp, CannotSetFuturePrice());
         require(computedAt >= poolPerShare.computedAt, CannotSetOlderPrice());
 
         poolPerShare.price = price;
@@ -369,6 +370,7 @@ contract SpokeRegistry is Auth, ISpokeRegistry {
         require(isRegistered(assetId), UnknownAsset());
         AssetIdKey memory assetIdKey = _idToAsset[assetId];
         Price storage poolPerAsset = _pricePoolPerAsset[poolId][scId][assetId];
+        require(computedAt <= block.timestamp, CannotSetFuturePrice());
         require(computedAt >= poolPerAsset.computedAt, CannotSetOlderPrice());
 
         poolPerAsset.price = price;

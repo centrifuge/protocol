@@ -45,7 +45,7 @@ contract GatewayHarness is Gateway {
         external
         returns (uint256 consumedGas, uint256 failureBranchGas)
     {
-        uint128 reserve = messageProperties.messageFailureGasReserve();
+        uint128 reserve = messageGas.messageFailureGasReserve();
         uint256 g0 = gasleft();
         _safeProcess(centrifugeId, message, messageHash, gasLimit, reserve);
         uint256 g2 = gasleft();
@@ -77,7 +77,7 @@ contract GatewayFailGasTest is CentrifugeIntegrationTest {
 
         gatewayHarness = new GatewayHarness(LOCAL_CENTRIFUGE_ID, gateway.pauser(), address(this));
         gatewayHarness.file("processor", address(new AlwaysFailProcessor()));
-        gatewayHarness.file("messageProperties", address(gasService));
+        gatewayHarness.file("messageGas", address(gasService));
     }
 
     function testProcessFailMessageGasBenchmark() public {

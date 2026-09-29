@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {MockGateway, MockMessageProperties, POOL_0} from "../core/unit/MultiAdapter.t.sol";
+import {MockGateway, MockMessageParser, POOL_0} from "../core/unit/MultiAdapter.t.sol";
 
 import {MultiAdapter} from "../../src/core/messaging/MultiAdapter.sol";
 import {IAdapter} from "../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageGas} from "../../src/core/messaging/interfaces/IMessageGas.sol";
 import {IMessageHandler} from "../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {GasService} from "../../src/admin/GasService.sol";
+import {IAdapterGasService} from "../../src/admin/interfaces/IAdapterGasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -56,15 +61,34 @@ contract MockUnderlying is IAdapter {
 }
 
 /// @dev Captures relayed inbound messages (stands in for the MultiAdapter entrypoint).
-contract MockEntrypoint is IMessageHandler {
+contract MockEntrypoint is IAdapterEntrypoint {
+    IMessageGas public messageGas;
     uint16 public lastCentrifugeId;
     bytes public lastMessage;
     uint256 public handleCount;
+    uint256 public voteCount;
+    uint256 public executeCount;
+
+    function setGasService(IMessageGas gasService_) external {
+        messageGas = gasService_;
+    }
 
     function handle(uint16 centrifugeId, bytes calldata message) external {
         lastCentrifugeId = centrifugeId;
         lastMessage = message;
         handleCount++;
+    }
+
+    function vote(uint16 centrifugeId, bytes calldata payload) external {
+        lastCentrifugeId = centrifugeId;
+        lastMessage = payload;
+        voteCount++;
+    }
+
+    function execute(uint16 centrifugeId, bytes calldata payload) external {
+        lastCentrifugeId = centrifugeId;
+        lastMessage = payload;
+        executeCount++;
     }
 }
 
@@ -77,9 +101,63 @@ contract StandbyAdapterTest is Test {
     MockUnderlying underlying = new MockUnderlying();
 
     StandbyAdapter standby;
+    GasService gasService;
 
     function setUp() public {
-        standby = new StandbyAdapter(entrypoint, underlying);
+        standby = new StandbyAdapter(IAdapterEntrypoint(address(entrypoint)), underlying);
+
+        uint8[32] memory txLimits;
+        gasService = new GasService(txLimits, REMOTE);
+        entrypoint.setGasService(gasService);
+    }
+
+    /// @dev Mirrors what the adapter declares, so a count that drifts from the adapter's own fails here.
+    function receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        return gasService.receiveCost(centrifugeId, "standby");
+    }
+
+    /// @dev The underlying holds the standby as its IAdapterEntrypoint and cannot tell the difference, so
+    ///      everything an entrypoint is asked for has to be answered. Without these the underlying reverts:
+    ///      on messageGas it cannot price its own receive path, and on vote/execute a proof adapter cannot
+    ///      sit under a standby at all.
+    function testMessageGasPassesThroughToTheEntrypoint() public view {
+        assertEq(address(standby.messageGas()), address(gasService));
+        assertEq(address(standby.messageGas()), address(entrypoint.messageGas()));
+    }
+
+    function testVotePassesThroughToTheEntrypoint() public {
+        vm.prank(address(underlying));
+        standby.vote(REMOTE, PAYLOAD);
+
+        assertEq(entrypoint.voteCount(), 1);
+        assertEq(entrypoint.lastCentrifugeId(), REMOTE);
+        assertEq(entrypoint.lastMessage(), PAYLOAD);
+    }
+
+    function testExecutePassesThroughToTheEntrypoint() public {
+        vm.prank(address(underlying));
+        standby.execute(REMOTE, PAYLOAD);
+
+        assertEq(entrypoint.executeCount(), 1);
+        assertEq(entrypoint.lastCentrifugeId(), REMOTE);
+        assertEq(entrypoint.lastMessage(), PAYLOAD);
+    }
+
+    /// @dev Relayed calls are attributed to the standby, so only its own underlying may make them.
+    function testVoteErrNotUnderlying(address notUnderlying) public {
+        vm.assume(notUnderlying != address(underlying));
+
+        vm.prank(notUnderlying);
+        vm.expectRevert(IStandbyAdapter.NotUnderlying.selector);
+        standby.vote(REMOTE, PAYLOAD);
+    }
+
+    function testExecuteErrNotUnderlying(address notUnderlying) public {
+        vm.assume(notUnderlying != address(underlying));
+
+        vm.prank(notUnderlying);
+        vm.expectRevert(IStandbyAdapter.NotUnderlying.selector);
+        standby.execute(REMOTE, PAYLOAD);
     }
 
     function _id() internal pure returns (bytes32) {
@@ -226,7 +304,7 @@ contract StandbyAdapterTest is Test {
         _send();
         standby.forward{value: 1 ether}(REMOTE, PAYLOAD, GAS);
 
-        uint256 expected = (GAS + standby.DEFAULT_RECEIVE_COST()) * 64 / 63;
+        uint256 expected = (GAS + receiveCost(REMOTE)) * 64 / 63;
         assertGt(expected, GAS, "the underlying must be asked for more than was recorded");
         assertEq(underlying.lastGasLimit(), expected, "send gets the uplifted limit");
     }
@@ -235,7 +313,7 @@ contract StandbyAdapterTest is Test {
     function testForwardEstimatesUpliftedGasLimit() public {
         _send();
         underlying.setCostPerGas(1 wei);
-        uint256 expected = (GAS + standby.DEFAULT_RECEIVE_COST()) * 64 / 63;
+        uint256 expected = (GAS + receiveCost(REMOTE)) * 64 / 63;
         assertEq(standby.estimateForward(REMOTE, PAYLOAD, GAS), expected, "quote exposes the uplifted price");
 
         vm.expectRevert(IStandbyAdapter.NotEnoughValue.selector);
@@ -247,13 +325,13 @@ contract StandbyAdapterTest is Test {
 
     /// @dev Monad reprices the cold CALL the relay makes, so it reserves more.
     function testForwardUpliftsGasLimitForMonad() public {
-        uint16 monad = standby.MONAD_CENTRIFUGE_ID();
+        uint16 monad = gasService.MONAD_CENTRIFUGE_ID();
         vm.prank(address(entrypoint));
         standby.send(monad, PAYLOAD, GAS, address(this));
         standby.forward{value: 1 ether}(monad, PAYLOAD, GAS);
 
-        assertEq(underlying.lastGasLimit(), (GAS + standby.MONAD_RECEIVE_COST()) * 64 / 63);
-        assertGt(standby.MONAD_RECEIVE_COST(), standby.DEFAULT_RECEIVE_COST());
+        assertEq(underlying.lastGasLimit(), (GAS + receiveCost(monad)) * 64 / 63);
+        assertGt(receiveCost(monad), receiveCost(REMOTE));
     }
 
     /// @dev The uplift changes only what the underlying is asked for: the credit stays keyed on the
@@ -294,10 +372,10 @@ contract StandbyAdapterMultiAdapterTest is Test {
     uint16 constant LOCAL = 1;
     uint16 constant REMOTE = 2;
     uint256 constant GAS = 100_000;
-    bytes constant PAYLOAD = hex"c0ffee"; // length < 6 -> POOL_0 in MockMessageProperties
+    bytes constant PAYLOAD = hex"c0ffee"; // length < 6 -> POOL_0 in MockMessageParser
 
     MockGateway gateway = new MockGateway();
-    MockMessageProperties props = new MockMessageProperties();
+    MockMessageParser props = new MockMessageParser();
     MultiAdapter multi;
 
     MockUnderlying activeA = new MockUnderlying();
@@ -307,7 +385,10 @@ contract StandbyAdapterMultiAdapterTest is Test {
 
     function setUp() public {
         multi = new MultiAdapter(LOCAL, gateway, address(this));
-        multi.file("messageProperties", address(props));
+        multi.file("parser", address(props));
+
+        uint8[32] memory txLimits;
+        multi.file("messageGas", address(new GasService(txLimits, LOCAL)));
 
         standby = new StandbyAdapter(multi, standbyUnderlying);
 
@@ -321,6 +402,30 @@ contract StandbyAdapterMultiAdapterTest is Test {
     /// @dev MultiAdapter wraps outbound payloads with the active sessionId; the standby records that.
     function _wrapped() internal view returns (bytes memory) {
         return abi.encodePacked(multi.activeSessionId(REMOTE, POOL_0), PAYLOAD);
+    }
+
+    /// @dev The only place a quote is taken against the real chain of contracts rather than a mocked
+    ///      entrypoint: estimateForward reads the reserve through MultiAdapter and the gas service that is
+    ///      filed on it, so a reference that is unfiled or does not answer fails here rather than on a live
+    ///      message. The other adapters mock `messageGas` away and cannot see this.
+    function testEstimateReadsTheFiledGasService() public {
+        standbyUnderlying.setCostPerGas(1);
+
+        uint256 receiveCost = IAdapterGasService(address(multi.messageGas())).receiveCost(REMOTE, "standby");
+        assertGt(receiveCost, 0, "the standby has a reserve to read");
+
+        assertEq(
+            standby.estimateForward(REMOTE, PAYLOAD, GAS),
+            (GAS + receiveCost) * 64 / 63,
+            "the quote carries the reserve the filed gas service priced"
+        );
+    }
+
+    function testEstimateRevertsWhenNoGasServiceIsFiled() public {
+        multi.file("messageGas", address(0));
+
+        vm.expectRevert();
+        standby.estimateForward(REMOTE, PAYLOAD, GAS);
     }
 
     function testSendKeepsStandbyIdleWhileActivesDispatch() public {
@@ -352,7 +457,12 @@ contract StandbyAdapterMultiAdapterTest is Test {
 
 /// @dev Records the gas the MultiAdapter frame is entered with.
 contract GasRecordingEntrypoint is IMessageHandler {
+    IAdapterGasService public messageGas;
     uint256 public gasSeen;
+
+    function setGasService(IAdapterGasService gasService_) external {
+        messageGas = gasService_;
+    }
 
     function handle(uint16, bytes calldata) external {
         gasSeen = gasleft();
@@ -385,6 +495,7 @@ contract StandbyAdapterGasTest is Test {
     InboundRelay direct = new InboundRelay();
     InboundRelay viaStandby = new InboundRelay();
     StandbyAdapter standby;
+    GasService gasService;
 
     function setUp() public {
         // Normal path: adapter -> MultiAdapter
@@ -392,8 +503,16 @@ contract StandbyAdapterGasTest is Test {
 
         // Forwarded path: adapter -> standby -> MultiAdapter. The standby only accepts inbound calls
         // from its `underlying`, so the two point at each other.
-        standby = new StandbyAdapter(standbyEntrypoint, IAdapter(address(viaStandby)));
+        standby = new StandbyAdapter(IAdapterEntrypoint(address(standbyEntrypoint)), IAdapter(address(viaStandby)));
         viaStandby.setEntrypoint(standby);
+
+        uint8[32] memory txLimits;
+        gasService = new GasService(txLimits, REMOTE);
+        standbyEntrypoint.setGasService(gasService);
+    }
+
+    function receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        return gasService.receiveCost(centrifugeId, "standby");
     }
 
     function testForwardUpliftCoversTheRelayFrame(uint32 gasLimit, uint16 messageLength) public {
@@ -402,7 +521,13 @@ contract StandbyAdapterGasTest is Test {
 
         // What a normal adapter delivers on `gasLimit`, against what the standby delivers on the
         // uplifted limit `forward` hands its underlying.
-        uint256 uplifted = (uint256(gasLimit) + standby.DEFAULT_RECEIVE_COST()) * 64 / 63;
+        uint256 uplifted = (uint256(gasLimit) + receiveCost(REMOTE)) * 64 / 63;
+
+        // The cold CALL into the standby is reserved by the underlying adapter's own receive cost, the
+        // same way that adapter reserves the cold CALL into a MultiAdapter entrypoint. Warm it here so
+        // this measures only the extra frame the uplift exists for.
+        standby.entrypoint();
+
         direct.deliver{gas: gasLimit}(REMOTE, message);
         viaStandby.deliver{gas: uplifted}(REMOTE, message);
 

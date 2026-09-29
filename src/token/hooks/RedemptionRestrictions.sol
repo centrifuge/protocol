@@ -18,8 +18,8 @@ contract RedemptionRestrictions is BaseTransferHook {
         address spoke_,
         address crosschainSource_,
         address deployer,
-        address poolEscrowProvider_
-    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, poolEscrowProvider_) {}
+        address escrowProvider_
+    ) BaseTransferHook(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, escrowProvider_) {}
 
     /// @inheritdoc ITransferHook
     function checkERC20Transfer(

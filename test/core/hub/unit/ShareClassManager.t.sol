@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {IAuth} from "../../../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
@@ -36,7 +37,6 @@ string constant SC_NAME = "ExampleName";
 string constant SC_SYMBOL = "ExampleSymbol";
 bytes32 constant SC_SALT = bytes32(uint256(bytes32(bytes8(POOL_ID))) + 1); // 0x<POOL_ID>..1
 bytes32 constant SC_SECOND_SALT = bytes32(uint256(bytes32(bytes8(POOL_ID))) + 2); // 0x<POOL_ID>..2
-uint32 constant STORAGE_INDEX_METRICS = 3;
 
 contract HubRegistryMock {
     bool public poolExists = true;
@@ -292,7 +292,7 @@ contract ShareClassManagerRevertsTest is ShareClassManagerBaseTest {
         vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
         shareClass.totalIssuance(poolId, scId);
 
-        (uint128 issuances, uint128 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
+        (uint256 issuances, uint256 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
         assertEq(issuances, 0);
         assertEq(revocations, 1);
     }
@@ -419,12 +419,47 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
 
         // The two counters show the same thing without reverting, which is what SimplePriceManager reads
         // while the hub is handling a message
-        (uint128 issuances, uint128 revocations) = shareClass.issuancePerNetwork(poolId, scId, centrifugeId);
+        (uint256 issuances, uint256 revocations) = shareClass.issuancePerNetwork(poolId, scId, centrifugeId);
         assertEq(issuances, 0);
         assertEq(revocations, 100);
 
         // Network 2 is unaffected
         assertEq(shareClass.issuance(poolId, scId, 2), 1000);
+    }
+
+    /// @dev A chain reports share movements, so the largest number it can put in a message is what its
+    ///      adapters can put there if they are compromised. Reported into a uint128 counter that only ever
+    ///      goes up, one such message would leave no room for the next legitimate report, on that chain and
+    ///      on the total, and nothing brings a counter down: revocations accumulate separately. The pool's
+    ///      accounting would be stuck until the share class was abandoned.
+    function testMaxReportDoesNotWedgeTheCounters() public {
+        shareClass.updateShares(centrifugeId, poolId, scId, 1000, true);
+
+        shareClass.updateShares(centrifugeId, poolId, scId, type(uint128).max, true);
+
+        // Still takes reports, from that chain and from others
+        shareClass.updateShares(centrifugeId, poolId, scId, 1000, true);
+        shareClass.updateShares(2, poolId, scId, 1000, true);
+
+        (uint256 issuances,) = shareClass.issuancePerNetwork(poolId, scId, centrifugeId);
+        assertEq(issuances, uint256(type(uint128).max) + 2000);
+
+        // And the bogus report cancels out the way any other over-report does
+        shareClass.updateShares(centrifugeId, poolId, scId, type(uint128).max, false);
+        assertEq(shareClass.issuance(poolId, scId, centrifugeId), 2000);
+        assertEq(shareClass.totalIssuance(poolId, scId), 3000);
+    }
+
+    /// @dev The counters hold more than a share amount can, so the netted views say so rather than truncate.
+    function testNettedIssuanceRefusesToTruncate() public {
+        shareClass.updateShares(centrifugeId, poolId, scId, type(uint128).max, true);
+        shareClass.updateShares(centrifugeId, poolId, scId, 1, true);
+
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
+        shareClass.issuance(poolId, scId, centrifugeId);
+
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
+        shareClass.totalIssuance(poolId, scId);
     }
 
     function testNegativeIssuanceAfterPartialRevoke() public {
@@ -468,7 +503,7 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
         vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
         shareClass.totalIssuance(poolId, scId);
 
-        (uint128 issuances, uint128 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
+        (uint256 issuances, uint256 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
         assertEq(issuances, 400);
         assertEq(revocations, 1000);
 
@@ -531,7 +566,7 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
         assertEq(shareClass.negativeNetworkCount(poolId, scId), 1);
         assertEq(shareClass.totalIssuance(poolId, scId), 600, "netted across networks");
 
-        (uint128 issuances, uint128 revocations) = shareClass.issuancePerNetwork(poolId, scId, 2);
+        (uint256 issuances, uint256 revocations) = shareClass.issuancePerNetwork(poolId, scId, 2);
         assertEq(revocations - issuances, 400, "network 2 is short by 400");
         assertEq(shareClass.issuance(poolId, scId, 1), 1000, "so what the networks hold sums to 1000, not 600");
     }
@@ -548,5 +583,110 @@ contract ShareClassManagerPendingIssuanceTest is ShareClassManagerBaseTest {
         uint128 expectedIssuance = issue1 - revoke1 + issue2;
         assertEq(shareClass.issuance(poolId, scId, centrifugeId), expectedIssuance);
         assertEq(shareClass.totalIssuance(poolId, scId), expectedIssuance);
+    }
+}
+
+/// @dev A transfer moves shares between two chains without minting or burning any, so it is the one write
+///      that leaves the across-networks counters alone. Everything else it has to do is what `updateShares`
+///      does twice: move the per-network counters and keep the deficit count honest at both ends.
+contract ShareClassManagerTransferSharesTest is ShareClassManagerBaseTest {
+    uint16 constant FROM = 1;
+    uint16 constant TO = 2;
+
+    function testTransferMovesPerNetworkAndLeavesTheTotals() public {
+        shareClass.updateShares(FROM, poolId, scId, 1000, true);
+
+        vm.expectEmit();
+        emit IShareClassManager.RemoteRevokeShares(FROM, poolId, scId, 400);
+        vm.expectEmit();
+        emit IShareClassManager.RemoteIssueShares(TO, poolId, scId, 400);
+        shareClass.transferShares(poolId, scId, FROM, TO, 400);
+
+        assertEq(shareClass.issuance(poolId, scId, FROM), 600);
+        assertEq(shareClass.issuance(poolId, scId, TO), 400);
+        assertEq(shareClass.totalIssuance(poolId, scId), 1000, "supply is unchanged");
+
+        // The gross counters carry what chains have reported minting and burning, and a transfer is neither
+        (uint256 issuances, uint256 revocations) = shareClass.issuanceAcrossNetworks(poolId, scId);
+        assertEq(issuances, 1000);
+        assertEq(revocations, 0);
+    }
+
+    function testTransferBeyondIssuanceCountsTheOriginAsNegative() public {
+        shareClass.updateShares(FROM, poolId, scId, 1000, true);
+
+        // The spoke burned shares the hub has not been told were issued there, which is the ordering the
+        // counters exist to survive
+        vm.expectEmit();
+        emit IShareClassManager.UpdateNegativeNetworkCount(poolId, scId, 3, 1);
+        shareClass.transferShares(poolId, scId, 3, TO, 400);
+
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 1);
+        vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
+        shareClass.issuance(poolId, scId, 3);
+
+        // And chain 3's own report brings it back out
+        vm.expectEmit();
+        emit IShareClassManager.UpdateNegativeNetworkCount(poolId, scId, 3, 0);
+        shareClass.updateShares(3, poolId, scId, 400, true);
+
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 0);
+        assertEq(shareClass.issuance(poolId, scId, 3), 0);
+        assertEq(shareClass.totalIssuance(poolId, scId), 1400);
+    }
+
+    function testTransferCanBringTheTargetBackToParity() public {
+        shareClass.updateShares(TO, poolId, scId, 400, false);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 1);
+
+        shareClass.updateShares(FROM, poolId, scId, 1000, true);
+
+        vm.expectEmit();
+        emit IShareClassManager.UpdateNegativeNetworkCount(poolId, scId, TO, 0);
+        shareClass.transferShares(poolId, scId, FROM, TO, 400);
+
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 0);
+        assertEq(shareClass.issuance(poolId, scId, TO), 0);
+        assertEq(shareClass.issuance(poolId, scId, FROM), 600);
+    }
+
+    /// @dev `Spoke.crosschainTransferShares` rejects this with `LocalTransferNotAllowed`, so it is only
+    ///      reachable by a future auth caller. Both ends are the same counters, so the two writes cancel.
+    function testTransferToTheSameNetworkNetsToNothing() public {
+        shareClass.updateShares(FROM, poolId, scId, 1000, true);
+
+        shareClass.transferShares(poolId, scId, FROM, FROM, 400);
+
+        assertEq(shareClass.issuance(poolId, scId, FROM), 1000);
+        assertEq(shareClass.totalIssuance(poolId, scId), 1000);
+        assertEq(shareClass.negativeNetworkCount(poolId, scId), 0);
+
+        (uint256 issuances, uint256 revocations) = shareClass.issuancePerNetwork(poolId, scId, FROM);
+        assertEq(issuances, 1400);
+        assertEq(revocations, 400);
+    }
+
+    /// @dev A transfer spends the same headroom `updateShares` does, so it has to survive the same report.
+    function testMaxTransferDoesNotWedgeTheCounters() public {
+        shareClass.transferShares(poolId, scId, FROM, TO, type(uint128).max);
+
+        shareClass.updateShares(FROM, poolId, scId, 1000, true);
+        shareClass.transferShares(poolId, scId, TO, FROM, type(uint128).max);
+
+        assertEq(shareClass.issuance(poolId, scId, FROM), 1000);
+        assertEq(shareClass.issuance(poolId, scId, TO), 0);
+        assertEq(shareClass.totalIssuance(poolId, scId), 1000);
+    }
+
+    function testTransferSharesWrongShareClassId() public {
+        ShareClassId wrongScId = ShareClassId.wrap(bytes16(uint128(1337)));
+        vm.expectRevert(IShareClassManager.ShareClassNotFound.selector);
+        shareClass.transferShares(poolId, wrongScId, FROM, TO, 100);
+    }
+
+    function testTransferSharesNotAuthorized() public {
+        vm.prank(makeAddr("unauthorized"));
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        shareClass.transferShares(poolId, scId, FROM, TO, 100);
     }
 }

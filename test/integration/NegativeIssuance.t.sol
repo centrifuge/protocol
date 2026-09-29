@@ -78,7 +78,7 @@ contract NegativeIssuanceEndToEndTest is EndToEndFlows {
         assertEq(shareOnHub.totalSupply(), 0, "burned on chain A");
 
         // As far as the hub is concerned, chain A has now revoked shares it never reported issuing.
-        (uint128 chainAIssuances, uint128 chainARevocations) =
+        (uint256 chainAIssuances, uint256 chainARevocations) =
             h.shareClassManager.issuancePerNetwork(POOL_A, SC_1, h.centrifugeId);
         assertEq(chainAIssuances, 0);
         assertEq(chainARevocations, SHARES);
@@ -100,9 +100,11 @@ contract NegativeIssuanceEndToEndTest is EndToEndFlows {
         vm.expectRevert(IShareClassManager.NegativeIssuance.selector);
         h.shareClassManager.totalIssuance(POOL_A, SC_1);
 
-        (uint128 issuances, uint128 revocations) = h.shareClassManager.issuanceAcrossNetworks(POOL_A, SC_1);
-        assertEq(issuances, SHARES, "only the shares arriving on spoke B were ever reported");
-        assertEq(revocations, 2 * SHARES, "the bridge off chain A, plus spoke B's revocation");
+        // The bridge moved shares between two networks rather than minting or burning any, so it left these
+        // alone: they carry what the chains have reported, and spoke B has reported a revocation it made.
+        (uint256 issuances, uint256 revocations) = h.shareClassManager.issuanceAcrossNetworks(POOL_A, SC_1);
+        assertEq(issuances, 0, "no chain has reported issuing yet");
+        assertEq(revocations, SHARES, "spoke B's revocation");
 
         // 5. Chain A finally submits the issuance from step 1, and the totals match the real supply again.
         vm.prank(BSM);

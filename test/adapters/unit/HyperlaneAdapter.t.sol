@@ -8,6 +8,9 @@ import {Mock} from "../../core/mocks/Mock.sol";
 
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {GasService} from "../../../src/admin/GasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -61,9 +64,22 @@ contract HyperlaneAdapterTestBase is Test {
     uint32 constant HYPERLANE_DOMAIN = 2;
     address immutable REMOTE_ADAPTER = makeAddr("remoteAdapter");
 
-    IMessageHandler constant GATEWAY = IMessageHandler(address(1));
+    IAdapterEntrypoint constant GATEWAY = IAdapterEntrypoint(address(1));
+
+    GasService gasService;
+
+    /// @dev Mirrors what the adapter declares, so a count that drifts from the adapter's own fails here.
+    function receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        return gasService.receiveCost(centrifugeId, "hyperlane");
+    }
 
     function setUp() public {
+        uint8[32] memory txLimits;
+        gasService = new GasService(txLimits, CENTRIFUGE_ID);
+        vm.mockCall(
+            address(GATEWAY), abi.encodeWithSelector(IAdapterEntrypoint.messageGas.selector), abi.encode(gasService)
+        );
+
         mockMailbox = new MockMailbox();
         adapter = new HyperlaneAdapter(GATEWAY, address(mockMailbox), address(this));
     }
@@ -77,6 +93,8 @@ contract HyperlaneAdapterTestWire is HyperlaneAdapterTestBase {
     }
 
     function testWire() public {
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER)), false);
+
         vm.expectEmit();
         emit IHyperlaneAdapter.Wire(CENTRIFUGE_ID, HYPERLANE_DOMAIN, REMOTE_ADAPTER);
         adapter.wire(CENTRIFUGE_ID, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER));
@@ -88,6 +106,12 @@ contract HyperlaneAdapterTestWire is HyperlaneAdapterTestBase {
         (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(HYPERLANE_DOMAIN);
         assertEq(centrifugeId, CENTRIFUGE_ID);
         assertEq(remoteSourceAddress, REMOTE_ADAPTER);
+
+        // Wired on both sides: the chain has a destination, and the bridge id has a source
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(HYPERLANE_DOMAIN + 1, REMOTE_ADAPTER)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID + 1, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID + 1, abi.encode(HYPERLANE_DOMAIN + 1, REMOTE_ADAPTER)), false);
     }
 }
 
@@ -137,18 +161,18 @@ contract HyperlaneAdapterTest is HyperlaneAdapterTestBase {
         // estimate() builds metadata with refund = address(this) (the adapter itself).
         // MockMailbox.quoteDispatch echoes keccak256(metadata), so this asserts the exact bytes.
         bytes memory expectedMetadata = abi.encodePacked(
-            uint16(1), uint256(0), uint256(uint256(gasLimit) + adapter.DEFAULT_RECEIVE_COST()), address(adapter)
+            uint16(1), uint256(0), uint256(uint256(gasLimit) + receiveCost(CENTRIFUGE_ID)), address(adapter)
         );
         assertEq(adapter.estimate(CENTRIFUGE_ID, "irrelevant", gasLimit), uint256(keccak256(expectedMetadata)));
     }
 
     /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
     function testEstimateUsesMonadReceiveCost(uint64 gasLimit) public {
-        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        uint16 monadId = gasService.MONAD_CENTRIFUGE_ID();
         adapter.wire(monadId, abi.encode(HYPERLANE_DOMAIN, REMOTE_ADAPTER));
 
         bytes memory expectedMetadata = abi.encodePacked(
-            uint16(1), uint256(0), uint256(uint256(gasLimit) + adapter.MONAD_RECEIVE_COST()), address(adapter)
+            uint16(1), uint256(0), uint256(uint256(gasLimit) + receiveCost(monadId)), address(adapter)
         );
         assertEq(adapter.estimate(monadId, "irrelevant", gasLimit), uint256(keccak256(expectedMetadata)));
     }
@@ -167,7 +191,9 @@ contract HyperlaneAdapterTest is HyperlaneAdapterTestBase {
         assumeNotZeroAddress(invalidAddress);
 
         vm.mockCall(
-            address(GATEWAY), abi.encodeWithSelector(GATEWAY.handle.selector, CENTRIFUGE_ID, payload), abi.encode()
+            address(GATEWAY),
+            abi.encodeWithSelector(IMessageHandler.handle.selector, CENTRIFUGE_ID, payload),
+            abi.encode()
         );
 
         // Correct input, but not yet setup
@@ -220,9 +246,8 @@ contract HyperlaneAdapterTest is HyperlaneAdapterTestBase {
         assertEq(mockMailbox.values_bytes32("recipientAddress"), destinationAdapter.toBytes32LeftPadded());
         assertEq(mockMailbox.values_bytes("body"), payload);
 
-        bytes memory expectedMetadata = abi.encodePacked(
-            uint16(1), uint256(0), uint256(uint128(gasLimit) + adapter.DEFAULT_RECEIVE_COST()), refund
-        );
+        bytes memory expectedMetadata =
+            abi.encodePacked(uint16(1), uint256(0), uint256(uint128(gasLimit) + receiveCost(CENTRIFUGE_ID)), refund);
         assertEq(mockMailbox.values_bytes("metadata"), expectedMetadata);
 
         // the full fee is forwarded to the mailbox

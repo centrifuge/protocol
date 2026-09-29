@@ -11,8 +11,9 @@ import {TransientStorageLib} from "../../../src/misc/libraries/TransientStorageL
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {Gateway} from "../../../src/core/messaging/Gateway.sol";
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
+import {IMessageGas} from "../../../src/core/messaging/interfaces/IMessageGas.sol";
+import {IMessageParser} from "../../../src/core/messaging/interfaces/IMessageParser.sol";
 import {IProtocolPauser} from "../../../src/core/messaging/interfaces/IProtocolPauser.sol";
-import {IMessageProperties} from "../../../src/core/messaging/interfaces/IMessageProperties.sol";
 import {IGateway, MESSAGE_MAX_LENGTH, ERR_MAX_LENGTH} from "../../../src/core/messaging/interfaces/IGateway.sol";
 
 import {IRoot} from "../../../src/admin/interfaces/IRoot.sol";
@@ -73,17 +74,52 @@ function asBytes(MessageKind kind) pure returns (bytes memory) {
 using {asBytes, length} for MessageKind;
 
 // A MessageLib agnostic processor
-contract MockProcessor {
+contract MockProcessor is IMessageParser {
     using BytesLib for bytes;
 
     error HandleError();
 
     mapping(uint16 => bytes[]) public processed;
     bool shouldNotFail;
-    IMessageProperties properties;
+    MockMessageGas properties;
 
-    constructor(IMessageProperties properties_) {
+    constructor(MockMessageGas properties_) {
         properties = properties_;
+    }
+
+    /// @inheritdoc IMessageParser
+    function messageLength(bytes calldata message) external pure returns (uint16) {
+        return MessageKind(message.toUint8(0)).length();
+    }
+
+    /// @inheritdoc IMessageParser
+    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    /// @inheritdoc IMessageParser
+    function routePoolId(bytes calldata message, bool) external pure returns (PoolId) {
+        return _poolId(message);
+    }
+
+    /// @inheritdoc IMessageParser
+    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16) {
+        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return REMOTE_CENT_ID;
+        return 0;
+    }
+
+    function _poolId(bytes calldata message) internal pure returns (PoolId) {
+        if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1ExtraGas)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1TooMuchGas)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolAFail)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.WithPoolATooLong)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.SetPoolAdapters)) return POOL_A;
+        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return POOL_A;
+        revert("Unreachable: message never asked for pool");
     }
 
     function disableFailure() public {
@@ -116,34 +152,8 @@ contract MockProcessor {
     }
 }
 
-contract MockMessageProperties is IMessageProperties {
+contract MockMessageGas is IMessageGas {
     using BytesLib for bytes;
-
-    function messageLength(bytes calldata message) external pure returns (uint16) {
-        return MessageKind(message.toUint8(0)).length();
-    }
-
-    function messagePoolId(bytes calldata message) external pure returns (PoolId) {
-        return _poolId(message);
-    }
-
-    function routePoolId(bytes calldata message, bool) external pure returns (PoolId) {
-        return _poolId(message);
-    }
-
-    function _poolId(bytes calldata message) internal pure returns (PoolId) {
-        if (message.toUint8(0) == uint8(MessageKind.WithPool0)) return POOL_0;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1ExtraGas)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA1TooMuchGas)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolA2)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolAFail)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolALongFail)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.WithPoolATooLong)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.SetPoolAdapters)) return POOL_A;
-        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return POOL_A;
-        revert("Unreachable: message never asked for pool");
-    }
 
     function messageOverallGasLimit(uint16 centrifugeId, bytes calldata message) external pure returns (uint128) {
         return messageProcessingGasLimit(centrifugeId, message) + BASE_COST;
@@ -162,11 +172,6 @@ contract MockMessageProperties is IMessageProperties {
 
     function messageFailureGasReserve() external pure returns (uint128) {
         return MOCK_PROCESS_FAIL_GAS;
-    }
-
-    function messageSourceCentrifugeId(bytes calldata message) external pure returns (uint16) {
-        if (message.toUint8(0) == uint8(MessageKind.RequireRemoteSource)) return REMOTE_CENT_ID;
-        return 0;
     }
 }
 
@@ -223,8 +228,8 @@ contract GatewayTest is Test {
     IRoot root = IRoot(makeAddr("Root"));
     IAdapter adapter = IAdapter(makeAddr("Adapter"));
 
-    MockMessageProperties messageProperties = new MockMessageProperties();
-    MockProcessor processor = new MockProcessor(messageProperties);
+    MockMessageGas messageGas = new MockMessageGas();
+    MockProcessor processor = new MockProcessor(messageGas);
     GatewayExt gateway = new GatewayExt(LOCAL_CENT_ID, IRoot(address(root)), address(this));
 
     address immutable ANY = makeAddr("ANY");
@@ -255,7 +260,7 @@ contract GatewayTest is Test {
     function setUp() public virtual {
         gateway.file("adapter", address(adapter));
         gateway.file("processor", address(processor));
-        gateway.file("messageProperties", address(messageProperties));
+        gateway.file("messageGas", address(messageGas));
 
         _mockPause(false);
     }
@@ -279,8 +284,8 @@ contract GatewayTestFile is GatewayTest {
         gateway.file("processor", address(23));
         assertEq(address(gateway.processor()), address(23));
 
-        gateway.file("messageProperties", address(42));
-        assertEq(address(gateway.messageProperties()), address(42));
+        gateway.file("messageGas", address(42));
+        assertEq(address(gateway.messageGas()), address(42));
 
         gateway.file("adapter", address(88));
         assertEq(address(gateway.adapter()), address(88));

@@ -216,9 +216,11 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     }
 
     /// @inheritdoc IHub
-    function setSpokePolicy(PoolId poolId, uint16 centrifugeId, bytes32 policy_, address refund) external payable {
-        _enforce(poolId);
-
+    function setSpokePolicy(PoolId poolId, uint16 centrifugeId, bytes32 policy_, address refund)
+        external
+        payable
+        enforced(poolId)
+    {
         emit SetSpokePolicy(centrifugeId, poolId, policy_);
         sender.sendSetPolicy{value: msgValue()}(centrifugeId, poolId, policy_, refund);
     }
@@ -227,9 +229,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function authorizeSpokeCall(PoolId poolId, uint16 centrifugeId, bytes calldata data, address refund)
         external
         payable
+        enforced(poolId)
     {
-        _enforce(poolId);
-
         emit AuthorizeSpokeCall(centrifugeId, poolId, data);
         sender.sendAuthorizeSpokeCall{value: msgValue()}(centrifugeId, poolId, data, refund);
     }
@@ -238,11 +239,8 @@ contract Hub is BatchedMulticall, Auth, Recoverable, IHub, IHubRequestManagerCal
     function unauthorizeSpokeCall(PoolId poolId, uint16 centrifugeId, bytes calldata data, address refund)
         external
         payable
+        enforced(poolId)
     {
-        // Manager-only and immediate (no timelock): revoking an authorization only reduces capability, so it
-        // is a safety action a manager can take at any time to retire a stale, not-yet-consumed authorization.
-        _requireManager(poolId);
-
         emit UnauthorizeSpokeCall(centrifugeId, poolId, data);
         sender.sendUnauthorizeSpokeCall{value: msgValue()}(centrifugeId, poolId, data, refund);
     }

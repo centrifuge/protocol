@@ -9,6 +9,7 @@ import {IBridgeCircuitBreaker} from "../../../src/hooks/bridge/interfaces/IBridg
 
 import {ICircuitBreakerGuard} from "../../../src/managers/spoke/guards/interfaces/ICircuitBreakerGuard.sol";
 
+import {USD_ID} from "../../../src/deployment/Currencies.sol";
 import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {CentrifugeIntegrationTest} from "../../integration/Integration.t.sol";
 

@@ -40,9 +40,42 @@ contract TestAuthChecks is TestCommon {
     }
 }
 
-/// @dev Source-chain classification now lives entirely in MessageLib.messageSourceCentrifugeId, enforced
-///      by Gateway before a message ever reaches MessageProcessor (see Gateway.t.sol for the enforcement
-///      tests). This checks that classification against real, `serialize()`d messages of every type -
+/// @dev The framing view Gateway and MultiAdapter read. It is deliberately served from the processor rather
+///      than from the ops-filed gas service, so that filing a gas service cannot alter source-chain
+///      authentication, and so the two views of a message cannot disagree.
+contract TestMessageFraming is TestCommon {
+    using MessageLib for *;
+
+    uint16 constant CENTRIFUGE_ID = 3;
+
+    function testMessageLength() public view {
+        bytes memory message = MessageLib.NotifyPool({poolId: 1}).serialize();
+        assertEq(processor.messageLength(message), message.messageLength());
+    }
+
+    function testMessagePoolId() public view {
+        bytes memory message = MessageLib.NotifyPool({poolId: 1}).serialize();
+        assertEq(processor.messagePoolId(message).raw(), message.messagePoolId().raw());
+    }
+
+    function testRoutePoolId() public view {
+        bytes memory message = MessageLib.SetPoolAdapters({
+                poolId: 1, threshold: 1, targetSessionId: 1, adapterList: new bytes32[](0)
+            }).serialize();
+
+        assertEq(processor.routePoolId(message, true).raw(), message.messagePoolId().raw());
+        assertEq(processor.routePoolId(message, false).raw(), 0);
+    }
+
+    function testMessageSourceCentrifugeId() public view {
+        bytes memory message = MessageLib.NotifyPool({poolId: uint64(CENTRIFUGE_ID) << 48}).serialize();
+        assertEq(processor.messageSourceCentrifugeId(message), message.messageSourceCentrifugeId());
+    }
+}
+
+/// @dev Source-chain classification lives in MessageLib.messageSourceCentrifugeId, surfaced by
+///      MessageProcessor and enforced by Gateway before a message is dispatched (see Gateway.t.sol for the
+///      enforcement tests). This checks that classification against real, `serialize()`d messages of every type -
 ///      MessageLib.t.sol's exhaustive test covers the same logic against a synthetic buffer, so this
 ///      additionally guards against a mismatch between the two encodings.
 contract TestMessageSourceClassification is Test {

@@ -9,7 +9,8 @@
     "batchLimit": 15,
     "baseRpcUrl": "https://monad-mainnet.g.alchemy.com/v2/",
     "verifier": "blockscout",
-    "verifierUrl": "https://api.socialscan.io/monad-mainnet/v1/explorer/command_api/contract"
+    "verifierUrl": "https://api.socialscan.io/monad-mainnet/v1/explorer/command_api/contract",
+    "explorerApiUrl": "https://api.socialscan.io/monad-mainnet/v1/explorer/command_api/contract"
   },
   "adapters": {
     "layerZero": {

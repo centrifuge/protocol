@@ -10,7 +10,7 @@
     "baseRpcUrl": "https://api.zan.top/node/v1/pharos/mainnet/",
     "verifier": "blockscout",
     "verifierUrl": "https://api.socialscan.io/pharos-mainnet/v1/explorer/command_api/contract",
-    "explorerApiUrl": "https://api.socialscan.io/pharos-mainnet/v1/explorer"
+    "explorerApiUrl": "https://api.socialscan.io/pharos-mainnet/v1/explorer/command_api/contract"
   },
   "adapters": {
     "layerZero": {

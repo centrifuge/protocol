@@ -8,6 +8,9 @@ import {Mock} from "../../core/mocks/Mock.sol";
 
 import {IAdapter} from "../../../src/core/messaging/interfaces/IAdapter.sol";
 import {IMessageHandler} from "../../../src/core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../../src/core/messaging/interfaces/IAdapterEntrypoint.sol";
+
+import {GasService} from "../../../src/admin/GasService.sol";
 
 import "forge-std/Test.sol";
 
@@ -56,9 +59,22 @@ contract LayerZeroAdapterTestBase is Test {
     address immutable DELEGATE = makeAddr("delegate");
     address immutable REMOTE_LAYERZERO_ADDR = makeAddr("remoteAddress");
 
-    IMessageHandler constant GATEWAY = IMessageHandler(address(1));
+    IAdapterEntrypoint constant GATEWAY = IAdapterEntrypoint(address(1));
+
+    GasService gasService;
+
+    /// @dev Mirrors what the adapter declares, so a count that drifts from the adapter's own fails here.
+    function receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        return gasService.receiveCost(centrifugeId, "layerZero");
+    }
 
     function setUp() public {
+        uint8[32] memory txLimits;
+        gasService = new GasService(txLimits, CENTRIFUGE_ID);
+        vm.mockCall(
+            address(GATEWAY), abi.encodeWithSelector(IAdapterEntrypoint.messageGas.selector), abi.encode(gasService)
+        );
+
         endpoint = new MockLayerZeroEndpoint();
         adapter = new LayerZeroAdapter(GATEWAY, address(endpoint), DELEGATE, address(this));
     }
@@ -78,6 +94,8 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
     }
 
     function testWire() public {
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR)), false);
+
         vm.assertEq(
             adapter.allowInitializePath(Origin(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR.toBytes32LeftPadded(), 0)), false
         );
@@ -97,6 +115,12 @@ contract LayerZeroAdapterTestWire is LayerZeroAdapterTestBase {
         (uint16 centrifugeId, address remoteSourceAddress) = adapter.sources(LAYERZERO_ID);
         assertEq(centrifugeId, CENTRIFUGE_ID);
         assertEq(remoteSourceAddress, REMOTE_LAYERZERO_ADDR);
+
+        // Wired on both sides: the chain has a destination, and the bridge id has a source
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID, abi.encode(LAYERZERO_ID + 1, REMOTE_LAYERZERO_ADDR)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID + 1, abi.encode(LAYERZERO_ID, REMOTE_LAYERZERO_ADDR)), true);
+        assertEq(adapter.isWired(CENTRIFUGE_ID + 1, abi.encode(LAYERZERO_ID + 1, REMOTE_LAYERZERO_ADDR)), false);
     }
 }
 
@@ -152,7 +176,9 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
         assumeNotZeroAddress(invalidAddress);
 
         vm.mockCall(
-            address(GATEWAY), abi.encodeWithSelector(GATEWAY.handle.selector, CENTRIFUGE_ID, payload), abi.encode()
+            address(GATEWAY),
+            abi.encodeWithSelector(IMessageHandler.handle.selector, CENTRIFUGE_ID, payload),
+            abi.encode()
         );
 
         // Correct input, but not yet setup
@@ -193,7 +219,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
 
     function testOutgoingCalls(bytes calldata payload, address invalidOrigin, uint128 gasLimit, address refund) public {
         vm.assume(invalidOrigin != address(GATEWAY));
-        gasLimit = uint128(bound(gasLimit, 0, adapter.DEFAULT_RECEIVE_COST() - 1));
+        gasLimit = uint128(bound(gasLimit, 0, receiveCost(CENTRIFUGE_ID) - 1));
 
         vm.deal(address(this), 0.1 ether);
         vm.expectRevert(IAdapter.NotEntrypoint.selector);
@@ -218,7 +244,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit + adapter.DEFAULT_RECEIVE_COST())
+            uint128(gasLimit + receiveCost(CENTRIFUGE_ID))
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
         assertEq(endpoint.values_bool("params.payInLzToken"), false);
@@ -227,7 +253,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
 
     /// @dev Monad's cold-access repricing gets a larger per-destination receive reserve.
     function testSendUsesMonadReceiveCost(bytes calldata payload, uint128 gasLimit, address refund) public {
-        uint16 monadId = adapter.MONAD_CENTRIFUGE_ID();
+        uint16 monadId = gasService.MONAD_CENTRIFUGE_ID();
         gasLimit = uint128(bound(gasLimit, 0, type(uint64).max));
         adapter.wire(monadId, abi.encode(LAYERZERO_ID, makeAddr("DestinationAdapter")));
 
@@ -240,7 +266,7 @@ contract LayerZeroAdapterTest is LayerZeroAdapterTestBase {
             uint8(1), // WORKER_ID
             uint16(17), // uint128 gasLimit byte length + 1
             uint8(1), // OPTION_TYPE_LZ
-            uint128(gasLimit + adapter.MONAD_RECEIVE_COST())
+            uint128(gasLimit + receiveCost(monadId))
         );
         assertEq(endpoint.values_bytes("params.options"), expectedOptions);
     }

@@ -2,9 +2,13 @@
 pragma solidity >=0.5.0;
 
 import {IAdapter} from "../../core/messaging/interfaces/IAdapter.sol";
-import {IMessageHandler} from "../../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
-interface IStandbyAdapter is IAdapter, IMessageHandler {
+/// @dev A standby stands between its `underlying` adapter and the MultiAdapter, so it has to answer
+///      everything an entrypoint is asked for: the underlying holds it as its {IAdapterEntrypoint} and
+///      cannot tell the difference. Each relayed call is attributed to the standby, which is the adapter
+///      the MultiAdapter has in its set.
+interface IStandbyAdapter is IAdapter, IAdapterEntrypoint {
     //----------------------------------------------------------------------------------------------
     // Events
     //----------------------------------------------------------------------------------------------

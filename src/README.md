@@ -30,7 +30,7 @@ src/
 └── spell/             On-chain migration spells
 ```
 
-- **[`misc`](./misc)** - Generic contracts including Auth, ERC20, Escrow, math/cast libraries, and reentrancy protection
+- **[`misc`](./misc)** - Generic contracts including Auth, ERC20, math/cast libraries, and reentrancy protection
 - **[`core/hub`](./core/hub)** - Hub module for centralized pool management, accounting, holdings, share class management, and registry
 - **[`core/spoke`](./core/spoke)** - Spoke module for local pool operations, balance sheets, vault registration (`SpokeRegistry`), and pool escrows
 - **[`core/messaging`](./core/messaging)** - Message serialization, dispatching, and processing for cross-chain communication

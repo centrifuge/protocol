@@ -146,6 +146,17 @@ contract HubPolicyTest is Test {
         hub.setPoolMetadata(POOL_A, metadata);
     }
 
+    function testUnauthorizeSpokeCallIsEnforced() public {
+        _installPolicy(policy);
+        policy.setShouldRevert(true);
+
+        // A reverting policy is the probe: the send leg would reach the unfiled sender, so the call can
+        // never be let through here.
+        vm.expectRevert(MockPolicy.Unauthorized.selector);
+        vm.prank(manager);
+        hub.unauthorizeSpokeCall(POOL_A, 0, hex"1234", address(0));
+    }
+
     function testManagerCheckPrecedesPolicy() public {
         _installPolicy(policy);
         vm.mockCall(

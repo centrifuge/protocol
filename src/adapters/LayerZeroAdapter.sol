@@ -18,9 +18,10 @@ import {Auth} from "../misc/Auth.sol";
 import {CastLib} from "../misc/libraries/CastLib.sol";
 import {MathLib} from "../misc/libraries/MathLib.sol";
 
-import {IMessageHandler} from "../core/messaging/interfaces/IMessageHandler.sol";
+import {IAdapterEntrypoint} from "../core/messaging/interfaces/IAdapterEntrypoint.sol";
 
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
+import {IAdapterGasService} from "../admin/interfaces/IAdapterGasService.sol";
 
 /// @title  LayerZero Adapter
 /// @notice Routing contract that integrates with LayerZero V2.
@@ -34,24 +35,13 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
     using CastLib for *;
     using MathLib for *;
 
-    /// @dev Cost of executing `lzReceive()` except entrypoint.handle(), reserved per destination chain.
-    ///      Covers 1 cold SLOAD (single-slot `sources` struct) + 1 cold CALL (entrypoint) at 4_700, plus
-    ///      a flat 5_300 for dispatch, calldata decode, mapping hash, memory and call setup.
-    uint256 public constant DEFAULT_RECEIVE_COST = 10_000;
-
-    uint16 public constant MONAD_CENTRIFUGE_ID = 11;
-    // Monad reprices cold storage access (2100→8100) and cold account access (2600→10100) per its
-    // published opcode schedule (docs.monad.xyz), putting those same two accesses at 18_200 => +13_500
-    // over DEFAULT, wrapper allowance unchanged. Mirrors GasService's per-chain reserve.
-    uint256 public constant MONAD_RECEIVE_COST = DEFAULT_RECEIVE_COST + 13_500;
-
-    IMessageHandler public immutable entrypoint;
+    IAdapterEntrypoint public immutable entrypoint;
     ILayerZeroEndpointV2 public immutable endpoint;
 
     mapping(uint32 layerZeroEid => LayerZeroSource) public sources;
     mapping(uint16 centrifugeId => LayerZeroDestination) public destinations;
 
-    constructor(IMessageHandler entrypoint_, address endpoint_, address delegate, address deployer) Auth(deployer) {
+    constructor(IAdapterEntrypoint entrypoint_, address endpoint_, address delegate, address deployer) Auth(deployer) {
         entrypoint = entrypoint_;
         endpoint = ILayerZeroEndpointV2(endpoint_);
 
@@ -69,6 +59,12 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         sources[layerZeroEid] = LayerZeroSource(centrifugeId, adapter);
         destinations[centrifugeId] = LayerZeroDestination(layerZeroEid, adapter);
         emit Wire(centrifugeId, layerZeroEid, adapter);
+    }
+
+    /// @inheritdoc IAdapterWiring
+    function isWired(uint16 centrifugeId, bytes memory data) external view returns (bool) {
+        (uint32 layerZeroEid,) = abi.decode(data, (uint32, address));
+        return destinations[centrifugeId].layerZeroEid != 0 || sources[layerZeroEid].addr != address(0);
     }
 
     /// @dev Update the LayerZero delegate.
@@ -134,10 +130,11 @@ contract LayerZeroAdapter is Auth, ILayerZeroAdapter {
         return fee.nativeFee;
     }
 
-    /// @dev Per-destination receive reserve added to the requested gas limit; Monad's cold-access
-    ///      repricing needs a larger reserve than other chains.
-    function _receiveCost(uint16 centrifugeId) internal pure returns (uint256) {
-        return centrifugeId == MONAD_CENTRIFUGE_ID ? MONAD_RECEIVE_COST : DEFAULT_RECEIVE_COST;
+    /// @dev Receive reserve added to the requested gas limit. The gas service holds what this path costs
+    ///      and what each destination charges for it, so the adapter only names itself.
+    function _receiveCost(uint16 centrifugeId) internal view returns (uint256) {
+        IAdapterGasService gasService = IAdapterGasService(address(entrypoint.messageGas()));
+        return gasService.receiveCost(centrifugeId, "layerZero");
     }
 
     /// @dev Generate message parameters

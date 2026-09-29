@@ -10,7 +10,7 @@ The reference aesthetic is MakerDAO's dss: small, flat, self-contained contracts
 ## Principles (enforced)
 
 1. **Avoid inheritance for business logic.** Compose via injected interface references (constructor or `file()`), not base contracts.
-   - Inheriting **generic** behavior is fine: mixins that fit in `src/misc` or similar (`Auth`, `Recoverable`, `ReentrancyProtection`, `BatchedMulticall`, `Escrow`), the contract's own interface(s), and token standards (e.g. `ShareToken is ERC20`).
+   - Inheriting **generic** behavior is fine: mixins that fit in `src/misc` or similar (`Auth`, `Recoverable`, `ReentrancyProtection`, `BatchedMulticall`), the contract's own interface(s), and token standards (e.g. `ShareToken is ERC20`).
    - What's not fine: inheriting behavior that is business logic related to the contract. Domain logic belongs in the contract itself or behind an injected interface, never in a shared base.
    - When extending a parent, call `super.<fn>()` rather than duplicating its logic, since copies diverge as the parent changes.
    - Constants or storage used by only one child belong in that child, not the shared base.
@@ -31,7 +31,7 @@ The reference aesthetic is MakerDAO's dss: small, flat, self-contained contracts
 5. **YAGNI: keep core minimal, convenience lives in the periphery.** Core exposes one canonical, fully-parameterized function per operation. Wrappers, overloads with defaulted parameters, batched getters, and compatibility shims belong in facade/router/manager contracts (e.g. `SpokeV3_1_0`, `VaultRouter`), never in core.
 
 6. **Aesthetics.** The shape of the file communicates the design.
-   - Section headers: 3-line blocks for code sections (a `//----` divider line, `// <Label>`, then another `//----` divider line); 1-line `// <Label>` comments for state-variable groups (see Declaration Ordering). Order: Administration → main operations (grouped by flow direction or role) → view methods → internal methods. Small single-concern files (e.g. `Envoy`, `PoolEscrow`, the factories) omit headers entirely.
+   - Section headers: 3-line blocks for code sections (a `//----` divider line, `// <Label>`, then another `//----` divider line); 1-line `// <Label>` comments for state-variable groups (see Declaration Ordering). Order: Administration → main operations (grouped by flow direction or role) → view methods → internal methods. Small single-concern files (e.g. `Envoy`, `Escrow`, the factories) omit headers entirely.
    - Errors and events declared in the interface, never in the contract body. Libraries are the exception: they declare their own errors locally (e.g. `PricingLib.DivisionByZero`, `MessageLib.UnknownMessageType`).
    - Documentation lives in the interface (natspec on functions, params, errors, events). In the contract itself: a top-level `@title`/`@notice` natspec block, `/// @inheritdoc` on implementations, and minimal inline comments reserved for non-obvious code.
    - State variables and modifiers almost never carry comments; a well-named `onlyManager`/`sender` explains itself. Only comment one when its purpose is genuinely non-obvious from the name and type.

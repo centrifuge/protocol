@@ -8,10 +8,10 @@ import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
+import {Escrow} from "../../../../src/core/spoke/Escrow.sol";
 import {PoolId} from "../../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../../src/core/types/AssetId.sol";
 import {AccountId} from "../../../../src/core/types/AccountId.sol";
-import {PoolEscrow} from "../../../../src/core/spoke/PoolEscrow.sol";
 import {AccountKind} from "../../../../src/core/hub/interfaces/IHub.sol";
 import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
@@ -159,7 +159,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                         _getVault()
                     )][_getActor()].claimableCancelDepositRequest
                 - _after.investments[address(_getVault())][_getActor()].claimableCancelDepositRequest;
-            // claiming a cancel deposit request means that the PoolEscrow token balance decreases
+            // claiming a cancel deposit request means that the Escrow token balance decreases
             uint256 escrowAssetBalanceDelta =
                 _before.escrowAssetBalance[address(_getVault())] - _after.escrowAssetBalance[address(_getVault())];
             eq(
@@ -188,7 +188,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
                         _getVault()
                     )][_getActor()].claimableCancelRedeemRequest
                 - _after.investments[address(_getVault())][_getActor()].claimableCancelRedeemRequest;
-            // claiming a cancel redeem request means that the PoolEscrow tranche token balance decreases
+            // claiming a cancel redeem request means that the Escrow tranche token balance decreases
             uint256 escrowTrancheTokenBalanceDelta = _before.escrowShareTokenBalance - _after.escrowShareTokenBalance;
             eq(
                 claimableCancelRedeemRequestDelta,
@@ -433,7 +433,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
     //     IBaseVault vault = _getVault();
     //     address asset = vault.asset();
     //     PoolId poolId = vault.poolId();
-    //     address poolEscrow = address(poolEscrowFactory.escrow(poolId));
+    //     address poolEscrow = address(escrowFactory.escrow(poolId));
     //     uint256 balOfPoolEscrow = MockERC20(address(asset)).balanceOf(
     //         address(poolEscrow)
     //     ); // The balance of tokens in
@@ -927,7 +927,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         for (uint256 a; a < assetIds.length; a++) {
             if (assetIds[a].centrifugeId() != centrifugeId) continue;
-            (uint128 increased, uint128 decreased) = holdings.holdingAmounts(poolId, scId, assetIds[a]);
+            (uint256 increased, uint256 decreased) = holdings.holdingAmounts(poolId, scId, assetIds[a]);
             if (decreased > increased) count++;
         }
     }
@@ -1563,7 +1563,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
 
         // Use holding.total (not availableBalanceOf) since reserve/unreserve
         // affect available but don't update the queue
-        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
+        Escrow poolEscrow = Escrow(address(spoke.escrow(poolId)));
         (uint128 total,) = poolEscrow.holding(scId, asset, 0);
 
         // Get queued amounts (already-executed, pending hub notification)
@@ -1589,7 +1589,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         PoolId poolId = vault.poolId();
         address asset = vault.asset();
 
-        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
+        Escrow poolEscrow = Escrow(address(spoke.escrow(poolId)));
         uint256 actualBalance = MockERC20(asset).balanceOf(address(poolEscrow));
 
         ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
@@ -1615,7 +1615,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolId, scId, assetId);
         if (deposits != 0 || withdrawals != 0) return;
 
-        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
+        Escrow poolEscrow = Escrow(address(spoke.escrow(poolId)));
         (uint128 total, uint128 reserved) = poolEscrow.holding(scId, vault.asset(), 0);
         uint128 accounted = total > reserved ? total - reserved : 0;
 
@@ -1649,7 +1649,7 @@ abstract contract Properties is BeforeAfter, Asserts, VaultProperties {
         address asset = vault.asset();
         address reserver = address(asyncRequestManager);
 
-        PoolEscrow poolEscrow = PoolEscrow(address(spoke.escrow(poolId)));
+        Escrow poolEscrow = Escrow(address(spoke.escrow(poolId)));
         ShareClassId[] memory shareClasses = _getPoolShareClasses(poolId);
 
         for (uint256 i; i < shareClasses.length; i++) {

@@ -44,7 +44,9 @@ contract SpokeRegistryTest is Test {
     SpokeRegistry registry = new SpokeRegistry(AUTH);
 
     function setUp() public virtual {
-        vm.warp(MAX_AGE);
+        // Past FUTURE, so all three constants are timestamps this chain has already reached: they order
+        // updates against each other, and updatePricePoolPer* now refuses anything ahead of the clock.
+        vm.warp(FUTURE);
     }
 
     function _addPool() internal {
@@ -432,6 +434,26 @@ contract SpokeRegistryTestUpdatePricePoolPerShare is SpokeRegistryTest {
         vm.prank(AUTH);
         vm.expectRevert(ISpokeRegistry.CannotSetOlderPrice.selector);
         registry.updatePricePoolPerShare(POOL_A, SC_1, PRICE, PRESENT);
+    }
+
+    function testErrCannotSetFuturePrice() public {
+        _addPoolAndShareClass();
+
+        // A timestamp no later update can match would wedge the entry for good: the monotonic check below
+        // would reject every honest update after it, and nothing, Root included, can lower it again.
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.CannotSetFuturePrice.selector);
+        registry.updatePricePoolPerShare(POOL_A, SC_1, PRICE, uint64(block.timestamp + 1));
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.CannotSetFuturePrice.selector);
+        registry.updatePricePoolPerShare(POOL_A, SC_1, PRICE, type(uint64).max);
+
+        // The present is fine, and leaves later updates able to match it.
+        vm.prank(AUTH);
+        registry.updatePricePoolPerShare(POOL_A, SC_1, PRICE, uint64(block.timestamp));
+        vm.prank(AUTH);
+        registry.updatePricePoolPerShare(POOL_A, SC_1, PRICE, uint64(block.timestamp));
     }
 
     function testUpdatePricePoolPerShare() public {

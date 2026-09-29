@@ -47,7 +47,9 @@ contract HubRegistry is Auth, IHubRegistry {
     function registerAsset(AssetId assetId, uint8 decimals_) external auth {
         require(!assetId.isNull(), EmptyAssetId());
         require(decimals_ <= MAX_DECIMALS, TooManyDecimals());
-        require(!asset[assetId].registered, AssetAlreadyRegistered());
+
+        AssetInfo memory current = asset[assetId];
+        require(!current.registered || current.decimals == 0 || current.decimals == decimals_, CannotChangeDecimals());
 
         asset[assetId] = AssetInfo(true, decimals_);
 
