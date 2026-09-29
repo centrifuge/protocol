@@ -14,7 +14,7 @@ The admin module provides protocol governance and emergency controls, including 
 
 ### `OpsGuardian`
 
-`OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions. Wiring is first-time only: it can wire an adapter to any remote chain that adapter is not yet wired to. Re-pointing a live binding decides which remote contract the protocol trusts, so it takes a spell: no guardian can do it.
+`OpsGuardian` manages operational aspects of the protocol, specifically adapter initialization, network wiring, and pool creation. It's controlled by an operations-focused multisig safe separate from the protocol guardian's safe, enabling separation of routine operations from critical protocol security decisions. Both are first-time only: it installs a network's first global adapter set, and wires an adapter to a remote chain that adapter is not yet wired to. Replacing a live set or re-pointing a live binding decides which remote contracts the protocol trusts, so each takes a spell: no guardian can do it. Containment is the exception, and deliberately so: `blockSession` remains the ops safe's, because taking a bad set offline must not wait on a timelock.
 
 ### `GasService`
 

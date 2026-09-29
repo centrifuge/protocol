@@ -7,9 +7,10 @@ import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 import {PoolId} from "../../../src/core/types/PoolId.sol";
 import {AssetId} from "../../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
+import {IGateway} from "../../../src/core/messaging/interfaces/IGateway.sol";
 import {ISpokeHandler} from "../../../src/core/spoke/interfaces/ISpokeHandler.sol";
 import {VaultDetails} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
-import {VaultUpdateKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
+import {VaultUpdateKind, MessageLib} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {UpdateRestrictionMessageLib} from "../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
@@ -18,6 +19,7 @@ import {AsyncVault} from "../../../src/vaults/AsyncVault.sol";
 import {ShareToken} from "../../../src/token/ShareToken.sol";
 import {USD_ID} from "../../../src/deployment/Currencies.sol";
 import {CentrifugeIntegrationTest} from "../Integration.t.sol";
+import {IntegrationConstants} from "../utils/IntegrationConstants.sol";
 import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
@@ -126,6 +128,7 @@ contract SpokeRestrictionTest is CentrifugeIntegrationTest {
 
 contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
     using CastLib for *;
+    using MessageLib for *;
 
     PoolId POOL_A;
     ShareClassId SC_1;
@@ -206,6 +209,35 @@ contract SpokeDeployVaultTest is CentrifugeIntegrationTest {
         assertEq(shareToken.name(), tokenName, "share class token name mismatch");
         assertEq(shareToken.symbol(), tokenSymbol, "share class token symbol mismatch");
         assertEq(shareToken.decimals(), shareDecimals, "share class token decimals mismatch");
+    }
+
+    function testRegisterAssetRefreshesHubDecimals() public {
+        // Registration is permissionless, so a token whose issuer has not set its decimals yet can be
+        // bound to an asset id reporting 0 decimals.
+        _registerErc20Asset(0);
+        assertEq(hubRegistry.decimals(assetId), 0, "hub decimals before refresh");
+
+        // Registering it again once the token is initialized corrects the hub entry, keeping the asset id.
+        vm.mockCall(address(asset), abi.encodeWithSignature("decimals()"), abi.encode(uint8(6)));
+        AssetId refreshed = spoke.registerAsset{value: 0}(LOCAL_CENTRIFUGE_ID, address(asset), 0, address(this));
+
+        assertEq(refreshed.raw(), assetId.raw(), "asset id must be stable across re-registration");
+        assertEq(hubRegistry.decimals(assetId), 6, "hub decimals after refresh");
+    }
+
+    function testRegisterAssetRefreshRejectedFromAnotherChain() public {
+        _registerErc20Asset(6);
+
+        // Registration being an upsert makes a forged refresh worth attempting. An asset id names the chain
+        // that minted it and the gateway holds every message to that chain, so another chain's lane cannot
+        // rewrite this asset's decimals.
+        bytes memory message = MessageLib.RegisterAsset({assetId: assetId.raw(), decimals: 18}).serialize();
+
+        vm.prank(address(multiAdapter));
+        vm.expectRevert(IGateway.SourceMismatch.selector);
+        gateway.handle(IntegrationConstants.CENTRIFUGE_ID_A, message);
+
+        assertEq(hubRegistry.decimals(assetId), 6, "decimals unchanged");
     }
 
     /// forge-config: default.isolate = true

@@ -264,7 +264,8 @@ contract EndToEndDeployment is Test {
     function _setAdapter(FullDeployer deploy, uint16 remoteCentrifugeId, IAdapter adapter) internal {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = adapter;
-        vm.startPrank(address(deploy.protocolGuardian()));
+        // Ward wiring for the real path is asserted in Deployer.t.sol.
+        vm.startPrank(address(deploy.root()));
         deploy.multiAdapter()
             .setAdapters(
                 remoteCentrifugeId,
@@ -474,6 +475,14 @@ contract EndToEndFlows is EndToEndUtils {
         return UpdateRestrictionMessageLib.UpdateRestrictionMember({
                 user: addr.toBytes32(), validUntil: type(uint64).max
             }).serialize();
+    }
+
+    function _updateRestrictionFreezeMsg(address addr) internal pure returns (bytes memory) {
+        return UpdateRestrictionMessageLib.UpdateRestrictionFreeze({user: addr.toBytes32()}).serialize();
+    }
+
+    function _updateRestrictionUnfreezeMsg(address addr) internal pure returns (bytes memory) {
+        return UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze({user: addr.toBytes32()}).serialize();
     }
 
     function _syncManagerMaxReserveMsg(uint128 maxReserve) internal view returns (bytes memory) {
@@ -1279,6 +1288,36 @@ contract EndToEndUseCases is EndToEndFlows {
 
         checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
         checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1 / 5), true);
+    }
+
+    /// @dev UpdateRestriction's three sub-messages share one GasService budget, and the benchmarker keeps
+    ///      the max per message type, so each has to cross the gateway once for the budget to cover it. The
+    ///      investment flows send Member; this sends the other two. Not fuzzed and not same-chain: one
+    ///      cross-chain pass is all the benchmark reads.
+    /// forge-config: default.isolate = true
+    function testUpdateRestrictionFreezeAndUnfreeze() public {
+        _configurePool(IN_DIFFERENT_CHAINS);
+
+        vm.startPrank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        // Freeze an address that has never held shares or been a member. Its hook data is written from
+        // zero, which is the expensive Freeze and the one the shared budget has to cover; freezing the investor
+        // just made a member would land on an already-nonzero slot and stay cheaper than Member.
+        address blocked = makeAddr("blocked");
+        IShareToken shareToken = IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1)));
+
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionFreezeMsg(blocked), EXTRA_GAS, REFUND
+        );
+        assertTrue(s.redemptionRestrictionsHook.isFrozen(address(shareToken), blocked), "frozen");
+
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionUnfreezeMsg(blocked), EXTRA_GAS, REFUND
+        );
+        assertFalse(s.redemptionRestrictionsHook.isFrozen(address(shareToken), blocked), "unfrozen");
     }
 
     /// forge-config: default.isolate = true

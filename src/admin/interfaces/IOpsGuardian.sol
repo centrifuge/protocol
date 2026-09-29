@@ -18,15 +18,23 @@ interface IOpsGuardian {
     error FileUnrecognizedParam();
     error CannotSetAdaptersForLocalChain();
     error CannotSetAdaptersForMainnet();
+    error AdaptersAlreadySet();
+    error EmptyAdapterSet();
     error CannotWireLocalChain();
     error CentrifugeIdAlreadySet();
     error AdapterAlreadyWired();
 
     event File(bytes32 indexed what, address data);
 
-    /// @notice Set adapters for a remote network (can be called multiple times to update)
+    /// @notice Install the global adapter set for a remote network, once
     /// @dev Reverts if centrifugeId matches the local chain or the hub chain
     /// @dev Does not trigger cross-chain message - local operation only
+    /// @dev Bootstrap only: reverts once the network has a set, so this installs one and never replaces one.
+    ///      Two things ride the global set without requiring a mainnet source: RegisterAsset, and a pool's
+    ///      first SetPoolAdapters on a lane, which falls back to global while that pool has no set of its
+    ///      own (MessageLib.routePoolId). A safe that could replace a live set could therefore install a
+    ///      one-of-one adapter of its own and forge either. Replacing a live set is Root's, over the
+    ///      timelock. Containment is not: {blockSession} takes a bad set offline immediately and remains ours
     /// @param centrifugeId Target chain ID to configure adapters on
     /// @param adapters Array of adapter contract addresses
     /// @param threshold Minimum number of adapters that must agree

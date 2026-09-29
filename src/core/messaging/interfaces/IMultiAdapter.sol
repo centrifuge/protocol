@@ -227,6 +227,9 @@ interface IMultiAdapter is IAdapter, IAdapterEntrypoint {
     function manager(PoolId poolId, address who) external view returns (bool);
 
     /// @notice Returns the currently active session id for a given chain and pool
+    /// @dev Monotonic and uint16, so a (chain, pool) pair supports 65,535 rotations and then `setAdapters`
+    ///      reverts on the overflow for good: nothing decrements it and no auth path resets it, so that
+    ///      pair's set can no longer be changed, by a manager or by Root
     /// @param centrifugeId The source chain identifier
     /// @param poolId The pool identifier
     function activeSessionId(uint16 centrifugeId, PoolId poolId) external view returns (uint16);

@@ -157,15 +157,21 @@ struct ChainlinkDestination {
 ///         Zero is the only value safe to wire blindly. A lane is moved off it once that lane is known to be on CCIP
 ///         2.0, which is a per-lane fact: sending V3 extra args to a CCIP 1.5 lane reverts.
 ///
-///         CCIP takes two faster-than-finality modes and this adapter passes both through unvalidated, so what is
-///         wired is a policy question rather than a compiled-in one. A block depth, `bytes4(uint32(n))`, asks for n
-///         confirmations: a bet that no reorg runs deeper, with nothing backing it and nothing forfeited when it
-///         fails. `WAIT_FOR_SAFE_FLAG` asks for the `safe` head, the Fast Confirmation Rule, which is deterministic
-///         under synchrony and below roughly a quarter adversarial stake. Weaker than finality, whose guarantee is
-///         that reverting costs a third of all staked ETH, but a guarantee rather than a bet.
+///         CCIP takes two faster-than-finality modes and this adapter accepts only one of them. A block depth,
+///         `bytes4(uint32(n))`, asks for n confirmations: a bet that no reorg runs deeper, with nothing backing it
+///         and nothing forfeited when it fails. `wire` rejects it on either field with `BlockDepthNotSupported`.
+///         Any other flag bit is forwarded to CCIP unvalidated, so the wiring tooling is what keeps to the intended
+///         pair, zero or `WAIT_FOR_SAFE_FLAG`. That flag asks for the `safe` head, the Fast Confirmation Rule,
+///         which is deterministic under synchrony and below roughly a quarter adversarial stake. Weaker than
+///         finality, whose guarantee is that reverting costs a third of all staked ETH, but a guarantee rather
+///         than a bet. No lane permits the safe flag yet.
 ///
-///         Only the two ends of that range are meant to be wired, zero or `WAIT_FOR_SAFE_FLAG`, and the deploy and
-///         wiring tooling is where that is enforced. No lane permits the safe flag yet.
+///         `allowedFinality` is replaced the moment `wire` runs, but a message already in flight carries the
+///         `requestedFinality` encoded when it was sent, and CCIP's OffRamp checks that encoded request against the
+///         receiver's policy at delivery. Widening is therefore always safe and narrowing is not: moving a lane
+///         from the safe flag back to zero rejects everything still in transit, however long the source blocks are
+///         left to finalize. Recovering those messages means wiring the old value back, retrying them, and
+///         narrowing again once the lane is quiet.
 interface IChainlinkAdapter is IAdapter, IAdapterWiring, IAny2EVMMessageReceiverV2 {
     //----------------------------------------------------------------------------------------------
     // Events

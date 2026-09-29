@@ -89,7 +89,7 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
         opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, threshold);
     }
 
-    function testSetAdaptersSuccessMultipleTimes() public {
+    function testSetAdaptersRevertWhenAlreadySet() public {
         IAdapter[] memory adapters = new IAdapter[](1);
         adapters[0] = ADAPTER;
 
@@ -113,8 +113,31 @@ contract OpsGuardianTestSetAdapters is OpsGuardianTest {
 
         vm.startPrank(address(SAFE));
         opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1);
+
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.nextActiveSessionId.selector),
+            abi.encode(uint16(2))
+        );
+        vm.expectRevert(IOpsGuardian.AdaptersAlreadySet.selector);
         opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, adapters, 1);
         vm.stopPrank();
+    }
+
+    /// @dev MultiAdapter permits an empty set. Installing one would bump the session and the bootstrap
+    ///      check would then refuse the correction, leaving the lane dead and only Root able to revive it.
+    function testSetAdaptersRevertWhenEmptySet() public {
+        IAdapter[] memory none = new IAdapter[](0);
+
+        vm.mockCall(
+            address(multiAdapter),
+            abi.encodeWithSelector(IMultiAdapter.localCentrifugeId.selector),
+            abi.encode(LOCAL_CENTRIFUGE_ID)
+        );
+
+        vm.prank(address(SAFE));
+        vm.expectRevert(IOpsGuardian.EmptyAdapterSet.selector);
+        opsGuardian.setAdapters(REMOTE_CENTRIFUGE_ID, none, 0);
     }
 
     function testSetAdaptersRevertWhenLocalChain() public {

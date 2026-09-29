@@ -101,7 +101,7 @@ interface ISpoke is IBatchedMulticall, IRequestRouter {
     //----------------------------------------------------------------------------------------------
 
     /// @notice Registers an ERC-20 or ERC-6909 asset in another chain.
-    /// @dev `decimals()` MUST return a `uint8` value between 2 and 18.
+    /// @dev `decimals()` MUST return a `uint8` value between 0 and 18.
     /// @dev `name()` and `symbol()` MAY return no values.
     ///
     /// @param centrifugeId The centrifuge id of chain to where the shares are transferred

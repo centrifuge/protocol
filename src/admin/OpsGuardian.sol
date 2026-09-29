@@ -65,10 +65,25 @@ contract OpsGuardian is IOpsGuardian {
 
     /// @inheritdoc IOpsGuardian
     function setAdapters(uint16 centrifugeId, IAdapter[] calldata adapters, uint8 threshold) external onlySafe {
+        // Not redundant with the bootstrap check below. That one still permits a first configuration, and
+        // for this one lane even the first is different in kind: ScheduleUpgrade is accepted only from
+        // mainnet (MessageLib.messageSourceCentrifugeId) and lands on Root.scheduleRely
+        // (MessageProcessor). Whoever installs this lane's first set can forge it. Elsewhere a compromised
+        // first set buys a forged RegisterAsset; here it buys Root, so bringing this lane up is a spell.
         require(centrifugeId != MAINNET_CENTRIFUGE_ID, CannotSetAdaptersForMainnet());
         require(centrifugeId != multiAdapter.localCentrifugeId(), CannotSetAdaptersForLocalChain());
 
+        // MultiAdapter permits an empty set (quorum 0, threshold 0). Installing one would still bump the
+        // session, and the bootstrap check below would then refuse the correction: the lane would be dead
+        // and only Root could revive it. Refuse it here instead.
+        require(threshold > 0, EmptyAdapterSet());
+
+        // Bootstrap only. The global set carries RegisterAsset and a pool's first SetPoolAdapters on a
+        // lane, so a safe that could replace a live one could forge either; replacing it is Root's, over
+        // the timelock. Containment does not wait on that: {blockSession} is immediate and is still ours.
         uint16 targetSessionId = multiAdapter.nextActiveSessionId(centrifugeId, GLOBAL_POOL);
+        require(targetSessionId == 1, AdaptersAlreadySet());
+
         multiAdapter.setAdapters(centrifugeId, GLOBAL_POOL, adapters, threshold, targetSessionId);
     }
 

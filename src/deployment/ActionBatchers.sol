@@ -227,8 +227,6 @@ contract CoreActionBatcher {
         report.messageDispatcher.rely(address(report.hubHandler));
 
         // Rely protocolGuardian
-        report.gateway.rely(address(report.protocolGuardian));
-        report.multiAdapter.rely(address(report.protocolGuardian));
         report.messageDispatcher.rely(address(report.protocolGuardian));
         if (wireRoot) report.root.rely(address(report.protocolGuardian));
 

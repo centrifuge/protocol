@@ -101,25 +101,25 @@ contract GasService is IGasService {
 
         // forgefmt: disable-next-item
         coldSlotsPerMessageType = _pack(
-            [uint8(0), 14, 13, 15, 40, 23, 24, 17, 19, 20, 39, 23, 22, 0, 36, 24, 29, 41, 17, 13, 29, 17, 17, 17, 17, 35, 21, 20]
+            [uint8(0), 14, 13, 15, 40, 23, 24, 17, 19, 20, 39, 23, 23, 0, 36, 24, 29, 41, 17, 13, 29, 17, 17, 17, 17, 35, 21, 20]
         );
         coldAccountsPerMessageType = _pack(
-            [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 18, 12, 12, 0, 14, 11, 12, 17, 9, 9, 15, 9, 9, 9, 9, 14, 9, 9]
+            [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 18, 12, 13, 0, 14, 11, 12, 17, 9, 9, 15, 9, 9, 9, 9, 14, 9, 9]
         );
 
         scheduleUpgrade = _gasValue(161033);
         cancelUpgrade = _gasValue(141526);
-        registerAsset = _gasValue(168030);
+        registerAsset = _gasValue(168164);
         setPoolAdapters = _gasValue(790115); // using MAX_ADAPTER_COUNT
         request = _gasValue(281382);
         notifyPool = _gasValue(1378159);
         notifyShareClass = _gasValue(1874967);
-        notifyPricePoolPerShare = _gasValue(176706);
-        notifyPricePoolPerAsset = _gasValue(183241);
+        notifyPricePoolPerShare = _gasValue(176749);
+        notifyPricePoolPerAsset = _gasValue(183284);
         notifyShareMetadata = _gasValue(198851);
         initiateTransferShares = _gasValue(382494);
         executeTransferShares = _gasValue(253673);
-        updateRestriction = _gasValue(207609);
+        updateRestriction = _gasValue(212813);
         managerCallFromHub = _gasValue(377978);
         requestCallback = _gasValue(463976); // approve deposit case
         updateVaultDeployAndLink = _gasValue(2868928);

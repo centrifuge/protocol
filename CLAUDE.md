@@ -313,9 +313,9 @@ There is no direct Root access on testnet or mainnet. All privileged operations 
 | Guardian         | Mainnet       | Testnet                        | Use Case                                            |
 | ---------------- | ------------- | ------------------------------ | --------------------------------------------------- |
 | ProtocolGuardian | Multisig Safe | EOA                            | Protocol upgrades                                   |
-| OpsGuardian      | Multisig Safe | EOA (same as ProtocolGuardian) | Pool operations, adapter sets, first-time wiring    |
+| OpsGuardian      | Multisig Safe | EOA (same as ProtocolGuardian) | Pool operations, first-time adapter sets and wiring |
 
-Re-pointing an adapter that is already wired is nobody's: it takes a spell, through `Root`.
+Replacing a live adapter set, or re-pointing an adapter that is already wired, is nobody's: both take a spell, through `Root`. Containment does not: `blockSession` stays with the ops safe and takes a bad set offline at once.
 
 ## Coding Style
 
