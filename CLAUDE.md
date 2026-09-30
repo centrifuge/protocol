@@ -237,7 +237,7 @@ release is in question; `live-v3.3` is the one main's triggers currently name.
 **The decision rule for new work:**
 - If it can only run against a chain that already carries the protocol, or it records what a deployment
   wrote → **live**. (Ops scripts, spells, the registry pipeline, live fork validation, `env/testnet/` and
-  `env/mainnet/` configs, the public mirror's `.publicignore`.)
+  `env/mainnet/` configs.)
 - If it defines or checks what a deployment is → **main**. (Everything in `src/`, the schema readers
   `ChainConfig`/`EnvConfig`, `LaunchDeployer` and the deployer stack, `script/anvil/` and its fixtures —
   the only deployment main makes — `script/checks/` and `script/setup/` except what derives from or fetches
@@ -279,7 +279,7 @@ place. Until the release is deployed, its configs record only `root`, and tests 
 skip via `SkipsUntilDeployed` — they re-arm on their own when the deployment writes the full configs back.
 
 **Cutting a release branch:** a new `live-v<version>` is NOT a main tag pushed under a new name — a bare
-tag carries none of the environmental half (entrypoints, mirror rules, spell review, ops scripts), and
+tag carries none of the environmental half (entrypoints, spell review, ops scripts), and
 every trigger would brick at its `plan` step. It is the previous live branch's environmental half brought
 onto the release point, adapted to what changed under it; then main's trigger defaults and
 `registry-publish.yml`'s literal refs are updated to name it.

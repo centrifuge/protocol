@@ -129,8 +129,7 @@ contract JsonRegistry is Script {
     }
 
     /// @param path Where to write, as `Chains.pathOf` resolves it. Passed in rather than worked out here, so
-    ///        that this file stays free of the env-parsing stack — the deployer stack it belongs to is
-    ///        mirrored publicly and `ChainConfig` is not.
+    ///        that this file stays free of the env-parsing stack.
     ///
     function saveDeploymentOutput(string memory path) public {
         _saveDeploymentOutput(path);

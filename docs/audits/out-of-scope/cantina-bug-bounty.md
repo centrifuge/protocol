@@ -1,4 +1,4 @@
-Out-of-scope list for the Cantina bug bounty on the live deployed code. Latest version: `v3.3.0`. Published to the public mirror, since the bounty is scoped against it.
+Out-of-scope list for the Cantina bug bounty on the live deployed code. Latest version: `v3.3.0`.
 
 The bounty's general scope guidelines apply: https://cantina.xyz/code/6cc9d51a-ac1e-4385-a88a-a3924e40c00e/overview. This file is its full out-of-scope list.
 
