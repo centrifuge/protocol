@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
+import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 
 import {Root} from "../../src/admin/Root.sol";
@@ -25,15 +26,57 @@ import {
 import "forge-std/Test.sol";
 
 import {RootFixes} from "../../src/deployment/RootFixes.sol";
+import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
+import {ChainlinkAdapter} from "../../src/adapters/ChainlinkAdapter.sol";
+import {HyperlaneAdapter} from "../../src/adapters/HyperlaneAdapter.sol";
+import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 import {ISO4217_DECIMALS, iso4217Codes} from "../../src/deployment/Currencies.sol";
 import {CoreReport, CoreActionBatcher, RootAccessMismatch} from "../../src/deployment/ActionBatchers.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
+/// @dev Records what the batcher configures, per OApp, so a test can tell which of them got the protocol's config
 contract LayerZeroEndpointMock {
+    address public immutable sendLib = makeAddr("SendLib");
+    address public immutable receiveLib = makeAddr("ReceiveLib");
+
     mapping(address oapp => address delegate) public delegates;
+    mapping(address oapp => mapping(uint32 eid => address)) public sendLibraries;
+    mapping(address oapp => mapping(uint32 eid => address)) public receiveLibraries;
+    mapping(address oapp => mapping(address lib => bytes)) public configs;
 
     function setDelegate(address _delegate) external {
         delegates[msg.sender] = _delegate;
+    }
+
+    function defaultSendLibrary(uint32) external view returns (address) {
+        return sendLib;
+    }
+
+    function defaultReceiveLibrary(uint32) external view returns (address) {
+        return receiveLib;
+    }
+
+    function setSendLibrary(address oapp, uint32 eid, address lib) external onlyDelegate(oapp) {
+        sendLibraries[oapp][eid] = lib;
+    }
+
+    function setReceiveLibrary(address oapp, uint32 eid, address lib, uint256) external onlyDelegate(oapp) {
+        receiveLibraries[oapp][eid] = lib;
+    }
+
+    function setConfig(address oapp, address lib, SetConfigParam[] calldata params) external onlyDelegate(oapp) {
+        configs[oapp][lib] = params[0].config;
+    }
+
+    /// @dev As the real endpoint: whoever configures an OApp must be it or its delegate, which is what
+    ///      makes the batcher hold the delegacy while it configures and hand it over only afterwards
+    modifier onlyDelegate(address oapp) {
+        require(msg.sender == oapp || msg.sender == delegates[oapp], "not delegate");
+        _;
+    }
+
+    function makeAddr(string memory name) internal pure returns (address) {
+        return address(uint160(uint256(keccak256(bytes(name)))));
     }
 }
 
@@ -51,6 +94,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     address immutable CHAINLINK_CCIP_ROUTER = makeAddr("ChainlinkCCIPRouter");
 
     address immutable HYPERLANE_MAILBOX = makeAddr("HyperlaneMailbox");
+    address immutable HYPERLANE_ISM = makeAddr("HyperlaneIsm");
 
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
@@ -62,6 +106,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     /// @dev What a launch is handed. Zero root means it deploys its own; the subclasses below vary them
     address internal existingRoot_;
     uint256 internal delay_ = MAINNET_DELAY;
+    AdapterConnections[] internal connections_;
+    SetConfigParam[] internal layerZeroConfigParams_;
 
     /// @dev Mock deployed code for validation check which requires deployed code length > 0
     function _mockBridgeContracts() internal {
@@ -122,11 +168,11 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     shouldDeploy: true,
                     endpoint: LAYERZERO_ENDPOINT,
                     delegate: LAYERZERO_DELEGATE,
-                    configParams: new SetConfigParam[](0)
+                    configParams: layerZeroConfigParams_
                 }),
                 chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
-                hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: address(0)}),
-                connections: new AdapterConnections[](0) // TODO: test this
+                hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: HYPERLANE_ISM}),
+                connections: connections_
             })
         });
     }
@@ -313,12 +359,11 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spokeHandler));
         vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(spokeRegistry));
 
         assertEq(shareTokenRegistrar.wards(address(root)), 1);
         assertEq(shareTokenRegistrar.wards(address(spokeHandler)), 1);
         assertEq(shareTokenRegistrar.wards(address(spoke)), 1);
-        assertEq(shareTokenRegistrar.wards(address(spokeRegistry)), 1);
+        assertEq(shareTokenRegistrar.wards(address(spokeRegistry)), 0);
         assertEq(shareTokenRegistrar.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -691,11 +736,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testBatchRequestManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
 
         assertEq(batchRequestManager.wards(address(root)), 1);
-        assertEq(batchRequestManager.wards(address(hub)), 1);
+        assertEq(batchRequestManager.wards(address(hub)), 0);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
 
@@ -883,12 +927,154 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(hyperlaneAdapter.entrypoint()), address(multiAdapter));
         assertEq(address(hyperlaneAdapter.mailbox()), HYPERLANE_MAILBOX);
+        assertEq(address(hyperlaneAdapter.interchainSecurityModule()), HYPERLANE_ISM);
+    }
+
+    /// @dev Each standby wraps an instance of its bridge of its own, whose entrypoint is the standby and
+    ///      whose wards are the global adapter's
+    function testStandbyAdapters(address nonWard) public view {
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(ADMIN_SAFE));
+
+        LayerZeroAdapter layerZeroStandbyUnderlying = LayerZeroAdapter(address(layerZeroStandby.underlying()));
+        AxelarAdapter axelarStandbyUnderlying = AxelarAdapter(address(axelarStandby.underlying()));
+        ChainlinkAdapter chainlinkStandbyUnderlying = ChainlinkAdapter(address(chainlinkStandby.underlying()));
+        HyperlaneAdapter hyperlaneStandbyUnderlying = HyperlaneAdapter(address(hyperlaneStandby.underlying()));
+
+        // permissions set correctly: the same the global adapter of each bridge has
+        assertEq(layerZeroStandbyUnderlying.wards(address(root)), 1);
+        assertEq(layerZeroStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(layerZeroStandbyUnderlying.wards(address(ADMIN_SAFE)), 1);
+        assertEq(layerZeroStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(layerZeroStandbyUnderlying.wards(nonWard), 0);
+
+        assertEq(axelarStandbyUnderlying.wards(address(root)), 1);
+        assertEq(axelarStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(axelarStandbyUnderlying.wards(address(ADMIN_SAFE)), 0);
+        assertEq(axelarStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(axelarStandbyUnderlying.wards(nonWard), 0);
+
+        assertEq(chainlinkStandbyUnderlying.wards(address(root)), 1);
+        assertEq(chainlinkStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(chainlinkStandbyUnderlying.wards(address(ADMIN_SAFE)), 0);
+        assertEq(chainlinkStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(chainlinkStandbyUnderlying.wards(nonWard), 0);
+
+        assertEq(hyperlaneStandbyUnderlying.wards(address(root)), 1);
+        assertEq(hyperlaneStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(hyperlaneStandbyUnderlying.wards(address(ADMIN_SAFE)), 1);
+        assertEq(hyperlaneStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(hyperlaneStandbyUnderlying.wards(nonWard), 0);
+
+        // dependencies set correctly: the standby faces the MultiAdapter, and its underlying faces the standby
+        assertEq(address(layerZeroStandby.entrypoint()), address(multiAdapter));
+        assertEq(address(axelarStandby.entrypoint()), address(multiAdapter));
+        assertEq(address(chainlinkStandby.entrypoint()), address(multiAdapter));
+        assertEq(address(hyperlaneStandby.entrypoint()), address(multiAdapter));
+
+        assertEq(address(layerZeroStandbyUnderlying.entrypoint()), address(layerZeroStandby));
+        assertEq(address(axelarStandbyUnderlying.entrypoint()), address(axelarStandby));
+        assertEq(address(chainlinkStandbyUnderlying.entrypoint()), address(chainlinkStandby));
+        assertEq(address(hyperlaneStandbyUnderlying.entrypoint()), address(hyperlaneStandby));
+
+        // Over the same bridge as the global adapter, and a contract of its own
+        assertNotEq(address(layerZeroStandbyUnderlying), address(layerZeroAdapter));
+        assertNotEq(address(axelarStandbyUnderlying), address(axelarAdapter));
+        assertNotEq(address(chainlinkStandbyUnderlying), address(chainlinkAdapter));
+        assertNotEq(address(hyperlaneStandbyUnderlying), address(hyperlaneAdapter));
+
+        assertEq(address(layerZeroStandbyUnderlying.endpoint()), LAYERZERO_ENDPOINT);
+        assertEq(address(axelarStandbyUnderlying.axelarGateway()), AXELAR_GATEWAY);
+        assertEq(address(axelarStandbyUnderlying.axelarGasService()), AXELAR_GAS_SERVICE);
+        assertEq(address(chainlinkStandbyUnderlying.ccipRouter()), CHAINLINK_CCIP_ROUTER);
+        assertEq(address(hyperlaneStandbyUnderlying.mailbox()), HYPERLANE_MAILBOX);
+
+        // Configured as the global adapters are: the delegate, and an ISM of its own rather than the
+        // Mailbox default
+        assertEq(
+            ILayerZeroEndpointV2Like(LAYERZERO_ENDPOINT).delegates(address(layerZeroStandbyUnderlying)),
+            LAYERZERO_DELEGATE
+        );
+        assertEq(address(hyperlaneStandbyUnderlying.interchainSecurityModule()), HYPERLANE_ISM);
     }
 
     function testAdapterFailover() public view {
         assertEq(address(adapterFailover.multiAdapter()), address(multiAdapter));
         assertEq(adapterFailover.envoy(), address(envoy));
         assertEq(adapterFailover.timelock(), uint64(MAINNET_DELAY));
+    }
+}
+
+/// @dev A launch with a connection: the global set is the bridge adapters alone, and the standbys are left
+///      unwired but carry the same LayerZero config
+contract FullDeploymentTestAdapterConnections is FullDeploymentConfigTest {
+    uint16 constant REMOTE_CENTRIFUGE_ID = 5;
+    uint32 constant REMOTE_LAYERZERO_ID = 30_005;
+    bytes constant ULN_CONFIG = hex"c0ffee";
+
+    function setUp() public override {
+        connections_.push(
+            AdapterConnections({
+                centrifugeId: REMOTE_CENTRIFUGE_ID,
+                layerZeroId: REMOTE_LAYERZERO_ID,
+                axelarId: "remote",
+                chainlinkId: 5_000,
+                hyperlaneId: 5,
+                threshold: 2
+            })
+        );
+        layerZeroConfigParams_.push(SetConfigParam({eid: REMOTE_LAYERZERO_ID, configType: 2, config: ULN_CONFIG}));
+        super.setUp();
+    }
+
+    /// @dev Mirrored onto the standby's underlying, so that a pool taking it up verifies with the protocol's
+    ///      libraries and DVNs rather than LayerZero's defaults
+    function testLayerZeroConfigMirroredOnStandby() public view {
+        LayerZeroEndpointMock endpoint = LayerZeroEndpointMock(LAYERZERO_ENDPOINT);
+        address[2] memory oapps = [address(layerZeroAdapter), address(layerZeroStandby.underlying())];
+
+        for (uint256 i; i < oapps.length; i++) {
+            assertEq(endpoint.sendLibraries(oapps[i], REMOTE_LAYERZERO_ID), endpoint.sendLib());
+            assertEq(endpoint.receiveLibraries(oapps[i], REMOTE_LAYERZERO_ID), endpoint.receiveLib());
+            assertEq(endpoint.configs(oapps[i], endpoint.sendLib()), ULN_CONFIG);
+            assertEq(endpoint.configs(oapps[i], endpoint.receiveLib()), ULN_CONFIG);
+            assertEq(endpoint.delegates(oapps[i]), LAYERZERO_DELEGATE);
+        }
+    }
+
+    function testGlobalSetHoldsNoStandby() public view {
+        assertEq(multiAdapter.quorum(REMOTE_CENTRIFUGE_ID, PoolId.wrap(0)), 4);
+        assertEq(multiAdapter.threshold(REMOTE_CENTRIFUGE_ID, PoolId.wrap(0)), 2);
+
+        address[4] memory expected =
+            [address(layerZeroAdapter), address(axelarAdapter), address(chainlinkAdapter), address(hyperlaneAdapter)];
+        for (uint256 i; i < expected.length; i++) {
+            assertEq(address(multiAdapter.adapters(REMOTE_CENTRIFUGE_ID, PoolId.wrap(0), 1, i)), expected[i]);
+        }
+    }
+
+    /// @dev Left for the OpsGuardian to wire, once a pool takes a standby up
+    function testStandbyUnderlyingsNotWired() public view {
+        assertEq(
+            LayerZeroAdapter(address(layerZeroStandby.underlying()))
+                .isWired(REMOTE_CENTRIFUGE_ID, abi.encode(REMOTE_LAYERZERO_ID, address(0))),
+            false
+        );
+        assertEq(
+            AxelarAdapter(address(axelarStandby.underlying())).isWired(REMOTE_CENTRIFUGE_ID, abi.encode("remote", "")),
+            false
+        );
+        assertEq(
+            ChainlinkAdapter(address(chainlinkStandby.underlying()))
+                .isWired(REMOTE_CENTRIFUGE_ID, abi.encode(uint64(5_000), address(0))),
+            false
+        );
+        assertEq(
+            HyperlaneAdapter(address(hyperlaneStandby.underlying()))
+                .isWired(REMOTE_CENTRIFUGE_ID, abi.encode(uint32(5), address(0))),
+            false
+        );
     }
 }
 

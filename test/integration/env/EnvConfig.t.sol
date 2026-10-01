@@ -64,7 +64,7 @@ contract EnvRootIsReadOffTheChainHalfTest is Test {
 ///      rest is the reader's review burden, cheaper than 50 more asserts that would restate the parser.
 contract EnvConfigDeploymentRoundTripTest is FullDeploymentConfigTest {
     function test_theParserReadsWhatTheDeployerWrites() public view {
-        assertEq(registeredCount(), 54, "a registered contract has no ContractsConfig field");
+        assertEq(registeredCount(), 62, "a registered contract has no ContractsConfig field");
 
         string memory json = string.concat('{"contracts":', registeredContractsJson(), "}");
 
@@ -74,6 +74,8 @@ contract EnvConfigDeploymentRoundTripTest is FullDeploymentConfigTest {
         assertEq(contracts.spoke, address(spoke), "spoke");
         assertEq(contracts.hub, address(hub), "hub");
         assertEq(contracts.layerZeroAdapter, address(layerZeroAdapter), "layerZeroAdapter");
+        assertEq(contracts.axelarStandby, address(axelarStandby), "axelarStandby");
+        assertEq(contracts.axelarStandbyUnderlying, address(axelarStandby.underlying()), "axelarStandbyUnderlying");
     }
 
     /// @dev The other direction of the adapter rule: an address recorded under a `deploy: false` flag is a

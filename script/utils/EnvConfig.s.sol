@@ -74,6 +74,15 @@ struct ContractsConfig {
     address axelarAdapter;
     address chainlinkAdapter;
     address hyperlaneAdapter;
+    // Standbys, one per bridge the chain runs, and the dedicated adapter each one wraps. In no global set
+    address layerZeroStandby;
+    address layerZeroStandbyUnderlying;
+    address axelarStandby;
+    address axelarStandbyUnderlying;
+    address chainlinkStandby;
+    address chainlinkStandbyUnderlying;
+    address hyperlaneStandby;
+    address hyperlaneStandbyUnderlying;
 }
 
 /// @notice A whole `env/<environment>/<network>.json`: what the chain is, and what is deployed on it.
@@ -126,7 +135,7 @@ library Env {
         // Once tolerated for a chain being prepared before anything was deployed on it — but the script
         // that runs before a deployment is `LaunchDeployer`, which reads the chain half alone and never
         // comes through here. Every remaining caller acts on a deployment, and none can do anything useful
-        // with 54 zeros, so the honest answer is the same one every missing field gets: refuse.
+        // with 62 zeros, so the honest answer is the same one every missing field gets: refuse.
         require(vm.keyExistsJson(json, ".contracts"), "config records no deployment: it has no .contracts");
 
         // Admin
@@ -214,6 +223,16 @@ library Env {
         config.axelarAdapter = _adapter(json, "axelarAdapter", adapters.axelar.deploy);
         config.chainlinkAdapter = _adapter(json, "chainlinkAdapter", adapters.chainlink.deploy);
         config.hyperlaneAdapter = _adapter(json, "hyperlaneAdapter", adapters.hyperlane.deploy);
+
+        // Deployed under the same flag as the bridge adapter they wrap
+        config.layerZeroStandby = _adapter(json, "layerZeroStandby", adapters.layerZero.deploy);
+        config.layerZeroStandbyUnderlying = _adapter(json, "layerZeroStandbyUnderlying", adapters.layerZero.deploy);
+        config.axelarStandby = _adapter(json, "axelarStandby", adapters.axelar.deploy);
+        config.axelarStandbyUnderlying = _adapter(json, "axelarStandbyUnderlying", adapters.axelar.deploy);
+        config.chainlinkStandby = _adapter(json, "chainlinkStandby", adapters.chainlink.deploy);
+        config.chainlinkStandbyUnderlying = _adapter(json, "chainlinkStandbyUnderlying", adapters.chainlink.deploy);
+        config.hyperlaneStandby = _adapter(json, "hyperlaneStandby", adapters.hyperlane.deploy);
+        config.hyperlaneStandbyUnderlying = _adapter(json, "hyperlaneStandbyUnderlying", adapters.hyperlane.deploy);
     }
 
     /// @dev An adapter the chain half declares must be recorded; one it does not declare must not be. The

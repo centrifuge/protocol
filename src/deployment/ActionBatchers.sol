@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 import {ISO4217_DECIMALS, iso4217Codes} from "./Currencies.sol";
 import {SetConfigParam, ILayerZeroEndpointV2Like} from "./interfaces/ILayerZeroEndpointV2Like.sol";
 
+import {IAuth} from "../misc/interfaces/IAuth.sol";
+
 import {Hub} from "../core/hub/Hub.sol";
 import {Envoy} from "../core/utils/Envoy.sol";
 import {Spoke} from "../core/spoke/Spoke.sol";
@@ -56,6 +58,7 @@ import {SyncDepositVaultFactory} from "../vaults/factories/SyncDepositVaultFacto
 import {TokenBridge} from "../bridge/TokenBridge.sol";
 import {SubsidyManager} from "../utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../adapters/AxelarAdapter.sol";
+import {StandbyAdapter} from "../adapters/StandbyAdapter.sol";
 import {ChainlinkAdapter} from "../adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../adapters/LayerZeroAdapter.sol";
@@ -118,6 +121,10 @@ struct AdaptersReport {
     AxelarAdapter axelarAdapter;
     ChainlinkAdapter chainlinkAdapter;
     HyperlaneAdapter hyperlaneAdapter;
+    StandbyAdapter layerZeroStandby;
+    StandbyAdapter axelarStandby;
+    StandbyAdapter chainlinkStandby;
+    StandbyAdapter hyperlaneStandby;
 }
 
 struct AdapterConnections {
@@ -205,7 +212,6 @@ contract CoreActionBatcher {
         // Rely shareTokenRegistrar: core contracts operate share tokens exclusively through the registrar
         report.shareTokenRegistrar.rely(address(report.spokeHandler));
         report.shareTokenRegistrar.rely(address(report.spoke));
-        report.shareTokenRegistrar.rely(address(report.spokeRegistry));
 
         // Rely spokeRegistry
         report.spokeRegistry.rely(address(report.spokeHandler));
@@ -347,9 +353,6 @@ contract NonCoreActionBatcher {
         report.asyncVaultFactory.rely(address(report.core.spokeHandler));
         report.syncDepositVaultFactory.rely(address(report.core.spokeHandler));
 
-        // Rely hub
-        report.batchRequestManager.rely(address(report.core.hub));
-
         // Rely hubHandler
         report.batchRequestManager.rely(address(report.core.hubHandler));
 
@@ -440,6 +443,10 @@ contract AdapterActionBatcher {
             report.hyperlaneAdapter.rely(address(protocolSafe));
         }
 
+        // Standbys join no set and are wired later, but their underlyings take the same wards and the same
+        // bridge configuration as the global adapters, so a pool taking one up verifies as the protocol does
+        _relyStandbys(report, protocolSafe);
+
         // Connect adapters
         for (uint256 i; i < connectionList.length; i++) {
             AdapterConnections memory connections = connectionList[i];
@@ -454,6 +461,7 @@ contract AdapterActionBatcher {
 
                 if (layerZeroConfigParams.length > 0) {
                     _setLayerZeroUlnConfig(report.layerZeroAdapter, connections.layerZeroId, layerZeroConfigParams[i]);
+                    _setStandbyUlnConfig(report.layerZeroStandby, connections.layerZeroId, layerZeroConfigParams[i]);
                 }
             }
 
@@ -505,11 +513,18 @@ contract AdapterActionBatcher {
             report.hyperlaneAdapter.setIsm(IInterchainSecurityModule(hyperlaneIsm));
         }
 
+        _finalizeStandbys(report, layerZeroDelegate, hyperlaneIsm);
+
         // Revoke batcher permissions
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
         if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
         if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.deny(address(this));
+
+        _denyStandby(_underlying(report.layerZeroStandby));
+        _denyStandby(_underlying(report.axelarStandby));
+        _denyStandby(_underlying(report.chainlinkStandby));
+        _denyStandby(_underlying(report.hyperlaneStandby));
 
         report.core.multiAdapter.deny(address(this));
     }
@@ -519,6 +534,66 @@ contract AdapterActionBatcher {
         if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.rely(ward);
         if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.rely(ward);
         if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.rely(ward);
+    }
+
+    /// @dev The standby itself holds no wards: what is administered is the bridge adapter under it
+    function _underlying(StandbyAdapter standby) internal view returns (address) {
+        return address(standby) != address(0) ? address(standby.underlying()) : address(0);
+    }
+
+    /// @dev Each underlying takes the wards its global adapter has. Written out per contract rather than
+    ///      through a loop, so that `check_ward_coverage.py` reads every grant and pairs it with its assertion
+    function _relyStandbys(AdaptersReport memory report, ISafe protocolSafe) internal {
+        if (address(report.layerZeroStandby) != address(0)) {
+            IAuth layerZeroStandbyUnderlying = IAuth(address(report.layerZeroStandby.underlying()));
+            layerZeroStandbyUnderlying.rely(address(report.core.root));
+            layerZeroStandbyUnderlying.rely(address(report.core.opsGuardian));
+            // Needed for setDelegate calls
+            layerZeroStandbyUnderlying.rely(address(protocolSafe));
+        }
+
+        if (address(report.axelarStandby) != address(0)) {
+            IAuth axelarStandbyUnderlying = IAuth(address(report.axelarStandby.underlying()));
+            axelarStandbyUnderlying.rely(address(report.core.root));
+            axelarStandbyUnderlying.rely(address(report.core.opsGuardian));
+        }
+
+        if (address(report.chainlinkStandby) != address(0)) {
+            IAuth chainlinkStandbyUnderlying = IAuth(address(report.chainlinkStandby.underlying()));
+            chainlinkStandbyUnderlying.rely(address(report.core.root));
+            chainlinkStandbyUnderlying.rely(address(report.core.opsGuardian));
+        }
+
+        if (address(report.hyperlaneStandby) != address(0)) {
+            IAuth hyperlaneStandbyUnderlying = IAuth(address(report.hyperlaneStandby.underlying()));
+            hyperlaneStandbyUnderlying.rely(address(report.core.root));
+            hyperlaneStandbyUnderlying.rely(address(report.core.opsGuardian));
+            // Needed for post-deploy setIsm calls
+            hyperlaneStandbyUnderlying.rely(address(protocolSafe));
+        }
+    }
+
+    /// @dev Not wired, but configured: otherwise a pool taking it up would verify with LayerZero's default
+    ///      libraries and DVNs rather than the protocol's
+    function _setStandbyUlnConfig(StandbyAdapter standby, uint32 eid, SetConfigParam memory param) internal {
+        address underlying = _underlying(standby);
+        if (underlying != address(0)) _setLayerZeroUlnConfig(LayerZeroAdapter(underlying), eid, param);
+    }
+
+    /// @dev The same hand-over the global adapters get: the delegate once the ULN config is set, and the ISM
+    ///      so inbound verification does not fall back to the Mailbox default
+    function _finalizeStandbys(AdaptersReport memory report, address layerZeroDelegate, address hyperlaneIsm) internal {
+        address layerZero = _underlying(report.layerZeroStandby);
+        if (layerZero != address(0)) LayerZeroAdapter(layerZero).setDelegate(layerZeroDelegate);
+
+        address hyperlane = _underlying(report.hyperlaneStandby);
+        if (hyperlane != address(0) && hyperlaneIsm != address(0)) {
+            HyperlaneAdapter(hyperlane).setIsm(IInterchainSecurityModule(hyperlaneIsm));
+        }
+    }
+
+    function _denyStandby(address underlying) internal {
+        if (underlying != address(0)) IAuth(underlying).deny(address(this));
     }
 
     function _setLayerZeroUlnConfig(LayerZeroAdapter adapter, uint32 eid, SetConfigParam memory param) internal {
