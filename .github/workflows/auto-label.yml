@@ -4,7 +4,8 @@
 # Labeling rules (all matching labels are applied):
 #
 # Scope labels:
-#   scope:contracts  — any file under src/ (excluding */interfaces/ dirs)
+#   scope:contracts  — any .sol file (not .t.sol/.s.sol) under src/ or src-ir/,
+#                       excluding */interfaces/ dirs
 #   scope:tests      — any file under test/
 #   scope:invariant  — invariant/fuzz test files (test/**/recon*, echidna.yaml, medusa.json)
 #   scope:scripts    — any file under script/ (unless scope:tooling applies)
@@ -14,14 +15,20 @@
 #   scope:env        — any file under env/
 #
 # Audit flag:
-#   audit:needed     — if scope:contracts was applied
+#   audit:needed     — a scope:contracts file outside src/deployment/ and src/spell/
+#                       whose patch changes at least one line that is not blank or
+#                       a comment (a file without a patch counts as code). Never on
+#                       sync PRs (base live-v*, head main or merge-live-v*), whose
+#                       changes were flagged on their own PRs to main.
 #
 # Type labels (at most one, requires ALL files to match):
 #   type:test        — only non-infra files are under test/
 #   type:docs        — only .md files or files under docs/
 #   type:chore       — only infra/config files
 #
-# The workflow only ADDS labels, never removes them.
+# The workflow owns the scope:* labels and audit:needed: each run removes the ones
+# the current diff no longer supports, except audit:needed once audit:in-review or
+# audit:passed is set. All other labels are only ever added.
 
 name: Auto Label PRs
 
@@ -42,7 +49,8 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const prNumber = context.payload.pull_request.number;
+            const pr = context.payload.pull_request;
+            const prNumber = pr.number;
 
             // ── Step 1: Fetch all changed files (paginated) ──
             const files = await github.paginate(
@@ -63,7 +71,46 @@ jobs:
             // Fuzzer config files at repo root
             const INVARIANT_EXACT = new Set(['echidna.yaml', 'medusa.json']);
 
+            // True when a changed line in the patch is code. Block-comment state is
+            // tracked per hunk because a line starting with `*` can also be an
+            // expression continuation; a hunk opening inside a block comment
+            // therefore reads as code, which errs towards flagging.
+            const patchChangesCode = (patch) => {
+              if (patch === undefined) return true;
+              let inBlock = false;
+              for (const raw of patch.split('\n')) {
+                if (raw.startsWith('@@')) { inBlock = false; continue; }
+                if (raw.startsWith('\\')) continue;
+                const changed = raw.startsWith('+') || raw.startsWith('-');
+                const line = raw.slice(1).trim();
+                let isComment;
+                if (inBlock) {
+                  isComment = true;
+                  const close = line.indexOf('*/');
+                  if (close !== -1) {
+                    inBlock = false;
+                    isComment = line.slice(close + 2).trim() === '';
+                  }
+                } else if (line === '' || line.startsWith('//')) {
+                  isComment = true;
+                } else if (line.startsWith('/*')) {
+                  const close = line.indexOf('*/', 2);
+                  if (close === -1) {
+                    inBlock = true;
+                    isComment = true;
+                  } else {
+                    isComment = line.slice(close + 2).trim() === '';
+                  }
+                } else {
+                  isComment = false;
+                }
+                if (changed && !isComment) return true;
+              }
+              return false;
+            };
+
             let hasContract = false;
+            let hasAuditable = false;    // production contract code changed
             let hasTest = false;
             let hasInvariant = false;   // recon/echidna/medusa invariant tests
             let hasScript = false;
@@ -73,20 +120,31 @@ jobs:
             let hasDocs = false;
             let hasOther = false;        // files that don't fit any category above
 
-            for (const f of filenames) {
+            for (const file of files) {
+              const f = file.filename;
               const lower = f.toLowerCase();
               let matched = false;
 
-              // Contract source (excluding interface directories scattered
-              // throughout src/, e.g. src/core/hub/interfaces/, src/misc/interfaces/)
-              if (f.startsWith('src/') && !f.includes('/interfaces/')) {
-                hasContract = true;
+              // Source tree files: contracts, plus interfaces, READMEs and the like
+              if (f.startsWith('src/') || f.startsWith('src-ir/')) {
                 matched = true;
-              }
-
-              // Interface-only files are not contracts but still belong to src/
-              if (f.startsWith('src/') && f.includes('/interfaces/')) {
-                matched = true;
+                const isContract =
+                  f.endsWith('.sol') &&
+                  !f.endsWith('.t.sol') &&
+                  !f.endsWith('.s.sol') &&
+                  !f.includes('/interfaces/');
+                if (isContract) {
+                  hasContract = true;
+                  if (
+                    !f.startsWith('src/deployment/') &&
+                    !f.startsWith('src/spell/') &&
+                    patchChangesCode(file.patch)
+                  ) {
+                    hasAuditable = true;
+                  }
+                } else if (!f.endsWith('.md')) {
+                  hasOther = true;
+                }
               }
 
               // Tests
@@ -177,7 +235,10 @@ jobs:
             }
 
             // ── Step 4: Audit flag ──
-            if (hasContract) {
+            const isSync =
+              pr.base.ref.startsWith('live-v') &&
+              (pr.head.ref === 'main' || pr.head.ref.startsWith('merge-live-v'));
+            if (hasAuditable && !isSync) {
               labels.push('audit:needed');
             }
 
@@ -195,17 +256,33 @@ jobs:
               labels.push('type:chore');
             }
 
-            if (labels.length === 0) {
-              core.info('No labels to apply.');
-              return;
-            }
-
-            // ── Step 6: Deduplicate against existing PR labels ──
+            // ── Step 6: Reconcile against existing PR labels ──
             const { data: prData } = await github.rest.pulls.get({
               owner, repo, pull_number: prNumber
             });
             const existingLabels = new Set(prData.labels.map(l => l.name));
             const newLabels = labels.filter(l => !existingLabels.has(l));
+
+            const OWNED = [
+              'scope:contracts', 'scope:tests', 'scope:invariant', 'scope:scripts',
+              'scope:tooling', 'scope:infra', 'scope:env', 'audit:needed'
+            ];
+            const auditOwnedByHuman =
+              existingLabels.has('audit:in-review') || existingLabels.has('audit:passed');
+            const staleLabels = OWNED.filter(l =>
+              existingLabels.has(l) &&
+              !labels.includes(l) &&
+              !(l === 'audit:needed' && auditOwnedByHuman)
+            );
+
+            for (const name of staleLabels) {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: prNumber, name
+              });
+            }
+            if (staleLabels.length > 0) {
+              core.info(`Removed labels: ${staleLabels.join(', ')}`);
+            }
 
             if (newLabels.length > 0) {
               await github.rest.issues.addLabels({
