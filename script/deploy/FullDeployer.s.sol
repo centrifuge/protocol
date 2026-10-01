@@ -320,6 +320,7 @@ contract FullDeployer is GatedDeployer {
                         input.adapters.layerZero.configParams,
                         input.adapters.layerZero.delegate,
                         vm.toString(address(axelarAdapter)),
+                        address(axelarStandby) != address(0) ? vm.toString(address(axelarStandby.underlying())) : "",
                         input.adapters.hyperlane.ism
                     )
                 )

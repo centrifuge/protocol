@@ -8,6 +8,15 @@ import "forge-std/Vm.sol";
 
 Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
+// The adapter names a connection rule may list, in `adapters` or `wiredOnly`
+string constant LAYERZERO = "layerZero";
+string constant AXELAR = "axelar";
+string constant CHAINLINK = "chainlink";
+string constant HYPERLANE = "hyperlane";
+
+/// @dev `layerZero`, `axelar`, `chainlink` and `hyperlane` name the lane's global adapter set, which `threshold`
+///      counts. The `*WiredOnly` flags name adapters wired to the lane but kept out of that set, for a pool to
+///      include in its own. An adapter is one or the other, never both.
 struct Connection {
     string network;
     bool layerZero;
@@ -15,6 +24,10 @@ struct Connection {
     bool chainlink;
     bool hyperlane;
     uint8 threshold;
+    bool layerZeroWiredOnly;
+    bool axelarWiredOnly;
+    bool chainlinkWiredOnly;
+    bool hyperlaneWiredOnly;
 }
 
 struct ConnectionRuleJson {
@@ -22,6 +35,7 @@ struct ConnectionRuleJson {
     string[] right;
     string[] adapters;
     uint256 threshold;
+    string[] wiredOnly;
 }
 
 struct ConnectionsConfig {
@@ -30,12 +44,36 @@ struct ConnectionsConfig {
 }
 
 using ConnectionsConfigLib for ConnectionsConfig global;
+using ConnectionLib for Connection global;
+
+/// @notice Whether a lane wires an adapter at all, in its global set or wired only. Every reader that wires
+///         asks this rather than combining the two flags itself, so the places that have to agree on it do.
+library ConnectionLib {
+    function wiresLayerZero(Connection memory connection) internal pure returns (bool) {
+        return connection.layerZero || connection.layerZeroWiredOnly;
+    }
+
+    function wiresAxelar(Connection memory connection) internal pure returns (bool) {
+        return connection.axelar || connection.axelarWiredOnly;
+    }
+
+    function wiresChainlink(Connection memory connection) internal pure returns (bool) {
+        return connection.chainlink || connection.chainlinkWiredOnly;
+    }
+
+    function wiresHyperlane(Connection memory connection) internal pure returns (bool) {
+        return connection.hyperlane || connection.hyperlaneWiredOnly;
+    }
+}
 
 /// @notice loads an env/<environment>/connections.json file
 library EnvConnections {
     function load(string memory environment) internal view returns (ConnectionsConfig memory config) {
-        string memory json = vm.readFile(Chains.connectionsPathOf(environment));
+        return parse(vm.readFile(Chains.connectionsPathOf(environment)));
+    }
 
+    /// @notice Same, from JSON already read
+    function parse(string memory json) internal view returns (ConnectionsConfig memory config) {
         uint256 ruleCount;
         while (vm.keyExistsJson(json, string.concat(".connections[", vm.toString(ruleCount), "]"))) {
             ruleCount++;
@@ -48,9 +86,63 @@ library EnvConnections {
             config.rules[i].right = _parseSide(json, string.concat(prefix, ".chains[1]"));
             config.rules[i].adapters = vm.parseJsonStringArray(json, string.concat(prefix, ".adapters"));
             config.rules[i].threshold = vm.parseJsonUint(json, string.concat(prefix, ".threshold"));
+            // Optional: adapters wired to the rule's lanes but kept out of their global set
+            if (vm.keyExistsJson(json, string.concat(prefix, ".wiredOnly"))) {
+                config.rules[i].wiredOnly = vm.parseJsonStringArray(json, string.concat(prefix, ".wiredOnly"));
+            }
+            _validateRule(json, prefix, config.rules[i], i);
         }
 
         config.networks = _collectNetworks(config.rules);
+    }
+
+    /// @dev What a rule must hold, refused rather than resolved when it does not:
+    ///      - only the keys this reader knows: a misspelled `wiredOnly` would otherwise drop the list unread
+    ///      - only known adapter names, none in both lists: a misspelled one would simply not be wired
+    ///      - a global set wherever an adapter is wired only: a pool's first `SetPoolAdapters` travels over
+    ///        the lane's global set, so without one no pool could ever take a wired-only adapter up
+    ///      - a threshold the set can meet, and none on an empty set
+    function _validateRule(string memory json, string memory prefix, ConnectionRuleJson memory rule, uint256 index)
+        private
+        pure
+    {
+        string memory at = string.concat("connections[", vm.toString(index), "]: ");
+
+        string[] memory keys = vm.parseJsonKeys(json, prefix);
+        for (uint256 i; i < keys.length; i++) {
+            bytes32 key = keccak256(bytes(keys[i]));
+            require(
+                key == keccak256("chains") || key == keccak256("adapters") || key == keccak256("threshold")
+                    || key == keccak256("wiredOnly"),
+                string.concat(at, "unknown key ", keys[i])
+            );
+        }
+
+        for (uint256 i; i < rule.adapters.length; i++) {
+            require(_isAdapter(rule.adapters[i]), string.concat(at, "unknown adapter ", rule.adapters[i]));
+        }
+        for (uint256 i; i < rule.wiredOnly.length; i++) {
+            require(_isAdapter(rule.wiredOnly[i]), string.concat(at, "unknown adapter ", rule.wiredOnly[i]));
+            for (uint256 j; j < rule.adapters.length; j++) {
+                require(
+                    keccak256(bytes(rule.wiredOnly[i])) != keccak256(bytes(rule.adapters[j])),
+                    string.concat(at, rule.wiredOnly[i], " is both in the adapter set and wired only")
+                );
+            }
+        }
+
+        require(
+            rule.wiredOnly.length == 0 || rule.adapters.length != 0,
+            string.concat(at, "wired-only adapters need a global set to be taken up over")
+        );
+        require(rule.adapters.length != 0 || rule.threshold == 0, string.concat(at, "threshold without an adapter set"));
+        require(rule.threshold <= rule.adapters.length, string.concat(at, "threshold above the adapter set"));
+    }
+
+    function _isAdapter(string memory name) private pure returns (bool) {
+        bytes32 h = keccak256(bytes(name));
+        return h == keccak256(bytes(LAYERZERO)) || h == keccak256(bytes(AXELAR)) || h == keccak256(bytes(CHAINLINK))
+            || h == keccak256(bytes(HYPERLANE));
     }
 
     /// @dev Parses a side value that can be either a string (alias or literal) or an array of strings.
@@ -95,44 +187,44 @@ library ConnectionsConfigLib {
         pure
         returns (Connection[] memory connections)
     {
-        // Count matches first
+        // Count matches first: a lane exists when its rule names any adapter
         uint256 count;
         for (uint256 i; i < config.networks.length; i++) {
             if (_strEq(config.networks[i], network)) continue;
-            (string[] memory adapters,) = _findMatchingRule(config.rules, network, config.networks[i]);
-            if (adapters.length > 0) count++;
+            ConnectionRuleJson memory rule = _findMatchingRule(config.rules, network, config.networks[i]);
+            if (rule.adapters.length > 0 || rule.wiredOnly.length > 0) count++;
         }
 
         connections = new Connection[](count);
         uint256 idx;
         for (uint256 i; i < config.networks.length; i++) {
             if (_strEq(config.networks[i], network)) continue;
-            (string[] memory adapters, uint256 threshold) = _findMatchingRule(config.rules, network, config.networks[i]);
-            if (adapters.length > 0) {
+            ConnectionRuleJson memory rule = _findMatchingRule(config.rules, network, config.networks[i]);
+            if (rule.adapters.length > 0 || rule.wiredOnly.length > 0) {
                 connections[idx++] = Connection({
                     network: config.networks[i],
-                    layerZero: _arrayContains(adapters, "layerZero"),
-                    axelar: _arrayContains(adapters, "axelar"),
-                    chainlink: _arrayContains(adapters, "chainlink"),
-                    hyperlane: _arrayContains(adapters, "hyperlane"),
-                    threshold: uint8(threshold)
+                    layerZero: _arrayContains(rule.adapters, LAYERZERO),
+                    axelar: _arrayContains(rule.adapters, AXELAR),
+                    chainlink: _arrayContains(rule.adapters, CHAINLINK),
+                    hyperlane: _arrayContains(rule.adapters, HYPERLANE),
+                    threshold: uint8(rule.threshold),
+                    layerZeroWiredOnly: _arrayContains(rule.wiredOnly, LAYERZERO),
+                    axelarWiredOnly: _arrayContains(rule.wiredOnly, AXELAR),
+                    chainlinkWiredOnly: _arrayContains(rule.wiredOnly, CHAINLINK),
+                    hyperlaneWiredOnly: _arrayContains(rule.wiredOnly, HYPERLANE)
                 });
             }
         }
     }
 
-    /// @dev Returns the adapters and threshold from the last matching rule (last match wins).
+    /// @dev The last matching rule (last match wins); an empty rule where none matches.
     function _findMatchingRule(ConnectionRuleJson[] memory rules, string memory a, string memory b)
         private
         pure
-        returns (string[] memory adapters, uint256 threshold)
+        returns (ConnectionRuleJson memory rule)
     {
         for (uint256 i = rules.length; i > 0; i--) {
-            if (_matches(rules[i - 1], a, b)) {
-                adapters = rules[i - 1].adapters;
-                threshold = rules[i - 1].threshold;
-                return (adapters, threshold);
-            }
+            if (_matches(rules[i - 1], a, b)) return rules[i - 1];
         }
     }
 

@@ -32,6 +32,7 @@ import {GasService} from "../admin/GasService.sol";
 import {ISafe} from "../admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../admin/ProtocolGuardian.sol";
+import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
 import {FreezeOnly} from "../token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../hooks/accounting/NAVManager.sol";
@@ -127,6 +128,10 @@ struct AdaptersReport {
     StandbyAdapter hyperlaneStandby;
 }
 
+/// @dev    An adapter whose id is set is wired to the lane. It also joins the lane's global adapter set unless
+///         flagged `*WiredOnly`, in which case it stays out of it: bound to its peer and ready for a pool to
+///         include in its own set, but carrying none of the global pool's messages. `threshold` counts the
+///         global set only.
 struct AdapterConnections {
     uint16 centrifugeId;
     uint32 layerZeroId;
@@ -134,6 +139,10 @@ struct AdapterConnections {
     uint64 chainlinkId;
     uint32 hyperlaneId;
     uint8 threshold;
+    bool layerZeroWiredOnly;
+    bool axelarWiredOnly;
+    bool chainlinkWiredOnly;
+    bool hyperlaneWiredOnly;
 }
 
 /// @notice Thrown when a batcher is told to wire Root but is not a ward of it, or the other way round: the
@@ -428,6 +437,7 @@ contract AdapterActionBatcher {
         SetConfigParam[] memory layerZeroConfigParams,
         address layerZeroDelegate,
         string memory remoteAxelarAdapter,
+        string memory remoteAxelarStandby,
         address hyperlaneIsm
     ) {
         _relyAdapters(report, address(report.core.root));
@@ -443,8 +453,9 @@ contract AdapterActionBatcher {
             report.hyperlaneAdapter.rely(address(protocolSafe));
         }
 
-        // Standbys join no set and are wired later, but their underlyings take the same wards and the same
-        // bridge configuration as the global adapters, so a pool taking one up verifies as the protocol does
+        // Standbys join no set, but their underlyings take the same wards and the same bridge configuration as the
+        // global adapters, and are wired to the same lanes, so a pool can take one up as it is and it verifies as
+        // the protocol does
         _relyStandbys(report, protocolSafe);
 
         // Connect adapters
@@ -457,7 +468,7 @@ contract AdapterActionBatcher {
             if (address(report.layerZeroAdapter) != address(0) && connections.layerZeroId != 0) {
                 report.layerZeroAdapter
                     .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
-                adapters[n++] = report.layerZeroAdapter;
+                if (!connections.layerZeroWiredOnly) adapters[n++] = report.layerZeroAdapter;
 
                 if (layerZeroConfigParams.length > 0) {
                     _setLayerZeroUlnConfig(report.layerZeroAdapter, connections.layerZeroId, layerZeroConfigParams[i]);
@@ -468,7 +479,7 @@ contract AdapterActionBatcher {
             if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
                 report.axelarAdapter
                     .wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarAdapter));
-                adapters[n++] = report.axelarAdapter;
+                if (!connections.axelarWiredOnly) adapters[n++] = report.axelarAdapter;
             }
 
             if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
@@ -479,14 +490,16 @@ contract AdapterActionBatcher {
                         abi.encode(connections.chainlinkId, report.chainlinkAdapter, bytes4(0), bytes4(0))
                     );
 
-                adapters[n++] = report.chainlinkAdapter;
+                if (!connections.chainlinkWiredOnly) adapters[n++] = report.chainlinkAdapter;
             }
 
             if (address(report.hyperlaneAdapter) != address(0) && connections.hyperlaneId != 0) {
                 report.hyperlaneAdapter
                     .wire(connections.centrifugeId, abi.encode(connections.hyperlaneId, report.hyperlaneAdapter));
-                adapters[n++] = report.hyperlaneAdapter;
+                if (!connections.hyperlaneWiredOnly) adapters[n++] = report.hyperlaneAdapter;
             }
+
+            _wireStandbys(report, connections, remoteAxelarStandby);
 
             if (n > 0) {
                 assembly {
@@ -573,8 +586,37 @@ contract AdapterActionBatcher {
         }
     }
 
-    /// @dev Not wired, but configured: otherwise a pool taking it up would verify with LayerZero's default
-    ///      libraries and DVNs rather than the protocol's
+    /// @dev The peer is the remote standby underlying, never the remote global adapter, so a forwarded vote lands
+    ///      on the standby at the other end. As with the global adapters, it is taken to sit at this chain's address
+    function _wireStandbys(
+        AdaptersReport memory report,
+        AdapterConnections memory connections,
+        string memory remoteAxelarStandby
+    ) internal {
+        address layerZero = _underlying(report.layerZeroStandby);
+        if (layerZero != address(0) && connections.layerZeroId != 0) {
+            IAdapterWiring(layerZero).wire(connections.centrifugeId, abi.encode(connections.layerZeroId, layerZero));
+        }
+
+        address axelar = _underlying(report.axelarStandby);
+        if (axelar != address(0) && bytes(connections.axelarId).length != 0) {
+            IAdapterWiring(axelar).wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarStandby));
+        }
+
+        address chainlink = _underlying(report.chainlinkStandby);
+        if (chainlink != address(0) && connections.chainlinkId != 0) {
+            IAdapterWiring(chainlink)
+                .wire(connections.centrifugeId, abi.encode(connections.chainlinkId, chainlink, bytes4(0), bytes4(0)));
+        }
+
+        address hyperlane = _underlying(report.hyperlaneStandby);
+        if (hyperlane != address(0) && connections.hyperlaneId != 0) {
+            IAdapterWiring(hyperlane).wire(connections.centrifugeId, abi.encode(connections.hyperlaneId, hyperlane));
+        }
+    }
+
+    /// @dev Configured like the global adapter: otherwise a pool taking it up would verify with LayerZero's
+    ///      default libraries and DVNs rather than the protocol's
     function _setStandbyUlnConfig(StandbyAdapter standby, uint32 eid, SetConfigParam memory param) internal {
         address underlying = _underlying(standby);
         if (underlying != address(0)) _setLayerZeroUlnConfig(LayerZeroAdapter(underlying), eid, param);

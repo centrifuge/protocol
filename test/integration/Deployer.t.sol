@@ -5,6 +5,8 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
+import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
@@ -1006,8 +1008,8 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
     }
 }
 
-/// @dev A launch with a connection: the global set is the bridge adapters alone, and the standbys are left
-///      unwired but carry the same LayerZero config
+/// @dev A launch with a connection: the global set is the bridge adapters alone, and the standbys are wired to
+///      their peer standby underlyings with the same LayerZero config
 contract FullDeploymentTestAdapterConnections is FullDeploymentConfigTest {
     uint16 constant REMOTE_CENTRIFUGE_ID = 5;
     uint32 constant REMOTE_LAYERZERO_ID = 30_005;
@@ -1021,7 +1023,11 @@ contract FullDeploymentTestAdapterConnections is FullDeploymentConfigTest {
                 axelarId: "remote",
                 chainlinkId: 5_000,
                 hyperlaneId: 5,
-                threshold: 2
+                threshold: 2,
+                layerZeroWiredOnly: false,
+                axelarWiredOnly: false,
+                chainlinkWiredOnly: false,
+                hyperlaneWiredOnly: false
             })
         );
         layerZeroConfigParams_.push(SetConfigParam({eid: REMOTE_LAYERZERO_ID, configType: 2, config: ULN_CONFIG}));
@@ -1054,27 +1060,56 @@ contract FullDeploymentTestAdapterConnections is FullDeploymentConfigTest {
         }
     }
 
-    /// @dev Left for the OpsGuardian to wire, once a pool takes a standby up
-    function testStandbyUnderlyingsNotWired() public view {
-        assertEq(
-            LayerZeroAdapter(address(layerZeroStandby.underlying()))
-                .isWired(REMOTE_CENTRIFUGE_ID, abi.encode(REMOTE_LAYERZERO_ID, address(0))),
-            false
-        );
-        assertEq(
-            AxelarAdapter(address(axelarStandby.underlying())).isWired(REMOTE_CENTRIFUGE_ID, abi.encode("remote", "")),
-            false
-        );
-        assertEq(
-            ChainlinkAdapter(address(chainlinkStandby.underlying()))
-                .isWired(REMOTE_CENTRIFUGE_ID, abi.encode(uint64(5_000), address(0))),
-            false
-        );
-        assertEq(
-            HyperlaneAdapter(address(hyperlaneStandby.underlying()))
-                .isWired(REMOTE_CENTRIFUGE_ID, abi.encode(uint32(5), address(0))),
-            false
-        );
+    // Each standby underlying is wired to every lane its global adapter is, and to the peer's standby
+    // underlying rather than its global adapter, so a forwarded vote lands on the standby at the other end
+
+    function testLayerZeroStandbyWiredToItsPeer() public view {
+        LayerZeroAdapter lz = LayerZeroAdapter(address(layerZeroStandby.underlying()));
+        (uint32 eid, address peer) = lz.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, address sourcePeer) = lz.sources(REMOTE_LAYERZERO_ID);
+        assertEq(eid, REMOTE_LAYERZERO_ID);
+        assertEq(peer, address(lz), "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, address(lz));
+    }
+
+    function testAxelarStandbyWiredToItsPeer() public view {
+        AxelarAdapter axelar = AxelarAdapter(address(axelarStandby.underlying()));
+        string memory expected = vm.toString(address(axelar));
+        (string memory axelarId, string memory peer) = axelar.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, bytes32 sourcePeer) = axelar.sources("remote");
+        assertEq(axelarId, "remote");
+        assertEq(peer, expected, "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, keccak256(bytes(expected)));
+    }
+
+    function testChainlinkStandbyWiredToItsPeer() public view {
+        ChainlinkAdapter chainlink = ChainlinkAdapter(address(chainlinkStandby.underlying()));
+        (uint64 selector, address peer,) = chainlink.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, address sourcePeer,) = chainlink.sources(5_000);
+        assertEq(selector, 5_000);
+        assertEq(peer, address(chainlink), "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, address(chainlink));
+    }
+
+    function testHyperlaneStandbyWiredToItsPeer() public view {
+        HyperlaneAdapter hyperlane = HyperlaneAdapter(address(hyperlaneStandby.underlying()));
+        (uint32 domain, address peer) = hyperlane.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, address sourcePeer) = hyperlane.sources(5);
+        assertEq(domain, 5);
+        assertEq(peer, address(hyperlane), "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, address(hyperlane));
+    }
+
+    /// @dev Bound once, by the launch: the OpsGuardian cannot re-point a standby's lane, only Root can
+    function testOpsCannotRewireAStandby() public {
+        LayerZeroAdapter lz = LayerZeroAdapter(address(layerZeroStandby.underlying()));
+        vm.prank(address(OPS_SAFE));
+        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        opsGuardian.wire(lz, REMOTE_CENTRIFUGE_ID, abi.encode(REMOTE_LAYERZERO_ID, makeAddr("elsewhere")));
     }
 }
 
@@ -1691,5 +1726,111 @@ contract FullDeploymentNoDelayTest is FullDeploymentConfigTest {
     function testTheDelayMovesNoAddress() public {
         assertEq(address(root), gatedAddress("root", V3_3));
         assertEq(address(adapterFailover), gatedAddress("adapterFailover", V3_3));
+    }
+}
+
+/// @dev What the launch does with the lanes it is handed: every adapter a lane names is wired to its peer, and
+///      only those not flagged wired-only join the lane's global adapter set, which the threshold counts.
+contract FullDeploymentTestConnections is FullDeploymentConfigTest {
+    using MessageLib for *;
+
+    // LayerZero and Hyperlane in the set, Axelar and Chainlink wired only
+    uint16 constant MIXED = 5;
+    // Same split with no threshold given: the batcher falls back to the size of the set, not of what it wires
+    uint16 constant FALLBACK = 6;
+
+    function _lane(uint16 centrifugeId, uint8 threshold) private pure returns (AdapterConnections memory) {
+        return AdapterConnections({
+            centrifugeId: centrifugeId,
+            layerZeroId: 30_000 + centrifugeId,
+            axelarId: string.concat("remote-", vm.toString(centrifugeId)),
+            chainlinkId: 5000 + centrifugeId,
+            hyperlaneId: centrifugeId,
+            threshold: threshold,
+            layerZeroWiredOnly: false,
+            axelarWiredOnly: true,
+            chainlinkWiredOnly: true,
+            hyperlaneWiredOnly: false
+        });
+    }
+
+    function setUp() public override {
+        connections_.push(_lane(MIXED, 1));
+        connections_.push(_lane(FALLBACK, 0));
+        super.setUp();
+    }
+
+    /// @dev The binding itself, both ways, rather than `isWired`, which holds as soon as either side is set
+    function testWiresEveryAdapterTheLaneNamesToItsPeer() public view {
+        (uint32 eid, address lzPeer) = layerZeroAdapter.destinations(MIXED);
+        (uint16 lzSource, address lzSourceAddr) = layerZeroAdapter.sources(30_005);
+        assertEq(eid, 30_005, "layerZero destination");
+        assertEq(lzPeer, address(layerZeroAdapter), "layerZero peer");
+        assertEq(lzSource, MIXED, "layerZero source");
+        assertEq(lzSourceAddr, address(layerZeroAdapter), "layerZero source peer");
+
+        (uint32 domain, address hlPeer) = hyperlaneAdapter.destinations(MIXED);
+        (uint16 hlSource, address hlSourceAddr) = hyperlaneAdapter.sources(5);
+        assertEq(domain, 5, "hyperlane destination");
+        assertEq(hlPeer, address(hyperlaneAdapter), "hyperlane peer");
+        assertEq(hlSource, MIXED, "hyperlane source");
+        assertEq(hlSourceAddr, address(hyperlaneAdapter), "hyperlane source peer");
+
+        string memory axelarPeer = vm.toString(address(axelarAdapter));
+        (string memory axelarId, string memory axPeer) = axelarAdapter.destinations(MIXED);
+        (uint16 axSource, bytes32 axSourceHash) = axelarAdapter.sources("remote-5");
+        assertEq(axelarId, "remote-5", "axelar destination");
+        assertEq(axPeer, axelarPeer, "axelar peer");
+        assertEq(axSource, MIXED, "axelar source");
+        assertEq(axSourceHash, keccak256(bytes(axelarPeer)), "axelar source peer");
+
+        (uint64 selector, address clPeer,) = chainlinkAdapter.destinations(MIXED);
+        (uint16 clSource, address clSourceAddr,) = chainlinkAdapter.sources(5005);
+        assertEq(selector, 5005, "chainlink destination");
+        assertEq(clPeer, address(chainlinkAdapter), "chainlink peer");
+        assertEq(clSource, MIXED, "chainlink source");
+        assertEq(clSourceAddr, address(chainlinkAdapter), "chainlink source peer");
+    }
+
+    function testGlobalSetHoldsOnlyTheAdaptersNotWiredOnly() public view {
+        PoolId global = PoolId.wrap(0);
+        uint16 session = multiAdapter.activeSessionId(MIXED, global);
+
+        assertEq(multiAdapter.quorum(MIXED, global), 2, "set size");
+        assertEq(multiAdapter.threshold(MIXED, global), 1, "threshold");
+        assertEq(address(multiAdapter.adapters(MIXED, global, session, 0)), address(layerZeroAdapter));
+        assertEq(address(multiAdapter.adapters(MIXED, global, session, 1)), address(hyperlaneAdapter));
+    }
+
+    /// @dev A standby follows its global adapter onto every lane it is wired to, wired only or not
+    function testStandbyIsWiredOnALaneItsAdapterIsWiredOnlyTo() public view {
+        AxelarAdapter axelar = AxelarAdapter(address(axelarStandby.underlying()));
+        (string memory axelarId, string memory peer) = axelar.destinations(MIXED);
+        assertEq(axelarId, "remote-5");
+        assertEq(peer, vm.toString(address(axelar)), "the peer's standby underlying");
+    }
+
+    /// @dev Four adapters wired, two in the set: an unset threshold means all of the set, not all that is wired
+    function testUnsetThresholdIsTheSizeOfTheSet() public view {
+        assertEq(multiAdapter.quorum(FALLBACK, PoolId.wrap(0)), 2, "set size");
+        assertEq(multiAdapter.threshold(FALLBACK, PoolId.wrap(0)), 2, "threshold falls back to the set");
+    }
+
+    /// @dev The property the flag exists for: a wired-only adapter is bound to its peer, yet the global pool does
+    ///      not take a vote from it, while an adapter in the set is counted for the same message
+    function testWiredOnlyAdapterCannotVoteOnAGlobalMessage() public {
+        bytes memory message = MessageLib.ScheduleUpgrade({target: bytes32(uint256(1))}).serialize();
+        bytes memory payload = abi.encodePacked(multiAdapter.activeSessionId(MIXED, PoolId.wrap(0)), message);
+
+        vm.prank(address(layerZeroAdapter));
+        multiAdapter.vote(MIXED, payload);
+
+        vm.prank(address(axelarAdapter));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.vote(MIXED, payload);
+
+        vm.prank(address(chainlinkAdapter));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.vote(MIXED, payload);
     }
 }

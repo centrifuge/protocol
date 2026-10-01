@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {EnvConnections, Connection} from "./ConnectionsConfig.s.sol";
+import {EnvConnections, Connection, LAYERZERO, AXELAR, CHAINLINK, HYPERLANE} from "./ConnectionsConfig.s.sol";
 
 import "forge-std/Vm.sol";
 
@@ -832,7 +832,8 @@ library ChainConfigLib {
     }
 
     /// @notice One `SetConfigParam` per connection, in `adapterConnections()` order, which is how the adapter
-    ///         batcher indexes them. A connection without LayerZero keeps its slot, left empty and never read.
+    ///         batcher indexes them. A connection without LayerZero, in its set or wired only, keeps its slot, left
+    ///         empty and never read.
     function buildLayerZeroConfigParams(ChainConfig memory config)
         internal
         view
@@ -845,7 +846,7 @@ library ChainConfigLib {
 
         params = new SetConfigParam[](connections.length);
         for (uint256 i; i < connections.length; i++) {
-            if (!connections[i].layerZero) continue;
+            if (!connections[i].wiresLayerZero()) continue;
 
             ChainConfig memory remoteConfig = Chains.load(connections[i].network, config.network.environment);
             LayerZeroConfig memory local = config.dvnsFor(connections[i].network);
@@ -890,8 +891,8 @@ library ChainConfigLib {
         for (uint256 i; i < keys.length; i++) {
             bool isPeer;
             for (uint256 j; j < connections.length && !isPeer; j++) {
-                isPeer =
-                    connections[j].layerZero && keccak256(bytes(connections[j].network)) == keccak256(bytes(keys[i]));
+                isPeer = connections[j].wiresLayerZero()
+                    && keccak256(bytes(connections[j].network)) == keccak256(bytes(keys[i]));
             }
             require(isPeer, string.concat("dvnOverrides names no LayerZero peer: ", keys[i]));
         }
@@ -907,17 +908,83 @@ library ChainConfigLib {
 
         for (uint256 i; i < connections.length; i++) {
             ChainConfig memory remoteConfig = Chains.load(connections[i].network, config.network.environment);
-            Connection memory connection = connections[i];
-
-            adapterConnections_[i] = AdapterConnections({
-                centrifugeId: remoteConfig.network.centrifugeId,
-                layerZeroId: connection.layerZero ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
-                axelarId: connection.axelar ? remoteConfig.adapters.axelar.axelarId : "",
-                chainlinkId: connection.chainlink ? remoteConfig.adapters.chainlink.chainSelector : 0,
-                hyperlaneId: connection.hyperlane ? remoteConfig.adapters.hyperlane.hyperlaneId : 0,
-                threshold: connection.threshold
-            });
+            requireLaneDeployed(connections[i], config, remoteConfig);
+            adapterConnections_[i] = adapterConnection(connections[i], remoteConfig);
         }
+    }
+
+    /// @notice What the adapter batcher is handed for one lane: an id for every adapter the lane wires, in its
+    ///         set or wired only, and the flags that keep the latter out of the set.
+    function adapterConnection(Connection memory connection, ChainConfig memory remoteConfig)
+        internal
+        pure
+        returns (AdapterConnections memory)
+    {
+        return AdapterConnections({
+            centrifugeId: remoteConfig.network.centrifugeId,
+            layerZeroId: connection.wiresLayerZero() ? remoteConfig.adapters.layerZero.layerZeroEid : 0,
+            axelarId: connection.wiresAxelar() ? remoteConfig.adapters.axelar.axelarId : "",
+            chainlinkId: connection.wiresChainlink() ? remoteConfig.adapters.chainlink.chainSelector : 0,
+            hyperlaneId: connection.wiresHyperlane() ? remoteConfig.adapters.hyperlane.hyperlaneId : 0,
+            threshold: connection.threshold,
+            layerZeroWiredOnly: connection.layerZeroWiredOnly,
+            axelarWiredOnly: connection.axelarWiredOnly,
+            chainlinkWiredOnly: connection.chainlinkWiredOnly,
+            hyperlaneWiredOnly: connection.hyperlaneWiredOnly
+        });
+    }
+
+    /// @notice Every adapter a lane wires is deployed at both of its ends.
+    ///
+    /// @dev    An adapter one end does not deploy gets no id from it, or no adapter to wire with, and the batcher
+    ///         skips it without a word. An adapter in the set would at least be caught where the configs are
+    ///         checked against each other; a wired-only one carries no launch traffic and would not be noticed
+    ///         until a pool reached for it.
+    function requireLaneDeployed(Connection memory connection, ChainConfig memory local, ChainConfig memory remote)
+        internal
+        pure
+    {
+        _requireDeployed(
+            connection.wiresLayerZero(),
+            local.adapters.layerZero.deploy,
+            remote.adapters.layerZero.deploy,
+            local,
+            remote,
+            LAYERZERO
+        );
+        _requireDeployed(
+            connection.wiresAxelar(), local.adapters.axelar.deploy, remote.adapters.axelar.deploy, local, remote, AXELAR
+        );
+        _requireDeployed(
+            connection.wiresChainlink(),
+            local.adapters.chainlink.deploy,
+            remote.adapters.chainlink.deploy,
+            local,
+            remote,
+            CHAINLINK
+        );
+        _requireDeployed(
+            connection.wiresHyperlane(),
+            local.adapters.hyperlane.deploy,
+            remote.adapters.hyperlane.deploy,
+            local,
+            remote,
+            HYPERLANE
+        );
+    }
+
+    function _requireDeployed(
+        bool wired,
+        bool atLocal,
+        bool atRemote,
+        ChainConfig memory local,
+        ChainConfig memory remote,
+        string memory adapter
+    ) private pure {
+        if (!wired) return;
+        string memory lane = string.concat(local.network.name, " <-> ", remote.network.name, ": ");
+        require(atLocal, string.concat(lane, adapter, " is not deployed on ", local.network.name));
+        require(atRemote, string.concat(lane, adapter, " is not deployed on ", remote.network.name));
     }
 }
 
