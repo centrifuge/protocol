@@ -440,9 +440,11 @@ addresses, versions and block numbers straight into `env/<environment>/<network>
 for what it produces, because the running script is the only thing that knows those addresses. Nothing has to
 be run afterwards.
 
-**`startBlock` is the earliest block any contract in the config carries**, recomputed on every write rather
-than set to the current run's block. A redeployment that reuses contracts leaves older ones in place, and an
-indexer starting after one of them would miss its history.
+**A config records its contracts and nothing about the deployment as a whole.** A chain's start block is the
+earliest block any of its contracts carries, so the registry derives it from their `blockNumber`s when it
+publishes, rather than trusting a stored copy of the same fact: a copy survives the contracts it summarised — a
+redeployment that reuses some leaves them in place, a config trimmed to its `root` keeps an older run's block —
+and an indexer starting after one of them would miss its history.
 
 ### On the block numbers being approximate
 

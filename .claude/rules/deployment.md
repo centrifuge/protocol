@@ -61,6 +61,7 @@ The fix commit exists because a sync where main renamed an API live uses cannot 
 - To make a new address readable back, `register()` it in the script and add the field to `ContractsConfig` in `script/utils/EnvConfig.s.sol`.
 - The write is a merge: what a run does not mention stays. Only `LaunchDeployer` opens with `startDeploymentOutput(REPLACE)`, since its contracts are the chain's whole protocol. A run that deploys nothing (`commit()`) must not call `startDeploymentOutput()` or `saveDeploymentOutput()`.
 - Recorded block numbers are an underestimate: the block the simulation read, shared by every contract in the run. That is the safe direction for indexers and deliberate; do not "fix" it. Addresses are exact.
+- A config records its contracts and nothing about the deployment as a whole. A chain's start block is the earliest `blockNumber` in it, derived by the registry when it publishes, never stored: a stored copy outlives the contracts it summarised, and a redeployment that reuses contracts leaves older ones in place that an indexer starting later would miss.
 
 ## Reading deployed state
 
