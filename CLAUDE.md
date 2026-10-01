@@ -174,6 +174,7 @@ handler.updateRestriction(poolId, scId, update);
 6. **Coding Style conformance**: inheritance/business-logic split, control flow, SSA, LOC target, core vs periphery placement, aesthetics (see `.claude/rules/coding-style.md`)
 7. **Gas & storage**: Optimize storage layout, remove redundant variables and operations
 8. **Security classes**: `.claude/prompts/` holds four review guides (async lifecycle, integration boundary, pool isolation, share custody) saying what to hunt for; Read the ones the change touches
+9. **Docs drift**: Read `.claude/rules/docs-drift.md` and run its sweep over the diff; a review that reads the diff through `gh` or Bash never loads it on its own. Every claim the diff made false is a finding
 
 ## Reference Documentation
 
