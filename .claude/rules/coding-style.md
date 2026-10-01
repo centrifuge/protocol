@@ -24,7 +24,7 @@ The reference aesthetic is MakerDAO's dss: small, flat, self-contained contracts
 3. **SSA (single static assignment).** Each local variable is assigned exactly once.
    - Resolve conditional values with a ternary at the declaration site, not by reassigning later.
    - Loop iterators and byte-slicing accumulators in explicit loops are exempt.
-   - Storage struct mutation is what storage is for, so SSA applies to locals only; but if a storage pointer is mutated in 3+ branches (as in BalanceSheet's queue netting), extract the branching into a named pure helper that computes the new value once.
+   - Storage struct mutation is what storage is for, so SSA applies to locals only; but if a storage pointer is mutated in 3+ branches, extract the branching into a named pure helper that computes the new value once (as `SnapshotQueue._netShares` does for the queued share delta).
 
 4. **Files ≤ 400 LOC (target).** Aim for contracts and libraries under 400 lines (interfaces exempt). Approaching it is a signal to split by concern or move convenience outward, not to compress formatting. But when splitting via composition isn't feasible (e.g. a vault implementation), one large contract beats splitting through inheritance; never trade file size for an inheritance hierarchy.
 
@@ -39,10 +39,20 @@ The reference aesthetic is MakerDAO's dss: small, flat, self-contained contracts
    - Names are short verbs and nouns; if a function name needs a conjunction, it does two things.
    - Follow the Declaration Ordering rules below for imports and state variables.
 
+## Naming, visibility and natspec
+
+- `external` over `public` unless the contract calls the function itself; `internal` over `private` unless hiding it from children is deliberate.
+- New boolean predicates take an `is` or `has` prefix (`isInitialized()`, not `initialized()`). Standard and third-party interfaces keep their names (`transfer`, `approve`, `supportsInterface`, LayerZero's `allowInitializePath`).
+- Parameter order: `centrifugeId` first when a function takes one, then `PoolId`, then the rest; a `refund` address goes last.
+- `on*` names the receiver of a callback (`onTransfer`, `onRedeemRequest`); name the calling side for what it does.
+- Error names describe the condition an integrator sees, not the internal cause.
+- Integrator-facing natspec (vaults, routers, tokens, and the interfaces integrators call) avoids protocol jargon such as `rely`, `ward` and `deny`; admin functions may use it.
+- Natspec tags go in the order `@notice`, `@dev`, `@param`, `@return`. Update the natspec in the same PR as the code it describes.
+
 ## Declaration Ordering (line-length sorting)
 
 Both imports and contract-level declarations are sorted by **full line length, ascending** (shortest line first) within each blank-line-separated group. Sorting is by the whole line, so a shorter type with a longer variable name can sort *after* a longer type with a short name (e.g. `ISpokeMessageSender public sender;` before `ISpokeRegistry public spokeRegistry;`).
 
-- **Imports**: grouped by source area (local `./`, then `../../misc`, then `../core`, then remote libs), each group separated by a blank line and sorted ascending by line length.
+- **Imports**: grouped by source area (local `./`, then `../../misc`, then `../core`, then remote libs), each group separated by a blank line and sorted ascending by line length. `script/checks/fix_imports.py --organize` applies this; run it rather than sorting by hand.
 - **State variables / constants**: grouped by kind/purpose (constants & immutables, dependency references, mappings/storage), each group separated by a blank line and sorted ascending by line length within the group.
 - **Section comments**: add a `// <Label>` above each state-variable group (e.g. `// Dependencies`, `// Assets & prices`, `// Vaults`) when the contract has several functionally-distinct storage groups whose purpose isn't self-evident (as in `MultiAdapter`, `Gateway`, `BatchRequestManager`, `SpokeRegistry`). A single dependency list uses blank-line separation without labels.
