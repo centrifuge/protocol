@@ -26,9 +26,9 @@ IMPORT_PRIORITY = [
 ]
 
 def get_all_solidity_files() -> List[str]:
-    """Get all Solidity files excluding lib, out, cache, broadcast, and env/spell directories"""
+    """Get all Solidity files excluding lib, out, cache, broadcast, env/spell and certora (a submodule)"""
     result = subprocess.run(
-        ["find", ".", "-name", "*.sol", "-type", "f", "-not", "-path", "./lib/*", "-not", "-path", "./out/*", "-not", "-path", "./cache/*", "-not", "-path", "./broadcast/*", "-not", "-path", "./env/spell/*"],
+        ["find", ".", "-name", "*.sol", "-type", "f", "-not", "-path", "./lib/*", "-not", "-path", "./out/*", "-not", "-path", "./cache/*", "-not", "-path", "./broadcast/*", "-not", "-path", "./env/spell/*", "-not", "-path", "./certora/*"],
         capture_output=True,
         text=True
     )

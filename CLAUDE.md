@@ -73,6 +73,11 @@ src-ir/                         # contracts compiled with via_ir, stack-depth ex
 └── OnchainPM.sol               # OnchainPM + OnchainPMFactory: weiroll script executor per pool
 
 test/                           # mirrors src/
+
+certora/                        # submodule (centrifuge/protocol-certora): the Certora formal verification, CVL specs,
+                                # harnesses, prover confs and 1,445 mutants. Opt-in: `.gitmodules` marks it `update = none`, so
+                                # clones, `submodule update --init` and CI checkouts leave it an empty directory. Only
+                                # running the prover needs it: `git submodule update --init --checkout certora`
 ```
 
 ### Async Vault Lifecycle (ERC-7540)
