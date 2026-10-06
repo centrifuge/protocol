@@ -74,8 +74,8 @@ src-ir/                         # contracts compiled with via_ir, stack-depth ex
 
 test/                           # mirrors src/
 
-certora/                        # submodule (centrifuge/protocol-certora): the Certora formal verification, CVL specs,
-                                # harnesses, prover confs and 1,445 mutants. Opt-in: `.gitmodules` marks it `update = none`, so
+certora/                        # submodule (centrifuge/protocol-certora): the Certora formal verification of `src/core`, CVL specs,
+                                # harnesses, prover confs and mutants. Opt-in: `.gitmodules` marks it `update = none`, so
                                 # clones, `submodule update --init` and CI checkouts leave it an empty directory. Only
                                 # running the prover needs it: `git submodule update --init --checkout certora`
 ```
@@ -180,6 +180,7 @@ handler.updateRestriction(poolId, scId, update);
 7. **Gas & storage**: Optimize storage layout, remove redundant variables and operations
 8. **Security classes**: `.claude/prompts/` holds four review guides (async lifecycle, integration boundary, pool isolation, share custody) saying what to hunt for; Read the ones the change touches
 9. **Docs drift**: Read `.claude/rules/docs-drift.md` and run its sweep over the diff; a review that reads the diff through `gh` or Bash never loads it on its own. Every claim the diff made false is a finding
+10. **Formal verification**: a diff to `src/core`, `src/misc`, or a contract core calls (vaults, hooks, valuations, policies, adapters): Read `.claude/rules/formal-verification.md`, which a diff read through `gh` or Bash never loads. A logic change to verified code without its `FV:` line in the PR description is a finding
 
 ## Reference Documentation
 
