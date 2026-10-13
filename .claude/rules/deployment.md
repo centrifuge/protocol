@@ -73,6 +73,7 @@ The fix commit exists because a sync where main renamed an API live uses cannot 
 ## Root
 
 - A config that records `contracts.root` keeps that Root. `LaunchDeployer` reads it with `ChainConfigLib.rootAddress()`, the one deployed address `ChainConfig` answers for, and deploys a `RootFixes` holding the wiring only Root can do. Governance casts it over the ordinary `scheduleRely` timelock; until then the new contracts have no path from Root and the vaults are unendorsed. `LaunchDeployer` prints its address as its last line. To give a chain a fresh Root, delete `contracts.root` from the config first.
+- A kept Root also leaves `Spoke.sender` unset, so `registerAsset` reverts: the previous release's assets have to be replayed under their old ids before anyone can register one. The launch spell files the `MessageDispatcher` after the replay. `RootFixes` never does, since governance may cast it before the spell is ready.
 - Root's delay: `LaunchDeployer` passes `MAINNET_DELAY` (48 h) on mainnet and 0 everywhere else, so a testnet spell casts in the block it was scheduled in. `FullDeployer` knows no networks and takes the value it is given. `AdapterFailover` takes `root.delay()`, so a kept Root keeps whatever delay governance left it.
 
 ## Deployer stack

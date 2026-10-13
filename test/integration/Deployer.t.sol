@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ERC20} from "../../src/misc/ERC20.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
 import {PoolId} from "../../src/core/types/PoolId.sol";
@@ -1488,7 +1489,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
 
         // Same deployment a single signer would have produced
         assertGt(deployedContracts, 50);
-        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(hub.sender()), address(messageDispatcher));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(gateway.wards(address(root)), 1);
         assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
@@ -1534,9 +1535,35 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
     function testTheRestOfTheDeploymentIsUnchanged() public view {
         assertEq(gateway.wards(address(root)), 1, "root on gateway");
         assertEq(hub.wards(address(hubHandler)), 1, "hubHandler on hub");
-        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(hub.sender()), address(messageDispatcher));
         assertEq(gateway.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
         _assertCurrenciesRegistered();
+    }
+
+    /// @dev The one piece of wiring that waits for the launch spell rather than `RootFixes`: the previous
+    ///      release's assets have to land under their old ids before anyone can register one
+    function testSpokeSenderIsPendingUntilTheLaunchSpell() public {
+        assertEq(address(spoke.sender()), address(0));
+
+        ERC20 asset = new ERC20(6);
+        vm.expectRevert();
+        spoke.registerAsset(centrifugeId_, address(asset), 0, address(this));
+
+        // Casting the fixes does not open the window: governance may get to them before the spell is ready
+        priorRoot.scheduleRely(address(rootFixes));
+        vm.warp(block.timestamp + MAINNET_DELAY);
+        priorRoot.executeScheduledRely(address(rootFixes));
+        rootFixes.cast();
+
+        vm.expectRevert();
+        spoke.registerAsset(centrifugeId_, address(asset), 0, address(this));
+
+        // What the spell does last, with the ward Root gives it
+        vm.prank(address(root));
+        spoke.file("sender", address(messageDispatcher));
+
+        spoke.registerAsset(centrifugeId_, address(asset), 0, address(this));
+        assertFalse(spokeRegistry.assetToId(address(asset), 0).isNull(), "asset registered");
     }
 
     /// @dev Deploy-time only, like the action batchers, so it stays out of `env/<network>.json`. The Root it
@@ -1645,7 +1672,7 @@ contract ExistingRootPhasedTest is FullDeploymentPhasedTest {
 
         assertEq(address(root), address(priorRoot), "the Root it was given");
         assertGt(address(rootFixes).code.length, 0, "rootFixes");
-        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(spoke.sender()), address(0), "spoke sender waits for the launch spell");
         assertEq(gateway.wards(address(root)), 1, "root on gateway");
         assertEq(root.wards(address(messageDispatcher)), 0, "root wiring waits for rootFixes");
     }
