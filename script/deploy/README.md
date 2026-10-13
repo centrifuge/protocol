@@ -151,6 +151,12 @@ nothing it can do, and afterwards it does one fixed thing and gives the ward bac
 protocol has no path from Root into the new contracts — no pausing, no recovery, no scheduled upgrades — and
 `spoke`, `asyncRequestManager`, `vaultRouter` and `tokenBridge` are unendorsed, so the vaults do not work.
 
+One piece of wiring is not `RootFixes`' either: `Spoke.sender` is left unset, so every `registerAsset`
+reverts. A kept Root means a previous release on the chain, whose assets the launch spell
+replays into the new Spoke under the ids they already have, and `registerAsset` being permissionless, anyone
+could take those ids first. The spell files the `MessageDispatcher` once the replay is done. `RootFixes` must
+not, since governance may cast it before the spell is ready, which would reopen the window.
+
 ### Resume an deploy phase that stopped partway
 
 ```bash

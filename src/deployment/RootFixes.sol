@@ -12,7 +12,8 @@ import {Root} from "../admin/Root.sol";
 ///         alongside them wards them from its own. One that was already on the chain wards nobody new, so
 ///         everything reaching into it has to be deferred: this is deployed with the protocol and does that
 ///         work once governance has relied it, over the ordinary spell route. `cast()` is permissionless
-///         because the authority is the ward, not the caller.
+///         because the authority is the ward, not the caller. The sender the Spoke was left without is not
+///         its to file: the launch spell does that, after replaying the previous release's assets.
 contract RootFixes {
     Root public immutable root;
     address public immutable spoke;

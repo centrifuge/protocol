@@ -159,5 +159,7 @@ contract LaunchDeployer is FullDeployer {
         console.log("Root %s was reused, so this deployment is NOT complete:", keptRoot);
         console.log("the wiring only Root can do is waiting in RootFixes at %s", address(rootFixes));
         console.log("Cast it: scheduleRely, wait out root.delay(), executeScheduledRely, then rootFixes.cast()");
+        console.log("Spoke.sender is unset: the launch spell files the MessageDispatcher once it has replayed");
+        console.log("the previous release's assets, and registerAsset reverts until then");
     }
 }

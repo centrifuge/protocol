@@ -275,7 +275,9 @@ contract CoreActionBatcher {
         report.shareTokenRegistrar.file("envoy", address(report.envoy));
         report.shareTokenRegistrar.file("spokeRegistry", address(report.spokeRegistry));
 
-        report.spoke.file("sender", address(report.messageDispatcher));
+        // A kept Root means a previous release whose assets the launch spell replays under their old ids, so the
+        // permissionless `registerAsset` has nowhere to send until the spell has done so and filed the dispatcher
+        if (wireRoot) report.spoke.file("sender", address(report.messageDispatcher));
 
         report.hub.file("sender", address(report.messageDispatcher));
 
