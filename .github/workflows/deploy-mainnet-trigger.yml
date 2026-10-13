@@ -1,17 +1,20 @@
 # Deploy mainnet — the trigger, and nothing else. The deployment lives on the release's live branch
-# (deploy-mainnet.yml there: the phases, the gate probing, the KMS executor, the record PR), pinned to the
-# deployed version; this file sits on main because workflows are only dispatchable from the default branch,
-# and it knows no chains — the branch's own `plan` derives the matrix from its env/mainnet/.
+# (deploy-mainnet.yml there: the phases, the gate probing, the commit proposals to the ops Safe, the KMS
+# executor, the record PR), pinned to the deployed version; this file sits on main because workflows are
+# only dispatchable from the default branch, and it knows no chains — the branch's own `plan` derives the
+# matrix from its env/mainnet/, narrowed to the networks the `chains` input names, if any.
 #
-# The `uses:` ref is the current release's branch, updated when a release is cut (see CLAUDE.md, "Cutting a
-# release branch"): the workflow file always comes from that ref, while the `branch` input stays overridable
-# so a run can still be dispatched against an older release — the called workflow checks out the input
-# branch everywhere, but the job definitions are the ref's: the foundry pin and the shape of the
-# `DeployAll.sh` calls come from there, so an older branch runs only while its scripts still match them.
+# The `uses:` ref is the current release's branch, updated when a release is cut (see
+# .claude/rules/deployment.md, "Cutting a release"): the workflow file always comes from that ref, while the
+# `branch` input stays overridable so a run can still be dispatched against an older release — the called
+# workflow checks out the input branch everywhere, but the job definitions are the ref's: the foundry pin
+# and the shape of the `DeployAll.sh` calls come from there, so an older branch runs only while its scripts
+# still match them.
 #
 # A mainnet campaign is dispatched twice — `phase: commit`, then `phase: deploy` — so no runner ever waits
-# on a human; `phase: verify` re-runs verification from a past run's receipts as often as needed. The
-# called workflow documents each phase.
+# on a human: in between, the ops Safe's owners sign the commitments the commit phase proposed, and the
+# namespace's delay on them runs out. `phase: verify` re-runs verification from a past run's receipts as
+# often as needed. The called workflow documents each phase.
 
 name: Deploy mainnet
 
@@ -24,7 +27,7 @@ on:
         default: "live-v3.3"
         type: string
       phase:
-        description: "commit: probe and ask for the commitments that are missing. deploy: deploy what the gate allows, refuse what it does not. verify: re-run verification from a past deploy run's receipts."
+        description: "commit: probe, and propose the commitments that are missing to the ops Safe. deploy: deploy what the gate allows, refuse what it does not. verify: re-run verification from a past deploy run's receipts."
         required: true
         type: choice
         options:
@@ -33,6 +36,10 @@ on:
           - verify
       run_id:
         description: "verify, or deploy when resuming a stopped chain: the run whose artifacts hold the broadcast receipts"
+        required: false
+        type: string
+      chains:
+        description: "Comma-separated networks to run, named as their env/mainnet/<network>.json files; empty runs every mainnet chain. With run_id, the chains that run ran: a resume takes all of them, verify may name a subset"
         required: false
         type: string
 
@@ -56,6 +63,7 @@ jobs:
       branch: ${{ inputs.branch }}
       phase: ${{ inputs.phase }}
       run_id: ${{ inputs.run_id }}
+      chains: ${{ inputs.chains }}
     # `inherit` hands the called ref every repo secret, and the ref is a mutable branch: whoever can push
     # live-v3.3 can change what runs here. Kept because the called workflow declares SLACK_WEBHOOK_URL as
     # its one optional secret and the executor key never exists as a secret at all (KMS over workload
