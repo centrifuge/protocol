@@ -1,4 +1,7 @@
 {
+  "certora": {
+    "rev": "0365f8ee77ebe541670d9b522feb36dbc151160f"
+  },
   "lib/chimera": {
     "rev": "d5cf52bc5bbf75f988f8aada23fd12d0bcf7798a"
   },
