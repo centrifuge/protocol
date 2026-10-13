@@ -559,13 +559,34 @@ contract on the chain as unverified and re-submits it.
 ### Chains that verify somewhere other than Etherscan
 
 `.network.verifier` names the verifier forge is told to use, and it has to be one forge knows:
-`etherscan`, `sourcify` or `blockscout`. A config that leaves it unset goes to Etherscan.
+`etherscan`, `sourcify`, `blockscout`, `oklink` or `custom`. A config that leaves it unset goes to Etherscan;
+one naming any other has to set `verifierUrl` too, since forge is handed the URL along with the verifier.
 
 Where a chain has no `[etherscan]` entry, that absence *is* the mechanism: finding no key for the chain,
 forge falls back to the verifier named on the command line. So `check_foundry_networks.py` omitting an entry
 and `--verifier` naming one are two halves of the same decision — see `NON_ETHERSCAN_VERIFIERS` there. Which
 chains need that, and which explorers cannot answer a verification read at all, is deployment data,
 documented beside the configs.
+
+### Chains that verify on several explorers
+
+Explorers do not share verifications with each other, so a chain whose users look at more than one names
+each in a `.network.verifiers` array instead of the three fields above:
+
+```json
+"verifiers": [
+  { "name": "first", "verifier": "oklink", "verifierUrl": "...", "explorerApiUrl": "..." },
+  { "name": "second", "verifier": "custom", "verifierUrl": "...", "skipIsVerifiedCheck": true }
+]
+```
+
+Each entry takes the same `verifier`, `verifierUrl` and `explorerApiUrl`, with the same defaults, plus a
+`name` for logs and `skipIsVerifiedCheck`, which passes `--skip-is-verified-check` to forge for an explorer
+whose read endpoint forge cannot reach. The array replaces the single fields rather than adding to them:
+`config.network.verifiers()` refuses a config naming both, and an empty array. It reads either form, the
+single one as a list of one, and is the only reader of the array: `NetworkConfig`'s own `verifier`,
+`verifierUrl` and `explorerApiUrl` describe the single form, so on a network using the array they hold
+the Etherscan defaults.
 
 ### What a run does to `env/<environment>/<network>.json`
 

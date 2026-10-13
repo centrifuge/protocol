@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {ChainConfig, Chains} from "../../../script/utils/ChainConfig.s.sol";
+import {ChainConfig, Chains, VerifierConfig} from "../../../script/utils/ChainConfig.s.sol";
 
 import "forge-std/Test.sol";
 
@@ -96,6 +96,16 @@ contract ChainConfigTest is ChainConfigBase {
         '"namespace":"0x0000000000000000000000000000000000000003",'
         '"verifier":"etherscan","verifierUrl":"https://write-only.example/api"}}';
 
+    /// @dev The same, naming three explorers: one with every field, one with only its verifier and the URL that
+    ///      verifier needs, one with none
+    string constant WITH_VERIFIERS = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
+        '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
+        '"opsAdmin":"0x0000000000000000000000000000000000000002",'
+        '"namespace":"0x0000000000000000000000000000000000000003",'
+        '"verifiers":[{"name":"first","verifier":"oklink","verifierUrl":"https://submit.example",'
+        '"explorerApiUrl":"https://read.example","skipIsVerifiedCheck":true},'
+        '{"verifier":"custom","verifierUrl":"https://custom.example"},{}]}}';
+
     /// @dev A `.contracts` section with the Root in it, and a neighbour, so the lookup has to pick one
     string constant WITH_ROOT = '{"network":{"chainId":424242,"environment":"testnet","centrifugeId":31,'
         '"protocolAdmin":"0x0000000000000000000000000000000000000001",'
@@ -164,6 +174,67 @@ contract ChainConfigTest is ChainConfigBase {
         assertEq(config.network.explorerApiUrl, string.concat(ETHERSCAN_V2, "424242"));
     }
 
+    /// @dev A network naming no `verifiers` array verifies on the one explorer its single-explorer form names
+    function test_verifiersFallBackToTheSingleForm() public view {
+        VerifierConfig[] memory list = Chains.verifiers(WITH_VERIFIER);
+
+        assertEq(list.length, 1);
+        assertEq(list[0].name, "etherscan");
+        assertEq(list[0].verifier, "etherscan");
+        assertEq(list[0].verifierUrl, "https://write-only.example/api");
+        assertEq(list[0].explorerApiUrl, string.concat(ETHERSCAN_V2, "424242"));
+        assertFalse(list[0].skipIsVerifiedCheck);
+
+        assertEq(Chains.verifiers(MINIMAL)[0].name, "etherscan");
+    }
+
+    function test_verifiersReadEveryEntryOfTheArray() public view {
+        VerifierConfig[] memory list = Chains.verifiers(WITH_VERIFIERS);
+
+        assertEq(list.length, 3);
+        assertEq(list[0].name, "first");
+        assertEq(list[0].verifier, "oklink");
+        assertEq(list[0].verifierUrl, "https://submit.example");
+        assertEq(list[0].explorerApiUrl, "https://read.example");
+        assertTrue(list[0].skipIsVerifiedCheck);
+
+        assertEq(list[1].name, "custom");
+        assertEq(list[1].verifier, "custom");
+        assertEq(list[1].verifierUrl, "https://custom.example");
+        assertEq(list[1].explorerApiUrl, string.concat(ETHERSCAN_V2, "424242"));
+        assertFalse(list[1].skipIsVerifiedCheck);
+
+        assertEq(list[2].name, "etherscan");
+        assertEq(list[2].verifier, "");
+        assertEq(list[2].verifierUrl, string.concat(ETHERSCAN_V2, "424242"));
+        assertEq(list[2].explorerApiUrl, string.concat(ETHERSCAN_V2, "424242"));
+        assertFalse(list[2].skipIsVerifiedCheck);
+    }
+
+    /// @dev An array that names no explorer would otherwise fall back to the single form unnoticed
+    function test_verifiersRejectAnArrayNamingNoExplorer() public {
+        vm.expectRevert("network.verifiers names no explorer");
+        this.verifiers(_withNetworkFields('"verifiers":[]'));
+
+        vm.expectRevert("network.verifiers names no explorer");
+        this.verifiers(_withNetworkFields('"verifiers":{}'));
+    }
+
+    /// @dev `NetworkConfig` reads only the single form, so a config naming both would verify on two
+    ///      different sets of explorers depending on which reader a script used
+    function test_verifiersRejectBothForms() public {
+        vm.expectRevert("network.verifiers replaces network.verifierUrl: name it in each entry instead");
+        this.verifiers(_withNetworkFields('"verifierUrl":"https://single.example","verifiers":[{}]'));
+    }
+
+    function test_aVerifierOtherThanEtherscanNeedsAUrl() public {
+        vm.expectRevert(".network.verifiers[1].verifier is custom, which needs a verifierUrl");
+        this.verifiers(_withNetworkFields('"verifiers":[{},{"verifier":"custom"}]'));
+
+        vm.expectRevert(".network.verifier is blockscout, which needs a verifierUrl");
+        this.parse(_withNetworkFields('"verifier":"blockscout"'));
+    }
+
     /// @dev The fields with no default are required outright: a config missing one has to fail where it is
     ///      read, not deploy against a zero
     function test_parseRequiresTheFieldsWithoutDefaults() public {
@@ -218,6 +289,16 @@ contract ChainConfigTest is ChainConfigBase {
     /// @dev An external hop, so that `vm.expectRevert` sees the revert at a lower depth than its own call
     function parse(string memory json) external pure returns (ChainConfig memory) {
         return Chains.parse(json, "somewhere");
+    }
+
+    /// @dev An external hop, as `parse` above
+    function verifiers(string memory json) external view returns (VerifierConfig[] memory) {
+        return Chains.verifiers(json);
+    }
+
+    /// @dev `MINIMAL` with `fields` added to its `.network`
+    function _withNetworkFields(string memory fields) internal pure returns (string memory) {
+        return vm.replace(MINIMAL, '"namespace"', string.concat(fields, ',"namespace"'));
     }
 }
 
@@ -387,6 +468,7 @@ contract ChainConfigDirectoryTest is ChainConfigBase {
             assertNotEq(config.network.opsAdmin, address(0), label);
             assertNotEq(config.network.namespace, address(0), label);
             assertGt(bytes(config.network.explorerApiUrl).length, 0, label);
+            assertGt(config.network.verifiers().length, 0, label);
         }
     }
 

@@ -17,7 +17,7 @@ Vm constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 /// @dev No caller on the base branch: the live branch's `VerifyFactoryContracts` and spell validators are
 ///      the consumers. Kept here for the same reason `configRoots()` lists environments this branch does
 ///      not populate — the schema of what a config offers belongs with the schema, not with whoever
-///      happens to read it. The same holds for `etherscanApiKey`, `rpcUrl`, `graphQLApi` and
+///      happens to read it. The same holds for `etherscanApiKey`, `rpcUrl`, `verifiers`, `graphQLApi` and
 ///      `prettyEnvString` below: zero base-branch callers, deleting any of them breaks the live branch.
 library GraphQLConstants {
     string internal constant MAINNET_API = "https://api.centrifuge.io";
@@ -55,9 +55,29 @@ struct NetworkConfig {
     // asks when checking whether a contract is verified already. They coincide on Etherscan, and on
     // Blockscout instances exposing an Etherscan-compatible /api, which is why one field served both for so
     // long; they diverge on explorers whose verification endpoint rejects every read
+    //
+    // These three are the single-explorer form. A network verifying on several explorers names them in
+    // `.network.verifiers` instead, which leaves these at their defaults, so it is read through
+    // `config.network.verifiers()`: an array of structs holding strings cannot be copied from memory to
+    // storage, and scripts keep their config in storage
     string verifier;
     string verifierUrl;
     string explorerApiUrl;
+}
+
+/// @notice One explorer a network's contracts are verified on. A network names several when its users
+///         look at more than one explorer, since none of them share verifications with each other.
+struct VerifierConfig {
+    // Label for logs; defaults to `verifier`, or `etherscan` if that is empty
+    string name;
+    // What `forge verify-contract --verifier` takes. Empty means Etherscan
+    string verifier;
+    // See `NetworkConfig` for why these are two URLs
+    string verifierUrl;
+    string explorerApiUrl;
+    // Passes `--skip-is-verified-check` to forge, for an explorer whose read endpoint forge's own HTTP
+    // client cannot reach while curl can; the verification run's own curl-based check still runs before
+    bool skipIsVerifiedCheck;
 }
 
 struct LayerZeroConfig {
@@ -592,18 +612,69 @@ library Chains {
             config.batchLimit = uint8(val);
         } catch {}
 
-        try vm.parseJsonString(json, ".network.verifier") returns (string memory val) {
+        VerifierConfig memory verifier = _parseVerifierConfig(json, ".network", config.chainId);
+        config.verifier = verifier.verifier;
+        config.verifierUrl = verifier.verifierUrl;
+        config.explorerApiUrl = verifier.explorerApiUrl;
+    }
+
+    /// @notice The explorers a network verifies on: its `.network.verifiers` array, one entry per explorer, or
+    ///         the single-explorer form under `.network` when it names no array.
+    function verifiers(string memory json) internal view returns (VerifierConfig[] memory list) {
+        uint256 chainId = vm.parseJsonUint(json, ".network.chainId");
+
+        uint256 count;
+        while (vm.keyExistsJson(json, string.concat(".network.verifiers[", vm.toString(count), "]"))) count++;
+
+        if (count == 0) {
+            require(!vm.keyExistsJson(json, ".network.verifiers"), "network.verifiers names no explorer");
+            list = new VerifierConfig[](1);
+            list[0] = _parseVerifierConfig(json, ".network", chainId);
+            return list;
+        }
+
+        string[4] memory single = ["verifier", "verifierUrl", "explorerApiUrl", "skipIsVerifiedCheck"];
+        for (uint256 i; i < single.length; i++) {
+            require(
+                !vm.keyExistsJson(json, string.concat(".network.", single[i])),
+                string.concat("network.verifiers replaces network.", single[i], ": name it in each entry instead")
+            );
+        }
+
+        list = new VerifierConfig[](count);
+        for (uint256 i; i < count; i++) {
+            list[i] = _parseVerifierConfig(json, string.concat(".network.verifiers[", vm.toString(i), "]"), chainId);
+        }
+    }
+
+    function _parseVerifierConfig(string memory json, string memory path, uint256 chainId)
+        private
+        pure
+        returns (VerifierConfig memory config)
+    {
+        try vm.parseJsonString(json, string.concat(path, ".verifier")) returns (string memory val) {
             config.verifier = val;
         } catch {}
 
+        try vm.parseJsonString(json, string.concat(path, ".name")) returns (string memory val) {
+            config.name = val;
+        } catch {
+            config.name = bytes(config.verifier).length > 0 ? config.verifier : "etherscan";
+        }
+
         // Etherscan's multichain v2 endpoint covers most chains by id, and is where both submission and
         // reads go unless a network names something else
-        string memory etherscanV2 =
-            string.concat("https://api.etherscan.io/v2/api?chainid=", vm.toString(config.chainId));
+        string memory etherscanV2 = string.concat("https://api.etherscan.io/v2/api?chainid=", vm.toString(chainId));
 
-        try vm.parseJsonString(json, ".network.verifierUrl") returns (string memory val) {
+        try vm.parseJsonString(json, string.concat(path, ".verifierUrl")) returns (string memory val) {
             config.verifierUrl = val;
         } catch {
+            // Forge is handed `--verifier-url` alongside any named verifier, so defaulting one that is not
+            // Etherscan would submit its sources to Etherscan
+            require(
+                bytes(config.verifier).length == 0 || keccak256(bytes(config.verifier)) == keccak256("etherscan"),
+                string.concat(path, ".verifier is ", config.verifier, ", which needs a verifierUrl")
+            );
             config.verifierUrl = etherscanV2;
         }
 
@@ -614,11 +685,15 @@ library Chains {
         // Falling back to Etherscan v2 rather than to `verifierUrl` is the point of keeping them apart: a
         // network that names a write-only verification endpoint gets a working read URL by default, and one
         // whose reads genuinely live elsewhere says so explicitly
-        try vm.parseJsonString(json, ".network.explorerApiUrl") returns (string memory val) {
+        try vm.parseJsonString(json, string.concat(path, ".explorerApiUrl")) returns (string memory val) {
             config.explorerApiUrl = val;
         } catch {
             config.explorerApiUrl = etherscanV2;
         }
+
+        try vm.parseJsonBool(json, string.concat(path, ".skipIsVerifiedCheck")) returns (bool val) {
+            config.skipIsVerifiedCheck = val;
+        } catch {}
     }
 
     /// @dev Mirrors the invariants LayerZero's `UlnBase` enforces, so a malformed set fails when the config is
@@ -1016,6 +1091,12 @@ library NetworkConfigLib {
     /// @dev Live-branch consumer only (see `GraphQLConstants`)
     function rpcUrl(NetworkConfig memory config) internal view returns (string memory) {
         return vm.rpcUrl(config.name);
+    }
+
+    /// @notice The explorers this network verifies on; see `Chains.verifiers`
+    /// @dev Live-branch consumer only (see `GraphQLConstants`)
+    function verifiers(NetworkConfig memory config) internal view returns (VerifierConfig[] memory) {
+        return Chains.verifiers(Chains.jsonOf(config.name, config.environment));
     }
 
     function isMainnet(NetworkConfig memory config) internal pure returns (bool) {
