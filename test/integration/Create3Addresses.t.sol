@@ -320,6 +320,83 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         );
     }
 
+    // One commitment per deployment
+
+    function commitTwoAs(string memory deploymentId_) external {
+        _initGated(deploymentId_, DeployPhase.Commit, address(this), _executors());
+        uint256 snapshot = vm.snapshotState();
+
+        submit("testContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(1)));
+        submit("otherContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(2)));
+        (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
+
+        vm.revertToState(snapshot);
+        _commit(salts, initCodeHashes);
+    }
+
+    function deployAs(string memory deploymentId_, string memory name, uint256 value) external returns (address) {
+        _initGated(deploymentId_, DeployPhase.Deploy, address(this), _executors());
+        return submit(name, "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(value)));
+    }
+
+    function testTheCanonicalDeploymentKeepsTheDefaultCommitment() public pure {
+        assertEq(commitmentIdOf(""), DEFAULT_COMMITMENT_ID);
+    }
+
+    /// @dev Readable in a Safe proposal as the deployment id itself
+    function testADeploymentIdIsItsOwnCommitment() public pure {
+        assertEq(commitmentIdOf("rev2"), bytes32("rev2"));
+        assertEq(commitmentIdOf("rehearsal-1"), bytes32("rehearsal-1"));
+        assertTrue(commitmentIdOf("rev2") != commitmentIdOf("rev3"), "two deployments, two commitments");
+    }
+
+    function commitmentIdOfExternal(string memory deploymentId_) external pure returns (bytes32) {
+        return commitmentIdOf(deploymentId_);
+    }
+
+    function testADeploymentIdTooLongForACommitmentIsRefused() public {
+        vm.expectRevert("Deployment id is too long to name a commitment");
+        this.commitmentIdOfExternal("0123456789abcdef0123456789abcdef0");
+    }
+
+    /// @dev The canonical deployment started deploying, then another deployment of the same namespace
+    ///      committed: the canonical one finishes all the same
+    function testAnotherDeploymentsCommitLeavesAStartedOneDeployable() public {
+        this.commitTwoAs("");
+        this.deployAs("", "testContract", 1);
+
+        this.commitTwoAs("rev2");
+
+        address second = this.deployAs("", "otherContract", 2);
+        assertEq(SimpleContract(second).value(), 2, "the canonical deployment finished");
+        (,, uint64 cursor,) = deployGate.commitments(namespace, DEFAULT_COMMITMENT_ID);
+        assertEq(cursor, 2, "the canonical commitment is spent");
+    }
+
+    /// @dev And the other way round: each deploys from its own commitment, in any interleaving
+    function testTwoDeploymentsDeployFromTheirOwnCommitments() public {
+        this.commitTwoAs("rev2");
+        this.commitTwoAs("");
+
+        address canonical = this.deployAs("", "testContract", 1);
+        address isolated = this.deployAs("rev2", "testContract", 1);
+        this.deployAs("rev2", "otherContract", 2);
+        this.deployAs("", "otherContract", 2);
+
+        assertTrue(canonical != isolated, "the deployment id moves the address, the commitment does not");
+        (,, uint64 isolatedCursor,) = deployGate.commitments(namespace, bytes32("rev2"));
+        (,, uint64 canonicalCursor,) = deployGate.commitments(namespace, DEFAULT_COMMITMENT_ID);
+        assertEq(isolatedCursor, 2);
+        assertEq(canonicalCursor, 2);
+    }
+
+    function testADeploymentCannotDeployFromAnothersCommitment() public {
+        this.commitTwoAs("");
+
+        vm.expectRevert("Deployment does not match what was committed, commit again");
+        this.deployAs("rev2", "testContract", 1);
+    }
+
     /// @dev Caught in the script, before anything is broadcast
     function testDeployPhaseRejectsAChangedInitCode() public {
         this.queueAndCommit(42);

@@ -308,7 +308,9 @@ not exist yet reverts — but that is a consequence, not the mechanism.
 Neither does a superseded commitment linger. Every commit starts a new generation and only the live one can
 be deployed from, so a set the namespace replaced cannot be spent afterwards — including the salts the replacement
 dropped, which would otherwise stay deployable and let an executor strand a canonical address. Committing
-with no salts at all is how a pending commitment is revoked outright, which is what `--sig 'revoke()'` sends.
+with no salts at all is how a pending commitment is revoked outright, which is what `--sig 'revoke()'` sends,
+under the commitment id of the deployment the run's config names: revoking an isolated deployment leaves the
+canonical one's commitment deployable, and the reverse.
 It reaches the gate on its own rather than walking the deployment, since a commitment worth revoking is
 usually one whose addresses are wrong or already half taken, and a walk over a taken address reverts inside
 CreateX before it could revoke anything. What was already deployed stays deployed: revoking drops what is
@@ -344,9 +346,12 @@ named after an account. The gate has no roles of its own — no wards, no owner,
 A namespace can hold several commitments at once, told apart by an **id** it picks: committing under an id
 that already holds one replaces it, committing under a fresh one leaves the rest alone. Each id carries its
 own generation and its own deployment cursor, so one commitment can be signed while another is still being
-executed. This deployment does not use that — `GatedDeployer` passes a fixed `DEFAULT_COMMITMENT_ID`, so committing
-again always replaces what came before. The id scopes permission and never an address: two commitments naming
-the same salt still point at the same contract, and whichever deploys first takes it.
+executed. `GatedDeployer` gives each deployment one id (`commitmentIdOf`): the canonical deployment, with no
+deployment id, commits under `DEFAULT_COMMITMENT_ID` (1), and a deployment with an id under that id's own
+bytes, which a Safe proposal decodes back to the text (`cast parse-bytes32-string`). Committing again replaces
+what that deployment committed before and nothing else, so an isolated deployment can never strand the
+canonical one's commitment, nor the reverse. The id scopes permission and never an address: two commitments
+naming the same salt still point at the same contract, and whichever deploys first takes it.
 
 Two things follow from that shape, and both are deliberate. Revoking a leaked **executor** key means
 committing again rather than sending one call — the commitment is replaced whole, executors included, and
@@ -429,11 +434,10 @@ so an address derives from the gate and from a salt of the gate's own making, `k
   committed. Required by `commit()` on every network, and at least one — naming nobody would sign a
   commitment no key can spend, so it refuses rather than letting it through. `deploy()` never reads it.
 - A deployment id does **not** move the gate: one gate serves every deployment on a chain, and an id isolates a
-  deployment inside it, by salt, the way a namespace isolates one from another. The isolation is of
-  addresses, not of the commitment slot: `GatedDeployer` pins a single id, so a namespace holds one live
-  commitment whatever the id, and committing a new deployment replaces what the namespace still had
-  pending — what that one already executed stays deployed, what it had not needs committing again. Two
-  deployments in flight at once take two namespaces, which off mainnet is just two signers.
+  deployment inside it, by salt, the way a namespace isolates one from another. It isolates the commitment
+  too: each deployment commits under its own commitment id (`commitmentIdOf`), so one namespace can hold
+  several deployments in flight at once, and committing one replaces only what that same deployment had
+  pending — what it already executed stays deployed, what it had not needs committing again.
 - The `DeployGate` holds **no** protocol permissions at any point, so it cannot touch a live deployment.
 
 ---

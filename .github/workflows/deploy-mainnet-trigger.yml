@@ -15,6 +15,11 @@
 # on a human: in between, the ops Safe's owners sign the commitments the commit phase proposed, and the
 # namespace's delay on them runs out. `phase: verify` re-runs verification from a past run's receipts as
 # often as needed. The called workflow documents each phase.
+#
+# `deploymentId` deploys an isolated mainnet-<id> onto its own addresses, from env/mainnet-<id>/: derived
+# from the branch's env/mainnet/ without its contracts until a record PR checks it in. The registry publishes
+# it only if the branch's env/registry.json points mainnet at it. Every phase of that campaign, and a resume
+# or verify of it, is dispatched with the same id.
 
 name: Deploy mainnet
 
@@ -42,6 +47,11 @@ on:
         description: "Comma-separated networks to run, named as their env/mainnet/<network>.json files; empty runs every mainnet chain. With run_id, the chains that run ran: a resume takes all of them, verify may name a subset"
         required: false
         type: string
+      deploymentId:
+        description: "Isolates the deployment onto its own addresses (e.g. rehearsal-1), 27 chars at most: the branch deploys it as environment mainnet-<id> from env/mainnet-<id>/ (derived from env/mainnet/ without its contracts until a record PR checks it in) and records it there. The registry publishes it only if env/registry.json points mainnet at it. Leave EMPTY for the canonical addresses. With run_id, the id that run deployed under"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   deploy:
@@ -64,6 +74,7 @@ jobs:
       phase: ${{ inputs.phase }}
       run_id: ${{ inputs.run_id }}
       chains: ${{ inputs.chains }}
+      deploymentId: ${{ inputs.deploymentId }}
     # `inherit` hands the called ref every repo secret, and the ref is a mutable branch: whoever can push
     # live-v3.3 can change what runs here. Kept because the called workflow declares SLACK_WEBHOOK_URL as
     # its one optional secret and the executor key never exists as a secret at all (KMS over workload

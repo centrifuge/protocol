@@ -43,7 +43,7 @@ abstract contract ChainConfigBase is Test {
         string[] memory roots = Chains.configRoots();
 
         uint256 count;
-        ConfigRef[] memory configs = new ConfigRef[](64);
+        ConfigRef[] memory configs = new ConfigRef[](_capacity(roots));
         for (uint256 r; r < roots.length; r++) {
             Vm.DirEntry[] memory entries = Chains.entriesOf(roots[r]);
             string memory environment = Chains.environmentOf(roots[r]);
@@ -69,6 +69,14 @@ abstract contract ChainConfigBase is Test {
     /// @dev How a failure names a config: by deployment as well as name, since a name may be in several
     function _label(ConfigRef memory config) internal pure returns (string memory) {
         return string.concat(config.environment, "/", config.name);
+    }
+
+    /// @dev Sized by what the roots hold rather than by a guess: every deployment checked in beside another
+    ///      adds a whole folder of configs
+    function _capacity(string[] memory roots) private view returns (uint256 capacity) {
+        for (uint256 r; r < roots.length; r++) {
+            capacity += Chains.entriesOf(roots[r]).length;
+        }
     }
 
     function _truncate(ConfigRef[] memory configs, uint256 count) private pure returns (ConfigRef[] memory found) {

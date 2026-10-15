@@ -54,11 +54,16 @@ contract LaunchDeployer is FullDeployer {
         bool broadcasting = !msg.sender.isSafeAccount();
         if (broadcasting) vm.startBroadcast();
 
-        // The deployment id only shapes salts, and revoking commits none
-        _initGated("", DeployPhase.Commit, config.network.namespace, new address[](0));
-        _revokeCommitment();
+        _revoke(config.network.deploymentId, config.network.namespace);
 
         if (broadcasting) vm.stopBroadcast();
+    }
+
+    /// @dev Under the deployment's own commitment id, which the deployment id picks: revoking an isolated
+    ///      deployment leaves the canonical commitment of the same namespace deployable, and the reverse
+    function _revoke(string memory deploymentId_, address namespace_) internal {
+        _initGated(deploymentId_, DeployPhase.Commit, namespace_, new address[](0));
+        _revokeCommitment();
     }
 
     /// @notice Deploys what has been committed, one transaction per contract, signed by an executor.

@@ -78,7 +78,7 @@ The fix commit exists because a sync where main renamed an API live uses cannot 
 
 ## Deployer stack
 
-Each layer inherits the one before it, and the layers mean something: `BaseDeployer` knows CreateX, salts and the registry; `GatedDeployer` deploys through a DeployGate (`DEFAULT_COMMITMENT_ID`, `gatedAddress()`, `submit()`); `FullDeployer` adds the protocol walk; `LaunchDeployer` adds the network config and the phases. `DeployGateScript`, from `lib/create3-gate`, makes a chain have a gate, and `script/utils/GateProposal.s.sol` gets a call into the gate from a Safe.
+Each layer inherits the one before it, and the layers mean something: `BaseDeployer` knows CreateX, salts and the registry; `GatedDeployer` deploys through a DeployGate (`commitmentIdOf()`, one commitment per deployment, `gatedAddress()`, `submit()`); `FullDeployer` adds the protocol walk; `LaunchDeployer` adds the network config and the phases. `DeployGateScript`, from `lib/create3-gate`, makes a chain have a gate, and `script/utils/GateProposal.s.sol` gets a call into the gate from a Safe.
 
 - Keep gate helpers, gate constants and gate checks out of `BaseDeployer`. A script that deploys directly has no gate and must not compile as though it might.
 - `--sender` is the only input naming who acts. A key sender is broadcast from; a Safe sender (`isSafeAccount()`) is proposed to, signed by whoever holds the Ledger. A Safe namespace, a Ledger namespace delegating to a Safe, and a key delegating to a key are the same script.
