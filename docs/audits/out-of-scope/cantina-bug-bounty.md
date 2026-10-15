@@ -118,7 +118,6 @@ The bounty's general scope guidelines apply: https://cantina.xyz/code/6cc9d51a-a
   * SyncDepositVault's ERC-4626 conversion views price through the async redeem manager's registry share price while deposit and mint execute at the sync manager's valuation price, so a quote and the executed price can differ when a valuation is configured.
   * SyncDepositVault.maxDeposit and maxMint revert with InvalidPrice rather than returning zero while the pool-per-asset or pool-per-share price is still unset.
   * Synchronous deposits evaluate the memberlist and deposit limit against the paying caller rather than the receiver, so maxDeposit for a receiver can be positive for a deposit that reverts on the payer.
-  * Transfer-hook freezes bind share senders and receivers, not funders: a frozen account may still fund synchronous deposits through an endorsed router for an eligible receiver.
 * Assets, share classes and pool currencies may have as few as 0 decimals, and the economic weight of one rounding unit grows as decimals shrink.
 * Share tokens are assumed to stay well below the 128-bit supply cap, since an issuance that would cross it fails on the spoke after the hub has advanced the epoch and the fulfilments that follow draw on other escrowed shares of the same class.
 * The hub keeps an asset's decimals from registration while spoke conversions read `decimals()` live, so a token whose decimals change afterwards is mispriced, and pricing against one is the pool's error.
