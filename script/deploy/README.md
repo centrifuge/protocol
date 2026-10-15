@@ -149,7 +149,8 @@ cast send $ROOT_FIXES 'cast()' ...
 `cast()` is permissionless because the authority is the ward, not the caller: until Root grants it there is
 nothing it can do, and afterwards it does one fixed thing and gives the ward back. Until it has run, the
 protocol has no path from Root into the new contracts — no pausing, no recovery, no scheduled upgrades — and
-`spoke`, `asyncRequestManager`, `vaultRouter` and `tokenBridge` are unendorsed, so the vaults do not work.
+`spoke`, `spokeHandler`, `asyncRequestManager`, `vaultRouter`, `tokenBridge` and `shareManager` are unendorsed,
+so the vaults do not work and no share token under FullRestrictions can receive a crosschain transfer.
 
 One piece of wiring is not `RootFixes`' either: `Spoke.sender` is left unset, so every `registerAsset`
 reverts. A kept Root means a previous release on the chain, whose assets the launch spell

@@ -52,6 +52,7 @@ _EXPECTED_ROOT_WIRING = {
     ("rely", "messageprocessor"),
     ("rely", "protocolguardian"),
     ("endorse", "spoke"),
+    ("endorse", "spokehandler"),
     ("endorse", "asyncrequestmanager"),
     ("endorse", "vaultrouter"),
     ("endorse", "tokenbridge"),

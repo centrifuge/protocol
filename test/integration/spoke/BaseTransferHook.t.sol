@@ -257,12 +257,14 @@ contract BaseTransferHookIntegrationTest is FullDeployer, Test {
         // Every account the deployment endorses, or the fuzzer eventually offers one of them as the
         // account that should not be endorsed
         vm.assume(
-            notEndorsed != address(spoke) && notEndorsed != address(asyncRequestManager)
-                && notEndorsed != address(vaultRouter) && notEndorsed != address(tokenBridge)
-                && notEndorsed != address(shareManager) && notEndorsed != poolEscrow
+            notEndorsed != address(spoke) && notEndorsed != address(spokeHandler)
+                && notEndorsed != address(asyncRequestManager) && notEndorsed != address(vaultRouter)
+                && notEndorsed != address(tokenBridge) && notEndorsed != address(shareManager)
+                && notEndorsed != poolEscrow
         );
 
         assertTrue(root.endorsed(address(spoke)), "spoke must be endorsed");
+        assertTrue(root.endorsed(address(spokeHandler)), "spokeHandler must be endorsed");
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager must be endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter must be endorsed");
         assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge must be endorsed");

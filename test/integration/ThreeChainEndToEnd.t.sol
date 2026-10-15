@@ -6,7 +6,10 @@ import {LocalAdapter} from "./adapters/LocalAdapter.sol";
 import {IntegrationConstants} from "./utils/IntegrationConstants.sol";
 
 import {d18} from "../../src/misc/types/D18.sol";
+import {IERC20} from "../../src/misc/interfaces/IERC20.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
+import {BytesLib} from "../../src/misc/libraries/BytesLib.sol";
+import {IERC7751} from "../../src/misc/interfaces/IERC7751.sol";
 
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
 import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
@@ -16,11 +19,15 @@ import {ISpokeHandler} from "../../src/core/spoke/interfaces/ISpokeHandler.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
+import {IFreezable} from "../../src/token/hooks/interfaces/IFreezable.sol";
+import {FullRestrictions} from "../../src/token/hooks/FullRestrictions.sol";
+
 import {FullDeployer} from "../../script/deploy/FullDeployer.s.sol";
 
 import "forge-std/Test.sol";
 
 import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
+import {ITransferHook, HookData} from "../../src/token/interfaces/ITransferHook.sol";
 
 enum CrossChainDirection {
     WithIntermediaryHub, // (spoke in C) -> (hub in A) -> (spoke in B)
@@ -182,5 +189,209 @@ contract ThreeChainEndToEndUseCases is ThreeChainEndToEndDeployment {
     /// forge-config: default.isolate = true
     function testCrossChainTransferShares_ToHubChain() public {
         _testCrossChainTransferShares(CrossChainDirection.ToHub);
+    }
+}
+
+/// @title  Three Chain Transfer Hooks
+/// @notice Crosschain share transfers with the same transfer hook on both ends
+contract ThreeChainEndToEndTransferHooks is ThreeChainEndToEndDeployment {
+    using CastLib for *;
+    using BytesLib for bytes;
+
+    enum TransferHook {
+        FreezeOnly,
+        FullRestrictions,
+        RedemptionRestrictions,
+        FreelyTransferable
+    }
+
+    address immutable OUTSIDER = makeAddr("Outsider");
+
+    function _deployer(uint16 centrifugeId) internal view returns (FullDeployer) {
+        if (centrifugeId == CENTRIFUGE_ID_A) return deployA;
+        return centrifugeId == CENTRIFUGE_ID_B ? deployB : deployC;
+    }
+
+    function _hook(CSpoke memory s_, TransferHook kind) internal view returns (address) {
+        if (kind == TransferHook.FreezeOnly) return address(s_.freezeOnlyHook);
+        if (kind == TransferHook.FullRestrictions) return address(s_.fullRestrictionsHook);
+        if (kind == TransferHook.RedemptionRestrictions) return address(s_.redemptionRestrictionsHook);
+        return address(_deployer(s_.centrifugeId).freelyTransferableHook());
+    }
+
+    function _restrict(CSpoke memory s_, bytes memory update) internal {
+        h.hub.updateRestriction{value: GAS}(POOL_A, SC_1, s_.centrifugeId, update, EXTRA_GAS, REFUND);
+    }
+
+    /// @return failure The error of the last destination message that failed, empty if none did
+    function _lastFailure() internal returns (bytes memory failure) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].topics[0] == IGateway.FailMessage.selector) {
+                (, failure) = abi.decode(logs[i].data, (bytes32, bytes));
+            }
+        }
+    }
+
+    /// @return received What `receiver` holds on the destination afterwards
+    /// @return failure  The error the destination message failed with, empty if it executed
+    function _transfer(CrossChainDirection direction, TransferHook kind, address receiver, bool frozen)
+        internal
+        returns (uint256 received, bytes memory failure)
+    {
+        _setSpokes(direction);
+        _createPool();
+        _configurePoolInSpoke(origin);
+        _configurePoolInSpoke(dest);
+
+        IShareToken originShare = IShareToken(address(origin.spokeRegistry.shareToken(POOL_A, SC_1)));
+        IShareToken destShare = IShareToken(address(dest.spokeRegistry.shareToken(POOL_A, SC_1)));
+
+        vm.startPrank(FM);
+        if (originShare.hook() != _hook(origin, kind)) _setHook(origin, _hook(origin, kind));
+        if (destShare.hook() != _hook(dest, kind)) _setHook(dest, _hook(dest, kind));
+        _restrict(origin, _updateRestrictionMemberMsg(INVESTOR_A));
+        _restrict(origin, _updateRestrictionMemberMsg(address(uint160(dest.centrifugeId))));
+        _restrict(dest, _updateRestrictionMemberMsg(INVESTOR_A));
+        if (frozen) _restrict(dest, _updateRestrictionFreezeMsg(receiver));
+        h.hub.updateSharePrice(POOL_A, SC_1, d18(1, 1), uint64(block.timestamp));
+        h.hub.notifySharePrice{value: GAS}(POOL_A, SC_1, origin.centrifugeId, REFUND);
+        vm.stopPrank();
+
+        assertEq(originShare.hook(), _hook(origin, kind), "origin hook");
+        assertEq(destShare.hook(), _hook(dest, kind), "destination hook");
+
+        vm.startPrank(BSM);
+        origin.spoke.issue(POOL_A, SC_1, INVESTOR_A, AMOUNT);
+        origin.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, 0, REFUND);
+        vm.stopPrank();
+
+        vm.prank(address(origin.spokeHandler));
+        origin.spokeRegistry.updateBridger(POOL_A, INVESTOR_A, true);
+
+        vm.prank(INVESTOR_A);
+        originShare.approve(address(origin.spoke), AMOUNT);
+
+        vm.getRecordedLogs();
+        vm.prank(INVESTOR_A);
+        origin.spoke.crosschainTransferShares{value: GAS}(
+            dest.centrifugeId,
+            POOL_A,
+            SC_1,
+            receiver.toBytes32(),
+            INVESTOR_A,
+            INVESTOR_A,
+            AMOUNT,
+            HOOK_GAS,
+            HOOK_GAS,
+            INVESTOR_A
+        );
+        assertEq(originShare.balanceOf(INVESTOR_A), 0, "burned on the origin");
+
+        if (direction == CrossChainDirection.WithIntermediaryHub) {
+            vm.prank(ANY);
+            h.gateway.repay{value: GAS}(dest.centrifugeId, _getLastUnpaidMessage(), REFUND);
+        }
+
+        return (destShare.balanceOf(receiver), _lastFailure());
+    }
+
+    function _assertArrives(CrossChainDirection direction, TransferHook kind) internal {
+        (uint256 received, bytes memory failure) = _transfer(direction, kind, INVESTOR_A, false);
+        assertEq(failure, "", "destination message failed");
+        assertEq(received, AMOUNT, "receiver balance on the destination");
+    }
+
+    /// @dev The hand-on leg reverts inside `SafeTransferLib`, so the failure wraps `transfer`, not the bare hook error
+    function _assertBlocked(TransferHook kind, address receiver, bool frozen) internal {
+        (uint256 received, bytes memory failure) = _transfer(CrossChainDirection.FromHub, kind, receiver, frozen);
+        assertEq(received, 0, "receiver balance on the destination");
+
+        IShareToken destShare = IShareToken(address(dest.spokeRegistry.shareToken(POOL_A, SC_1)));
+        assertEq(bytes4(failure), IERC7751.WrappedError.selector, "destination failure");
+        assertEq(failure.toAddress(16), address(destShare), "wrapped target");
+        assertEq(bytes4(failure.toBytes32(36)), IERC20.transfer.selector, "wrapped selector");
+
+        _assertHookLegs(ITransferHook(_hook(dest, kind)), destShare, receiver);
+    }
+
+    function _assertHookLegs(ITransferHook hook, IShareToken destShare, address receiver) internal view {
+        address handler = address(dest.spokeHandler);
+        HookData memory mint = HookData(bytes16(0), destShare.hookDataOf(handler));
+        HookData memory handOn = HookData(destShare.hookDataOf(handler), destShare.hookDataOf(receiver));
+        assertTrue(hook.checkERC20Transfer(address(0), handler, AMOUNT, mint), "mint into the destination handler");
+        assertFalse(hook.checkERC20Transfer(handler, receiver, AMOUNT, handOn), "handler to receiver");
+    }
+
+    function testSpokeHandlerIsEndorsedOnEveryChain() public view {
+        FullDeployer[3] memory deployers = [deployA, deployB, deployC];
+        for (uint256 i; i < deployers.length; i++) {
+            assertTrue(deployers[i].root().endorsed(address(deployers[i].spokeHandler())), "spokeHandler endorsed");
+        }
+    }
+
+    function testSpokeHandlerCannotBeFrozen() public {
+        FullRestrictions hook = deployB.fullRestrictionsHook();
+        address handler = address(deployB.spokeHandler());
+        address token = makeAddr("token");
+
+        vm.prank(address(deployB.root()));
+        vm.expectRevert(IFreezable.EndorsedUserCannotBeFrozen.selector);
+        hook.freeze(token, handler);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRestrictions_FromHubChain() public {
+        _assertArrives(CrossChainDirection.FromHub, TransferHook.FullRestrictions);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRestrictions_ToHubChain() public {
+        _assertArrives(CrossChainDirection.ToHub, TransferHook.FullRestrictions);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRestrictions_WithIntermediaryHubChain() public {
+        _assertArrives(CrossChainDirection.WithIntermediaryHub, TransferHook.FullRestrictions);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRestrictions_NonMemberReceiverIsBlocked() public {
+        _assertBlocked(TransferHook.FullRestrictions, OUTSIDER, false);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFullRestrictions_FrozenReceiverIsBlocked() public {
+        _assertBlocked(TransferHook.FullRestrictions, INVESTOR_A, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFreezeOnly_FromHubChain() public {
+        _assertArrives(CrossChainDirection.FromHub, TransferHook.FreezeOnly);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFreezeOnly_FrozenReceiverIsBlocked() public {
+        _assertBlocked(TransferHook.FreezeOnly, INVESTOR_A, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testRedemptionRestrictions_FromHubChain() public {
+        _assertArrives(CrossChainDirection.FromHub, TransferHook.RedemptionRestrictions);
+    }
+
+    /// forge-config: default.isolate = true
+    function testRedemptionRestrictions_FrozenReceiverIsBlocked() public {
+        _assertBlocked(TransferHook.RedemptionRestrictions, INVESTOR_A, true);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFreelyTransferable_FromHubChain() public {
+        _assertArrives(CrossChainDirection.FromHub, TransferHook.FreelyTransferable);
+    }
+
+    /// forge-config: default.isolate = true
+    function testFreelyTransferable_FrozenReceiverIsBlocked() public {
+        _assertBlocked(TransferHook.FreelyTransferable, INVESTOR_A, true);
     }
 }

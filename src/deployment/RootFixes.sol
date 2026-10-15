@@ -20,6 +20,7 @@ contract RootFixes {
     address public immutable vaultRouter;
     address public immutable tokenBridge;
     address public immutable shareManager;
+    address public immutable spokeHandler;
     address public immutable messageProcessor;
     address public immutable protocolGuardian;
     address public immutable messageDispatcher;
@@ -35,6 +36,7 @@ contract RootFixes {
         vaultRouter = address(report.vaultRouter);
         tokenBridge = address(report.tokenBridge);
         shareManager = address(report.shareManager);
+        spokeHandler = address(report.core.spokeHandler);
         messageProcessor = address(report.core.messageProcessor);
         protocolGuardian = address(report.core.protocolGuardian);
         messageDispatcher = address(report.core.messageDispatcher);
@@ -51,6 +53,7 @@ contract RootFixes {
         root.rely(protocolGuardian);
 
         root.endorse(spoke);
+        root.endorse(spokeHandler);
         root.endorse(asyncRequestManager);
         root.endorse(vaultRouter);
         root.endorse(tokenBridge);

@@ -315,6 +315,9 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(spokeHandler.spokeRegistry()), address(spokeRegistry));
         assertEq(address(spokeHandler.escrowFactory()), address(escrowFactory));
+
+        // root endorsements
+        assertEq(root.endorsed(address(spokeHandler)), true);
     }
 
     function testSpoke(address nonWard) public view {
@@ -1581,6 +1584,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher on root");
         assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
         assertFalse(root.endorsed(address(spoke)), "spoke endorsed");
+        assertFalse(root.endorsed(address(spokeHandler)), "spokeHandler endorsed");
         assertFalse(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
         assertFalse(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertFalse(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
@@ -1602,6 +1606,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(messageProcessor)), 1, "messageProcessor on root");
         assertEq(root.wards(address(protocolGuardian)), 1, "protocolGuardian on root");
         assertTrue(root.endorsed(address(spoke)), "spoke endorsed");
+        assertTrue(root.endorsed(address(spokeHandler)), "spokeHandler endorsed");
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");

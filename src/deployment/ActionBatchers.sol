@@ -287,7 +287,11 @@ contract CoreActionBatcher {
         report.protocolGuardian.file("safe", address(protocolSafe));
 
         // Endorse methods
-        if (wireRoot) report.root.endorse(address(report.spoke));
+        if (wireRoot) {
+            report.root.endorse(address(report.spoke));
+            // Inbound transfers mint to the handler first, which receiver-restricting hooks admit only if endorsed
+            report.root.endorse(address(report.spokeHandler));
+        }
 
         // Initial configuration
         AssetId[] memory currencies = iso4217Codes();
