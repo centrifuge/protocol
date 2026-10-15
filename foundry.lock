@@ -22,8 +22,8 @@
   },
   "lib/safe-utils": {
     "tag": {
-      "name": "v0.0.17",
-      "rev": "c057d167139dc4878f10ab7133a8c069fa6b1601"
+      "name": "v0.0.23",
+      "rev": "8884959c4416d5f22c9057c51875e20d81555081"
     }
   },
   "lib/setup-helpers": {
