@@ -16,15 +16,41 @@
       "deploy": true,
       "blockConfirmations": 15,
       "requiredDVNs": [
-        "0xbe57e9E7d9eB16B92C6383792aBe28D64a18c0F1",
-        "0xcC49E6fca014c77E1Eb604351cc1E08C84511760"
+        "0x962F502A63F5FBeB44DC9ab932122648E8352959",
+        "0xbe57e9E7d9eB16B92C6383792aBe28D64a18c0F1"
       ],
       "optionalDVNs": [
         "0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5",
         "0xc816Afa2f1C4Ab615fE735270D1831fa7D067D15",
         "0xE94aE34DfCC87A61836938641444080B98402c75"
       ],
-      "optionalDVNThreshold": 2
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "plume": {
+          "requiredDVNs": [
+            "0xbe57e9E7d9eB16B92C6383792aBe28D64a18c0F1",
+            "0xcC49E6fca014c77E1Eb604351cc1E08C84511760"
+          ],
+          "optionalDVNs": [
+            "0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5",
+            "0xc816Afa2f1C4Ab615fE735270D1831fa7D067D15",
+            "0xE94aE34DfCC87A61836938641444080B98402c75"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "arc": {
+          "requiredDVNs": [
+            "0x962F502A63F5FBeB44DC9ab932122648E8352959",
+            "0xa59BA433ac34D2927232918Ef5B2eaAfcF130BA5"
+          ],
+          "optionalDVNs": [
+            "0x07C05EaB7716AcB6f83ebF6268F8EECDA8892Ba1",
+            "0xc816Afa2f1C4Ab615fE735270D1831fa7D067D15",
+            "0xE94aE34DfCC87A61836938641444080B98402c75"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
     },
     "axelar": {
       "axelarId": "Avalanche",
@@ -36,6 +62,11 @@
       "chainSelector": 6433500567565415381,
       "ccipRouter": "0xF4c7E640EdA248ef95972845a62bdC74237805dB",
       "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 43114,
+      "mailbox": "0xFf06aFcaABaDDd1fb08371f9ccA15D73D51FeBD6",
+      "deploy": true
     }
   },
   "contracts": {
@@ -43,14 +74,6 @@
       "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
       "blockNumber": 65492929,
       "version": "3"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "cd4866f3f",
-      "timestamp": "2026-01-28T11:54:04Z",
-      "suffix": "",
-      "startBlock": 65492929
     }
   }
 }

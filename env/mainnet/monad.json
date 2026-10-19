@@ -6,7 +6,7 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
-    "batchLimit": 15,
+    "batchLimit": 7,
     "baseRpcUrl": "https://monad-mainnet.g.alchemy.com/v2/",
     "verifier": "blockscout",
     "verifierUrl": "https://api.socialscan.io/monad-mainnet/v1/explorer/command_api/contract",
@@ -19,15 +19,29 @@
       "deploy": true,
       "blockConfirmations": 15,
       "requiredDVNs": [
-        "0x2c7185f5B0976397d9eB5c19d639d4005e6708f0",
-        "0x493626C5D852B9B187a9eb709D0b0978a3877238"
+        "0x282b3386571f7f794450d5789911a9804FA346b4",
+        "0x2c7185f5B0976397d9eB5c19d639d4005e6708f0"
       ],
       "optionalDVNs": [
         "0x05EF739DDE35407A421eF1B3011283f92C2B30dc",
         "0xaCDe1f22EEAb249d3ca6Ba8805C8fEe9f52a16e7",
         "0xd2750419b4a663c8Ff8f7B6067885D82f299aCe9"
       ],
-      "optionalDVNThreshold": 2
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "arc": {
+          "requiredDVNs": [
+            "0x282b3386571f7f794450d5789911a9804FA346b4",
+            "0xaCDe1f22EEAb249d3ca6Ba8805C8fEe9f52a16e7"
+          ],
+          "optionalDVNs": [
+            "0x05EF739DDE35407A421eF1B3011283f92C2B30dc",
+            "0xd2750419b4a663c8Ff8f7B6067885D82f299aCe9",
+            "0xdCdd4628F858b45260C31D6ad076bD2C3D3c2f73"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
     },
     "axelar": {
       "axelarId": "monad",
@@ -39,6 +53,11 @@
       "chainSelector": 8481857512324358265,
       "ccipRouter": "0x33566fE5976AAa420F3d5C64996641Fc3858CaDB",
       "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 143,
+      "mailbox": "0x3a464f746D23Ab22155710f44dB16dcA53e0775E",
+      "deploy": true
     }
   },
   "contracts": {
@@ -46,14 +65,6 @@
       "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
       "blockNumber": 51882383,
       "version": "v3.1"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "ffff3ea95",
-      "timestamp": "2026-01-29T12:20:19Z",
-      "suffix": "",
-      "startBlock": 51882383
     }
   }
 }

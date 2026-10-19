@@ -30,6 +30,11 @@
       "chainSelector": 16015286601757825753,
       "ccipRouter": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
       "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 11155111,
+      "mailbox": "0xfFAEF09B3cd11D9b20d1a19bECca54EEC2884766",
+      "deploy": true
     }
   },
   "contracts": {
@@ -37,14 +42,6 @@
       "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
       "blockNumber": 10142074,
       "version": "v3.1"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "24032569",
-      "timestamp": "2026-01-28T14:47:33Z",
-      "suffix": "rev2",
-      "startBlock": 10142074
     }
   }
 }

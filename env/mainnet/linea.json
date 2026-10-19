@@ -1,0 +1,84 @@
+{
+  "network": {
+    "chainId": 59144,
+    "environment": "mainnet",
+    "centrifugeId": 16,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 7,
+    "baseRpcUrl": "https://linea-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+      "layerZeroEid": 30183,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x129Ee430Cb2Ff2708CCADDBDb408a88Fe4FFd480",
+        "0xa2d10677441230C4AeD58030e4EA6Ba7Bfd80393"
+      ],
+      "optionalDVNs": [
+        "0x0b239476A771834D846Cb505817baC3C391c338A",
+        "0xc3fA914FE2952Cf70e4477F96D5028f4d4d84020",
+        "0xDd7B5E1dB4AaFd5C8EC3b764eFB8ed265Aa5445B"
+      ],
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "plume": {
+          "requiredDVNs": [
+            "0xa2d10677441230C4AeD58030e4EA6Ba7Bfd80393",
+            "0xDA63525a0Fc42Bcc2cAD1dD28708d5ed11849347"
+          ],
+          "optionalDVNs": [
+            "0x0b239476A771834D846Cb505817baC3C391c338A",
+            "0xc3fA914FE2952Cf70e4477F96D5028f4d4d84020",
+            "0xDd7B5E1dB4AaFd5C8EC3b764eFB8ed265Aa5445B"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "pharos": {
+          "requiredDVNs": [
+            "0xa2d10677441230C4AeD58030e4EA6Ba7Bfd80393",
+            "0xDA63525a0Fc42Bcc2cAD1dD28708d5ed11849347"
+          ],
+          "optionalDVNs": [
+            "0x0b239476A771834D846Cb505817baC3C391c338A",
+            "0xc3fA914FE2952Cf70e4477F96D5028f4d4d84020",
+            "0xDd7B5E1dB4AaFd5C8EC3b764eFB8ed265Aa5445B"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "arc": {
+          "requiredDVNs": [
+            "0x129Ee430Cb2Ff2708CCADDBDb408a88Fe4FFd480",
+            "0xDd7B5E1dB4AaFd5C8EC3b764eFB8ed265Aa5445B"
+          ],
+          "optionalDVNs": [
+            "0x0b239476A771834D846Cb505817baC3C391c338A",
+            "0x7fe673201724925B5c477d4E1A4Bd3E954688cF5",
+            "0xc3fA914FE2952Cf70e4477F96D5028f4d4d84020"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
+    },
+    "axelar": {
+      "axelarId": "linea",
+      "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "gasService": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "deploy": true
+    },
+    "chainlink": {
+      "chainSelector": 4627098889531055414,
+      "ccipRouter": "0x549FEB73F2348F6cD99b9fc8c69252034897f06C",
+      "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 59144,
+      "mailbox": "0x02d16BC51af6BfD153d67CA61754cF912E82C4d9",
+      "deploy": true
+    }
+  }
+}

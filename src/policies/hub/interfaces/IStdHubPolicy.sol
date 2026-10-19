@@ -26,9 +26,10 @@ interface IStdHubPolicy is IHubPolicy {
     }
 
     /// @notice Policy configuration set at construction.
-    /// @dev Two price guards with opposite disable sentinels: `maxAbsolutePriceDelta` + `thresholdPerSecond`
-    ///      bound `updateSharePrice` (each `0` = off), `maxBrmPriceDeviation` bounds BRM call prices
-    ///      (`type(uint128).max` = off, `0` = exact match).
+    /// @dev Optional per pool: `isRestrictionUpdateInstant` makes every `updateRestriction` instant for a manager, with no
+    ///      canonical-Freeze check and no sentinel veto. Two price guards with opposite disable sentinels:
+    ///      `maxAbsolutePriceDelta` + `thresholdPerSecond` bound `updateSharePrice` (each `0` = off),
+    ///      `maxBrmPriceDeviation` bounds BRM call prices (`type(uint128).max` = off, `0` = exact match).
     struct Config {
         uint48 delay;
         uint48 expiry;
@@ -36,6 +37,7 @@ interface IStdHubPolicy is IHubPolicy {
         Entry[] allowlist;
         address navManager;
         bool onchainAccounting;
+        bool isRestrictionUpdateInstant;
         uint128 thresholdPerSecond;
         uint128 maxBrmPriceDeviation;
         uint128 maxAbsolutePriceDelta;
@@ -56,6 +58,7 @@ interface IStdHubPolicy is IHubPolicy {
     function maxBrmPriceDeviation() external view returns (uint128);
     function maxAbsolutePriceDelta() external view returns (uint128);
     function onchainAccounting() external view returns (bool);
+    function isRestrictionUpdateInstant() external view returns (bool);
     function navManager() external view returns (address);
     function simplePriceManager() external view returns (address);
     function requestManager() external view returns (address);

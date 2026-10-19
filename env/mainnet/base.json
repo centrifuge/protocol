@@ -6,7 +6,7 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
-    "batchLimit": 15,
+    "batchLimit": 14,
     "baseRpcUrl": "https://base-mainnet.g.alchemy.com/v2/"
   },
   "adapters": {
@@ -16,7 +16,7 @@
       "deploy": true,
       "blockConfirmations": 15,
       "requiredDVNs": [
-        "0x554833698Ae0FB22ECC90B01222903fD62CA4B47",
+        "0x9e059a54699a285714207b43B055483E78FAac25",
         "0xc2A0C36f5939A14966705c7Cec813163FaEEa1F0"
       ],
       "optionalDVNs": [
@@ -24,7 +24,33 @@
         "0x93aC538152E1BC4F093aE5666Ee9FD1d84f4f4bF",
         "0xcd37CA043f8479064e10635020c65FfC005d36f6"
       ],
-      "optionalDVNThreshold": 2
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "plume": {
+          "requiredDVNs": [
+            "0x554833698Ae0FB22ECC90B01222903fD62CA4B47",
+            "0xc2A0C36f5939A14966705c7Cec813163FaEEa1F0"
+          ],
+          "optionalDVNs": [
+            "0x5b6735c66d97479cCD18294fc96B3084EcB2fa3f",
+            "0x93aC538152E1BC4F093aE5666Ee9FD1d84f4f4bF",
+            "0xcd37CA043f8479064e10635020c65FfC005d36f6"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "arc": {
+          "requiredDVNs": [
+            "0x9e059a54699a285714207b43B055483E78FAac25",
+            "0xcd37CA043f8479064e10635020c65FfC005d36f6"
+          ],
+          "optionalDVNs": [
+            "0x5b6735c66d97479cCD18294fc96B3084EcB2fa3f",
+            "0x93aC538152E1BC4F093aE5666Ee9FD1d84f4f4bF",
+            "0xa7b5189bcA84Cd304D8553977c7C614329750d99"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
     },
     "axelar": {
       "axelarId": "base",
@@ -36,6 +62,11 @@
       "chainSelector": 15971525489660198786,
       "ccipRouter": "0x881e3A65B4d4a04dD529061dd0071cf975F58bCD",
       "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 8453,
+      "mailbox": "0xeA87ae93Fa0019a82A727bfd3eBd1cFCa8f64f1D",
+      "deploy": true
     }
   },
   "contracts": {
@@ -43,14 +74,6 @@
       "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
       "blockNumber": 32901251,
       "version": "3"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "c89c55ff6",
-      "timestamp": "2026-01-27T11:38:30Z",
-      "suffix": "",
-      "startBlock": 41362271
     }
   }
 }

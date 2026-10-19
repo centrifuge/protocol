@@ -37,6 +37,7 @@ contract StdHubPolicyFactoryTest is Test {
             thresholdPerSecond: 0,
             maxBrmPriceDeviation: maxDeviation,
             onchainAccounting: false,
+            isRestrictionUpdateInstant: false,
             navManager: address(0),
             simplePriceManager: address(0),
             requestManager: brm,

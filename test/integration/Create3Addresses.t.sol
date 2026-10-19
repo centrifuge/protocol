@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {EnsureDeployGate} from "../../script/utils/GateProposal.s.sol";
 import {CREATEX_ADDRESS} from "../../script/utils/createx/CreateX.d.sol";
+import {GateProposalScript} from "../../script/utils/GateProposal.s.sol";
 import {BaseDeployer, AccountLib} from "../../script/deploy/BaseDeployer.s.sol";
 import {GatedDeployer, DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
@@ -138,31 +138,6 @@ contract DeployGateAddressTest is Test, BaseDeployer {
     function testGateSaltIsUnscoped() public pure {
         assertEq(DEPLOY_GATE_SALT << 88, bytes32(0), "the salt's entropy belongs in its high 11 bytes");
         assertEq(DEPLOY_GATE_SALT[20], bytes1(0x0), "redeploy protection should stay off");
-    }
-
-    /// @dev The batch leg a Safe proposal carries in place of the gate's own deployment: it has to work
-    ///      however late the proposal executes, so a gate landing first is stepped aside from rather than
-    ///      reverted on — which a direct deployCreate2 in the batch would do, taking the gate call behind
-    ///      it down too
-    function testEnsureDeployGateDeploysAndStepsAside() public {
-        assertEq(DEPLOY_GATE_ADDRESS.code.length, 0, "nothing there yet");
-
-        // The way the proposal posts it: through CreateX, which has to accept a carrier with no functions
-        address carrier = CreateX.deployCreate(type(EnsureDeployGate).creationCode);
-        assertGt(carrier.code.length, 0, "CreateX must accept the carrier");
-        assertEq(DEPLOY_GATE_ADDRESS.codehash, DEPLOY_GATE_EXTCODEHASH, "brings the gate up");
-
-        new EnsureDeployGate();
-        assertEq(DEPLOY_GATE_ADDRESS.codehash, DEPLOY_GATE_EXTCODEHASH, "and steps aside from one already there");
-    }
-
-    /// @dev What it cannot step aside from it rejects, so the gate call behind it never lands in foreign code
-    function testEnsureDeployGateRejectsImpostor() public {
-        address impostor = address(new SimpleContract(1));
-        vm.etch(DEPLOY_GATE_ADDRESS, impostor.code);
-
-        vm.expectRevert(bytes("Not the DeployGate"));
-        new EnsureDeployGate();
     }
 }
 
@@ -320,6 +295,83 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         );
     }
 
+    // One commitment per deployment
+
+    function commitTwoAs(string memory deploymentId_) external {
+        _initGated(deploymentId_, DeployPhase.Commit, address(this), _executors());
+        uint256 snapshot = vm.snapshotState();
+
+        submit("testContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(1)));
+        submit("otherContract", "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(2)));
+        (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
+
+        vm.revertToState(snapshot);
+        _commit(salts, initCodeHashes);
+    }
+
+    function deployAs(string memory deploymentId_, string memory name, uint256 value) external returns (address) {
+        _initGated(deploymentId_, DeployPhase.Deploy, address(this), _executors());
+        return submit(name, "v3.1", abi.encodePacked(type(SimpleContract).creationCode, abi.encode(value)));
+    }
+
+    function testTheCanonicalDeploymentKeepsTheDefaultCommitment() public pure {
+        assertEq(commitmentIdOf(""), DEFAULT_COMMITMENT_ID);
+    }
+
+    /// @dev Readable in a Safe proposal as the deployment id itself
+    function testADeploymentIdIsItsOwnCommitment() public pure {
+        assertEq(commitmentIdOf("rev2"), bytes32("rev2"));
+        assertEq(commitmentIdOf("rehearsal-1"), bytes32("rehearsal-1"));
+        assertTrue(commitmentIdOf("rev2") != commitmentIdOf("rev3"), "two deployments, two commitments");
+    }
+
+    function commitmentIdOfExternal(string memory deploymentId_) external pure returns (bytes32) {
+        return commitmentIdOf(deploymentId_);
+    }
+
+    function testADeploymentIdTooLongForACommitmentIsRefused() public {
+        vm.expectRevert("Deployment id is too long to name a commitment");
+        this.commitmentIdOfExternal("0123456789abcdef0123456789abcdef0");
+    }
+
+    /// @dev The canonical deployment started deploying, then another deployment of the same namespace
+    ///      committed: the canonical one finishes all the same
+    function testAnotherDeploymentsCommitLeavesAStartedOneDeployable() public {
+        this.commitTwoAs("");
+        this.deployAs("", "testContract", 1);
+
+        this.commitTwoAs("rev2");
+
+        address second = this.deployAs("", "otherContract", 2);
+        assertEq(SimpleContract(second).value(), 2, "the canonical deployment finished");
+        (,, uint64 cursor,) = deployGate.commitments(namespace, DEFAULT_COMMITMENT_ID);
+        assertEq(cursor, 2, "the canonical commitment is spent");
+    }
+
+    /// @dev And the other way round: each deploys from its own commitment, in any interleaving
+    function testTwoDeploymentsDeployFromTheirOwnCommitments() public {
+        this.commitTwoAs("rev2");
+        this.commitTwoAs("");
+
+        address canonical = this.deployAs("", "testContract", 1);
+        address isolated = this.deployAs("rev2", "testContract", 1);
+        this.deployAs("rev2", "otherContract", 2);
+        this.deployAs("", "otherContract", 2);
+
+        assertTrue(canonical != isolated, "the deployment id moves the address, the commitment does not");
+        (,, uint64 isolatedCursor,) = deployGate.commitments(namespace, bytes32("rev2"));
+        (,, uint64 canonicalCursor,) = deployGate.commitments(namespace, DEFAULT_COMMITMENT_ID);
+        assertEq(isolatedCursor, 2);
+        assertEq(canonicalCursor, 2);
+    }
+
+    function testADeploymentCannotDeployFromAnothersCommitment() public {
+        this.commitTwoAs("");
+
+        vm.expectRevert("Deployment does not match what was committed, commit again");
+        this.deployAs("rev2", "testContract", 1);
+    }
+
     /// @dev Caught in the script, before anything is broadcast
     function testDeployPhaseRejectsAChangedInitCode() public {
         this.queueAndCommit(42);
@@ -340,5 +392,31 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         this.deployIt(1);
 
         assertEq(SimpleContract(predicted).value(), 1, "what was deployed should stay untouched");
+    }
+}
+
+contract GateProposalTest is Test, GateProposalScript {
+    /// @dev A Safe reaches only a gate already on the chain: its proposal is one plain call into the gate, and
+    ///      nothing in it deploys one first
+    function testProposeGateCallRefusesAChainWithoutGate() public {
+        assertEq(DEPLOY_GATE_ADDRESS.code.length, 0, "nothing there yet");
+
+        vm.expectRevert(
+            bytes(
+                "No DeployGate on this chain: it is deployed before the deployment, and a Safe commits only through one already there"
+            )
+        );
+        this.propose(makeAddr("safe"), "");
+    }
+
+    function testProposeGateCallRefusesForeignCode() public {
+        vm.etch(DEPLOY_GATE_ADDRESS, address(new SimpleContract(1)).code);
+
+        vm.expectRevert(bytes("Not the DeployGate: unexpected code at that address"));
+        this.propose(makeAddr("safe"), "");
+    }
+
+    function propose(address safe_, bytes calldata gateCall) external {
+        proposeGateCall(safe_, gateCall);
     }
 }

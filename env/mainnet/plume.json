@@ -6,7 +6,7 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
-    "batchLimit": 15,
+    "batchLimit": 13,
     "baseRpcUrl": "https://rpc.plume.org/",
     "verifier": "blockscout",
     "verifierUrl": "https://explorer.plume.org/api/",
@@ -27,7 +27,69 @@
         "0x882a1EE8891c7d22310dedf032eF9653785532B8",
         "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
       ],
-      "optionalDVNThreshold": 2
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "ethereum": {
+          "requiredDVNs": [
+            "0x4208D6E27538189bB48E603D6123A94b8Abe0A0b",
+            "0x78f607fc38e071cEB8630B7B12c358eE01C31E96"
+          ],
+          "optionalDVNs": [
+            "0x75Ab9D30e4FF4913a4dF9A02aF8Cef3525A93F68",
+            "0x882a1EE8891c7d22310dedf032eF9653785532B8",
+            "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "bnb-smart-chain": {
+          "requiredDVNs": [
+            "0x4208D6E27538189bB48E603D6123A94b8Abe0A0b",
+            "0x78f607fc38e071cEB8630B7B12c358eE01C31E96"
+          ],
+          "optionalDVNs": [
+            "0x75Ab9D30e4FF4913a4dF9A02aF8Cef3525A93F68",
+            "0x882a1EE8891c7d22310dedf032eF9653785532B8",
+            "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "monad": {
+          "requiredDVNs": [
+            "0x4208D6E27538189bB48E603D6123A94b8Abe0A0b",
+            "0x78f607fc38e071cEB8630B7B12c358eE01C31E96"
+          ],
+          "optionalDVNs": [
+            "0x75Ab9D30e4FF4913a4dF9A02aF8Cef3525A93F68",
+            "0x882a1EE8891c7d22310dedf032eF9653785532B8",
+            "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "pharos": {
+          "requiredDVNs": [
+            "0x4208D6E27538189bB48E603D6123A94b8Abe0A0b",
+            "0x78f607fc38e071cEB8630B7B12c358eE01C31E96"
+          ],
+          "optionalDVNs": [
+            "0x75Ab9D30e4FF4913a4dF9A02aF8Cef3525A93F68",
+            "0x882a1EE8891c7d22310dedf032eF9653785532B8",
+            "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "arc": {
+          "requiredDVNs": [
+            "0x395B14700812cccC38b8e64F0a06ce2045FE9bA3",
+            "0x882a1EE8891c7d22310dedf032eF9653785532B8"
+          ],
+          "optionalDVNs": [
+            "0x4208D6E27538189bB48E603D6123A94b8Abe0A0b",
+            "0x5E0744f8FBF26446c683BcF4cD405ad56bA76F8A",
+            "0xC90a7Ef6c219336BAE48Bea2eCF60e6241343f85"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
     },
     "axelar": {
       "axelarId": "plume",
@@ -39,6 +101,11 @@
       "chainSelector": 17912061998839310979,
       "ccipRouter": "0x5C4f4622AD0EC4a47e04840db7E9EcA8354109af",
       "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 98866,
+      "mailbox": "0x3a464f746D23Ab22155710f44dB16dcA53e0775E",
+      "deploy": true
     }
   },
   "contracts": {
@@ -46,14 +113,6 @@
       "address": "0x7Ed48C31f2fdC40d37407cBaBf0870B2b688368f",
       "blockNumber": 11931253,
       "version": "3"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "9706a86",
-      "timestamp": "2025-07-15T14:23:38Z",
-      "suffix": "",
-      "startBlock": 11931253
     }
   }
 }

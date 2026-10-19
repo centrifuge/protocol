@@ -23,3 +23,7 @@
 [submodule "lib/create3-gate"]
 	path = lib/create3-gate
 	url = https://github.com/centrifuge/create3-gate
+[submodule "certora"]
+	path = certora
+	url = https://github.com/centrifuge/protocol-certora
+	update = none

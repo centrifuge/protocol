@@ -127,6 +127,7 @@ contract StdHubPolicyTest is Test {
             thresholdPerSecond: rate,
             maxBrmPriceDeviation: maxDeviation,
             onchainAccounting: onchain,
+            isRestrictionUpdateInstant: false,
             navManager: nav,
             simplePriceManager: price,
             requestManager: brm,
@@ -399,6 +400,66 @@ contract StdHubPolicyTest is Test {
         // A Freeze with one trailing byte is not the canonical 33-byte shape, so it stays out of policy.
         bytes memory freezePlus = abi.encodePacked(uint8(UpdateRestrictionType.Freeze), bytes32(bytes20(who)), uint8(0));
         assertEq(policy.authorizationDelay(POOL_A, manager, _restrictionCall(freezePlus)), DELAY);
+    }
+
+    function _isRestrictionUpdateInstantPolicy() internal returns (StdHubPolicy policy_) {
+        IStdHubPolicy.Config memory cfg = _config(CAP, RATE, false, address(0), address(0));
+        cfg.isRestrictionUpdateInstant = true;
+        policy_ = StdHubPolicy(address(factory.newHubPolicy(cfg)));
+        hubRegistry.setPolicy(POOL_A, policy_);
+    }
+
+    function testInstantRestrictionMakeAnyRestrictionInstant() public {
+        StdHubPolicy policy_ = _isRestrictionUpdateInstantPolicy();
+        bytes memory unfreeze = abi.encodePacked(uint8(UpdateRestrictionType.Unfreeze), bytes32(bytes20(who)));
+        bytes memory member =
+            abi.encodePacked(uint8(UpdateRestrictionType.Member), bytes32(bytes20(who)), uint64(1 days));
+        bytes memory custom = abi.encodePacked(uint8(0xff), bytes32(bytes20(who)), uint8(1), uint64(7));
+
+        // No authorization is needed: enforce passes straight away for each shape.
+        vm.startPrank(address(hub));
+        policy_.enforce(POOL_A, manager, _restrictionCall(unfreeze));
+        policy_.enforce(POOL_A, manager, _restrictionCall(member));
+        policy_.enforce(POOL_A, manager, _restrictionCall(custom));
+        vm.stopPrank();
+    }
+
+    function testInstantRestrictionLeavesOtherSelectorsTimelocked() public {
+        _isRestrictionUpdateInstantPolicy();
+        assertEq(_delayOf(abi.encodeWithSelector(IHub.updateHubManager.selector, POOL_A, who, true)), DELAY);
+    }
+
+    function testInstantRestrictionStillConfinesRestrictedCaller() public {
+        IStdHubPolicy.Entry[] memory allowlist = new IStdHubPolicy.Entry[](1);
+        allowlist[0] = IStdHubPolicy.Entry({poolId: POOL_A, caller: manager, selectors: new bytes4[](0)});
+        IStdHubPolicy.Config memory cfg = _config(CAP, RATE, false, address(0), address(0), allowlist);
+        cfg.isRestrictionUpdateInstant = true;
+        StdHubPolicy policy_ = StdHubPolicy(address(factory.newHubPolicy(cfg)));
+
+        bytes memory member =
+            abi.encodePacked(uint8(UpdateRestrictionType.Member), bytes32(bytes20(who)), uint64(1 days));
+        vm.expectRevert(IStdHubPolicy.CallerNotAllowed.selector);
+        policy_.authorizationDelay(POOL_A, manager, _restrictionCall(member));
+    }
+
+    function _confinedToRestrictionsPolicy(bool instant) internal returns (StdHubPolicy) {
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = IHub.updateRestriction.selector;
+        IStdHubPolicy.Entry[] memory allowlist = new IStdHubPolicy.Entry[](1);
+        allowlist[0] = IStdHubPolicy.Entry({poolId: POOL_A, caller: manager, selectors: selectors});
+        IStdHubPolicy.Config memory cfg = _config(CAP, RATE, false, address(0), address(0), allowlist);
+        cfg.isRestrictionUpdateInstant = instant;
+        return StdHubPolicy(address(factory.newHubPolicy(cfg)));
+    }
+
+    function testInstantRestrictionForConfinedCallerThatListsIt() public {
+        bytes memory member =
+            abi.encodePacked(uint8(UpdateRestrictionType.Member), bytes32(bytes20(who)), uint64(1 days));
+
+        assertEq(_confinedToRestrictionsPolicy(true).authorizationDelay(POOL_A, manager, _restrictionCall(member)), 0);
+        assertEq(
+            _confinedToRestrictionsPolicy(false).authorizationDelay(POOL_A, manager, _restrictionCall(member)), DELAY
+        );
     }
 
     // ─── constructor timelock validation ─────────────────────────────────

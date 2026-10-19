@@ -470,6 +470,7 @@ contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
                         thresholdPerSecond: RATE,
                         maxBrmPriceDeviation: type(uint128).max,
                         onchainAccounting: true,
+                        isRestrictionUpdateInstant: false,
                         navManager: address(navManager),
                         simplePriceManager: address(simplePriceManager),
                         requestManager: address(batchRequestManager),

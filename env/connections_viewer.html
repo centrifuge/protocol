@@ -55,6 +55,9 @@
   #caption { min-height: 1.5em; text-align: center; color: var(--ink-2); }
   svg { display: block; width: 100%; height: auto; }
   .edge { fill: none; stroke-width: 1.5; opacity: 0.35; transition: opacity 0.12s; }
+  /* Wired to its peer but not in the lane's global adapter set: ready for a pool to use */
+  .edge.wired-only { stroke-dasharray: 6 5; }
+  #legend .swatch.dashed { border-top-style: dashed; border-color: var(--ink-2); }
   .node circle { fill: var(--ink-2); stroke: var(--surface); stroke-width: 2; transition: opacity 0.12s; }
   .node text { fill: var(--ink); font-size: 14px; transition: opacity 0.12s; }
   .node .hit { fill: transparent; stroke: none; }
@@ -83,7 +86,7 @@
 <div class="card"><details>
   <summary>Connection rules (as written in connections.json)</summary>
   <table id="rules"><thead>
-    <tr><th>From</th><th>To</th><th>Adapters</th><th>Threshold</th></tr>
+    <tr><th>From</th><th>To</th><th>Adapters</th><th>Wired only</th><th>Threshold</th></tr>
   </thead><tbody></tbody></table>
 </details></div>
 <div id="error" hidden>
@@ -119,23 +122,29 @@ function buildModel(config) {
     left: resolveSide(rule.chains[0], aliases),
     right: resolveSide(rule.chains[1], aliases),
     adapters: rule.adapters,
+    wiredOnly: rule.wiredOnly ?? [],
   }));
 
   const chains = [...new Set(rules.flatMap((r) => [...r.left, ...r.right]))].sort();
 
-  // Mirrors _findMatchingRule: the last matching rule wins — adapters are never
-  // unioned across rules, and a match with no adapters disconnects the pair
-  const pairs = new Map(); // "a|b" (sorted) -> Set of adapters
+  // Mirrors _findMatchingRule and connectionsWith: the last matching rule wins — adapters are never
+  // unioned across rules — and a pair is connected when its rule wires anything, in its global set or
+  // wired only. A match that names no adapter at all disconnects the pair
+  const pairs = new Map(); // "a|b" (sorted) -> Map of adapter -> wired only?
   chains.forEach((a, i) => {
     for (const b of chains.slice(i + 1)) {
       const rule = rules.findLast((r) =>
         (r.left.includes(a) && r.right.includes(b)) || (r.left.includes(b) && r.right.includes(a)));
-      if (rule && rule.adapters.length > 0) pairs.set(`${a}|${b}`, new Set(rule.adapters));
+      if (!rule || rule.adapters.length + rule.wiredOnly.length === 0) continue;
+      pairs.set(`${a}|${b}`, new Map([
+        ...rule.adapters.map((adapter) => [adapter, false]),
+        ...rule.wiredOnly.map((adapter) => [adapter, true]),
+      ]));
     }
   });
 
   // Sorted, so which adapters are on screen decides how they are drawn, not the order the rules list them
-  const adapters = [...new Set([...pairs.values()].flatMap((set) => [...set]))].sort();
+  const adapters = [...new Set([...pairs.values()].flatMap((lane) => [...lane.keys()]))].sort();
   return { chains, pairs, adapters };
 }
 
@@ -153,6 +162,12 @@ function render(config) {
     item.addEventListener("mouseleave", () => focusAdapter(null));
     legend.appendChild(item);
   }
+  if ([...pairs.values()].some((lane) => [...lane.values()].includes(true))) {
+    const item = document.createElement("span");
+    item.className = "item";
+    item.innerHTML = `<span class="swatch dashed"></span>wired only, not in the global set`;
+    legend.appendChild(item);
+  }
 
   const W = 860, CX = W / 2, CY = W / 2, R = W / 2 - 145;
   const svg = document.createElementNS(SVG_NS, "svg");
@@ -165,9 +180,9 @@ function render(config) {
 
   // Edges: one curve per (pair, adapter), parallel curves fanned apart per pair
   const edgeLayer = document.createElementNS(SVG_NS, "g");
-  for (const [key, adapterSet] of pairs) {
+  for (const [key, lane] of pairs) {
     const [a, b] = key.split("|");
-    const list = adapters.filter((ad) => adapterSet.has(ad));
+    const list = adapters.filter((ad) => lane.has(ad));
     const [p, q] = [pos[a], pos[b]];
     const [mx, my] = [(p.x + q.x) / 2, (p.y + q.y) / 2];
     const len = Math.hypot(q.x - p.x, q.y - p.y);
@@ -177,7 +192,7 @@ function render(config) {
       const bow = (i - (list.length - 1) / 2) * 14; // curve peak offset, px
       const path = document.createElementNS(SVG_NS, "path");
       path.setAttribute("d", `M ${p.x} ${p.y} Q ${mx + 2 * bow * nx} ${my + 2 * bow * ny} ${q.x} ${q.y}`);
-      path.setAttribute("class", "edge");
+      path.setAttribute("class", lane.get(adapter) ? "edge wired-only" : "edge");
       path.setAttribute("stroke", color(adapter));
       path.dataset.chains = key;
       path.dataset.adapter = adapter;
@@ -221,11 +236,15 @@ function render(config) {
     svg.classList.toggle("focused", name !== null);
     const neighbors = new Set();
     const usedAdapters = new Set();
+    const wiredOnlyAdapters = new Set();
     for (const edge of svg.querySelectorAll(".edge")) {
       const [a, b] = edge.dataset.chains.split("|");
       const on = a === name || b === name;
       edge.classList.toggle("on", on);
-      if (on) { neighbors.add(a === name ? b : a); usedAdapters.add(edge.dataset.adapter); }
+      if (on) {
+        neighbors.add(a === name ? b : a);
+        (edge.classList.contains("wired-only") ? wiredOnlyAdapters : usedAdapters).add(edge.dataset.adapter);
+      }
     }
     for (const node of svg.querySelectorAll(".node")) {
       node.classList.toggle("on", node.dataset.chain === name || neighbors.has(node.dataset.chain));
@@ -233,7 +252,8 @@ function render(config) {
     }
     caption.textContent = name === null
       ? `${chains.length} chains · ${pairs.size} connected pairs · hover a chain`
-      : `${name} · ${neighbors.size} connections · via ${[...usedAdapters].join(", ")}`;
+      : `${name} · ${neighbors.size} connections · via ${[...usedAdapters].join(", ") || "none"}` +
+        (wiredOnlyAdapters.size ? ` · wired only: ${[...wiredOnlyAdapters].join(", ")}` : "");
   }
 
   function focusAdapter(adapter) {
@@ -248,7 +268,7 @@ function render(config) {
   for (const rule of config.connections) {
     const row = document.createElement("tr");
     row.innerHTML = `<td>${showSide(rule.chains[0])}</td><td>${showSide(rule.chains[1])}</td>` +
-      `<td>${rule.adapters.join(", ")}</td><td>${rule.threshold}</td>`;
+      `<td>${rule.adapters.join(", ")}</td><td>${(rule.wiredOnly ?? []).join(", ")}</td><td>${rule.threshold}</td>`;
     tbody.appendChild(row);
   }
 }

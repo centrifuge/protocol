@@ -57,6 +57,8 @@ interface IVaultRouter is IMulticall {
     function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
 
     /// @notice Check `IERC4626.deposit`.
+    /// @dev    The vault sees the router as the depositor, so the router checks that msg.sender is permissioned on
+    ///         the vault, as a direct deposit would.
     /// @param  vault The vault to deposit into
     /// @param  assets Check @param IERC4626.deposit.assets
     /// @param  receiver Check @param IERC4626.deposit.receiver

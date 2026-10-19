@@ -11,7 +11,8 @@ import {console} from "forge-std/console.sol";
 import {IDeployGate} from "create3-gate/src/IDeployGate.sol";
 import {GateProposalScript} from "../utils/GateProposal.s.sol";
 
-/// @dev How a gated deployment is signed. The gate both phases need is brought up by the commit phase.
+/// @dev How a gated deployment is signed. The gate both phases need is brought up by a key's commit phase, and
+///      is already on the chain when a Safe commits.
 enum DeployPhase {
     // Commit what may be deployed and who may deploy it: the single transaction the admin signs
     Commit,
@@ -24,8 +25,8 @@ enum DeployPhase {
 contract GatedDeployer is BaseDeployer, GateProposalScript {
     using AccountLib for address;
 
-    /// @dev The gate lets a namespace hold several commitments at once. This deployment wants one, so it
-    ///      pins an id and committing again always replaces what came before. Reaches no address.
+    /// @dev The canonical deployment's commitment id, the one every release has committed under. Reaches no
+    ///      address.
     bytes32 internal constant DEFAULT_COMMITMENT_ID = bytes32(uint256(1));
 
     /// @dev The account addresses derive from, alongside the gate and the salt. Not the one a phase acts as:
@@ -48,6 +49,7 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
 
     DeployPhase internal deployPhase;
     IDeployGate public deployGate;
+    bytes32 public commitmentId;
     uint256 public committedContracts;
     uint256 public deployedContracts;
     address[] private executors;
@@ -74,27 +76,30 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         deployGate = IDeployGate(DEPLOY_GATE_ADDRESS);
         namespace = namespace_;
         deployPhase = phase;
+        commitmentId = commitmentIdOf(deploymentId_);
 
         scripting = vm.isContext(VmSafe.ForgeContext.ScriptGroup);
         proposing = scripting && phase == DeployPhase.Commit && msg.sender.isSafeAccount();
 
-        // A proposing run brings no gate up itself — the deployment rides in its proposal — so the chain
-        // stays readable for `_commitToGate` to build that proposal from; the walk gets a simulated gate
-        // inside its rollback instead. Every other run wants one here: under a broadcast a missing gate is
-        // deployed for real, as the transaction before the commitment's own
-        if (!proposing) setUpDeployGate();
+        // A proposing run broadcasts nothing, so it could bring a gate up only in its simulation. A key run
+        // brings it up here: under a broadcast a missing gate is deployed for real, as the transaction before
+        // the commitment's own
+        if (proposing) {
+            requireDeployGate();
+        } else {
+            setUpDeployGate();
+        }
 
         // Fails a wrong sender at once rather than at the very end of the run, where the gate would reject
         // it anyway. One staticcall against the registry that enforces it for real, so this can never
-        // disagree with it: who may commit is decided by the gate, and here it is only reported early. A
-        // chain with no gate yet holds no delegates, so there only the namespace commits.
+        // disagree with it: who may commit is decided by the gate, and here it is only reported early.
         //
         // `--sender` is the account the phase acts as, a Safe included: a proposing run broadcasts nothing,
         // so forge takes any address there, and the owner or proposer who signs is whoever holds the Ledger
         // — the Safe transaction service is what checks that account may propose, once it is posted.
         if (scripting && phase == DeployPhase.Commit) {
             require(
-                msg.sender == namespace_ || (isDeployGateDeployed() && deployGate.isDelegate(namespace_, msg.sender)),
+                msg.sender == namespace_ || deployGate.isDelegate(namespace_, msg.sender),
                 "Not the namespace nor one of its delegates: pass a --sender the namespace answers to"
             );
         }
@@ -111,6 +116,19 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         executors = executors_;
         delete queuedSalts;
         delete queuedInitCodeHashes;
+    }
+
+    /// @notice The gate commitment a deployment commits under and deploys from. A namespace may hold several,
+    ///         and committing replaces only the one under the same id, so each deployment gets its own: the
+    ///         canonical one `DEFAULT_COMMITMENT_ID`, any other its deployment id's own bytes, which a Safe
+    ///         proposal shows as that text. Committing an isolated deployment therefore never touches the
+    ///         canonical commitment of the same namespace, nor another deployment's.
+    function commitmentIdOf(string memory deploymentId_) internal pure returns (bytes32) {
+        bytes memory id = bytes(deploymentId_);
+        if (id.length == 0) return DEFAULT_COMMITMENT_ID;
+
+        require(id.length <= 32, "Deployment id is too long to name a commitment");
+        return bytes32(id);
     }
 
     /// @notice Submits one contract to the DeployGate: committed in the commit phase, deployed in the deploy phase.
@@ -217,22 +235,19 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         // stands rather than counting along with it, so that a run picking up a half-deployed commitment
         // reads the same position the gate is about to enforce. Reports the address, which the DeployGate
         // itself cannot name
-        (,, uint64 position, uint64 deployableAt) = deployGate.commitments(namespace, DEFAULT_COMMITMENT_ID);
+        (,, uint64 position, uint64 deployableAt) = deployGate.commitments(namespace, commitmentId);
         if (block.timestamp < deployableAt) {
             console.log("Committed by a delegate, deployable at %s, now %s", deployableAt, block.timestamp);
             revert("The namespace's delay on delegate commitments has not passed yet");
         }
-        if (
-            deployGate.committed(namespace, DEFAULT_COMMITMENT_ID, salt)
-                != deployGate.commitment(keccak256(initCode), position)
-        ) {
+        if (deployGate.committed(namespace, commitmentId, salt) != deployGate.commitment(keccak256(initCode), position))
+        {
             console.log("Not committed, or out of order at position %s: %s", position, target);
             revert("Deployment does not match what was committed, commit again");
         }
 
         require(
-            deployGate.deploy(namespace, DEFAULT_COMMITMENT_ID, salt, initCode) == target,
-            "Deployment landed somewhere else"
+            deployGate.deploy(namespace, commitmentId, salt, initCode) == target, "Deployment landed somewhere else"
         );
         deployedContracts++;
 
@@ -244,7 +259,8 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
     ///      was not asked for, under an id of its own so the phase's commitment is left alone — and as the
     ///      namespace, which no chain ever sees: the walk runs unbroadcast and is rolled back whole.
     function _probeDeploy(bytes32 salt, bytes memory initCode) private returns (address) {
-        bytes32 probeId = bytes32(uint256(DEFAULT_COMMITMENT_ID) + 1);
+        // Only has to differ from the phase's own id: the walk is rolled back whole, this commitment with it
+        bytes32 probeId = bytes32(uint256(commitmentId) + 1);
         bytes32[] memory salts = new bytes32[](1);
         bytes32[] memory initCodeHashes = new bytes32[](1);
         address[] memory probeExecutors = new address[](1);
@@ -296,19 +312,18 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
 
     /// @dev The one call made in a namespace's name, and the only place a phase reaches the gate to change
     ///      anything. Made as the sender: a key signs it as a transaction; a Safe is handed the same call as
-    ///      a proposal its owners sign afterwards, through `proposeGateCall`, which is also what brings the
-    ///      gate itself up on a chain that has none — nothing else in a proposing run is broadcast
+    ///      a proposal its owners sign afterwards, through `proposeGateCall` — nothing else in a proposing run
+    ///      is broadcast
     function _commitToGate(bytes32[] memory salts, bytes32[] memory initCodeHashes, address[] memory executors_)
         internal
     {
         if (!proposing) {
-            deployGate.commit(namespace, DEFAULT_COMMITMENT_ID, salts, initCodeHashes, executors_);
+            deployGate.commit(namespace, commitmentId, salts, initCodeHashes, executors_);
             return;
         }
 
         proposeGateCall(
-            msg.sender,
-            abi.encodeCall(IDeployGate.commit, (namespace, DEFAULT_COMMITMENT_ID, salts, initCodeHashes, executors_))
+            msg.sender, abi.encodeCall(IDeployGate.commit, (namespace, commitmentId, salts, initCodeHashes, executors_))
         );
     }
 

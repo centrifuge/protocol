@@ -47,6 +47,8 @@ import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 ///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
 ///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
 ///         - `setPolicy` and `setSpokePolicy` use `escalation` instead of `delay`.
+///         - `updateRestriction` is out of policy except a canonical Freeze, unless `isRestrictionUpdateInstant` is set,
+///           which makes it instant.
 ///         - Cross-chain notifications and pool/share metadata updates are in policy, except
 ///           `notifyShareClass`, which carries a caller-supplied registrar rather than committed state.
 ///         - Everything else (deny-by-default) falls through to `delay`.
@@ -79,6 +81,7 @@ contract StdHubPolicy is IStdHubPolicy {
     uint128 public immutable thresholdPerSecond;
     uint128 public immutable maxBrmPriceDeviation;
     uint128 public immutable maxAbsolutePriceDelta;
+    bool public immutable isRestrictionUpdateInstant;
 
     // State
     mapping(PoolId => mapping(ShareClassId => uint64)) public lastPriceUpdate;
@@ -107,6 +110,7 @@ contract StdHubPolicy is IStdHubPolicy {
         thresholdPerSecond = config.thresholdPerSecond;
         maxBrmPriceDeviation = config.maxBrmPriceDeviation;
         maxAbsolutePriceDelta = config.maxAbsolutePriceDelta;
+        isRestrictionUpdateInstant = config.isRestrictionUpdateInstant;
 
         for (uint256 i; i < config.allowlist.length; i++) {
             Entry memory entry = config.allowlist[i];
@@ -226,7 +230,9 @@ contract StdHubPolicy is IStdHubPolicy {
         if (_isSharePriceUpdate(selector)) {
             return _checkSharePrice(poolId, payload);
         }
-        if (selector == IHub.updateRestriction.selector) return _checkRestriction(payload);
+        if (selector == IHub.updateRestriction.selector) {
+            return isRestrictionUpdateInstant ? 0 : _checkRestriction(payload);
+        }
         if (selector == IHub.managerCall.selector) return _checkManagerCall(poolId, payload);
 
         // Instant only where the action races something itself instant: cancelAuthorization races a maturing

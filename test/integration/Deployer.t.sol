@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
+import {ERC20} from "../../src/misc/ERC20.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 
+import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
+import {MessageLib} from "../../src/core/messaging/libraries/MessageLib.sol";
+import {IMultiAdapter} from "../../src/core/messaging/interfaces/IMultiAdapter.sol";
 
 import {Root} from "../../src/admin/Root.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
@@ -25,15 +29,57 @@ import {
 import "forge-std/Test.sol";
 
 import {RootFixes} from "../../src/deployment/RootFixes.sol";
+import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
+import {ChainlinkAdapter} from "../../src/adapters/ChainlinkAdapter.sol";
+import {HyperlaneAdapter} from "../../src/adapters/HyperlaneAdapter.sol";
+import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
 import {ISO4217_DECIMALS, iso4217Codes} from "../../src/deployment/Currencies.sol";
 import {CoreReport, CoreActionBatcher, RootAccessMismatch} from "../../src/deployment/ActionBatchers.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
+/// @dev Records what the batcher configures, per OApp, so a test can tell which of them got the protocol's config
 contract LayerZeroEndpointMock {
+    address public immutable sendLib = makeAddr("SendLib");
+    address public immutable receiveLib = makeAddr("ReceiveLib");
+
     mapping(address oapp => address delegate) public delegates;
+    mapping(address oapp => mapping(uint32 eid => address)) public sendLibraries;
+    mapping(address oapp => mapping(uint32 eid => address)) public receiveLibraries;
+    mapping(address oapp => mapping(address lib => bytes)) public configs;
 
     function setDelegate(address _delegate) external {
         delegates[msg.sender] = _delegate;
+    }
+
+    function defaultSendLibrary(uint32) external view returns (address) {
+        return sendLib;
+    }
+
+    function defaultReceiveLibrary(uint32) external view returns (address) {
+        return receiveLib;
+    }
+
+    function setSendLibrary(address oapp, uint32 eid, address lib) external onlyDelegate(oapp) {
+        sendLibraries[oapp][eid] = lib;
+    }
+
+    function setReceiveLibrary(address oapp, uint32 eid, address lib, uint256) external onlyDelegate(oapp) {
+        receiveLibraries[oapp][eid] = lib;
+    }
+
+    function setConfig(address oapp, address lib, SetConfigParam[] calldata params) external onlyDelegate(oapp) {
+        configs[oapp][lib] = params[0].config;
+    }
+
+    /// @dev As the real endpoint: whoever configures an OApp must be it or its delegate, which is what
+    ///      makes the batcher hold the delegacy while it configures and hand it over only afterwards
+    modifier onlyDelegate(address oapp) {
+        require(msg.sender == oapp || msg.sender == delegates[oapp], "not delegate");
+        _;
+    }
+
+    function makeAddr(string memory name) internal pure returns (address) {
+        return address(uint160(uint256(keccak256(bytes(name)))));
     }
 }
 
@@ -51,6 +97,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     address immutable CHAINLINK_CCIP_ROUTER = makeAddr("ChainlinkCCIPRouter");
 
     address immutable HYPERLANE_MAILBOX = makeAddr("HyperlaneMailbox");
+    address immutable HYPERLANE_ISM = makeAddr("HyperlaneIsm");
 
     bytes constant SIMPLE_CONTRACT = hex"6001600160005260206000f3";
 
@@ -62,6 +109,8 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     /// @dev What a launch is handed. Zero root means it deploys its own; the subclasses below vary them
     address internal existingRoot_;
     uint256 internal delay_ = MAINNET_DELAY;
+    AdapterConnections[] internal connections_;
+    SetConfigParam[] internal layerZeroConfigParams_;
 
     /// @dev Mock deployed code for validation check which requires deployed code length > 0
     function _mockBridgeContracts() internal {
@@ -122,11 +171,11 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
                     shouldDeploy: true,
                     endpoint: LAYERZERO_ENDPOINT,
                     delegate: LAYERZERO_DELEGATE,
-                    configParams: new SetConfigParam[](0)
+                    configParams: layerZeroConfigParams_
                 }),
                 chainlink: ChainlinkInput({shouldDeploy: true, ccipRouter: CHAINLINK_CCIP_ROUTER}),
-                hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: address(0)}),
-                connections: new AdapterConnections[](0) // TODO: test this
+                hyperlane: HyperlaneInput({shouldDeploy: true, mailbox: HYPERLANE_MAILBOX, ism: HYPERLANE_ISM}),
+                connections: connections_
             })
         });
     }
@@ -266,6 +315,9 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(spokeHandler.spokeRegistry()), address(spokeRegistry));
         assertEq(address(spokeHandler.escrowFactory()), address(escrowFactory));
+
+        // root endorsements
+        assertEq(root.endorsed(address(spokeHandler)), true);
     }
 
     function testSpoke(address nonWard) public view {
@@ -313,12 +365,11 @@ contract FullDeploymentTestCore is FullDeploymentConfigTest {
         vm.assume(nonWard != address(root));
         vm.assume(nonWard != address(spokeHandler));
         vm.assume(nonWard != address(spoke));
-        vm.assume(nonWard != address(spokeRegistry));
 
         assertEq(shareTokenRegistrar.wards(address(root)), 1);
         assertEq(shareTokenRegistrar.wards(address(spokeHandler)), 1);
         assertEq(shareTokenRegistrar.wards(address(spoke)), 1);
-        assertEq(shareTokenRegistrar.wards(address(spokeRegistry)), 1);
+        assertEq(shareTokenRegistrar.wards(address(spokeRegistry)), 0);
         assertEq(shareTokenRegistrar.wards(nonWard), 0);
 
         // dependencies set correctly
@@ -691,11 +742,10 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testBatchRequestManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(hub));
         vm.assume(nonWard != address(hubHandler));
 
         assertEq(batchRequestManager.wards(address(root)), 1);
-        assertEq(batchRequestManager.wards(address(hub)), 1);
+        assertEq(batchRequestManager.wards(address(hub)), 0);
         assertEq(batchRequestManager.wards(address(hubHandler)), 1);
         assertEq(batchRequestManager.wards(nonWard), 0);
 
@@ -883,12 +933,187 @@ contract FullDeploymentTestAdapters is FullDeploymentConfigTest {
         // dependencies set correctly
         assertEq(address(hyperlaneAdapter.entrypoint()), address(multiAdapter));
         assertEq(address(hyperlaneAdapter.mailbox()), HYPERLANE_MAILBOX);
+        assertEq(address(hyperlaneAdapter.interchainSecurityModule()), HYPERLANE_ISM);
+    }
+
+    /// @dev Each standby wraps an instance of its bridge of its own, whose entrypoint is the standby and
+    ///      whose wards are the global adapter's
+    function testStandbyAdapters(address nonWard) public view {
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(opsGuardian));
+        vm.assume(nonWard != address(ADMIN_SAFE));
+
+        LayerZeroAdapter layerZeroStandbyUnderlying = LayerZeroAdapter(address(layerZeroStandby.underlying()));
+        AxelarAdapter axelarStandbyUnderlying = AxelarAdapter(address(axelarStandby.underlying()));
+        ChainlinkAdapter chainlinkStandbyUnderlying = ChainlinkAdapter(address(chainlinkStandby.underlying()));
+        HyperlaneAdapter hyperlaneStandbyUnderlying = HyperlaneAdapter(address(hyperlaneStandby.underlying()));
+
+        // permissions set correctly: the same the global adapter of each bridge has
+        assertEq(layerZeroStandbyUnderlying.wards(address(root)), 1);
+        assertEq(layerZeroStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(layerZeroStandbyUnderlying.wards(address(ADMIN_SAFE)), 1);
+        assertEq(layerZeroStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(layerZeroStandbyUnderlying.wards(nonWard), 0);
+
+        assertEq(axelarStandbyUnderlying.wards(address(root)), 1);
+        assertEq(axelarStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(axelarStandbyUnderlying.wards(address(ADMIN_SAFE)), 0);
+        assertEq(axelarStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(axelarStandbyUnderlying.wards(nonWard), 0);
+
+        assertEq(chainlinkStandbyUnderlying.wards(address(root)), 1);
+        assertEq(chainlinkStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(chainlinkStandbyUnderlying.wards(address(ADMIN_SAFE)), 0);
+        assertEq(chainlinkStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(chainlinkStandbyUnderlying.wards(nonWard), 0);
+
+        assertEq(hyperlaneStandbyUnderlying.wards(address(root)), 1);
+        assertEq(hyperlaneStandbyUnderlying.wards(address(opsGuardian)), 1);
+        assertEq(hyperlaneStandbyUnderlying.wards(address(ADMIN_SAFE)), 1);
+        assertEq(hyperlaneStandbyUnderlying.wards(address(protocolGuardian)), 0);
+        assertEq(hyperlaneStandbyUnderlying.wards(nonWard), 0);
+
+        // dependencies set correctly: the standby faces the MultiAdapter, and its underlying faces the standby
+        assertEq(address(layerZeroStandby.entrypoint()), address(multiAdapter));
+        assertEq(address(axelarStandby.entrypoint()), address(multiAdapter));
+        assertEq(address(chainlinkStandby.entrypoint()), address(multiAdapter));
+        assertEq(address(hyperlaneStandby.entrypoint()), address(multiAdapter));
+
+        assertEq(address(layerZeroStandbyUnderlying.entrypoint()), address(layerZeroStandby));
+        assertEq(address(axelarStandbyUnderlying.entrypoint()), address(axelarStandby));
+        assertEq(address(chainlinkStandbyUnderlying.entrypoint()), address(chainlinkStandby));
+        assertEq(address(hyperlaneStandbyUnderlying.entrypoint()), address(hyperlaneStandby));
+
+        // Over the same bridge as the global adapter, and a contract of its own
+        assertNotEq(address(layerZeroStandbyUnderlying), address(layerZeroAdapter));
+        assertNotEq(address(axelarStandbyUnderlying), address(axelarAdapter));
+        assertNotEq(address(chainlinkStandbyUnderlying), address(chainlinkAdapter));
+        assertNotEq(address(hyperlaneStandbyUnderlying), address(hyperlaneAdapter));
+
+        assertEq(address(layerZeroStandbyUnderlying.endpoint()), LAYERZERO_ENDPOINT);
+        assertEq(address(axelarStandbyUnderlying.axelarGateway()), AXELAR_GATEWAY);
+        assertEq(address(axelarStandbyUnderlying.axelarGasService()), AXELAR_GAS_SERVICE);
+        assertEq(address(chainlinkStandbyUnderlying.ccipRouter()), CHAINLINK_CCIP_ROUTER);
+        assertEq(address(hyperlaneStandbyUnderlying.mailbox()), HYPERLANE_MAILBOX);
+
+        // Configured as the global adapters are: the delegate, and an ISM of its own rather than the
+        // Mailbox default
+        assertEq(
+            ILayerZeroEndpointV2Like(LAYERZERO_ENDPOINT).delegates(address(layerZeroStandbyUnderlying)),
+            LAYERZERO_DELEGATE
+        );
+        assertEq(address(hyperlaneStandbyUnderlying.interchainSecurityModule()), HYPERLANE_ISM);
     }
 
     function testAdapterFailover() public view {
         assertEq(address(adapterFailover.multiAdapter()), address(multiAdapter));
         assertEq(adapterFailover.envoy(), address(envoy));
         assertEq(adapterFailover.timelock(), uint64(MAINNET_DELAY));
+    }
+}
+
+/// @dev A launch with a connection: the global set is the bridge adapters alone, and the standbys are wired to
+///      their peer standby underlyings with the same LayerZero config
+contract FullDeploymentTestAdapterConnections is FullDeploymentConfigTest {
+    uint16 constant REMOTE_CENTRIFUGE_ID = 5;
+    uint32 constant REMOTE_LAYERZERO_ID = 30_005;
+    bytes constant ULN_CONFIG = hex"c0ffee";
+
+    function setUp() public override {
+        connections_.push(
+            AdapterConnections({
+                centrifugeId: REMOTE_CENTRIFUGE_ID,
+                layerZeroId: REMOTE_LAYERZERO_ID,
+                axelarId: "remote",
+                chainlinkId: 5_000,
+                hyperlaneId: 5,
+                threshold: 2,
+                layerZeroWiredOnly: false,
+                axelarWiredOnly: false,
+                chainlinkWiredOnly: false,
+                hyperlaneWiredOnly: false
+            })
+        );
+        layerZeroConfigParams_.push(SetConfigParam({eid: REMOTE_LAYERZERO_ID, configType: 2, config: ULN_CONFIG}));
+        super.setUp();
+    }
+
+    /// @dev Mirrored onto the standby's underlying, so that a pool taking it up verifies with the protocol's
+    ///      libraries and DVNs rather than LayerZero's defaults
+    function testLayerZeroConfigMirroredOnStandby() public view {
+        LayerZeroEndpointMock endpoint = LayerZeroEndpointMock(LAYERZERO_ENDPOINT);
+        address[2] memory oapps = [address(layerZeroAdapter), address(layerZeroStandby.underlying())];
+
+        for (uint256 i; i < oapps.length; i++) {
+            assertEq(endpoint.sendLibraries(oapps[i], REMOTE_LAYERZERO_ID), endpoint.sendLib());
+            assertEq(endpoint.receiveLibraries(oapps[i], REMOTE_LAYERZERO_ID), endpoint.receiveLib());
+            assertEq(endpoint.configs(oapps[i], endpoint.sendLib()), ULN_CONFIG);
+            assertEq(endpoint.configs(oapps[i], endpoint.receiveLib()), ULN_CONFIG);
+            assertEq(endpoint.delegates(oapps[i]), LAYERZERO_DELEGATE);
+        }
+    }
+
+    function testGlobalSetHoldsNoStandby() public view {
+        assertEq(multiAdapter.quorum(REMOTE_CENTRIFUGE_ID, PoolId.wrap(0)), 4);
+        assertEq(multiAdapter.threshold(REMOTE_CENTRIFUGE_ID, PoolId.wrap(0)), 2);
+
+        address[4] memory expected =
+            [address(layerZeroAdapter), address(axelarAdapter), address(chainlinkAdapter), address(hyperlaneAdapter)];
+        for (uint256 i; i < expected.length; i++) {
+            assertEq(address(multiAdapter.adapters(REMOTE_CENTRIFUGE_ID, PoolId.wrap(0), 1, i)), expected[i]);
+        }
+    }
+
+    // Each standby underlying is wired to every lane its global adapter is, and to the peer's standby
+    // underlying rather than its global adapter, so a forwarded vote lands on the standby at the other end
+
+    function testLayerZeroStandbyWiredToItsPeer() public view {
+        LayerZeroAdapter lz = LayerZeroAdapter(address(layerZeroStandby.underlying()));
+        (uint32 eid, address peer) = lz.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, address sourcePeer) = lz.sources(REMOTE_LAYERZERO_ID);
+        assertEq(eid, REMOTE_LAYERZERO_ID);
+        assertEq(peer, address(lz), "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, address(lz));
+    }
+
+    function testAxelarStandbyWiredToItsPeer() public view {
+        AxelarAdapter axelar = AxelarAdapter(address(axelarStandby.underlying()));
+        string memory expected = vm.toString(address(axelar));
+        (string memory axelarId, string memory peer) = axelar.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, bytes32 sourcePeer) = axelar.sources("remote");
+        assertEq(axelarId, "remote");
+        assertEq(peer, expected, "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, keccak256(bytes(expected)));
+    }
+
+    function testChainlinkStandbyWiredToItsPeer() public view {
+        ChainlinkAdapter chainlink = ChainlinkAdapter(address(chainlinkStandby.underlying()));
+        (uint64 selector, address peer,) = chainlink.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, address sourcePeer,) = chainlink.sources(5_000);
+        assertEq(selector, 5_000);
+        assertEq(peer, address(chainlink), "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, address(chainlink));
+    }
+
+    function testHyperlaneStandbyWiredToItsPeer() public view {
+        HyperlaneAdapter hyperlane = HyperlaneAdapter(address(hyperlaneStandby.underlying()));
+        (uint32 domain, address peer) = hyperlane.destinations(REMOTE_CENTRIFUGE_ID);
+        (uint16 source, address sourcePeer) = hyperlane.sources(5);
+        assertEq(domain, 5);
+        assertEq(peer, address(hyperlane), "the peer's standby underlying");
+        assertEq(source, REMOTE_CENTRIFUGE_ID);
+        assertEq(sourcePeer, address(hyperlane));
+    }
+
+    /// @dev Bound once, by the launch: the OpsGuardian cannot re-point a standby's lane, only Root can
+    function testOpsCannotRewireAStandby() public {
+        LayerZeroAdapter lz = LayerZeroAdapter(address(layerZeroStandby.underlying()));
+        vm.prank(address(OPS_SAFE));
+        vm.expectRevert(IOpsGuardian.AdapterAlreadyWired.selector);
+        opsGuardian.wire(lz, REMOTE_CENTRIFUGE_ID, abi.encode(REMOTE_LAYERZERO_ID, makeAddr("elsewhere")));
     }
 }
 
@@ -1267,7 +1492,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
 
         // Same deployment a single signer would have produced
         assertGt(deployedContracts, 50);
-        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(hub.sender()), address(messageDispatcher));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(gateway.wards(address(root)), 1);
         assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
@@ -1313,9 +1538,35 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
     function testTheRestOfTheDeploymentIsUnchanged() public view {
         assertEq(gateway.wards(address(root)), 1, "root on gateway");
         assertEq(hub.wards(address(hubHandler)), 1, "hubHandler on hub");
-        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(hub.sender()), address(messageDispatcher));
         assertEq(gateway.wards(address(coreBatcher)), 0, "coreBatcher should have revoked itself");
         _assertCurrenciesRegistered();
+    }
+
+    /// @dev The one piece of wiring that waits for the launch spell rather than `RootFixes`: the previous
+    ///      release's assets have to land under their old ids before anyone can register one
+    function testSpokeSenderIsPendingUntilTheLaunchSpell() public {
+        assertEq(address(spoke.sender()), address(0));
+
+        ERC20 asset = new ERC20(6);
+        vm.expectRevert();
+        spoke.registerAsset(centrifugeId_, address(asset), 0, address(this));
+
+        // Casting the fixes does not open the window: governance may get to them before the spell is ready
+        priorRoot.scheduleRely(address(rootFixes));
+        vm.warp(block.timestamp + MAINNET_DELAY);
+        priorRoot.executeScheduledRely(address(rootFixes));
+        rootFixes.cast();
+
+        vm.expectRevert();
+        spoke.registerAsset(centrifugeId_, address(asset), 0, address(this));
+
+        // What the spell does last, with the ward Root gives it
+        vm.prank(address(root));
+        spoke.file("sender", address(messageDispatcher));
+
+        spoke.registerAsset(centrifugeId_, address(asset), 0, address(this));
+        assertFalse(spokeRegistry.assetToId(address(asset), 0).isNull(), "asset registered");
     }
 
     /// @dev Deploy-time only, like the action batchers, so it stays out of `env/<network>.json`. The Root it
@@ -1333,6 +1584,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(coreBatcher)), 0, "coreBatcher on root");
         assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
         assertFalse(root.endorsed(address(spoke)), "spoke endorsed");
+        assertFalse(root.endorsed(address(spokeHandler)), "spokeHandler endorsed");
         assertFalse(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
         assertFalse(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertFalse(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
@@ -1354,6 +1606,7 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(messageProcessor)), 1, "messageProcessor on root");
         assertEq(root.wards(address(protocolGuardian)), 1, "protocolGuardian on root");
         assertTrue(root.endorsed(address(spoke)), "spoke endorsed");
+        assertTrue(root.endorsed(address(spokeHandler)), "spokeHandler endorsed");
         assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
         assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
@@ -1424,7 +1677,7 @@ contract ExistingRootPhasedTest is FullDeploymentPhasedTest {
 
         assertEq(address(root), address(priorRoot), "the Root it was given");
         assertGt(address(rootFixes).code.length, 0, "rootFixes");
-        assertEq(address(spoke.sender()), address(messageDispatcher));
+        assertEq(address(spoke.sender()), address(0), "spoke sender waits for the launch spell");
         assertEq(gateway.wards(address(root)), 1, "root on gateway");
         assertEq(root.wards(address(messageDispatcher)), 0, "root wiring waits for rootFixes");
     }
@@ -1505,5 +1758,111 @@ contract FullDeploymentNoDelayTest is FullDeploymentConfigTest {
     function testTheDelayMovesNoAddress() public {
         assertEq(address(root), gatedAddress("root", V3_3));
         assertEq(address(adapterFailover), gatedAddress("adapterFailover", V3_3));
+    }
+}
+
+/// @dev What the launch does with the lanes it is handed: every adapter a lane names is wired to its peer, and
+///      only those not flagged wired-only join the lane's global adapter set, which the threshold counts.
+contract FullDeploymentTestConnections is FullDeploymentConfigTest {
+    using MessageLib for *;
+
+    // LayerZero and Hyperlane in the set, Axelar and Chainlink wired only
+    uint16 constant MIXED = 5;
+    // Same split with no threshold given: the batcher falls back to the size of the set, not of what it wires
+    uint16 constant FALLBACK = 6;
+
+    function _lane(uint16 centrifugeId, uint8 threshold) private pure returns (AdapterConnections memory) {
+        return AdapterConnections({
+            centrifugeId: centrifugeId,
+            layerZeroId: 30_000 + centrifugeId,
+            axelarId: string.concat("remote-", vm.toString(centrifugeId)),
+            chainlinkId: 5000 + centrifugeId,
+            hyperlaneId: centrifugeId,
+            threshold: threshold,
+            layerZeroWiredOnly: false,
+            axelarWiredOnly: true,
+            chainlinkWiredOnly: true,
+            hyperlaneWiredOnly: false
+        });
+    }
+
+    function setUp() public override {
+        connections_.push(_lane(MIXED, 1));
+        connections_.push(_lane(FALLBACK, 0));
+        super.setUp();
+    }
+
+    /// @dev The binding itself, both ways, rather than `isWired`, which holds as soon as either side is set
+    function testWiresEveryAdapterTheLaneNamesToItsPeer() public view {
+        (uint32 eid, address lzPeer) = layerZeroAdapter.destinations(MIXED);
+        (uint16 lzSource, address lzSourceAddr) = layerZeroAdapter.sources(30_005);
+        assertEq(eid, 30_005, "layerZero destination");
+        assertEq(lzPeer, address(layerZeroAdapter), "layerZero peer");
+        assertEq(lzSource, MIXED, "layerZero source");
+        assertEq(lzSourceAddr, address(layerZeroAdapter), "layerZero source peer");
+
+        (uint32 domain, address hlPeer) = hyperlaneAdapter.destinations(MIXED);
+        (uint16 hlSource, address hlSourceAddr) = hyperlaneAdapter.sources(5);
+        assertEq(domain, 5, "hyperlane destination");
+        assertEq(hlPeer, address(hyperlaneAdapter), "hyperlane peer");
+        assertEq(hlSource, MIXED, "hyperlane source");
+        assertEq(hlSourceAddr, address(hyperlaneAdapter), "hyperlane source peer");
+
+        string memory axelarPeer = vm.toString(address(axelarAdapter));
+        (string memory axelarId, string memory axPeer) = axelarAdapter.destinations(MIXED);
+        (uint16 axSource, bytes32 axSourceHash) = axelarAdapter.sources("remote-5");
+        assertEq(axelarId, "remote-5", "axelar destination");
+        assertEq(axPeer, axelarPeer, "axelar peer");
+        assertEq(axSource, MIXED, "axelar source");
+        assertEq(axSourceHash, keccak256(bytes(axelarPeer)), "axelar source peer");
+
+        (uint64 selector, address clPeer,) = chainlinkAdapter.destinations(MIXED);
+        (uint16 clSource, address clSourceAddr,) = chainlinkAdapter.sources(5005);
+        assertEq(selector, 5005, "chainlink destination");
+        assertEq(clPeer, address(chainlinkAdapter), "chainlink peer");
+        assertEq(clSource, MIXED, "chainlink source");
+        assertEq(clSourceAddr, address(chainlinkAdapter), "chainlink source peer");
+    }
+
+    function testGlobalSetHoldsOnlyTheAdaptersNotWiredOnly() public view {
+        PoolId global = PoolId.wrap(0);
+        uint16 session = multiAdapter.activeSessionId(MIXED, global);
+
+        assertEq(multiAdapter.quorum(MIXED, global), 2, "set size");
+        assertEq(multiAdapter.threshold(MIXED, global), 1, "threshold");
+        assertEq(address(multiAdapter.adapters(MIXED, global, session, 0)), address(layerZeroAdapter));
+        assertEq(address(multiAdapter.adapters(MIXED, global, session, 1)), address(hyperlaneAdapter));
+    }
+
+    /// @dev A standby follows its global adapter onto every lane it is wired to, wired only or not
+    function testStandbyIsWiredOnALaneItsAdapterIsWiredOnlyTo() public view {
+        AxelarAdapter axelar = AxelarAdapter(address(axelarStandby.underlying()));
+        (string memory axelarId, string memory peer) = axelar.destinations(MIXED);
+        assertEq(axelarId, "remote-5");
+        assertEq(peer, vm.toString(address(axelar)), "the peer's standby underlying");
+    }
+
+    /// @dev Four adapters wired, two in the set: an unset threshold means all of the set, not all that is wired
+    function testUnsetThresholdIsTheSizeOfTheSet() public view {
+        assertEq(multiAdapter.quorum(FALLBACK, PoolId.wrap(0)), 2, "set size");
+        assertEq(multiAdapter.threshold(FALLBACK, PoolId.wrap(0)), 2, "threshold falls back to the set");
+    }
+
+    /// @dev The property the flag exists for: a wired-only adapter is bound to its peer, yet the global pool does
+    ///      not take a vote from it, while an adapter in the set is counted for the same message
+    function testWiredOnlyAdapterCannotVoteOnAGlobalMessage() public {
+        bytes memory message = MessageLib.ScheduleUpgrade({target: bytes32(uint256(1))}).serialize();
+        bytes memory payload = abi.encodePacked(multiAdapter.activeSessionId(MIXED, PoolId.wrap(0)), message);
+
+        vm.prank(address(layerZeroAdapter));
+        multiAdapter.vote(MIXED, payload);
+
+        vm.prank(address(axelarAdapter));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.vote(MIXED, payload);
+
+        vm.prank(address(chainlinkAdapter));
+        vm.expectRevert(IMultiAdapter.InvalidAdapter.selector);
+        multiAdapter.vote(MIXED, payload);
     }
 }

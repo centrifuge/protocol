@@ -62,6 +62,7 @@ import {RootFixes} from "../../src/deployment/RootFixes.sol";
 import {TokenBridge} from "../../src/bridge/TokenBridge.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {AxelarAdapter} from "../../src/adapters/AxelarAdapter.sol";
+import {StandbyAdapter} from "../../src/adapters/StandbyAdapter.sol";
 import {ChainlinkAdapter} from "../../src/adapters/ChainlinkAdapter.sol";
 import {HyperlaneAdapter} from "../../src/adapters/HyperlaneAdapter.sol";
 import {LayerZeroAdapter} from "../../src/adapters/LayerZeroAdapter.sol";
@@ -193,6 +194,12 @@ contract FullDeployer is GatedDeployer {
     LayerZeroAdapter layerZeroAdapter;
     HyperlaneAdapter hyperlaneAdapter;
 
+    // One standby per bridge, each over a dedicated instance of it, in no global adapter set
+    StandbyAdapter layerZeroStandby;
+    StandbyAdapter axelarStandby;
+    StandbyAdapter chainlinkStandby;
+    StandbyAdapter hyperlaneStandby;
+
     RootFixes public rootFixes;
 
     CoreActionBatcher public coreBatcher;
@@ -230,10 +237,6 @@ contract FullDeployer is GatedDeployer {
 
             uint256 snapshot = vm.snapshotState();
 
-            // A no-op except when proposing, the one run that reaches here without a gate: the walk needs
-            // one to ask for addresses, and bringing it up inside the rollback is what keeps the chain
-            // readable for the proposal built after it
-            setUpDeployGate();
             _deployProtocol(input);
             (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
 
@@ -313,6 +316,7 @@ contract FullDeployer is GatedDeployer {
                         input.adapters.layerZero.configParams,
                         input.adapters.layerZero.delegate,
                         vm.toString(address(axelarAdapter)),
+                        address(axelarStandby) != address(0) ? vm.toString(address(axelarStandby.underlying())) : "",
                         input.adapters.hyperlane.ism
                     )
                 )
@@ -785,6 +789,15 @@ contract FullDeployer is GatedDeployer {
                     )
                 )
             );
+
+            layerZeroStandby = _deployStandby(
+                "layerZeroStandby",
+                abi.encodePacked(
+                    type(LayerZeroAdapter).creationCode,
+                    // As above: the batcher is delegate until it has mirrored the ULN config onto it
+                    abi.encode(gatedAddress("layerZeroStandby", V3_3), input.layerZero.endpoint, batcher, batcher)
+                )
+            );
         }
 
         if (input.axelar.shouldDeploy) {
@@ -800,6 +813,16 @@ contract FullDeployer is GatedDeployer {
                     abi.encodePacked(
                         type(AxelarAdapter).creationCode,
                         abi.encode(multiAdapter, input.axelar.gateway, input.axelar.gasService, batcher)
+                    )
+                )
+            );
+
+            axelarStandby = _deployStandby(
+                "axelarStandby",
+                abi.encodePacked(
+                    type(AxelarAdapter).creationCode,
+                    abi.encode(
+                        gatedAddress("axelarStandby", V3_3), input.axelar.gateway, input.axelar.gasService, batcher
                     )
                 )
             );
@@ -819,6 +842,14 @@ contract FullDeployer is GatedDeployer {
                     )
                 )
             );
+
+            chainlinkStandby = _deployStandby(
+                "chainlinkStandby",
+                abi.encodePacked(
+                    type(ChainlinkAdapter).creationCode,
+                    abi.encode(gatedAddress("chainlinkStandby", V3_3), input.chainlink.ccipRouter, batcher)
+                )
+            );
         }
 
         if (input.hyperlane.shouldDeploy) {
@@ -834,7 +865,29 @@ contract FullDeployer is GatedDeployer {
                     )
                 )
             );
+
+            hyperlaneStandby = _deployStandby(
+                "hyperlaneStandby",
+                abi.encodePacked(
+                    type(HyperlaneAdapter).creationCode,
+                    abi.encode(gatedAddress("hyperlaneStandby", V3_3), input.hyperlane.mailbox, batcher)
+                )
+            );
         }
+    }
+
+    /// @dev A standby needs an underlying of its own, whose entrypoint is the standby rather than the
+    ///      MultiAdapter, so that its inbound votes land on the standby. Each needs the other's address at
+    ///      construction, which is why the underlying is built against the standby's gated address, taken
+    ///      before either exists. `underlyingInitCode` is that bridge adapter's, entrypoint included.
+    function _deployStandby(string memory name, bytes memory underlyingInitCode) internal returns (StandbyAdapter) {
+        address underlying = submit(string.concat(name, "Underlying"), V3_3, underlyingInitCode);
+
+        return StandbyAdapter(
+            submit(
+                name, V3_3, abi.encodePacked(type(StandbyAdapter).creationCode, abi.encode(multiAdapter, underlying))
+            )
+        );
     }
 
     function coreReport() public view returns (CoreReport memory) {
@@ -891,7 +944,17 @@ contract FullDeployer is GatedDeployer {
     }
 
     function adaptersReport() public view returns (AdaptersReport memory) {
-        return AdaptersReport(coreReport(), layerZeroAdapter, axelarAdapter, chainlinkAdapter, hyperlaneAdapter);
+        return AdaptersReport(
+            coreReport(),
+            layerZeroAdapter,
+            axelarAdapter,
+            chainlinkAdapter,
+            hyperlaneAdapter,
+            layerZeroStandby,
+            axelarStandby,
+            chainlinkStandby,
+            hyperlaneStandby
+        );
     }
 }
 
