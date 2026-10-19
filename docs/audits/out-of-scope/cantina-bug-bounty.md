@@ -128,14 +128,14 @@ The bounty's general scope guidelines apply: https://cantina.xyz/code/6cc9d51a-a
 * Native value attached to a VaultRouter multicall is neither consumed nor refunded and is recoverable only through Recoverable.
 * VaultRouter keeps no per-caller custody, so a claim-and-bridge multicall that bridges a fixed amount leaves any surplus from a fulfilment landing first in the router, where anyone can take it.
 * The share manager is endorsed and carries neither wards nor a recovery function, so it cannot be frozen by a hook and any token sent to it directly needs administrative recovery.
-* FullRestrictions blocks the system mint leg of inbound cross-chain share transfers unless the destination handler is endorsed or a member, and the source side burns before it can detect this.
+* The spoke handler is endorsed and has no recovery function, so it cannot be frozen by a hook and a share token sent to it directly needs administrative recovery through the share token's authorised transfer.
 * A user transferring share tokens is expected to send them only to eligible receivers, members of a restricted share class for instance.
 * TokenBridge routes the first-leg refund of a two-leg transfer to the configured relayer, and the eventual user refund is an off-chain relayer convention.
 * The shared vault managers take the vault as a call argument and do not bind it to msg.sender, so any of their wards could act on any linked vault:
   * The binding is left to the vault factories, whose `newVault` is auth-gated to the spoke handler and relies only its own CREATE2 deployment of fixed vault bytecode, which only ever passes itself.
   * Governance keeps the looser form deliberately, so a spell can act on a vault it is not.
 * Contracts on the share paths omit a recovery function where the runtime size limit leaves no room for one, AsyncRequestManager among them, so a token sent directly to one of them needs administrative recovery through the share token's authorised transfer.
-* The destination handler, the chain ids and the escrow hook id that the transfer hooks key system flows on are neither endorsed nor exempt from freezing, so a hook manager freezing one stops that token's inbound transfers, bridging to that chain or redemption requests respectively until it is unfrozen.
+* The chain ids and the escrow hook id that the transfer hooks key system flows on are neither endorsed nor exempt from freezing, so a hook manager freezing one stops bridging to that chain or redemption requests respectively until it is unfrozen.
 * Liquidity can be stuck while its holder is frozen or while all vaults of a share class are unlinked, and claims of assets and shares stay open while the protocol is paused.
 * Redemption and cancellation claims evaluate the burn-side transfer restriction against the receiver the caller names, with the controller checked only on the leg between the two, so a controller who is no longer a member may still claim to a member receiver.
 * An ERC-7540 operator approval delegates the controller's whole position on a pool, share class and asset, so an operator approved on the vault the share token points at reaches requests made through the other linked vaults and may claim their proceeds to any receiver.
