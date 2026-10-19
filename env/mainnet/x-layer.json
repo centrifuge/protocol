@@ -6,11 +6,23 @@
     "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
-    "batchLimit": 15,
+    "batchLimit": 7,
     "baseRpcUrl": "https://rpc.xlayer.tech",
-    "verifier": "oklink",
-    "verifierUrl": "https://www.oklink.com/api/v5/explorer/contract/verify-source-code-plugin/XLAYER",
-    "explorerApiUrl": "https://www.oklink.com/api/v5/explorer/contract/verify-contract-info?chainShortName=XLAYER"
+    "verifiers": [
+      {
+        "name": "oklink",
+        "verifier": "oklink",
+        "verifierUrl": "https://www.oklink.com/api/v5/explorer/contract/verify-source-code-plugin/XLAYER",
+        "explorerApiUrl": "https://www.oklink.com/api/v5/explorer/contract/verify-contract-info?chainShortName=XLAYER"
+      },
+      {
+        "name": "xlayerscan",
+        "verifier": "custom",
+        "verifierUrl": "https://api.xlayerscan.com/api",
+        "explorerApiUrl": "https://api.xlayerscan.com/api",
+        "skipIsVerifiedCheck": true
+      }
+    ]
   },
   "adapters": {
     "layerZero": {
@@ -19,19 +31,62 @@
       "deploy": true,
       "blockConfirmations": 15,
       "requiredDVNs": [
-        "0x047d9DBe4fC6B5c916F37237F547f9F42809935a",
-        "0x6667966D9fF99375156cbd554f74075D4f19d19f"
+        "0x6667966D9fF99375156cbd554f74075D4f19d19f",
+        "0x9C061c9A4782294eeF65ef28Cb88233A987F4bdD"
       ],
       "optionalDVNs": [
         "0x28af4dADbc5066e994986E8bb105240023dC44B6",
         "0xA32b5c9fc4daB9F647229F04b2F1456e042d9cbD",
         "0xa415A8C7Fb53DDAcBC5BcC3E0Be6a400E9bd0DF5"
       ],
-      "optionalDVNThreshold": 2
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "plume": {
+          "requiredDVNs": [
+            "0x047d9DBe4fC6B5c916F37237F547f9F42809935a",
+            "0x6667966D9fF99375156cbd554f74075D4f19d19f"
+          ],
+          "optionalDVNs": [
+            "0x28af4dADbc5066e994986E8bb105240023dC44B6",
+            "0xA32b5c9fc4daB9F647229F04b2F1456e042d9cbD",
+            "0xa415A8C7Fb53DDAcBC5BcC3E0Be6a400E9bd0DF5"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "pharos": {
+          "requiredDVNs": [
+            "0x047d9DBe4fC6B5c916F37237F547f9F42809935a",
+            "0x6667966D9fF99375156cbd554f74075D4f19d19f"
+          ],
+          "optionalDVNs": [
+            "0x28af4dADbc5066e994986E8bb105240023dC44B6",
+            "0xA32b5c9fc4daB9F647229F04b2F1456e042d9cbD",
+            "0xa415A8C7Fb53DDAcBC5BcC3E0Be6a400E9bd0DF5"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "arc": {
+          "requiredDVNs": [
+            "0x28af4dADbc5066e994986E8bb105240023dC44B6",
+            "0x9C061c9A4782294eeF65ef28Cb88233A987F4bdD"
+          ],
+          "optionalDVNs": [
+            "0xA32b5c9fc4daB9F647229F04b2F1456e042d9cbD",
+            "0xa415A8C7Fb53DDAcBC5BcC3E0Be6a400E9bd0DF5",
+            "0xDd7B5E1dB4AaFd5C8EC3b764eFB8ed265Aa5445B"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
     },
     "chainlink": {
       "chainSelector": 3016212468291539606,
       "ccipRouter": "0xF2b6Cb7867EB5502C3249dD37D7bc1Cc148e5232",
+      "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 196,
+      "mailbox": "0x2f2aFaE1139Ce54feFC03593FeE8AB2aDF4a85A7",
       "deploy": true
     }
   },
@@ -40,14 +95,6 @@
       "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
       "blockNumber": 67075302,
       "version": "v3.1"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "d8fb0c1a8",
-      "timestamp": "2026-08-04T11:49:28Z",
-      "suffix": "",
-      "startBlock": 67075070
     }
   }
 }

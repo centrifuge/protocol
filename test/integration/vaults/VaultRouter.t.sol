@@ -702,6 +702,137 @@ contract VaultRouterMoreUnitaryTest is BaseTest {
         vaultRouter.multicall{value: GAS * 2}(calls);
     }
 
+    function testRouterSyncDepositRevertsForNonMemberPayer() public {
+        (, address vault_,) = deploySimpleVault(syncDepositVaultFactory);
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+        address payer = makeAddr("payer");
+        erc20.mint(payer, amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+
+        vm.startPrank(payer);
+        erc20.approve(address(vaultRouter), amount);
+
+        // The receiver is a member, but the payer is not: same outcome as depositing into the vault directly
+        vm.expectRevert(IVaultRouter.InvalidSender.selector);
+        vaultRouter.deposit(vault, amount, self, payer);
+        vm.stopPrank();
+    }
+
+    function testRouterSyncDepositAndTransferRevertsForNonMemberPayer() public {
+        (, address vault_,) = deployVault(
+            syncDepositVaultFactory,
+            6,
+            address(freelyTransferableHook),
+            bytes16(bytes("1")),
+            address(erc20),
+            erc20TokenId
+        );
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+        address payer = makeAddr("payer");
+        erc20.mint(payer, assets);
+        uint256 shares = vault.previewDeposit(assets);
+        uint16 centrifugeId = 2;
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), payer);
+        calls[1] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares,
+            centrifugeId,
+            bytes32(""),
+            address(vaultRouter),
+            0,
+            0,
+            address(0)
+        );
+
+        vm.deal(payer, GAS * 2);
+        vm.startPrank(payer);
+        erc20.approve(address(vaultRouter), assets);
+
+        // Minting to the endorsed router and bridging as a secondary transfer would otherwise skip the memberlist
+        vm.expectRevert(IVaultRouter.InvalidSender.selector);
+        vaultRouter.multicall{value: GAS * 2}(calls);
+        vm.stopPrank();
+    }
+
+    function testRouterSyncDepositRevertsForFrozenPayerFullRestrictions() public {
+        _assertFrozenPayerReverts(address(fullRestrictionsHook));
+    }
+
+    function testRouterSyncDepositRevertsForFrozenPayerFreezeOnly() public {
+        _assertFrozenPayerReverts(address(freezeOnlyHook));
+    }
+
+    function testRouterSyncDepositRevertsForFrozenPayerRedemptionRestrictions() public {
+        _assertFrozenPayerReverts(address(redemptionRestrictionsHook));
+    }
+
+    function testRouterSyncDepositAndTransferMemberPayerFreelyTransferable() public {
+        (, address vault_,) = deployVault(
+            syncDepositVaultFactory,
+            6,
+            address(freelyTransferableHook),
+            bytes16(bytes("1")),
+            address(erc20),
+            erc20TokenId
+        );
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 assets = 100 * 10 ** 18;
+        address payer = makeAddr("payer");
+        erc20.mint(payer, assets);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), payer, type(uint64).max);
+        uint256 shares = vault.previewDeposit(assets);
+        spokeRegistry.updateBridger(vault.poolId(), address(vaultRouter), true);
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeWithSelector(vaultRouter.deposit.selector, vault, assets, address(vaultRouter), payer);
+        calls[1] = abi.encodeWithSelector(
+            vaultRouter.crosschainTransferShares.selector,
+            vault,
+            shares,
+            uint16(2),
+            bytes32(""),
+            address(vaultRouter),
+            0,
+            0,
+            address(0)
+        );
+
+        vm.deal(payer, GAS * 2);
+        vm.startPrank(payer);
+        erc20.approve(address(vaultRouter), assets);
+
+        // Same setup as the non-member revert above, so a member payer reaching the bridge leg shows the revert is the payer check
+        vaultRouter.multicall{value: GAS * 2}(calls);
+        vm.stopPrank();
+
+        assertEq(erc20.balanceOf(payer), 0);
+        assertEq(IShareToken(vault.share()).balanceOf(address(vaultRouter)), 0);
+    }
+
+    function _assertFrozenPayerReverts(address hook) internal {
+        (, address vault_,) =
+            deployVault(syncDepositVaultFactory, 6, hook, bytes16(bytes("1")), address(erc20), erc20TokenId);
+        SyncDepositVault vault = SyncDepositVault(vault_);
+        uint256 amount = 100 * 10 ** 18;
+        address payer = makeAddr("payer");
+        erc20.mint(payer, amount);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), payer, type(uint64).max);
+        centrifugeChain.updateMember(vault.poolId().raw(), vault.scId().raw(), self, type(uint64).max);
+        centrifugeChain.freeze(vault.poolId().raw(), vault.scId().raw(), payer);
+
+        vm.startPrank(payer);
+        erc20.approve(address(vaultRouter), amount);
+        vm.expectRevert(IVaultRouter.InvalidSender.selector);
+        vaultRouter.deposit(vault, amount, self, payer);
+        vm.stopPrank();
+    }
+
     function testRequestDepositRouterCustody() public {
         (, address vault_,) = deploySimpleVault(asyncVaultFactory);
         AsyncVault vault = AsyncVault(vault_);

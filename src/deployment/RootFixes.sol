@@ -12,13 +12,15 @@ import {Root} from "../admin/Root.sol";
 ///         alongside them wards them from its own. One that was already on the chain wards nobody new, so
 ///         everything reaching into it has to be deferred: this is deployed with the protocol and does that
 ///         work once governance has relied it, over the ordinary spell route. `cast()` is permissionless
-///         because the authority is the ward, not the caller.
+///         because the authority is the ward, not the caller. The sender the Spoke was left without is not
+///         its to file: the launch spell does that, after replaying the previous release's assets.
 contract RootFixes {
     Root public immutable root;
     address public immutable spoke;
     address public immutable vaultRouter;
     address public immutable tokenBridge;
     address public immutable shareManager;
+    address public immutable spokeHandler;
     address public immutable messageProcessor;
     address public immutable protocolGuardian;
     address public immutable messageDispatcher;
@@ -34,6 +36,7 @@ contract RootFixes {
         vaultRouter = address(report.vaultRouter);
         tokenBridge = address(report.tokenBridge);
         shareManager = address(report.shareManager);
+        spokeHandler = address(report.core.spokeHandler);
         messageProcessor = address(report.core.messageProcessor);
         protocolGuardian = address(report.core.protocolGuardian);
         messageDispatcher = address(report.core.messageDispatcher);
@@ -50,6 +53,7 @@ contract RootFixes {
         root.rely(protocolGuardian);
 
         root.endorse(spoke);
+        root.endorse(spokeHandler);
         root.endorse(asyncRequestManager);
         root.endorse(vaultRouter);
         root.endorse(tokenBridge);

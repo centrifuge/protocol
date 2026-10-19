@@ -17,8 +17,10 @@ bool constant REPLACE = true;
 ///         closes with `saveDeploymentOutput(network)`. Deploy-time only contracts take `unreportedSalt()`
 ///         instead and never reach this registry.
 ///
-///         A deployment records itself completely: addresses, versions, block numbers and the chain's
-///         `startBlock`. Nothing has to be filled in afterwards and nothing else reads the chain to do it.
+///         A deployment records itself completely: addresses, versions and block numbers. It records nothing
+///         about the chain beyond its contracts: a chain's start block is the earliest of those block numbers,
+///         so whatever publishes the config derives it from them, and a stored copy could only ever drift from
+///         what it summarises.
 ///
 ///         Writing happens during forge's simulation pass, before the broadcast lands. For the addresses
 ///         that is exact — they are deterministic, CREATE3 from the gate, the salt and the deployment id, so what is
@@ -38,8 +40,7 @@ bool constant REPLACE = true;
 ///         the diff to what actually changed.
 contract JsonRegistry is Script {
     /// @dev The whole merge, in one jq program, so that what a run does to `env/<environment>/<network>.json` is read in
-    ///      one place. It takes `$new` (this run's contracts), `$block`, and the three `deploymentInfo`
-    ///      fields, and does three things:
+    ///      one place. It takes `$new` (this run's contracts) and `$block`, and merges them into `.contracts`:
     ///
     ///      1. A contract that landed on a new address gets this run's block number. One that was already
     ///         recorded at the same address keeps the block it had — a run that re-reports an address it did
@@ -49,27 +50,13 @@ contract JsonRegistry is Script {
     ///      1b. One the run does not mention is left alone, so a config can hold more than one script's
     ///         worth — unless `$replace`, where this run's contracts are the whole of the chain's and
     ///         whatever the config held belonged to a deployment this one supersedes.
-    ///      2. Only a full protocol deployment claims the chain's `deploymentInfo`, which is what `$new`
-    ///         holding `root` says, and the same run claims its `startBlock`: a script shipping one contract
-    ///         records its address without redating the chain, so both live in one branch rather than two
-    ///         conditions that can disagree. The info is merged into what is there rather than replacing it.
-    ///      3. That `startBlock` is the earliest block *any* contract in the config carries, not this run's:
-    ///         a redeployment that reuses contracts leaves older ones in place, and an indexer starting
-    ///         after one of them misses its history. Computed over what the file ends up holding.
     string internal constant MERGE = ". as $root"
         " | .contracts = ((if $replace then {} else ($root.contracts // {}) end) + ($new | with_entries("
         "     ($root.contracts[.key] // {}) as $old" "     | .value = ({address: .value.address,"
         "        blockNumber: (if ($old.address // null) == .value.address and ($old.blockNumber // null) != null"
         "                      then $old.blockNumber else $block end),"
         "        version: (if .value.version != \"\" then .value.version else ($old.version // null) end)"
-        "       } | if .version == null then del(.version) else . end))))" " | (if ($new | has(\"root\"))"
-        "    then .deploymentInfo[\"deploy:protocol\"] = ((.deploymentInfo[\"deploy:protocol\"] // {})"
-        "           + {gitCommit: $gitCommit, timestamp: $timestamp}"
-        // The deployment a record belongs to is the environment the config declares, so recording it here
-        // would be the same string twice. Older records named it `suffix`, which goes with the rest
-        "           | del(.suffix))" "         | ([.contracts[] | .blockNumber | select(. != null)] | min) as $earliest"
-        "         | if $earliest != null then .deploymentInfo[\"deploy:protocol\"].startBlock = $earliest else . end"
-        "    else . end)";
+        "       } | if .version == null then del(.version) else . end))))";
 
     string[] private registeredNames;
     address[] private registeredAddrs;
@@ -157,8 +144,7 @@ contract JsonRegistry is Script {
 
         // Handed over through the environment rather than pasted into the command: a value that reaches a
         // shell inside quotes it can close is a value that can run commands, and these are assembled from
-        // whatever a deploy script chose to name its contracts and tag its salts. The git and date calls are
-        // quoted for the same reason — jq's `--arg` then escapes each into JSON, so nothing here has to.
+        // whatever a deploy script chose to name its contracts and tag its salts.
         vm.setEnv("REGISTRY_CONTRACTS", contracts);
 
         _sh(
@@ -167,8 +153,6 @@ contract JsonRegistry is Script {
                 replacesDeployment ? "true" : "false",
                 " --argjson block ",
                 vm.toString(block.number),
-                " --arg gitCommit \"$(git rev-parse --short HEAD)\"",
-                " --arg timestamp \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"",
                 " '",
                 MERGE,
                 "' '",

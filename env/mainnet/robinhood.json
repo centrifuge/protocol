@@ -1,0 +1,78 @@
+{
+  "network": {
+    "chainId": 4663,
+    "environment": "mainnet",
+    "centrifugeId": 15,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 7,
+    "baseRpcUrl": "https://robinhood-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
+      "layerZeroEid": 30416,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x70F5a195f6DA203e839Bb5F15e53d3a0Fc796925",
+        "0xd01ae6905d48315f7bE10C7330aeCF8360Ef5b12"
+      ],
+      "optionalDVNs": [
+        "0x0Ffe02DF012299A370D5dd69298A5826EAcaFdF8",
+        "0x8ed0A851964604BB1b6b1a703F4c8234EE684d76",
+        "0x965718b834b58a0A47a1723C1a28c2f1a7F1F7A0"
+      ],
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "plume": {
+          "requiredDVNs": [
+            "0x70F5a195f6DA203e839Bb5F15e53d3a0Fc796925",
+            "0x8D77D35604A9f37f488E41D1d916b2A0088F82Dd"
+          ],
+          "optionalDVNs": [
+            "0x0Ffe02DF012299A370D5dd69298A5826EAcaFdF8",
+            "0x8ed0A851964604BB1b6b1a703F4c8234EE684d76",
+            "0x965718b834b58a0A47a1723C1a28c2f1a7F1F7A0"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "pharos": {
+          "requiredDVNs": [
+            "0x70F5a195f6DA203e839Bb5F15e53d3a0Fc796925",
+            "0x8D77D35604A9f37f488E41D1d916b2A0088F82Dd"
+          ],
+          "optionalDVNs": [
+            "0x0Ffe02DF012299A370D5dd69298A5826EAcaFdF8",
+            "0x8ed0A851964604BB1b6b1a703F4c8234EE684d76",
+            "0x965718b834b58a0A47a1723C1a28c2f1a7F1F7A0"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "arc": {
+          "requiredDVNs": [
+            "0x0Ffe02DF012299A370D5dd69298A5826EAcaFdF8",
+            "0xd01ae6905d48315f7bE10C7330aeCF8360Ef5b12"
+          ],
+          "optionalDVNs": [
+            "0x1258A278519c7f4bd997a9c3BFd4Aa802a028D89",
+            "0x8ed0A851964604BB1b6b1a703F4c8234EE684d76",
+            "0x965718b834b58a0A47a1723C1a28c2f1a7F1F7A0"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
+    },
+    "chainlink": {
+      "chainSelector": 6180753054346818345,
+      "ccipRouter": "0x06fC836cf9839B1cd891C440A0a45242DA6Ae1c9",
+      "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 4663,
+      "mailbox": "0x3a867fCfFeC2B790970eeBDC9023E75B0a172aa7",
+      "deploy": true
+    }
+  }
+}

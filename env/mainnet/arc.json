@@ -1,0 +1,73 @@
+{
+  "network": {
+    "chainId": 5042,
+    "environment": "mainnet",
+    "centrifugeId": 14,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 7,
+    "baseRpcUrl": "https://arc-mainnet.g.alchemy.com/v2/"
+  },
+  "adapters": {
+    "layerZero": {
+      "endpoint": "0x6F475642a6e85809B1c36Fa62763669b1b48DD5B",
+      "layerZeroEid": 30417,
+      "deploy": true,
+      "blockConfirmations": 15,
+      "requiredDVNs": [
+        "0x9E0E95Ede70F680f74480b510FF9f45C70e3da80",
+        "0xa2447e5B58D357c49Bf74B50B14421e6A100e525"
+      ],
+      "optionalDVNs": [
+        "0x5aC51EE1a545EBD55A91BB3223C5cffc4FDe51c0",
+        "0x69DF29C29AfCc8D1a0eE563a27827427F89Ef698",
+        "0xd36246C322Ee102A2203bCA9cafb84c179D306F6"
+      ],
+      "optionalDVNThreshold": 2,
+      "dvnOverrides": {
+        "plume": {
+          "requiredDVNs": [
+            "0x9E0E95Ede70F680f74480b510FF9f45C70e3da80",
+            "0xaCDe1f22EEAb249d3ca6Ba8805C8fEe9f52a16e7"
+          ],
+          "optionalDVNs": [
+            "0x69DF29C29AfCc8D1a0eE563a27827427F89Ef698",
+            "0xa2447e5B58D357c49Bf74B50B14421e6A100e525",
+            "0xd36246C322Ee102A2203bCA9cafb84c179D306F6"
+          ],
+          "optionalDVNThreshold": 2
+        },
+        "pharos": {
+          "requiredDVNs": [
+            "0x9E0E95Ede70F680f74480b510FF9f45C70e3da80",
+            "0xaCDe1f22EEAb249d3ca6Ba8805C8fEe9f52a16e7"
+          ],
+          "optionalDVNs": [
+            "0x69DF29C29AfCc8D1a0eE563a27827427F89Ef698",
+            "0xa2447e5B58D357c49Bf74B50B14421e6A100e525",
+            "0xd36246C322Ee102A2203bCA9cafb84c179D306F6"
+          ],
+          "optionalDVNThreshold": 2
+        }
+      }
+    },
+    "chainlink": {
+      "chainSelector": 6370580034781731079,
+      "ccipRouter": "0xB79791184973589c38e114D43Eb8E4588C283A18",
+      "deploy": true
+    },
+    "hyperlane": {
+      "hyperlaneId": 5042,
+      "mailbox": "0x7f50C5776722630a0024fAE05fDe8b47571D7B39",
+      "deploy": true
+    }
+  },
+  "contracts": {
+    "root": {
+      "address": "0xdc9456e7e20f15029C8231Ec433a20F404b7235E",
+      "blockNumber": 20853950,
+      "version": "v3.1"
+    }
+  }
+}

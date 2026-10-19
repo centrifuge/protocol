@@ -19,6 +19,11 @@
       ],
       "optionalDVNs": [],
       "optionalDVNThreshold": 0
+    },
+    "hyperlane": {
+      "hyperlaneId": 998,
+      "mailbox": "0x589C201a07c26b4725A4A829d772f24423da480B",
+      "deploy": true
     }
   },
   "contracts": {
@@ -26,14 +31,6 @@
       "address": "0x1Fa8a2fe2eAE2373B03Fa313E016605EB86cBae8",
       "blockNumber": 43580306,
       "version": "v3.1"
-    }
-  },
-  "deploymentInfo": {
-    "deploy:protocol": {
-      "gitCommit": "24032569",
-      "timestamp": "2026-01-21T07:45:00Z",
-      "suffix": "rev2",
-      "startBlock": 43580306
     }
   }
 }

@@ -56,8 +56,8 @@ Defines which networks are connected and through which adapters, one file per en
 
 Interpreted in exactly one place: `EnvConnections.connectionsWith` in
 `script/utils/ConnectionsConfig.s.sol`. Aliases and literal arrays are resolved, the last matching rule
-wins, and a connection only counts when that rule still has adapters — fiddly enough that a second
-implementation would eventually disagree with the first.
+wins, and a connection only counts when that rule still names an adapter, in its set or wired only — fiddly
+enough that a second implementation would eventually disagree with the first.
 
 Anything that needs the list asks that function: the deploy and wiring scripts call it directly, and
 the live branch's `deploy-testnets.yml` workflow derives its network matrix from the same file with jq,
@@ -79,11 +79,15 @@ reads `connections.json` and renders, never writes — but a change to how rules
         {
             "chains": [<side>, <side>],
             "adapters": ["<adapter>", ...],
+            "wiredOnly": ["<adapter>", ...],
             "threshold": <number>
         }
     ]
 }
 ```
+
+`wiredOnly` is optional; every other key is required, and a key the reader does not know is refused rather
+than ignored.
 
 ### Aliases
 
@@ -96,11 +100,12 @@ Named groups of networks, reusable in connection rules:
 }
 ```
 
-The full set of known networks is derived from the union of all alias values.
+The full set of known networks is every network a rule's sides name, aliases resolved; an alias no rule
+uses adds none.
 
 ### Connection rules
 
-Each rule defines a pair of sides, the adapters used between them, and the quorum threshold.
+Each rule defines a pair of sides, the adapters between them, and the quorum threshold.
 
 **`chains`** is a 2-element array (a pair). Each side can be:
 
@@ -113,9 +118,29 @@ The two sides are permuted (cartesian product), creating a connection for every 
 
 A network never connects to itself. If the same network appears on both sides, the self-pair is skipped. For example, `[["A"], ["A", "B"]]` only produces (A,B).
 
-**`adapters`** lists which messaging adapters to use (e.g. `"axelar"`, `"layerZero"`, `"chainlink"`). An empty array means no connection.
+Adapter names are `layerZero`, `axelar`, `chainlink` and `hyperlane`; any other name is refused.
 
-**`threshold`** is the minimum number of adapters that must confirm a message.
+**`adapters`** is the lane's **global adapter set**: the adapters wired to the peer at launch *and* given to
+`setAdapters` for the global pool, so every message without a pool set of its own travels over them. An empty
+array, with no `wiredOnly` either, means no connection.
+
+**`wiredOnly`** (optional) lists adapters wired to the peer at launch but **kept out of the global set**. They
+carry none of the global pool's messages and cost nothing until a pool includes one in its own set
+(`Hub.setAdapters`). An adapter is in one list or the other, never both. A lane with wired-only adapters still
+needs a global set: a pool's first `SetPoolAdapters` travels over it, so without one no pool could take a
+wired-only adapter up.
+
+**`threshold`** is the minimum number of adapters that must confirm a message, counted over **`adapters` only** —
+wired-only adapters are not in the set and never vote on it. It cannot exceed the size of `adapters`, and must be
+`0` when `adapters` is empty. `0` with adapters present means all of them.
+
+Every adapter a lane names, in either list, has to be deployed (`adapters.<name>.deploy`) on **both** chains of
+the pair; the launch refuses a lane otherwise (`ChainConfigLib.requireLaneDeployed`), rather than leaving the
+adapter unwired without a word.
+
+**Standbys** need no entry. Each adapter a chain deploys comes with a `StandbyAdapter`, and the launch wires the
+standby's underlying to every lane its global adapter is wired to, in either list, but never adds it to a set.
+A pool takes one up by naming it in its own set.
 
 ### Rule precedence
 
@@ -137,6 +162,9 @@ Rules are evaluated in order. **The last matching rule wins**, allowing general 
 ```
 
 Here, D connects to every other network via layerZero only (threshold 1), while all other pairs use both axelar and layerZero (threshold 2).
+
+The rule that wins decides both lists: an earlier rule's `wiredOnly` does not carry over to a later rule that
+omits it.
 
 To disable connections for a network, override with an empty adapters array:
 
@@ -164,6 +192,21 @@ layerZero only:
     "connections": [
         { "chains": ["ALL", "ALL"], "adapters": ["axelar", "layerZero"], "threshold": 2 },
         { "chains": [["D"], "ALL"], "adapters": ["layerZero"], "threshold": 1 }
+    ]
+}
+```
+
+**An adapter kept ready for pools** - all pairs on layerZero + hyperlane with axelar wired but in no global
+set, except D's lanes, which keep axelar in their set (2-of-3):
+
+```json
+{
+    "aliases": {
+        "ALL": ["A", "B", "C", "D"]
+    },
+    "connections": [
+        { "chains": ["ALL", "ALL"], "adapters": ["layerZero", "hyperlane"], "wiredOnly": ["axelar"], "threshold": 1 },
+        { "chains": [["D"], "ALL"], "adapters": ["axelar", "layerZero", "hyperlane"], "threshold": 2 }
     ]
 }
 ```

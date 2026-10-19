@@ -31,6 +31,9 @@ env/anvil/
 ## Benchmarking
 src/admin/GasService_temp.*.sol
 
+## Certora Prover output, written into the working directory by certoraRun (certora/ submodule)
+.certora_internal/
+
 ## Local tooling artifacts (Claude Code skills & generated reports)
 .claude/skills/
 x-ray/

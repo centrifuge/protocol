@@ -85,6 +85,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
         require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
+        require(vault.isPermissioned(msg.sender), InvalidSender());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
         require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());

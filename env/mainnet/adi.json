@@ -1,0 +1,22 @@
+{
+  "network": {
+    "chainId": 36900,
+    "environment": "mainnet",
+    "centrifugeId": 17,
+    "protocolAdmin": "0x9711730060C73Ee7Fcfe1890e8A0993858a7D225",
+    "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
+    "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
+    "batchLimit": 7,
+    "baseRpcUrl": "https://adi-mainnet.g.alchemy.com/v2/",
+    "verifier": "blockscout",
+    "verifierUrl": "https://explorer-bls.adifoundation.ai/api",
+    "explorerApiUrl": "https://explorer-bls.adifoundation.ai/api"
+  },
+  "adapters": {
+    "chainlink": {
+      "chainSelector": 4059281736450291836,
+      "ccipRouter": "0x010771998A1F4736BD844939d0bf01ac5cA0f8fa",
+      "deploy": true
+    }
+  }
+}

@@ -1,42 +1,92 @@
 {
     "aliases": {
-        "ALL": ["ethereum", "base", "arbitrum", "plume", "avalanche", "bnb-smart-chain", "hyper-evm", "optimism", "monad", "pharos"]
+        "ALL": ["ethereum", "base", "arbitrum", "optimism", "avalanche", "bnb-smart-chain", "monad", "plume", "hyper-evm", "pharos", "x-layer", "arc", "robinhood", "linea", "adi"]
     },
     "connections": [
         {
             "chains": ["ALL", "ALL"],
-            "adapters": ["axelar", "layerZero"],
+            "adapters": ["layerZero", "chainlink", "hyperlane"],
+            "wiredOnly": ["axelar"],
+            "threshold": 2
+        },
+        {
+            "chains": [["hyper-evm"], ["avalanche", "optimism", "linea"]],
+            "adapters": ["layerZero", "hyperlane"],
+            "wiredOnly": ["axelar"],
+            "threshold": 2
+        },
+        {
+            "chains": [["monad"], ["linea"]],
+            "adapters": ["layerZero", "hyperlane"],
+            "wiredOnly": ["axelar"],
+            "threshold": 2
+        },
+        {
+            "chains": [["x-layer"], "ALL"],
+            "adapters": ["layerZero", "hyperlane"],
+            "threshold": 2
+        },
+        {
+            "chains": [["x-layer"], ["ethereum", "base", "arbitrum", "avalanche", "bnb-smart-chain", "monad", "linea"]],
+            "adapters": ["layerZero", "chainlink", "hyperlane"],
+            "threshold": 2
+        },
+        {
+            "chains": [["arc"], "ALL"],
+            "adapters": ["layerZero", "hyperlane"],
+            "threshold": 2
+        },
+        {
+            "chains": [["arc"], ["ethereum", "base"]],
+            "adapters": ["layerZero", "chainlink", "hyperlane"],
+            "threshold": 2
+        },
+        {
+            "chains": [["robinhood"], "ALL"],
+            "adapters": ["layerZero", "hyperlane"],
+            "threshold": 2
+        },
+        {
+            "chains": [["robinhood"], ["ethereum", "base", "arbitrum", "avalanche", "bnb-smart-chain", "hyper-evm", "monad"]],
+            "adapters": ["layerZero", "chainlink", "hyperlane"],
             "threshold": 2
         },
         {
             "chains": [["pharos"], "ALL"],
+            "adapters": ["layerZero", "chainlink"],
+            "threshold": 2
+        },
+        {
+            "chains": [["pharos"], ["x-layer", "arc", "robinhood", "linea"]],
             "adapters": ["layerZero"],
             "threshold": 1
         },
         {
-            "chains": [["monad"], "ALL"],
-            "adapters": ["layerZero", "chainlink"],
-            "threshold": 2
+            "chains": [["adi"], "ALL"],
+            "adapters": [],
+            "threshold": 0
         },
         {
-            "chains": [["monad"], ["plume", "hyper-evm", "pharos"]],
-            "adapters": ["layerZero"],
+            "chains": [["adi"], ["ethereum", "base", "arbitrum"]],
+            "adapters": ["chainlink"],
             "threshold": 1
         },
         {
-            "chains": [["pharos"], ["ethereum"]],
+            "chains": [["plume"], ["ethereum", "bnb-smart-chain", "monad"]],
             "adapters": ["layerZero", "chainlink"],
+            "wiredOnly": ["axelar"],
             "threshold": 2
         },
         {
-            "chains": [["plume"], ["ethereum"]],
-            "adapters": ["layerZero", "chainlink"],
-            "threshold": 2
+            "chains": [["plume"], ["base", "arbitrum", "optimism", "avalanche", "hyper-evm", "linea"]],
+            "adapters": ["layerZero"],
+            "wiredOnly": ["axelar"],
+            "threshold": 1
         },
         {
-            "chains": [["x-layer"], ["ethereum", "base", "arbitrum", "avalanche", "bnb-smart-chain"]],
-            "adapters": ["layerZero", "chainlink"],
-            "threshold": 2
+            "chains": [["plume"], ["x-layer", "arc", "robinhood"]],
+            "adapters": ["layerZero"],
+            "threshold": 1
         }
     ]
 }

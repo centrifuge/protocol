@@ -5,12 +5,13 @@
     "connections": [
         {
             "chains": ["ALL", "ALL"],
-            "adapters": ["axelar", "layerZero", "chainlink"],
+            "adapters": ["layerZero", "chainlink", "hyperlane"],
+            "wiredOnly": ["axelar"],
             "threshold": 1
         },
         {
             "chains": [["hyper-evm-testnet"], "ALL"],
-            "adapters": ["layerZero"],
+            "adapters": ["layerZero", "hyperlane"],
             "threshold": 1
         }
     ]
