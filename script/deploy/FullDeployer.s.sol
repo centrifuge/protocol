@@ -237,10 +237,6 @@ contract FullDeployer is GatedDeployer {
 
             uint256 snapshot = vm.snapshotState();
 
-            // A no-op except when proposing, the one run that reaches here without a gate: the walk needs
-            // one to ask for addresses, and bringing it up inside the rollback is what keeps the chain
-            // readable for the proposal built after it
-            setUpDeployGate();
             _deployProtocol(input);
             (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
 

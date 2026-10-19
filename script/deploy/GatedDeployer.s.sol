@@ -11,7 +11,8 @@ import {console} from "forge-std/console.sol";
 import {IDeployGate} from "create3-gate/src/IDeployGate.sol";
 import {GateProposalScript} from "../utils/GateProposal.s.sol";
 
-/// @dev How a gated deployment is signed. The gate both phases need is brought up by the commit phase.
+/// @dev How a gated deployment is signed. The gate both phases need is brought up by a key's commit phase, and
+///      is already on the chain when a Safe commits.
 enum DeployPhase {
     // Commit what may be deployed and who may deploy it: the single transaction the admin signs
     Commit,
@@ -80,23 +81,25 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
         scripting = vm.isContext(VmSafe.ForgeContext.ScriptGroup);
         proposing = scripting && phase == DeployPhase.Commit && msg.sender.isSafeAccount();
 
-        // A proposing run brings no gate up itself — the deployment rides in its proposal — so the chain
-        // stays readable for `_commitToGate` to build that proposal from; the walk gets a simulated gate
-        // inside its rollback instead. Every other run wants one here: under a broadcast a missing gate is
-        // deployed for real, as the transaction before the commitment's own
-        if (!proposing) setUpDeployGate();
+        // A proposing run broadcasts nothing, so it could bring a gate up only in its simulation. A key run
+        // brings it up here: under a broadcast a missing gate is deployed for real, as the transaction before
+        // the commitment's own
+        if (proposing) {
+            requireDeployGate();
+        } else {
+            setUpDeployGate();
+        }
 
         // Fails a wrong sender at once rather than at the very end of the run, where the gate would reject
         // it anyway. One staticcall against the registry that enforces it for real, so this can never
-        // disagree with it: who may commit is decided by the gate, and here it is only reported early. A
-        // chain with no gate yet holds no delegates, so there only the namespace commits.
+        // disagree with it: who may commit is decided by the gate, and here it is only reported early.
         //
         // `--sender` is the account the phase acts as, a Safe included: a proposing run broadcasts nothing,
         // so forge takes any address there, and the owner or proposer who signs is whoever holds the Ledger
         // — the Safe transaction service is what checks that account may propose, once it is posted.
         if (scripting && phase == DeployPhase.Commit) {
             require(
-                msg.sender == namespace_ || (isDeployGateDeployed() && deployGate.isDelegate(namespace_, msg.sender)),
+                msg.sender == namespace_ || deployGate.isDelegate(namespace_, msg.sender),
                 "Not the namespace nor one of its delegates: pass a --sender the namespace answers to"
             );
         }
@@ -309,8 +312,8 @@ contract GatedDeployer is BaseDeployer, GateProposalScript {
 
     /// @dev The one call made in a namespace's name, and the only place a phase reaches the gate to change
     ///      anything. Made as the sender: a key signs it as a transaction; a Safe is handed the same call as
-    ///      a proposal its owners sign afterwards, through `proposeGateCall`, which is also what brings the
-    ///      gate itself up on a chain that has none — nothing else in a proposing run is broadcast
+    ///      a proposal its owners sign afterwards, through `proposeGateCall` — nothing else in a proposing run
+    ///      is broadcast
     function _commitToGate(bytes32[] memory salts, bytes32[] memory initCodeHashes, address[] memory executors_)
         internal
     {

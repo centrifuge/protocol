@@ -52,6 +52,12 @@ key and be the same account on every chain the protocol runs on. Which account t
 that delegates to a Safe, a key that delegates to another — is the config's and the gate's business, not this
 script's: `LaunchDeployer` supports any of those arrangements without knowing which one it is in.
 
+**The gate comes before the deployment.** Putting the DeployGate on the chain, and naming the namespace's
+delegates on it, is not part of a mainnet deployment: another actor does both beforehand, through its own
+tooling. Anyone can deploy the gate — `CreateX.deployCreate2(DEPLOY_GATE_SALT, DEPLOY_GATE_BYTECODE)`, both in
+`create3-gate/script/DeployGate.d.sol` — and it grants its deployer nothing. A Safe commits only through a gate
+already there, so a proposing `commit()` on a chain without one stops before anything is signed.
+
 Each phase **acts as `--sender`**, and how the phase is signed follows from what that account is. Deploying,
 it is an executor key. Committing, it is the namespace or a delegate the namespace named through the gate's
 `setDelegate`: a key is broadcast from; a Safe cannot sign a forge broadcast, so it is **proposed to** instead,
@@ -98,10 +104,8 @@ the wrong one.
 
 The proposing run is the same walk as the broadcast one, and prints the same table and digest, so what you
 rehearse on a testnet is what the Safe owners are shown. Only the last step differs, and only because the
-committing account is a Safe. It also cannot bring a missing gate up beside the proposal — a run that both proposed and
-broadcast would post the proposal over ffi and then fail to send the deferred transaction — so on a chain with
-no gate the gate's own deployment is batched into the same Safe transaction. On such a chain only the namespace
-can commit, there being no gate yet for a delegate to be named in. `revoke()` acts as the same account
+committing account is a Safe. The proposal is one plain call into the gate, never a batch, so it needs the gate
+on the chain already, put there before the deployment. `revoke()` acts as the same account
 `commit()` would; `deploy()` never does.
 
 **Delegates** are named at any point through the gate's `setDelegate`, by the namespace, and change nothing
@@ -188,12 +192,13 @@ environment's connections file rather than being told one.
 
 ### Trying a deployment before committing to it
 
-Use `anvil.sh`. Dropping `--broadcast` to "simulate" against a real network does run: a chain with no gate at
-`DEPLOY_GATE_ADDRESS` gets one in the simulated state, so the walk completes and prints its table either way.
+Use `anvil.sh`. Dropping `--broadcast` to "simulate" against a real network does run: with a key sender, a chain
+with no gate at `DEPLOY_GATE_ADDRESS` gets one in the simulated state, so the walk completes and prints its table
+either way. A Safe sender needs the gate there already.
 What a dry run cannot rehearse is the signature — `commit()` checks the sender against the namespace it
 commits in, so it only passes for the namespace or one of its delegates; and a Safe sender ends in a proposal
 instead, which needs a Ledger rather than a broadcast — and there is no dry run of a proposal: the run posts
-it over ffi as soon as it is signed, `--broadcast` or not. `anvil.sh` sidesteps that: it brings up its own gate on a fork and rehearses the whole
+it over ffi as soon as it is signed, `--broadcast` or not. `anvil.sh` sidesteps that: on bare local chains, its key's `commit()` brings the gate up and it rehearses the whole
 sequence, which is also what ci.yml runs on every pull request.
 
 ### Network quirks
@@ -319,9 +324,10 @@ left, it does not roll anything back.
 
 ### Roles
 
-Nothing brings the gate up beforehand: the first run that needs one deploys it, in the same run, the way a
-deployment makes sure CreateX is there. It takes no arguments and grants its deployer nothing, so there is
-nothing to configure and no order to get right. Everything else lives in a **namespace** inside the gate,
+The gate takes no arguments and grants its deployer nothing, so anyone can deploy it and there is nothing to
+configure on it. A key's `commit()` deploys a missing one in the same run, the way a deployment makes sure
+CreateX is there; on mainnet it is put there before the deployment, since a Safe commits only through a gate
+already on the chain. Everything else lives in a **namespace** inside the gate,
 named after an account. The gate has no roles of its own — no wards, no owner, no admin — only these two:
 
 - **namespace** — the account every address derives from, alongside the gate and the salt. `network.namespace`
@@ -405,12 +411,13 @@ so an address derives from the gate and from a salt of the gate's own making, `k
 
 - The gate to deploy through is `DEPLOY_GATE_ADDRESS` in `create3-gate/script/DeployGate.d.sol`, the same on every
   chain, so there is nothing to look up, nothing to pass by hand and no env file to keep in step with it.
-  A chain that has no gate yet gets one from the run that needs it, so there is nothing to deploy first. The
+  A chain that has no gate yet gets one from the namespace's own key committing, there being no delegate on a
+  chain without a gate; a Safe commits only through a gate already there. The
   constant follows the gate's bytecode, so any change to `DeployGate.sol` — or to the compiler settings it is built
   with — moves it; `testConstantsMatchTheBytecode`, in the gate's own repository, fails with the value to put
   into `DeployGate.d.sol` when that happens.
-- The gate's address depends on nothing but its code, so no key stands behind it and nothing has to run
-  first: `commit()` brings it up on a chain that has none, and finds it on a chain that has. Changing the
+- The gate's address depends on nothing but its code, so no key stands behind it: whoever puts it on a chain
+  puts the same gate there, and every run finds it on a chain that has it. Changing the
   contract is what would move it, which is why its code is frozen once a chain has one.
 - Nobody can put other code at that address. The address is
   `keccak256(0xff ‖ CreateX ‖ keccak256(abi.encode(salt)) ‖ keccak256(initCode))[12:]`, so different init code

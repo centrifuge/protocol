@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {EnsureDeployGate} from "../../script/utils/GateProposal.s.sol";
 import {CREATEX_ADDRESS} from "../../script/utils/createx/CreateX.d.sol";
+import {GateProposalScript} from "../../script/utils/GateProposal.s.sol";
 import {BaseDeployer, AccountLib} from "../../script/deploy/BaseDeployer.s.sol";
 import {GatedDeployer, DeployPhase} from "../../script/deploy/GatedDeployer.s.sol";
 import {
@@ -138,31 +138,6 @@ contract DeployGateAddressTest is Test, BaseDeployer {
     function testGateSaltIsUnscoped() public pure {
         assertEq(DEPLOY_GATE_SALT << 88, bytes32(0), "the salt's entropy belongs in its high 11 bytes");
         assertEq(DEPLOY_GATE_SALT[20], bytes1(0x0), "redeploy protection should stay off");
-    }
-
-    /// @dev The batch leg a Safe proposal carries in place of the gate's own deployment: it has to work
-    ///      however late the proposal executes, so a gate landing first is stepped aside from rather than
-    ///      reverted on — which a direct deployCreate2 in the batch would do, taking the gate call behind
-    ///      it down too
-    function testEnsureDeployGateDeploysAndStepsAside() public {
-        assertEq(DEPLOY_GATE_ADDRESS.code.length, 0, "nothing there yet");
-
-        // The way the proposal posts it: through CreateX, which has to accept a carrier with no functions
-        address carrier = CreateX.deployCreate(type(EnsureDeployGate).creationCode);
-        assertGt(carrier.code.length, 0, "CreateX must accept the carrier");
-        assertEq(DEPLOY_GATE_ADDRESS.codehash, DEPLOY_GATE_EXTCODEHASH, "brings the gate up");
-
-        new EnsureDeployGate();
-        assertEq(DEPLOY_GATE_ADDRESS.codehash, DEPLOY_GATE_EXTCODEHASH, "and steps aside from one already there");
-    }
-
-    /// @dev What it cannot step aside from it rejects, so the gate call behind it never lands in foreign code
-    function testEnsureDeployGateRejectsImpostor() public {
-        address impostor = address(new SimpleContract(1));
-        vm.etch(DEPLOY_GATE_ADDRESS, impostor.code);
-
-        vm.expectRevert(bytes("Not the DeployGate"));
-        new EnsureDeployGate();
     }
 }
 
@@ -417,5 +392,31 @@ contract Create3GatedAddressesTest is Test, GatedDeployer {
         this.deployIt(1);
 
         assertEq(SimpleContract(predicted).value(), 1, "what was deployed should stay untouched");
+    }
+}
+
+contract GateProposalTest is Test, GateProposalScript {
+    /// @dev A Safe reaches only a gate already on the chain: its proposal is one plain call into the gate, and
+    ///      nothing in it deploys one first
+    function testProposeGateCallRefusesAChainWithoutGate() public {
+        assertEq(DEPLOY_GATE_ADDRESS.code.length, 0, "nothing there yet");
+
+        vm.expectRevert(
+            bytes(
+                "No DeployGate on this chain: it is deployed before the deployment, and a Safe commits only through one already there"
+            )
+        );
+        this.propose(makeAddr("safe"), "");
+    }
+
+    function testProposeGateCallRefusesForeignCode() public {
+        vm.etch(DEPLOY_GATE_ADDRESS, address(new SimpleContract(1)).code);
+
+        vm.expectRevert(bytes("Not the DeployGate: unexpected code at that address"));
+        this.propose(makeAddr("safe"), "");
+    }
+
+    function propose(address safe_, bytes calldata gateCall) external {
+        proposeGateCall(safe_, gateCall);
     }
 }
