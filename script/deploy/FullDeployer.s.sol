@@ -76,6 +76,7 @@ import {
     NonCoreReport,
     AdaptersReport,
     AdapterConnections,
+    AdapterSettings,
     SetConfigParam
 } from "../../src/deployment/ActionBatchers.sol";
 
@@ -204,7 +205,7 @@ contract FullDeployer is GatedDeployer {
 
     CoreActionBatcher public coreBatcher;
     NonCoreActionBatcher public nonCoreBatcher;
-    AdapterActionBatcher public adapterBatcher;
+    AdapterActionBatcher[] public adapterBatchers;
 
     /// @dev Runs both phases back to back, in one process. For tests only: a real deployment gives each phase
     ///      its own run, which is what proves the deploy phase rebuilds exactly what the commit phase committed.
@@ -270,7 +271,7 @@ contract FullDeployer is GatedDeployer {
     function _deployProtocol(DeployerInput memory input) internal {
         address coreBatcherAddr = gatedAddress("coreBatcher", V_LATEST);
         address nonCoreBatcherAddr = gatedAddress("nonCoreBatcher", V_LATEST);
-        address adapterBatcherAddr = gatedAddress("adapterBatcher", V_LATEST);
+        address adapterBatcherAddr = gatedAddress(_adapterBatcherName(0), V_LATEST);
 
         _deployCore(coreBatcherAddr, input);
         coreBatcher = CoreActionBatcher(
@@ -303,25 +304,18 @@ contract FullDeployer is GatedDeployer {
         );
 
         _deployAdapters(adapterBatcherAddr, input.adapters);
-        adapterBatcher = AdapterActionBatcher(
-            submitUnreported(
-                "adapterBatcher",
-                V_LATEST,
-                abi.encodePacked(
-                    type(AdapterActionBatcher).creationCode,
-                    abi.encode(
-                        adaptersReport(),
-                        input.protocolSafe,
-                        input.adapters.connections,
-                        input.adapters.layerZero.configParams,
-                        input.adapters.layerZero.delegate,
-                        vm.toString(address(axelarAdapter)),
-                        address(axelarStandby) != address(0) ? vm.toString(address(axelarStandby.underlying())) : "",
-                        input.adapters.hyperlane.ism
-                    )
+
+        // One per lane, so that no transaction of the walk grows with the number of lanes
+        uint256 batcherCount = input.adapters.connections.length > 0 ? input.adapters.connections.length : 1;
+        delete adapterBatchers;
+        for (uint256 i; i < batcherCount; i++) {
+            address next = i + 1 < batcherCount ? gatedAddress(_adapterBatcherName(i + 1), V_LATEST) : address(0);
+            adapterBatchers.push(
+                AdapterActionBatcher(
+                    submitUnreported(_adapterBatcherName(i), V_LATEST, _adapterBatcherInitCode(input, i, next))
                 )
-            )
-        );
+            );
+        }
 
         if (input.root != address(0)) {
             rootFixes = RootFixes(
@@ -330,6 +324,45 @@ contract FullDeployer is GatedDeployer {
                 )
             );
         }
+    }
+
+    function _adapterBatcherName(uint256 index) internal pure returns (string memory) {
+        return string.concat("adapterBatcher", vm.toString(index));
+    }
+
+    /// @dev A chain without lanes still gets one batcher, which wires nothing and only hands the adapters over
+    function _adapterBatcherInitCode(DeployerInput memory input, uint256 index, address next)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bool hasLane = index < input.adapters.connections.length;
+        bool hasConfig = hasLane && index < input.adapters.layerZero.configParams.length;
+
+        AdapterConnections[] memory lane = new AdapterConnections[](hasLane ? 1 : 0);
+        SetConfigParam[] memory config = new SetConfigParam[](hasConfig ? 1 : 0);
+        if (hasLane) lane[0] = input.adapters.connections[index];
+        if (hasConfig) config[0] = input.adapters.layerZero.configParams[index];
+
+        return abi.encodePacked(
+            type(AdapterActionBatcher).creationCode,
+            abi.encode(
+                adaptersReport(),
+                AdapterSettings({
+                    protocolSafe: input.protocolSafe,
+                    layerZeroDelegate: input.adapters.layerZero.delegate,
+                    remoteAxelarAdapter: vm.toString(address(axelarAdapter)),
+                    remoteAxelarStandby: address(axelarStandby) != address(0)
+                        ? vm.toString(address(axelarStandby.underlying()))
+                        : "",
+                    hyperlaneIsm: input.adapters.hyperlane.ism
+                }),
+                lane,
+                config,
+                index == 0,
+                next
+            )
+        );
     }
 
     function _deployCore(address batcher, DeployerInput memory input) internal {
@@ -784,7 +817,7 @@ contract FullDeployer is GatedDeployer {
                     V3_3,
                     abi.encodePacked(
                         type(LayerZeroAdapter).creationCode,
-                        // Set delegate to adapterBatcher initially, to be able to set ULN config
+                        // Set delegate to the first adapter batcher initially, to be able to set ULN config
                         abi.encode(multiAdapter, input.layerZero.endpoint, batcher, batcher)
                     )
                 )
@@ -794,7 +827,7 @@ contract FullDeployer is GatedDeployer {
                 "layerZeroStandby",
                 abi.encodePacked(
                     type(LayerZeroAdapter).creationCode,
-                    // As above: the batcher is delegate until it has mirrored the ULN config onto it
+                    // As above: the batchers hold the delegacy until they have mirrored the ULN config onto it
                     abi.encode(gatedAddress("layerZeroStandby", V3_3), input.layerZero.endpoint, batcher, batcher)
                 )
             );

@@ -7,7 +7,9 @@
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
     "batchLimit": 7,
-    "baseRpcUrl": "https://robinhood-mainnet.g.alchemy.com/v2/"
+    "baseRpcUrl": "https://robinhood-mainnet.g.alchemy.com/v2/",
+    "verifier": "custom",
+    "verifierUrl": "https://api.etherscan.io/v2/api?chainid=4663"
   },
   "adapters": {
     "layerZero": {
