@@ -37,7 +37,7 @@ import {ISO4217_DECIMALS, iso4217Codes} from "../../src/deployment/Currencies.so
 import {CoreReport, CoreActionBatcher, RootAccessMismatch} from "../../src/deployment/ActionBatchers.sol";
 import {ILayerZeroEndpointV2Like, SetConfigParam} from "../../src/deployment/interfaces/ILayerZeroEndpointV2Like.sol";
 
-/// @dev Records what the batcher configures, per OApp, so a test can tell which of them got the protocol's config
+/// @dev Records what the batchers configure, per OApp and lane, so a test can tell which of them got which config
 contract LayerZeroEndpointMock {
     address public immutable sendLib = makeAddr("SendLib");
     address public immutable receiveLib = makeAddr("ReceiveLib");
@@ -45,7 +45,7 @@ contract LayerZeroEndpointMock {
     mapping(address oapp => address delegate) public delegates;
     mapping(address oapp => mapping(uint32 eid => address)) public sendLibraries;
     mapping(address oapp => mapping(uint32 eid => address)) public receiveLibraries;
-    mapping(address oapp => mapping(address lib => bytes)) public configs;
+    mapping(address oapp => mapping(address lib => mapping(uint32 eid => bytes))) public configs;
 
     function setDelegate(address _delegate) external {
         delegates[msg.sender] = _delegate;
@@ -68,7 +68,9 @@ contract LayerZeroEndpointMock {
     }
 
     function setConfig(address oapp, address lib, SetConfigParam[] calldata params) external onlyDelegate(oapp) {
-        configs[oapp][lib] = params[0].config;
+        for (uint256 i; i < params.length; i++) {
+            configs[oapp][lib][params[i].eid] = params[i].config;
+        }
     }
 
     /// @dev As the real endpoint: whoever configures an OApp must be it or its delegate, which is what
@@ -1047,8 +1049,8 @@ contract FullDeploymentTestAdapterConnections is FullDeploymentConfigTest {
         for (uint256 i; i < oapps.length; i++) {
             assertEq(endpoint.sendLibraries(oapps[i], REMOTE_LAYERZERO_ID), endpoint.sendLib());
             assertEq(endpoint.receiveLibraries(oapps[i], REMOTE_LAYERZERO_ID), endpoint.receiveLib());
-            assertEq(endpoint.configs(oapps[i], endpoint.sendLib()), ULN_CONFIG);
-            assertEq(endpoint.configs(oapps[i], endpoint.receiveLib()), ULN_CONFIG);
+            assertEq(endpoint.configs(oapps[i], endpoint.sendLib(), REMOTE_LAYERZERO_ID), ULN_CONFIG);
+            assertEq(endpoint.configs(oapps[i], endpoint.receiveLib(), REMOTE_LAYERZERO_ID), ULN_CONFIG);
             assertEq(endpoint.delegates(oapps[i]), LAYERZERO_DELEGATE);
         }
     }
@@ -1346,7 +1348,7 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertGt(address(hub).code.length, 0, "hub");
         assertGt(address(coreBatcher).code.length, 0, "coreBatcher");
         assertGt(address(nonCoreBatcher).code.length, 0, "nonCoreBatcher");
-        assertGt(address(adapterBatcher).code.length, 0, "adapterBatcher");
+        assertGt(address(adapterBatchers[0]).code.length, 0, "adapterBatcher0");
         assertGt(address(layerZeroAdapter).code.length, 0, "layerZeroAdapter");
     }
 
@@ -1369,14 +1371,18 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
     /// @dev The registry reports what was deployed, once each. The commit phase registers addresses as it
     ///      walks, and the state rollback that ends it is what discards them again, this script's own storage
     ///      being rolled back along with everything else
-    /// @dev The three action batchers are deployed but not reported: they hold no permission once they have
+    /// @dev The action batchers are deployed but not reported: they hold no permission once they have
     ///      wired the protocol, and nothing ever reads one back, so they do not belong in `env/<environment>/<network>.json`
     function testReportsEveryContractButTheBatchers() public view {
-        assertEq(registeredCount() + 3, deployedContracts, "the registry should report every other contract");
+        assertEq(
+            registeredCount() + 2 + adapterBatchers.length,
+            deployedContracts,
+            "the registry should report every other contract"
+        );
 
         assertFalse(_registered("coreBatcher"), "coreBatcher is not reported");
         assertFalse(_registered("nonCoreBatcher"), "nonCoreBatcher is not reported");
-        assertFalse(_registered("adapterBatcher"), "adapterBatcher is not reported");
+        assertFalse(_registered("adapterBatcher0"), "adapterBatcher0 is not reported");
     }
 
     /// @dev Nothing stays committed once deployed, so a stale approval cannot linger on chain
@@ -1419,7 +1425,7 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertEq(hub.wards(address(coreBatcher)), 0, "coreBatcher on hub");
         assertEq(spoke.wards(address(coreBatcher)), 0, "coreBatcher on spoke");
         assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
-        assertEq(multiAdapter.wards(address(adapterBatcher)), 0, "multiAdapter on adapterBatcher");
+        assertEq(multiAdapter.wards(address(adapterBatchers[0])), 0, "multiAdapter on adapterBatcher0");
     }
 }
 
@@ -1786,10 +1792,94 @@ contract FullDeploymentTestConnections is FullDeploymentConfigTest {
         });
     }
 
+    function _ulnConfig(uint16 centrifugeId) private pure returns (bytes memory) {
+        return abi.encode("uln", centrifugeId);
+    }
+
     function setUp() public override {
         connections_.push(_lane(MIXED, 1));
         connections_.push(_lane(FALLBACK, 0));
+        layerZeroConfigParams_.push(SetConfigParam({eid: 30_000 + MIXED, configType: 2, config: _ulnConfig(MIXED)}));
+        layerZeroConfigParams_.push(
+            SetConfigParam({eid: 30_000 + FALLBACK, configType: 2, config: _ulnConfig(FALLBACK)})
+        );
+        vm.recordLogs();
         super.setUp();
+    }
+
+    /// @dev Root holds the adapters before the walk moves past the first batcher, so a spell can repair a walk
+    ///      that stops partway
+    function testFirstAdapterBatcherReliesRoot() public {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 rootAt = type(uint256).max;
+        uint256 handOverAt = type(uint256).max;
+
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].emitter != address(layerZeroAdapter) || logs[i].topics[0] != IAuth.Rely.selector) continue;
+            address user = address(uint160(uint256(logs[i].topics[1])));
+            if (user == address(root)) rootAt = i;
+            if (user == address(adapterBatchers[1])) handOverAt = i;
+        }
+
+        assertLt(handOverAt, type(uint256).max, "the second batcher was relied");
+        assertLt(rootAt, handOverAt, "Root was relied before the first batcher handed over");
+    }
+
+    function testOneAdapterBatcherPerLane() public view {
+        assertEq(adapterBatchers.length, connections_.length);
+    }
+
+    function testNoAdapterBatcherIsReported() public view {
+        assertEq(registeredCount() + 2 + connections_.length, deployedContracts, "only the batchers go unreported");
+        for (uint256 i; i < adapterBatchers.length; i++) {
+            assertFalse(_registered(string.concat("adapterBatcher", vm.toString(i))));
+        }
+    }
+
+    function testEachLaneGetsItsOwnLayerZeroConfig() public view {
+        LayerZeroEndpointMock endpoint = LayerZeroEndpointMock(LAYERZERO_ENDPOINT);
+        address[2] memory oapps = [address(layerZeroAdapter), address(layerZeroStandby.underlying())];
+        uint16[2] memory lanes = [MIXED, FALLBACK];
+
+        for (uint256 i; i < oapps.length; i++) {
+            for (uint256 j; j < lanes.length; j++) {
+                uint32 eid = 30_000 + lanes[j];
+                assertEq(endpoint.configs(oapps[i], endpoint.sendLib(), eid), _ulnConfig(lanes[j]), "send config");
+                assertEq(endpoint.configs(oapps[i], endpoint.receiveLib(), eid), _ulnConfig(lanes[j]), "receive config");
+            }
+        }
+    }
+
+    function testEveryAdapterBatcherRevokedItself() public view {
+        address[9] memory administered = [
+            address(multiAdapter),
+            address(layerZeroAdapter),
+            address(axelarAdapter),
+            address(chainlinkAdapter),
+            address(hyperlaneAdapter),
+            address(layerZeroStandby.underlying()),
+            address(axelarStandby.underlying()),
+            address(chainlinkStandby.underlying()),
+            address(hyperlaneStandby.underlying())
+        ];
+
+        for (uint256 i; i < adapterBatchers.length; i++) {
+            for (uint256 j; j < administered.length; j++) {
+                assertEq(IAuth(administered[j]).wards(address(adapterBatchers[i])), 0, "an adapter batcher kept a ward");
+            }
+        }
+    }
+
+    /// @dev The mock endpoint, as the real one, takes a lane's config only from the delegate
+    function testLayerZeroDelegatePassesDownTheChain() public view {
+        LayerZeroEndpointMock endpoint = LayerZeroEndpointMock(LAYERZERO_ENDPOINT);
+        address[2] memory oapps = [address(layerZeroAdapter), address(layerZeroStandby.underlying())];
+
+        for (uint256 i; i < oapps.length; i++) {
+            assertEq(endpoint.sendLibraries(oapps[i], 30_000 + MIXED), endpoint.sendLib(), "first lane");
+            assertEq(endpoint.sendLibraries(oapps[i], 30_000 + FALLBACK), endpoint.sendLib(), "second lane");
+            assertEq(endpoint.delegates(oapps[i]), LAYERZERO_DELEGATE);
+        }
     }
 
     /// @dev The binding itself, both ways, rather than `isWired`, which holds as soon as either side is set

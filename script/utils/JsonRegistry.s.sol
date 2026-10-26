@@ -25,10 +25,10 @@ bool constant REPLACE = true;
 ///         Writing happens during forge's simulation pass, before the broadcast lands. For the addresses
 ///         that is exact — they are deterministic, CREATE3 from the gate, the salt and the deployment id, so what is
 ///         written is what will be deployed, including after a later `--resume`. For the block numbers it is
-///         an underestimate: `block.number` here is the block the script *read*, and the transactions land a
-///         few blocks later (measured: 1 on a local fork, up to ~183 on a fast chain). That is deliberate and
-///         it is the safe direction — these feed indexers, which must not start *after* a contract exists.
-///         Every contract in one run therefore shares a block number, since simulation does not advance.
+///         an underestimate: the block number is the chain's height when the run writes, asked of its RPC,
+///         and the transactions land a few blocks later (measured: 1 on a local fork, up to ~183 on a fast
+///         chain). That is deliberate and it is the safe direction — these feed indexers, which must not
+///         start *after* a contract exists. Every contract in one run therefore shares a block number.
 ///
 ///         Only an abandoned deployment leaves entries for contracts that never landed — a run whose
 ///         simulation reverts partway never reaches this, and one that stops during the broadcast is
@@ -152,7 +152,7 @@ contract JsonRegistry is Script {
                 "jq --argjson new \"$REGISTRY_CONTRACTS\" --argjson replace ",
                 replacesDeployment ? "true" : "false",
                 " --argjson block ",
-                vm.toString(block.number),
+                vm.toString(_chainHeight()),
                 " '",
                 MERGE,
                 "' '",
@@ -176,6 +176,15 @@ contract JsonRegistry is Script {
             if (keccak256(bytes(registeredNames[i])) == keccak256(bytes(name))) return true;
         }
         return false;
+    }
+
+    /// @dev The chain's own height, from its RPC. Not `block.number`: a rollup's NUMBER can report its parent
+    ///      chain's block, and forge's fork reports the same, so that would record the parent's height.
+    function _chainHeight() private returns (uint256 height) {
+        bytes memory raw = vm.rpc("eth_blockNumber", "[]");
+        for (uint256 i; i < raw.length; i++) {
+            height = (height << 8) | uint8(raw[i]);
+        }
     }
 
     function _sh(string memory command) private returns (string memory) {

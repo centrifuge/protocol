@@ -40,8 +40,8 @@ Rules, and the facts answers get wrong. The mechanics are documented where they 
 The fix commit exists because a sync where main renamed an API live uses cannot build on either side alone. It carries only what the merge broke and never touches a main file, and it is the part a reviewer reads. Never fix inside the merge commit itself: nobody can review that.
 
 - `Env.load()` is strict and describes exactly what `LaunchDeployer` deploys from the current branch. The reader is main's; the configs it accepts or rejects are live's. `check_foundry_networks.py`, `load-secrets.sh` and `add-gcp-secret.sh` derive from or fetch for the configs, so they ship with them on live.
-- CI: `workflow_dispatch` and `schedule` only run from the default branch, so main keeps each manual or scheduled trigger. The trigger names no chain: it checks out the live branch and runs its `.github/ci-scripts/*.sh` entrypoint (`plan`/`run`), which owns the matrix, commands and toolchain pin. `registry-publish.yml` is the exception: it calls live's `registry.yml` as a reusable workflow, since that pipeline also runs on live's own pushes and PRs.
-- Cutting a release: bring the previous live branch's environmental half (configs, CI entrypoints, ops scripts, mirror rules, spell review) onto the release point and adapt it to what changed. A main tag pushed as `live-v<version>` carries none of it, and every trigger would fail at its `plan` step. Then point main's trigger `branch` defaults, their cron fallbacks, and `registry-publish.yml`'s literal `uses:` refs at the new branch; the `branch` inputs stay overridable for older releases.
+- CI: `workflow_dispatch` and `schedule` only run from the default branch, so main keeps each manual or scheduled trigger. The trigger names no chain: it checks out the live branch and runs its `.github/ci-scripts/*.sh` entrypoint (`plan`/`run`), which owns the matrix, commands and toolchain pin. `registry-publish.yml` and the `deploy-*-trigger.yml` pair are the exceptions: they call live's workflow as a reusable one (`registry.yml`, since that pipeline also runs on live's own pushes and PRs, and `deploy-*.yml`).
+- Cutting a release: bring the previous live branch's environmental half (configs, CI entrypoints, ops scripts, mirror rules, spell review) onto the release point and adapt it to what changed. A main tag pushed as `live-v<version>` carries none of it, and every trigger would fail at its `plan` step. Then point main's trigger `branch` defaults, their cron fallbacks, and the literal `uses:` refs of `registry-publish.yml` and the deploy triggers (with the branch the mainnet trigger's input descriptions name) at the new branch; the `branch` inputs stay overridable for older releases.
 - Until a release is deployed, its configs record only `contracts.root`, and tests that need the deployed chain skip through `SkipsUntilDeployed`. They re-arm by themselves once the deployment writes the full configs.
 
 ## Running a deployment
@@ -57,10 +57,11 @@ The fix commit exists because a sync where main renamed an API live uses cannot 
 
 ## Recording addresses
 
-- A deploy script records itself: `JsonRegistry` (`startDeploymentOutput()`, then `register()`, which `reportedSalt()` calls, then `saveDeploymentOutput()`) merges names, addresses, versions and block numbers into `env/<environment>/<network>.json`. Nothing runs afterwards. Deploy-time-only contracts (the action batchers, `RootFixes`) take `unreportedSalt()`, so `env/` never records them.
+- A deploy script records itself: `JsonRegistry` (`startDeploymentOutput()`, then `register()`, which `reportedSalt()` calls, then `saveDeploymentOutput()`) merges names, addresses, versions and block numbers into `env/<environment>/<network>.json`. Nothing runs afterwards. Deploy-time-only contracts (the action batchers, `RootFixes`) go through `submitUnreported()`, so `env/` never records them.
 - To make a new address readable back, `register()` it in the script and add the field to `ContractsConfig` in `script/utils/EnvConfig.s.sol`.
+- The registry finds a recorded contract's ABI by capitalizing its key (`hub` → `Hub`; a `…Factory` key also needs its product's). A key that does not capitalize to a contract name, such as `layerZeroStandby` for a `StandbyAdapter`, needs an entry in `ABI_NAME_ALIASES` (`script/registry/utils/abi-cache.js` on live), or `validate-registry.js` fails with "Missing ABI" on the first config that records it.
 - The write is a merge: what a run does not mention stays. Only `LaunchDeployer` opens with `startDeploymentOutput(REPLACE)`, since its contracts are the chain's whole protocol. A run that deploys nothing (`commit()`) must not call `startDeploymentOutput()` or `saveDeploymentOutput()`.
-- Recorded block numbers are an underestimate: the block the simulation read, shared by every contract in the run. That is the safe direction for indexers and deliberate; do not "fix" it. Addresses are exact.
+- Recorded block numbers are an underestimate: the chain's height from its RPC as the run writes, shared by every contract in the run. That is the safe direction for indexers and deliberate; do not "fix" it. Addresses are exact. The height is never `block.number`, which on a rollup can be its parent chain's block.
 - A config records its contracts and nothing about the deployment as a whole. A chain's start block is the earliest `blockNumber` in it, derived by the registry when it publishes, never stored: a stored copy outlives the contracts it summarised, and a redeployment that reuses contracts leaves older ones in place that an indexer starting later would miss.
 
 ## Reading deployed state
@@ -82,6 +83,7 @@ Each layer inherits the one before it, and the layers mean something: `BaseDeplo
 
 - Keep gate helpers, gate constants and gate checks out of `BaseDeployer`. A script that deploys directly has no gate and must not compile as though it might.
 - `--sender` is the only input naming who acts. A key sender is broadcast from; a Safe sender (`isSafeAccount()`) is proposed to, signed by whoever holds the Ledger. A Safe namespace, a Ledger namespace delegating to a Safe, and a key delegating to a key are the same script.
+- A change under `src/deployment/` bumps no version. The action batchers and `RootFixes` are deploy-time only: they take `V_LATEST`, which moves with every release, and nothing carries them from one release to the next, so there is no address to keep. Only the protocol's own contracts carry the version they were first deployed at (`BaseDeployer`).
 
 ## Spells
 
