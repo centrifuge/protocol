@@ -8,9 +8,8 @@
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
     "batchLimit": 13,
     "baseRpcUrl": "https://rpc.plume.org/",
-    "verifier": "blockscout",
-    "verifierUrl": "https://explorer.plume.org/api/",
-    "explorerApiUrl": "https://explorer.plume.org/api/"
+    "verifier": "sourcify",
+    "verifierUrl": "https://sourcify.dev/server"
   },
   "adapters": {
     "layerZero": {

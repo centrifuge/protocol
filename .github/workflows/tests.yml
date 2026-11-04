@@ -18,16 +18,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # Only when the change can move a test result. The paths are what forge test compiles (src, src-ir through
+      # out-ir, test, script), the files the tests read (the chain configs under env/ and their anvil fixtures, the
+      # gas snapshots) and the toolchain, whose warnings --deny turns into failures. Gated per step rather than with
+      # a paths filter, so the job still reports when it is a required check.
+      # A base that is not in the history (a new branch, a force push) runs it
+      - name: Check test inputs
+        id: inputs
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED="$(git diff --name-only "$BASE...HEAD" -- \
+            src src-ir 'test/*.sol' 'script/*.sol' script/anvil/env 'env/*.json' snapshots \
+            lib foundry.toml foundry.lock remappings.txt .github/workflows/tests.yml)"
+          echo "${CHANGED:-no test inputs changed}"
+          echo "changed=$([ -n "$CHANGED" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
       - name: Install Foundry
+        if: steps.inputs.outputs.changed == 'true'
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.4.4
 
       - name: Build ir profile
+        if: steps.inputs.outputs.changed == 'true'
         run: FOUNDRY_PROFILE=ir forge build
 
       - name: Run tests
+        if: steps.inputs.outputs.changed == 'true'
         run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol"
         env:
           FOUNDRY_PROFILE: ci

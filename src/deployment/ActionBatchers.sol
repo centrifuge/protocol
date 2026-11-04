@@ -145,6 +145,15 @@ struct AdapterConnections {
     bool hyperlaneWiredOnly;
 }
 
+/// @dev    What every adapter batcher of a deployment is handed, whichever lanes it wires.
+struct AdapterSettings {
+    ISafe protocolSafe;
+    address layerZeroDelegate;
+    string remoteAxelarAdapter;
+    string remoteAxelarStandby;
+    address hyperlaneIsm;
+}
+
 /// @notice Thrown when a batcher is told to wire Root but is not a ward of it, or the other way round: the
 ///         deployment and the Root on the chain disagree about whether that Root was deployed by this run.
 error RootAccessMismatch();
@@ -435,17 +444,131 @@ contract NonCoreActionBatcher {
     }
 }
 
+/// @notice Wires the adapters to some of the lanes, then passes its permissions on to `next`, so that a deployment
+///         spreads its lanes over several batchers rather than one transaction growing with them. The first batcher
+///         grants the protocol its wards; the last, `next` being zero, hands it the LayerZero delegate.
 contract AdapterActionBatcher {
     constructor(
         AdaptersReport memory report,
-        ISafe protocolSafe,
+        AdapterSettings memory settings,
         AdapterConnections[] memory connectionList,
         SetConfigParam[] memory layerZeroConfigParams,
-        address layerZeroDelegate,
-        string memory remoteAxelarAdapter,
-        string memory remoteAxelarStandby,
-        address hyperlaneIsm
+        bool isFirst,
+        address next
     ) {
+        // First, so that Root can repair the adapters should a later batcher of the walk never land
+        if (isFirst) {
+            _relyProtocol(report, settings.protocolSafe);
+            _setIsm(report, settings.hyperlaneIsm);
+        }
+
+        for (uint256 i; i < connectionList.length; i++) {
+            _connect(
+                report,
+                connectionList[i],
+                layerZeroConfigParams,
+                i,
+                settings.remoteAxelarAdapter,
+                settings.remoteAxelarStandby
+            );
+        }
+
+        if (next != address(0)) _handOver(report, next);
+        _setDelegate(report, next != address(0) ? next : settings.layerZeroDelegate);
+
+        // Revoke batcher permissions
+        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
+        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
+        if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.deny(address(this));
+
+        _denyStandby(_underlying(report.layerZeroStandby));
+        _denyStandby(_underlying(report.axelarStandby));
+        _denyStandby(_underlying(report.chainlinkStandby));
+        _denyStandby(_underlying(report.hyperlaneStandby));
+
+        report.core.multiAdapter.deny(address(this));
+    }
+
+    function _connect(
+        AdaptersReport memory report,
+        AdapterConnections memory connections,
+        SetConfigParam[] memory layerZeroConfigParams,
+        uint256 index,
+        string memory remoteAxelarAdapter,
+        string memory remoteAxelarStandby
+    ) internal {
+        uint256 n;
+        IAdapter[] memory adapters = new IAdapter[](MAX_ADAPTER_COUNT);
+
+        if (address(report.layerZeroAdapter) != address(0) && connections.layerZeroId != 0) {
+            report.layerZeroAdapter
+                .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
+            if (!connections.layerZeroWiredOnly) adapters[n++] = report.layerZeroAdapter;
+
+            if (layerZeroConfigParams.length > 0) {
+                _setLayerZeroUlnConfig(report.layerZeroAdapter, connections.layerZeroId, layerZeroConfigParams[index]);
+                _setStandbyUlnConfig(report.layerZeroStandby, connections.layerZeroId, layerZeroConfigParams[index]);
+            }
+        }
+
+        if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
+            report.axelarAdapter.wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarAdapter));
+            if (!connections.axelarWiredOnly) adapters[n++] = report.axelarAdapter;
+        }
+
+        if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
+            report.chainlinkAdapter
+                .wire(
+                    connections.centrifugeId,
+                    // Full finality both ways; a lane is migrated to faster-than-finality by governance, not at launch
+                    abi.encode(connections.chainlinkId, report.chainlinkAdapter, bytes4(0), bytes4(0))
+                );
+
+            if (!connections.chainlinkWiredOnly) adapters[n++] = report.chainlinkAdapter;
+        }
+
+        if (address(report.hyperlaneAdapter) != address(0) && connections.hyperlaneId != 0) {
+            report.hyperlaneAdapter
+                .wire(connections.centrifugeId, abi.encode(connections.hyperlaneId, report.hyperlaneAdapter));
+            if (!connections.hyperlaneWiredOnly) adapters[n++] = report.hyperlaneAdapter;
+        }
+
+        _wireStandbys(report, connections, remoteAxelarStandby);
+
+        if (n > 0) {
+            assembly {
+                mstore(adapters, n)
+            }
+            report.core.multiAdapter
+                .setAdapters(
+                    connections.centrifugeId,
+                    PoolId.wrap(0),
+                    adapters,
+                    connections.threshold > 0 ? connections.threshold : uint8(adapters.length),
+                    1 // fresh-deploy bootstrap of the global pool: the next session id is always 1
+                );
+        }
+    }
+
+    function _handOver(AdaptersReport memory report, address next) internal {
+        _relyAdapters(report, next);
+        _relyStandby(_underlying(report.layerZeroStandby), next);
+        _relyStandby(_underlying(report.axelarStandby), next);
+        _relyStandby(_underlying(report.chainlinkStandby), next);
+        _relyStandby(_underlying(report.hyperlaneStandby), next);
+        report.core.multiAdapter.rely(next);
+    }
+
+    /// @dev The endpoint takes a ULN config only from the delegate, so it moves with the batchers until the last
+    function _setDelegate(AdaptersReport memory report, address delegate) internal {
+        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.setDelegate(delegate);
+
+        address layerZero = _underlying(report.layerZeroStandby);
+        if (layerZero != address(0)) LayerZeroAdapter(layerZero).setDelegate(delegate);
+    }
+
+    function _relyProtocol(AdaptersReport memory report, ISafe protocolSafe) internal {
         _relyAdapters(report, address(report.core.root));
         _relyAdapters(report, address(report.core.opsGuardian));
 
@@ -463,89 +586,18 @@ contract AdapterActionBatcher {
         // global adapters, and are wired to the same lanes, so a pool can take one up as it is and it verifies as
         // the protocol does
         _relyStandbys(report, protocolSafe);
+    }
 
-        // Connect adapters
-        for (uint256 i; i < connectionList.length; i++) {
-            AdapterConnections memory connections = connectionList[i];
+    /// @dev So that inbound verification does not fall back to the Mailbox default ISM
+    function _setIsm(AdaptersReport memory report, address hyperlaneIsm) internal {
+        if (hyperlaneIsm == address(0)) return;
 
-            uint256 n;
-            IAdapter[] memory adapters = new IAdapter[](MAX_ADAPTER_COUNT);
-
-            if (address(report.layerZeroAdapter) != address(0) && connections.layerZeroId != 0) {
-                report.layerZeroAdapter
-                    .wire(connections.centrifugeId, abi.encode(connections.layerZeroId, report.layerZeroAdapter));
-                if (!connections.layerZeroWiredOnly) adapters[n++] = report.layerZeroAdapter;
-
-                if (layerZeroConfigParams.length > 0) {
-                    _setLayerZeroUlnConfig(report.layerZeroAdapter, connections.layerZeroId, layerZeroConfigParams[i]);
-                    _setStandbyUlnConfig(report.layerZeroStandby, connections.layerZeroId, layerZeroConfigParams[i]);
-                }
-            }
-
-            if (address(report.axelarAdapter) != address(0) && bytes(connections.axelarId).length != 0) {
-                report.axelarAdapter
-                    .wire(connections.centrifugeId, abi.encode(connections.axelarId, remoteAxelarAdapter));
-                if (!connections.axelarWiredOnly) adapters[n++] = report.axelarAdapter;
-            }
-
-            if (address(report.chainlinkAdapter) != address(0) && connections.chainlinkId != 0) {
-                report.chainlinkAdapter
-                    .wire(
-                        connections.centrifugeId,
-                        // Full finality both ways; a lane is migrated to faster-than-finality by governance, not at launch
-                        abi.encode(connections.chainlinkId, report.chainlinkAdapter, bytes4(0), bytes4(0))
-                    );
-
-                if (!connections.chainlinkWiredOnly) adapters[n++] = report.chainlinkAdapter;
-            }
-
-            if (address(report.hyperlaneAdapter) != address(0) && connections.hyperlaneId != 0) {
-                report.hyperlaneAdapter
-                    .wire(connections.centrifugeId, abi.encode(connections.hyperlaneId, report.hyperlaneAdapter));
-                if (!connections.hyperlaneWiredOnly) adapters[n++] = report.hyperlaneAdapter;
-            }
-
-            _wireStandbys(report, connections, remoteAxelarStandby);
-
-            if (n > 0) {
-                assembly {
-                    mstore(adapters, n)
-                }
-                report.core.multiAdapter
-                    .setAdapters(
-                        connections.centrifugeId,
-                        PoolId.wrap(0),
-                        adapters,
-                        connections.threshold > 0 ? connections.threshold : uint8(adapters.length),
-                        1 // fresh-deploy bootstrap of the global pool: the next session id is always 1
-                    );
-            }
-        }
-
-        if (address(report.layerZeroAdapter) != address(0)) {
-            // Set delegate to the right address after setting the ULN config
-            report.layerZeroAdapter.setDelegate(layerZeroDelegate);
-        }
-
-        // Set the ISM so inbound verification does not fall back to the Mailbox default ISM
-        if (address(report.hyperlaneAdapter) != address(0) && hyperlaneIsm != address(0)) {
+        if (address(report.hyperlaneAdapter) != address(0)) {
             report.hyperlaneAdapter.setIsm(IInterchainSecurityModule(hyperlaneIsm));
         }
 
-        _finalizeStandbys(report, layerZeroDelegate, hyperlaneIsm);
-
-        // Revoke batcher permissions
-        if (address(report.axelarAdapter) != address(0)) report.axelarAdapter.deny(address(this));
-        if (address(report.layerZeroAdapter) != address(0)) report.layerZeroAdapter.deny(address(this));
-        if (address(report.chainlinkAdapter) != address(0)) report.chainlinkAdapter.deny(address(this));
-        if (address(report.hyperlaneAdapter) != address(0)) report.hyperlaneAdapter.deny(address(this));
-
-        _denyStandby(_underlying(report.layerZeroStandby));
-        _denyStandby(_underlying(report.axelarStandby));
-        _denyStandby(_underlying(report.chainlinkStandby));
-        _denyStandby(_underlying(report.hyperlaneStandby));
-
-        report.core.multiAdapter.deny(address(this));
+        address hyperlane = _underlying(report.hyperlaneStandby);
+        if (hyperlane != address(0)) HyperlaneAdapter(hyperlane).setIsm(IInterchainSecurityModule(hyperlaneIsm));
     }
 
     function _relyAdapters(AdaptersReport memory report, address ward) internal {
@@ -628,16 +680,8 @@ contract AdapterActionBatcher {
         if (underlying != address(0)) _setLayerZeroUlnConfig(LayerZeroAdapter(underlying), eid, param);
     }
 
-    /// @dev The same hand-over the global adapters get: the delegate once the ULN config is set, and the ISM
-    ///      so inbound verification does not fall back to the Mailbox default
-    function _finalizeStandbys(AdaptersReport memory report, address layerZeroDelegate, address hyperlaneIsm) internal {
-        address layerZero = _underlying(report.layerZeroStandby);
-        if (layerZero != address(0)) LayerZeroAdapter(layerZero).setDelegate(layerZeroDelegate);
-
-        address hyperlane = _underlying(report.hyperlaneStandby);
-        if (hyperlane != address(0) && hyperlaneIsm != address(0)) {
-            HyperlaneAdapter(hyperlane).setIsm(IInterchainSecurityModule(hyperlaneIsm));
-        }
+    function _relyStandby(address underlying, address ward) internal {
+        if (underlying != address(0)) IAuth(underlying).rely(ward);
     }
 
     function _denyStandby(address underlying) internal {

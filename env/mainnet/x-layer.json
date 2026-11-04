@@ -7,7 +7,7 @@
     "opsAdmin": "0xd21413291444C5c104F1b5918cA0D2f6EC91Ad16",
     "namespace": "0x926702C7f1af679a8f99A40af8917DDd82fD6F6c",
     "batchLimit": 7,
-    "baseRpcUrl": "https://rpc.xlayer.tech",
+    "baseRpcUrl": "https://xlayer-mainnet.g.alchemy.com/v2/",
     "verifiers": [
       {
         "name": "oklink",
@@ -17,10 +17,9 @@
       },
       {
         "name": "xlayerscan",
-        "verifier": "custom",
-        "verifierUrl": "https://api.xlayerscan.com/api",
-        "explorerApiUrl": "https://api.xlayerscan.com/api",
-        "skipIsVerifiedCheck": true
+        "verifier": "sourcify",
+        "verifierUrl": "https://sourcify.dev/server",
+        "explorerApiUrl": "https://api.xlayerscan.com/api"
       }
     ]
   },
