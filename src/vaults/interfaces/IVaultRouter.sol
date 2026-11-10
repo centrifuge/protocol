@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
-import {IBaseVault} from "./IBaseVault.sol";
 import {IAsyncVault} from "./IAsyncVault.sol";
 
 import {IMulticall} from "../../misc/interfaces/IMulticall.sol";
@@ -11,119 +10,58 @@ import {ISpoke} from "../../core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {ISpokeRegistry} from "../../core/spoke/interfaces/ISpokeRegistry.sol";
 
-import {BaseSyncDepositVault} from "../BaseVaults.sol";
-
+/// @notice Investor-facing multicall entrypoint for vaults: approvals, requests, claims and cross-chain share
+///         transfers batched in one transaction. It holds no state of its own beyond the vault it resolves.
 interface IVaultRouter is IMulticall {
-    //----------------------------------------------------------------------------------------------
-    // Events
-    //----------------------------------------------------------------------------------------------
-
-    event LockDepositRequest(
-        IBaseVault indexed vault, address indexed controller, address indexed owner, address sender, uint256 amount
-    );
-    event UnlockDepositRequest(IBaseVault indexed vault, address indexed controller, address indexed receiver);
-    event ExecuteLockedDepositRequest(IBaseVault indexed vault, address indexed controller, address sender);
-
     error InvalidOwner();
-    error NoLockedBalance();
-    error NoLockedRequest();
-    error ZeroBalance();
     error InvalidSender();
-    error NonSyncDepositVault();
-    error NonAsyncVault();
-
-    //----------------------------------------------------------------------------------------------
-    // Manage permissionless claiming
-    //----------------------------------------------------------------------------------------------
-
-    /// @notice Enable permissionless claiming
-    /// @dev    After this is called, anyone can claim tokens to msg.sender.
-    ///         Even any requests submitted directly to the vault (not through the VaultRouter) will be
-    ///         permissionlessly claimable through the VaultRouter, until `disable()` is called.
-    function enable(IBaseVault vault) external payable;
-
-    /// @notice Disable permissionless claiming
-    function disable(IBaseVault vault) external payable;
+    error InvalidController();
+    error ValueAlreadySpent();
 
     //----------------------------------------------------------------------------------------------
     // Deposit
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Check `IERC7540Deposit.requestDeposit`.
-    /// @param  vault The vault to deposit into
-    /// @param  amount Check @param IERC7540Deposit.requestDeposit.assets
-    /// @param  controller Check @param IERC7540Deposit.requestDeposit.controller
-    /// @param  owner Check @param IERC7540Deposit.requestDeposit.owner
+    /// @notice Check `IERC7540Deposit.requestDeposit`. `owner` is the caller, which must have enabled the
+    ///         router, or the router itself, holding the assets from an earlier call in the batch. On a vault with
+    ///         both lanes, the router funding the request (`owner` is the router) also needs the caller to have made
+    ///         the router their operator on that vault, since the vault sees an owner that is not the controller.
+    ///         `controller` must be the caller: the router is an
+    ///         investor's operator, so a request it relayed for someone else would count as theirs.
     function requestDeposit(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
 
-    /// @notice Check `IERC4626.deposit`.
-    /// @dev    The vault sees the router as the depositor, so the router checks that msg.sender is permissioned on
-    ///         the vault, as a direct deposit would.
-    /// @param  vault The vault to deposit into
-    /// @param  assets Check @param IERC4626.deposit.assets
-    /// @param  receiver Check @param IERC4626.deposit.receiver
+    /// @notice An instant deposit (`IERC7575.deposit`), from the caller or from assets the router holds. The vault
+    ///         sees the router as the depositor, so the router checks the caller against the share token's hook, as a
+    ///         direct deposit would be, and reverts with `InvalidSender` where the hook refuses it.
     /// @param  owner User from which to transfer the assets, either msg.sender or the VaultRouter
-    function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner) external payable;
+    function deposit(IAsyncVault vault, uint256 assets, address receiver, address owner) external payable;
 
-    /// @notice Check IERC7540Deposit.mint
-    /// @param  vault Address of the vault
-    /// @param  receiver Check IERC7540Deposit.mint.receiver
-    /// @param  controller Check IERC7540Deposit.mint.owner
+    /// @notice Claims all of `controller`'s claimable shares to `receiver`.
     function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable;
-
-    /// @notice Check `IERC7887Deposit.cancelDepositRequest`.
-    /// @param  vault The vault where the deposit was initiated
-    function cancelDepositRequest(IAsyncVault vault) external payable;
-
-    /// @notice Check IERC7887Deposit.claimCancelDepositRequest
-    ///
-    /// @param  vault Address of the vault
-    /// @param  receiver Check  IERC7887Deposit.claimCancelDepositRequest.receiver
-    /// @param  controller Check  IERC7887Deposit.claimCancelDepositRequest.controller
-    function claimCancelDepositRequest(IAsyncVault vault, address receiver, address controller) external payable;
 
     //----------------------------------------------------------------------------------------------
     // Redeem
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Check `IERC7540Redeem.requestRedeem`.
-    /// @param  vault The vault to deposit into
-    /// @param  amount Check @param IERC7540Redeem.requestRedeem.shares
-    /// @param  controller Check @param IERC7540Redeem.requestRedeem.controller
-    /// @param  owner Check @param IERC7540Redeem.requestRedeem.owner
+    /// @notice Check `IERC7540Redeem.requestRedeem`, with `owner` and `controller` as for `requestDeposit`.
     function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner) external payable;
 
-    /// @notice Check IERC7575.withdraw
-    /// @dev    If the underlying vault asset is a wrapped one,
-    ///         `VaultRouter.unwrap` is called and the unwrapped
-    ///         asset is sent to the receiver
-    /// @param  vault Address of the vault
-    /// @param  receiver Check IERC7575.withdraw.receiver
-    /// @param  controller Check IERC7575.withdraw.owner
-    function claimRedeem(IBaseVault vault, address receiver, address controller) external payable;
-
-    /// @notice Check `IERC7887Redeem.cancelRedeemRequest`.
-    /// @param  vault The vault where the deposit was initiated
-    function cancelRedeemRequest(IAsyncVault vault) external payable;
-
-    /// @notice Check IERC7887Redeem.claimableCancelRedeemRequest
-    ///
-    /// @param  vault Address of the vault
-    /// @param  receiver Check  IERC7887Redeem.claimCancelRedeemRequest.receiver
-    /// @param  controller Check  IERC7887Redeem.claimCancelRedeemRequest.controller
-    function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller) external payable;
+    /// @notice Claims all of `controller`'s claimable assets to `receiver`.
+    function claimRedeem(IAsyncVault vault, address receiver, address controller) external payable;
 
     //----------------------------------------------------------------------------------------------
     // Cross-chain transfers
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Intended to be used in a batch with `deposit` or `claimDeposit`.
+    /// @notice Intended to be used in a batch with `deposit` or `claimDeposit`. In a multicall the value sent funds
+    ///         one transfer: a second transfer that forwards value reverts `ValueAlreadySpent`, since every call of a
+    ///         batch sees the same `msg.value` and would otherwise spend what others left in the router.
     ///         The preceding vault call's `receiver` must be set to `address(this)` (the router),
     ///         not this function's `receiver` parameter (which is the destination bytes32 address on the
     ///         remote chain). `owner` must be either `msg.sender` or `address(this)` (the router itself,
     ///         for the batched case where the router holds the shares as an intermediate step).
     function crosschainTransferShares(
-        BaseSyncDepositVault vault,
+        IAsyncVault vault,
         uint128 shares,
         uint16 centrifugeId,
         bytes32 receiver,
@@ -143,21 +81,15 @@ interface IVaultRouter is IMulticall {
         payable;
 
     //----------------------------------------------------------------------------------------------
-    // View Methods
+    // View methods
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Check ISpoke.getVault
+    /// @notice The linked vault of a share class for `asset`, or zero when there is none.
     function getVault(PoolId poolId, ShareClassId scId, address asset) external view returns (address);
 
-    /// @notice Called to check if `user` has permissions on `vault` to execute requests
-    ///
-    /// @param vault Address of the `vault` the `user` wants to operate on
-    /// @param user Address of the `user` that will operates on the `vault`
-    /// @return Whether `user` has permissions to operate on `vault`
-    function hasPermissions(IBaseVault vault, address user) external view returns (bool);
-
-    /// @notice Returns whether the controller has called `enable()` for the given `vault`
-    function isEnabled(IBaseVault vault, address controller) external view returns (bool);
+    /// @notice Returns whether the controller has made the router its operator on `vault` (`vault.setOperator`),
+    ///         which lets anyone claim the controller's settled requests to the controller through the router.
+    function isEnabled(IAsyncVault vault, address controller) external view returns (bool);
 
     /// @notice Spoke-side entry point for this chain's pool and share class operations
     function spoke() external view returns (ISpoke);

@@ -15,7 +15,7 @@ import {IShareClassManager} from "../../../core/hub/interfaces/IShareClassManage
 /// @dev    Implements INAVHook to receive NAV updates and calculate share prices
 interface ISimplePriceManager is INAVHook {
     event Update(
-        PoolId indexed poolId, ShareClassId scId, uint128 newNAV, uint128 newIssuance, D18 newPricePoolPerShare
+        PoolId indexed poolId, ShareClassId scId, int128 newNAV, uint128 newIssuance, D18 newPricePoolPerShare
     );
     event Transfer(
         PoolId indexed poolId,
@@ -29,12 +29,12 @@ interface ISimplePriceManager is INAVHook {
     error InvalidShareClass();
 
     struct Metrics {
-        uint128 netAssetValue;
+        int128 netAssetValue;
         uint128 issuance;
     }
 
     struct NetworkMetrics {
-        uint128 netAssetValue;
+        int128 netAssetValue;
         uint128 issuance;
         uint128 transferredIn;
         uint128 transferredOut;
@@ -51,16 +51,18 @@ interface ISimplePriceManager is INAVHook {
     /// @notice Manages share class creation, pricing, and issuance/revocation tracking
     function shareClassManager() external view returns (IShareClassManager);
 
-    /// @notice Latest computed price per share for a pool, derived from NAV / total issuance
+    /// @notice Latest computed price per share for a pool, derived from NAV / total issuance. The pool-wide NAV is the
+    ///         signed sum over the networks, floored at zero only here, so one network's debt is netted against
+    ///         the assets another holds.
     /// @param poolId The pool ID
     function pricePoolPerShare(PoolId poolId) external view returns (D18);
 
-    function metrics(PoolId poolId) external view returns (uint128 netAssetValue, uint128 issuance);
+    function metrics(PoolId poolId) external view returns (int128 netAssetValue, uint128 issuance);
     function networkMetrics(PoolId poolId, uint16 centrifugeId)
         external
         view
         returns (
-            uint128 netAssetValue,
+            int128 netAssetValue,
             uint128 issuance,
             uint128 transferredIn,
             uint128 transferredOut,

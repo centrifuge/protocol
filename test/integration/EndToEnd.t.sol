@@ -8,6 +8,7 @@ import {ERC20} from "../../src/misc/ERC20.sol";
 import {D18} from "../../src/misc/types/D18.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {MathLib} from "../../src/misc/libraries/MathLib.sol";
+import {IERC8161RedeemTransferable} from "../../src/misc/interfaces/IERC8161.sol";
 
 import {Hub} from "../../src/core/hub/Hub.sol";
 import {Spoke} from "../../src/core/spoke/Spoke.sol";
@@ -20,6 +21,7 @@ import {Gateway} from "../../src/core/messaging/Gateway.sol";
 import {HubHandler} from "../../src/core/hub/HubHandler.sol";
 import {RequestId} from "../../src/core/types/RequestId.sol";
 import {HubRegistry} from "../../src/core/hub/HubRegistry.sol";
+import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {PricingLib} from "../../src/core/libraries/PricingLib.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {SpokeHandler} from "../../src/core/spoke/SpokeHandler.sol";
@@ -36,6 +38,8 @@ import {MultiAdapter, MAX_ADAPTER_COUNT} from "../../src/core/messaging/MultiAda
 import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySenders.sol";
 import {MessageLib, MessageType, VaultUpdateKind, ManagerKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
+import {VaultRequestRouter} from "../../src/vaults/messaging/VaultRequestRouter.sol";
+
 import {Root} from "../../src/admin/Root.sol";
 import {GasService} from "../../src/admin/GasService.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
@@ -44,26 +48,32 @@ import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
 import {MockSnapshotHook} from "../hooks/mocks/MockSnapshotHook.sol";
 
-import {FreezeOnly} from "../../src/token/hooks/FreezeOnly.sol";
-import {FullRestrictions} from "../../src/token/hooks/FullRestrictions.sol";
-import {RedemptionRestrictions} from "../../src/token/hooks/RedemptionRestrictions.sol";
+import {ShareTokenHook} from "../../src/token/hooks/ShareTokenHook.sol";
 import {UpdateRestrictionMessageLib} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {QueueManager} from "../../src/managers/spoke/QueueManager.sol";
 import {ShareManager} from "../../src/managers/spoke/ShareManager.sol";
 import {IShareManager} from "../../src/managers/spoke/interfaces/IShareManager.sol";
 
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
-import {BatchRequestManagerCallLib} from "../vaults/utils/BatchRequestManagerCallLib.sol";
-
-import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {Vault} from "../../src/vaults/Vault.sol";
+import {OrderBook} from "../../src/vaults/hub/OrderBook.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
-import {IBaseVault} from "../../src/vaults/interfaces/IBaseVault.sol";
-import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
-import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
-import {IAsyncVault, IAsyncRedeemVault} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {SpokeOracle} from "../../src/vaults/oracles/SpokeOracle.sol";
+import {VaultFactory} from "../../src/vaults/factories/VaultFactory.sol";
+import {FeeRequestManager} from "../../src/vaults/hub/FeeRequestManager.sol";
+import {IVaultOracle} from "../../src/vaults/oracles/interfaces/IVaultOracle.sol";
+import {IAsyncVault, VaultPlugins} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {ReserveInstantPolicy} from "../../src/vaults/policies/ReserveInstantPolicy.sol";
+import {PerInvestorPolicy, PerPeriodPolicy, PerRequestPolicy} from "../../src/vaults/policies/RequestPolicies.sol";
+import {
+    IInstantPolicy,
+    ILiquidityRoute,
+    ISettlementObserver,
+    IReserveInstantPolicy
+} from "../../src/vaults/policies/interfaces/IVaultPlugins.sol";
 
 import {FullDeployer, DeployerInput, noAdaptersInput, defaultTxLimits} from "../../script/deploy/FullDeployer.s.sol";
 
@@ -73,6 +83,7 @@ import {MAX_MESSAGE_COST} from "../utils/GasConstants.sol";
 import {USD_ID} from "../../src/deployment/Currencies.sol";
 import {SubsidyManager} from "../../src/utils/SubsidyManager.sol";
 import {IShareToken} from "../../src/token/interfaces/IShareToken.sol";
+import {ITransferHook} from "../../src/token/interfaces/ITransferHook.sol";
 import {RefundEscrowFactory} from "../../src/utils/RefundEscrowFactory.sol";
 import {ShareTokenRegistrar} from "../../src/token/ShareTokenRegistrar.sol";
 import {IShareTokenRegistrar} from "../../src/token/interfaces/IShareTokenRegistrar.sol";
@@ -115,11 +126,13 @@ contract EndToEndDeployment is Test {
         ShareClassManager shareClassManager;
         Hub hub;
         HubHandler hubHandler;
-        BatchRequestManager batchRequestManager;
         // Others
         IdentityValuation identityValuation;
         OracleValuation oracleValuation;
         MockSnapshotHook snapshotHook;
+        // Vaults (hub side)
+        OrderBook orderBook;
+        FeeRequestManager feeRequestManager;
     }
 
     struct CSpoke {
@@ -136,23 +149,26 @@ contract EndToEndDeployment is Test {
         SpokeRegistry spokeRegistry;
         SpokeHandler spokeHandler;
         ShareTokenRegistrar shareTokenRegistrar;
-        // Vaults
-        VaultRouter router;
         SubsidyManager subsidyManager;
-        bytes32 asyncVaultFactory;
-        bytes32 syncDepositVaultFactory;
-        AsyncRequestManager asyncRequestManager;
-        SyncManager syncManager;
+        QueueManager queueManager;
         RefundEscrowFactory refundEscrowFactory;
         // Managers
         ShareManager shareManager;
         // Hooks
-        FreezeOnly freezeOnlyHook;
-        FullRestrictions fullRestrictionsHook;
-        RedemptionRestrictions redemptionRestrictionsHook;
+        ShareTokenHook freezeOnlyHook;
+        ShareTokenHook fullRestrictionsHook;
+        ShareTokenHook redemptionRestrictionsHook;
         // Others
         ERC20 usdc;
         AssetId usdcId;
+        // Vaults (spoke side)
+        VaultFactory vaultFactory;
+        VaultRequestRouter vaultRequestRouter;
+        VaultRouter vaultRouter;
+        PerRequestPolicy perRequestPolicy;
+        PerInvestorPolicy perInvestorPolicy;
+        SpokeOracle spokeOracle;
+        ReserveInstantPolicy reserveInstantPolicy;
     }
 
     ISafe immutable SAFE_ADMIN_A = ISafe(makeAddr("SafeAdminA"));
@@ -245,10 +261,11 @@ contract EndToEndDeployment is Test {
             shareClassManager: deployA.shareClassManager(),
             hub: deployA.hub(),
             hubHandler: deployA.hubHandler(),
-            batchRequestManager: deployA.batchRequestManager(),
             identityValuation: deployA.identityValuation(),
             oracleValuation: deployA.oracleValuation(),
-            snapshotHook: new MockSnapshotHook()
+            snapshotHook: new MockSnapshotHook(),
+            orderBook: deployA.orderBook(),
+            feeRequestManager: deployA.feeRequestManager()
         });
 
         // Initialize default values
@@ -295,6 +312,7 @@ contract EndToEndDeployment is Test {
                 opsSafe: protocolSafe,
                 root: address(0),
                 delay: 0,
+                vaults: true,
                 adapters: noAdaptersInput()
             }),
             address(deploy),
@@ -316,19 +334,25 @@ contract EndToEndDeployment is Test {
         s_.spokeRegistry = deploy.spokeRegistry();
         s_.spokeHandler = deploy.spokeHandler();
         s_.shareTokenRegistrar = deploy.shareTokenRegistrar();
-        s_.router = deploy.vaultRouter();
         s_.freezeOnlyHook = deploy.freezeOnlyHook();
         s_.fullRestrictionsHook = deploy.fullRestrictionsHook();
         s_.redemptionRestrictionsHook = deploy.redemptionRestrictionsHook();
         s_.subsidyManager = deploy.subsidyManager();
-        s_.asyncVaultFactory = address(deploy.asyncVaultFactory()).toBytes32();
-        s_.syncDepositVaultFactory = address(deploy.syncDepositVaultFactory()).toBytes32();
-        s_.asyncRequestManager = deploy.asyncRequestManager();
-        s_.syncManager = deploy.syncManager();
+        s_.queueManager = deploy.queueManager();
         s_.refundEscrowFactory = deploy.refundEscrowFactory();
         s_.shareManager = deploy.shareManager();
         s_.usdc = new ERC20(6);
         s_.usdcId = newAssetId(centrifugeId, 1);
+
+        // Vault stack: the per-network singletons the deployment brings up
+        s_.vaultFactory = deploy.vaultFactory();
+        s_.vaultRequestRouter = deploy.vaultRequestRouter();
+        s_.vaultRouter = deploy.vaultRouter();
+        s_.perRequestPolicy = deploy.perRequestPolicy();
+        s_.perInvestorPolicy = deploy.perInvestorPolicy();
+        // Bounded to a day on both sides, so the end-to-end flows exercise the checked path
+        s_.spokeOracle = deploy.spokeOracle();
+        s_.reserveInstantPolicy = deploy.reserveInstantPolicy();
 
         // Initialize default values
         s_.usdc.file("name", "USD Coin");
@@ -429,40 +453,6 @@ contract EndToEndUtils is EndToEndDeployment {
 
         vm.recordLogs();
     }
-
-    /// @dev Address of the vault most recently deployed via {_deployAndLinkVault}. The declarative registry
-    ///      keeps no tuple -> vault reverse lookup, so flows that deploy a vault and later re-resolve it
-    ///      (e.g. redeem-after-deposit) read it from here.
-    address internal lastLinkedVault;
-
-    /// @dev Deploy+link a vault through the Hub and return its address, recovered from the `LinkVault` event
-    ///      (there is no reverse lookup to query). The caller must already hold the FM prank.
-    function _deployAndLinkVault(bytes32 factory) internal returns (address vaultAddr) {
-        vm.recordLogs();
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, factory, VaultUpdateKind.DeployAndLink, bytes(""), EXTRA_GAS, REFUND
-        );
-
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i; i < logs.length; i++) {
-            if (logs[i].topics[0] == ISpokeRegistry.LinkVault.selector) {
-                (, vaultAddr) = abi.decode(logs[i].data, (uint256, address));
-            }
-        }
-        require(vaultAddr != address(0), "vault not linked");
-        lastLinkedVault = vaultAddr;
-
-        bool local = s.centrifugeId == h.centrifugeId;
-        h.hub.managerCall{value: local ? 0 : GAS}(
-            POOL_A,
-            s.centrifugeId,
-            CastLib.toBytes32(address(s.shareTokenRegistrar)),
-            abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), SC_1, s.usdcId.raw(), vaultAddr),
-            0,
-            0,
-            REFUND
-        );
-    }
 }
 
 /// Base investment flows that can be shared between EndToEnd tests
@@ -473,8 +463,15 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _updateRestrictionMemberMsg(address addr) internal pure returns (bytes memory) {
         return UpdateRestrictionMessageLib.UpdateRestrictionMember({
-                user: addr.toBytes32(), validUntil: type(uint64).max
-            }).serialize();
+            user: addr.toBytes32(), validUntil: type(uint64).max
+        }).serialize();
+    }
+
+    function _addMember(address addr) internal {
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(addr), EXTRA_GAS, REFUND
+        );
     }
 
     function _updateRestrictionFreezeMsg(address addr) internal pure returns (bytes memory) {
@@ -483,31 +480,6 @@ contract EndToEndFlows is EndToEndUtils {
 
     function _updateRestrictionUnfreezeMsg(address addr) internal pure returns (bytes memory) {
         return UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze({user: addr.toBytes32()}).serialize();
-    }
-
-    function _syncManagerMaxReserveMsg(uint128 maxReserve) internal view returns (bytes memory) {
-        return abi.encode(SC_1.raw(), uint8(ISyncManager.TrustedCall.MaxReserve), s.usdcId.raw(), maxReserve);
-    }
-
-    /// @dev Run a BRM manager action through the real hub.managerCall chain, so the Hub's policy and
-    ///      manager checks run too (FM is the pool manager). FM pays and the remainder refunds to REFUND.
-    function _brmManagerCall(bytes memory payload) internal {
-        _brmManagerCall(payload, GAS);
-    }
-
-    /// @dev value-explicit variant. The message-sending actions carry GAS. approveRedeems sends nothing
-    ///      and rejects value, so it has to run with value 0.
-    function _brmManagerCall(bytes memory payload, uint256 value) internal {
-        vm.stopPrank();
-        // Top up FM additively so we don't wipe the balance that funds its later value-bearing calls like
-        // notifySharePrice. The value we forward is spent downstream and any remainder comes back to REFUND.
-        vm.deal(FM, FM.balance + value);
-        vm.prank(FM);
-        // BRM carries its inner-action gas inside `payload`; the envelope `extraGasLimit` is inert on the
-        // hub-local branch, so 0.
-        h.hub.managerCall{value: value}(
-            POOL_A, h.centrifugeId, address(h.batchRequestManager).toBytes32(), payload, 0, value, REFUND
-        );
     }
 
     //----------------------------------------------------------------------------------------------
@@ -593,20 +565,18 @@ contract EndToEndFlows is EndToEndUtils {
                 h.identityValuation,
                 _holdingAccounts(ASSET_ACCOUNT, EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT)
             );
+        h.hub.updateManager{value: GAS}(POOL_A, s_.centrifugeId, ManagerKind.Spoke, BSM.toBytes32(), true, REFUND);
+
+        // Requests route through the OrderBook (hub side) and the VaultRequestRouter (spoke side);
+        // fulfillments run through the FeeRequestManager, itself a manager calling the Hub.
         h.hub.setRequestManager{value: GAS}(
             POOL_A,
             s_.centrifugeId,
-            IHubRequestManager(h.batchRequestManager),
-            address(s_.asyncRequestManager).toBytes32(),
+            IHubRequestManager(address(h.orderBook)),
+            address(s_.vaultRequestRouter).toBytes32(),
             REFUND
         );
-        h.hub.updateManager{value: GAS}(
-            POOL_A, s_.centrifugeId, ManagerKind.Spoke, address(s_.asyncRequestManager).toBytes32(), true, REFUND
-        );
-        h.hub.updateManager{value: GAS}(
-            POOL_A, s_.centrifugeId, ManagerKind.Spoke, address(s_.syncManager).toBytes32(), true, REFUND
-        );
-        h.hub.updateManager{value: GAS}(POOL_A, s_.centrifugeId, ManagerKind.Spoke, BSM.toBytes32(), true, REFUND);
+        h.hub.updateHubManager(POOL_A, address(h.feeRequestManager), true);
 
         vm.startPrank(FM);
         h.hub.setSnapshotHook(POOL_A, h.snapshotHook);
@@ -622,9 +592,6 @@ contract EndToEndFlows is EndToEndUtils {
                 REFUND
             );
         h.hub.updateHubManager(POOL_A, address(h.oracleValuation), true);
-        h.hub.updateManager{value: GAS}(
-            POOL_A, h.centrifugeId, ManagerKind.Adapter, address(h.batchRequestManager).toBytes32(), true, REFUND
-        );
         // Now that a feeder is wired up, switch the holding to the oracle valuation (still worth 0, since
         // nothing has been deposited yet) so subsequent price feeds drive its value.
         h.hub.updateHoldingValuation(POOL_A, SC_1, s_.usdcId, h.oracleValuation);
@@ -688,382 +655,140 @@ contract EndToEndFlows is EndToEndUtils {
         );
     }
 
-    function _testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _configurePool(sameChain);
-        _configurePricesForFlow(nonZeroPrices);
+    //----------------------------------------------------------------------------------------------
+    // Vault flows
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Canonical async plugins: per-request buckets, each folded as it settles, prices read from the
+    ///      hub-notified spoke prices.
+    function _defaultPlugins() internal view returns (VaultPlugins memory) {
+        return VaultPlugins({
+            oracle: IVaultOracle(address(s.spokeOracle)),
+            instantPolicy: IInstantPolicy(address(0)),
+            requestPolicy: s.perRequestPolicy,
+            liquidityRoute: ILiquidityRoute(address(0)),
+            settlementObserver: ISettlementObserver(address(0))
+        });
+    }
+
+    function _deployVault() internal returns (IAsyncVault) {
+        return _deployVaultWith(_defaultPlugins());
+    }
+
+    /// @dev Deploys a vault on the spoke, links it through the wire (`UpdateVault.DeployAndLink` with the
+    ///      plugins and variant as the factory payload) and registers it as a spoke manager so it can
+    ///      operate the escrow.
+    function _deployVaultWith(VaultPlugins memory plugins) internal returns (IAsyncVault vault) {
+        bytes memory payload = abi.encode(plugins, uint64(0), uint256(0));
+        vault = IAsyncVault(payable(s.vaultFactory.deploy(POOL_A, SC_1, address(s.usdc), 0, payload)));
 
         vm.startPrank(FM);
-        IAsyncVault vault = IAsyncVault(_deployAndLinkVault(s.asyncVaultFactory));
-        vm.stopPrank();
-
-        vm.startPrank(INVESTOR_A);
-        ERC20(vault.asset()).approve(address(vault), USDC_AMOUNT_1);
-        vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
-
-        vm.startPrank(FM);
-        uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
-        D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-        _brmManagerCall(
-            BatchRequestManagerCallLib.approveDeposits(
-                SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
-            )
-        );
-
-        vm.startPrank(FM);
-        uint32 issueEpochId = h.batchRequestManager.nowIssueEpoch(POOL_A, SC_1, s.usdcId);
-        (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        _brmManagerCall(
-            BatchRequestManagerCallLib.issueShares(SC_1, s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND)
-        );
-
-        vm.startPrank(ANY);
-        h.batchRequestManager.notifyDeposit{value: GAS}(
+        h.hub.updateVault{value: GAS}(
             POOL_A,
             SC_1,
             s.usdcId,
-            RequestId.wrap(uint256(INVESTOR_A.toBytes32())),
-            h.batchRequestManager.maxDepositClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
-            REFUND
-        );
-
-        vm.startPrank(INVESTOR_A);
-        vault.mint(vault.maxMint(INVESTOR_A), INVESTOR_A);
-
-        // CHECKS
-        assertEq(
-            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
-            assetToShare(USDC_AMOUNT_1),
-            "expected shares"
-        );
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // ManagerCall payment paths (batched + unbatched) and value-stranding checks
-    //----------------------------------------------------------------------------------------------
-
-    /// @dev Configure pool + non-zero prices, deploy the async vault, and submit an investor deposit
-    ///      request so a deposit is pending approval. Shared setup for the managerCall payment tests.
-    function _setupPendingAsyncDeposit(bool sameChain) internal returns (IAsyncVault vault) {
-        _configurePool(sameChain);
-        _configurePricesForFlow(true);
-
-        vm.startPrank(FM);
-        vault = IAsyncVault(_deployAndLinkVault(s.asyncVaultFactory));
-        vm.stopPrank();
-
-        vm.startPrank(INVESTOR_A);
-        ERC20(vault.asset()).approve(address(vault), USDC_AMOUNT_1);
-        vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
-        vm.stopPrank();
-    }
-
-    /// @dev Route BRM manager actions through `hub.managerCall` batched inside `hub.multicall`. Inside a
-    ///      batch each inner call sees `msgValue() == 0`; the whole batch value is held by
-    ///      `gateway.withBatch` and settled at batch end (refunding the remainder to REFUND). This is the
-    ///      path that must still fund the cross-chain `requestCallback` via settlement.
-    function _brmManagerCallBatched(bytes[] memory payloads) internal {
-        bytes[] memory cs = new bytes[](payloads.length);
-        for (uint256 i; i < payloads.length; i++) {
-            cs[i] = abi.encodeWithSelector(
-                h.hub.managerCall.selector,
-                POOL_A,
-                h.centrifugeId,
-                address(h.batchRequestManager).toBytes32(),
-                payloads[i],
-                uint128(0),
-                // Inside a batch msgValue() is 0, so the per-call declared value must be 0; the batch value
-                // is settled by gateway.withBatch at batch end.
-                uint256(0),
-                REFUND
-            );
-        }
-        vm.stopPrank();
-        vm.deal(FM, FM.balance + GAS * payloads.length);
-        vm.prank(FM);
-        h.hub.multicall{value: GAS * payloads.length}(cs);
-    }
-
-    /// @dev No value may strand in the stateless ManagerCall pass-throughs on any branch (incl. the
-    ///      same-chain `requestCallback` short-circuit). The dispatcher and BRM never hold ETH.
-    function _assertNoStrandedManagerCallValue() internal view {
-        assertEq(address(h.batchRequestManager).balance, 0, "BRM stranded value");
-        assertEq(address(deployA.envoy()).balance, 0, "dispatcher stranded value");
-    }
-
-    /// forge-config: default.isolate = true
-    function testManagerCallUnbatchedNoStrandedValue(bool sameChain) public {
-        _setupPendingAsyncDeposit(sameChain);
-
-        uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
-        D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-
-        uint256 hubBalBefore = address(h.hub).balance;
-        uint256 refundBalBefore = REFUND.balance;
-
-        // Unbatched: value flows via the explicit call chain (hub.managerCall -> ... -> requestCallback).
-        _brmManagerCall(
-            BatchRequestManagerCallLib.approveDeposits(
-                SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
-            )
-        );
-
-        _assertNoStrandedManagerCallValue();
-        // The Hub forwards value downstream and never retains it. On the same-chain `requestCallback`
-        // short-circuit (no payment) the value must relay/refund rather than strand in the Hub.
-        assertEq(address(h.hub).balance, hubBalBefore, "Hub stranded value (unbatched)");
-
-        // Conservation: the forwarded GAS is not just absent from the pass-throughs, it actually reaches
-        // REFUND. Same-chain requestCallback short-circuits with no adapter cost, so the full GAS refunds;
-        // cross-chain pays an adapter cost and refunds the remainder.
-        uint256 refunded = REFUND.balance - refundBalBefore;
-        if (sameChain) {
-            assertEq(refunded, GAS, "same-chain: full GAS must refund to REFUND");
-        } else {
-            assertGt(refunded, 0, "cross-chain: remainder must refund to REFUND");
-            assertLe(refunded, GAS, "cross-chain: refund cannot exceed GAS");
-        }
-    }
-
-    /// forge-config: default.isolate = true
-    function testManagerCallBatchedPayment(bool sameChain) public {
-        IAsyncVault vault = _setupPendingAsyncDeposit(sameChain);
-
-        uint32 depositEpochId = h.batchRequestManager.nowDepositEpoch(POOL_A, SC_1, s.usdcId);
-        uint32 issueEpochId = h.batchRequestManager.nowIssueEpoch(POOL_A, SC_1, s.usdcId);
-        D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-        (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-
-        uint256 hubBalBefore = address(h.hub).balance;
-
-        // Batch approve + issue through one hub.multicall: inner msgValue()==0, paid by batch settlement.
-        bytes[] memory payloads = new bytes[](2);
-        payloads[0] = BatchRequestManagerCallLib.approveDeposits(
-            SC_1, s.usdcId, depositEpochId, USDC_AMOUNT_1, pricePoolPerAsset, REFUND
-        );
-        payloads[1] = BatchRequestManagerCallLib.issueShares(SC_1, s.usdcId, issueEpochId, sharePrice, HOOK_GAS, REFUND);
-        _brmManagerCallBatched(payloads);
-
-        _assertNoStrandedManagerCallValue();
-        assertEq(address(h.hub).balance, hubBalBefore, "Hub stranded value (batched)");
-
-        // The batch paid the cross-chain callbacks -> shares are claimable. Notify + mint, assert balance.
-        vm.startPrank(ANY);
-        h.batchRequestManager.notifyDeposit{value: GAS}(
-            POOL_A,
-            SC_1,
-            s.usdcId,
-            RequestId.wrap(uint256(INVESTOR_A.toBytes32())),
-            h.batchRequestManager.maxDepositClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
-            REFUND
-        );
-        vm.stopPrank();
-
-        // startPrank (not prank): the inner maxMint() view would otherwise consume a single-shot prank,
-        // making mint() run as the test contract (whose maxMint is 0 -> ExceedsDepositLimits).
-        vm.startPrank(INVESTOR_A);
-        vault.mint(vault.maxMint(INVESTOR_A), INVESTOR_A);
-        vm.stopPrank();
-
-        assertEq(
-            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
-            assetToShare(USDC_AMOUNT_1),
-            "shares issued via batched managerCall"
-        );
-    }
-
-    /// @dev A configuration update reaches a spoke target (SyncManager) via the `managerCall` transport,
-    ///      addressing the target directly. Fuzzing `sameChain` covers both the local (direct `fromHub`) and
-    ///      cross-chain (serialized message) branches. The hub lives on CENTRIFUGE_ID_A, so the call is local
-    ///      iff `sameChain`: the `value` arg must equal `msg.value` locally and be 0 remotely, while
-    ///      `{value: GAS}` still funds the cross-chain message.
-    function testManagerCallReachesSpokeTarget(bool sameChain) public {
-        _configurePool(sameChain);
-
-        uint128 newMaxReserve = 123e6;
-        assertEq(s.syncManager.maxReserve(POOL_A, SC_1, address(s.usdc), 0), 0, "maxReserve starts unset");
-
-        vm.startPrank(FM);
-        h.hub.managerCall{value: sameChain ? 0 : GAS}(
-            POOL_A,
-            s.centrifugeId,
-            address(s.syncManager).toBytes32(),
-            _syncManagerMaxReserveMsg(newMaxReserve),
+            address(s.vaultFactory).toBytes32(),
+            VaultUpdateKind.DeployAndLink,
+            payload,
             EXTRA_GAS,
-            0,
             REFUND
+        );
+        assertTrue(s.spokeRegistry.isLinked(address(vault)), "vault not linked");
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s.centrifugeId, ManagerKind.Spoke, address(vault).toBytes32(), true, REFUND
         );
         vm.stopPrank();
-
-        assertEq(
-            s.syncManager.maxReserve(POOL_A, SC_1, address(s.usdc), 0),
-            newMaxReserve,
-            "spoke target state updated via direct managerCall"
-        );
     }
 
-    function _testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _configurePool(sameChain);
-        _configurePricesForFlow(nonZeroPrices);
-
-        vm.startPrank(FM);
-        IBaseVault vault = IBaseVault(_deployAndLinkVault(s.syncDepositVaultFactory));
-
-        h.hub.managerCall{value: sameChain ? 0 : GAS}(
-            POOL_A,
-            s.centrifugeId,
-            address(s.syncManager).toBytes32(),
-            _syncManagerMaxReserveMsg(type(uint128).max),
-            EXTRA_GAS,
-            0,
-            REFUND
-        );
-
+    /// @dev Investor requests a deposit; the hub's OrderBook auto-approves it into the outstanding order.
+    function _requestDeposit(IAsyncVault vault, uint128 amount) internal returns (RequestId requestId) {
         vm.startPrank(INVESTOR_A);
-        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        s.usdc.approve(address(vault), amount);
+        requestId = RequestId.wrap(vault.requestDeposit(amount, INVESTOR_A, INVESTOR_A));
+        vm.stopPrank();
 
-        if (!nonZeroPrices) {
-            // When prices are zero, maxDeposit returns 0, so deposit will revert
-            vm.expectRevert(ISyncManager.ExceedsMaxDeposit.selector);
-            vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
-            return;
-        }
+        assertEq(h.orderBook.depositOrders(POOL_A, SC_1, s.usdcId, requestId), amount, "order not registered");
+    }
 
+    /// @dev FM fulfils through the FeeRequestManager: policy-bounded managerCall into the OrderBook,
+    ///      which sends one atomic settlement callback back to the vault.
+    function _fulfill(bool isDeposit, RequestId requestId, uint128 fillAmount) internal {
+        vm.startPrank(FM);
+        h.feeRequestManager.fulfill{value: GAS}(
+            POOL_A, SC_1, s.usdcId, requestId, isDeposit, fillAmount, EXTRA_GAS, REFUND
+        );
+        vm.stopPrank();
+    }
+
+    function _cancel(bool isDeposit, RequestId requestId, uint128 amount) internal {
+        vm.startPrank(FM);
+        h.feeRequestManager.cancel{value: GAS}(POOL_A, SC_1, s.usdcId, requestId, isDeposit, amount, EXTRA_GAS, REFUND);
+        vm.stopPrank();
+    }
+
+    /// @dev Full async deposit: request -> auto-approve -> fulfil (approve/issue/fulfil callbacks) -> claim.
+    function _testAsyncDeposit(bool sameChain) internal returns (IAsyncVault vault) {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        vault = _deployVault();
+
+        RequestId requestId = _requestDeposit(vault, USDC_AMOUNT_1);
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), USDC_AMOUNT_1);
+
+        _fulfill(true, requestId, USDC_AMOUNT_1);
+
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+        assertEq(h.orderBook.depositOrders(POOL_A, SC_1, s.usdcId, requestId), 0, "order not consumed");
+        assertEq(vault.maxDeposit(INVESTOR_A), USDC_AMOUNT_1, "claim not opened");
+        assertEq(vault.maxMint(INVESTOR_A), shares);
+
+        vm.prank(INVESTOR_A);
         vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
 
-        assertEq(
-            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
-            assetToShare(USDC_AMOUNT_1),
-            "expected shares"
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares, "shares not claimed");
+        assertEq(vault.maxDeposit(INVESTOR_A), 0);
+    }
+
+    /// @dev The same vault with the instant lane switched on. Everything else about it is unchanged,
+    ///      so a difference between this and `_deployVault` is the instant policy and nothing else.
+    function _deployInstantVault() internal returns (IAsyncVault) {
+        VaultPlugins memory plugins = _defaultPlugins();
+        plugins.instantPolicy = IInstantPolicy(address(s.reserveInstantPolicy));
+        return _deployVaultWith(plugins);
+    }
+
+    /// @dev Opens the instant lane through the Envoy, the way a pool manager does: the reserve target
+    ///      caps instant deposits, `redeemEnabled` opens the way out, and the two fee legs are basis
+    ///      points on each side.
+    function _configureInstantLane(uint128 maxReserve, uint16 depositFeeBps, uint16 redeemFeeBps, address feeRecipient)
+        internal
+    {
+        bytes memory payload = _instantPayload(maxReserve, depositFeeBps, redeemFeeBps, feeRecipient);
+
+        vm.startPrank(FM);
+        h.hub.managerCall{value: sameChainCall() ? 0 : GAS}(
+            POOL_A, s.centrifugeId, address(s.reserveInstantPolicy).toBytes32(), payload, EXTRA_GAS, 0, REFUND
+        );
+        vm.stopPrank();
+    }
+
+    /// @dev Split out to keep `_configureInstantLane` inside the stack limit.
+    function _instantPayload(uint128 maxReserve, uint16 depositFeeBps, uint16 redeemFeeBps, address feeRecipient)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return abi.encode(
+            IReserveInstantPolicy.ConfigKind.Terms,
+            lastInstantVault,
+            abi.encode(feeRecipient, depositFeeBps, redeemFeeBps, true, false, false, maxReserve)
         );
     }
 
-    function _testAsyncRedeem(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) internal {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        _configurePricesForFlow(nonZeroPrices);
+    address internal lastInstantVault;
 
-        vm.startPrank(FM);
-        h.hub.updateRestriction{value: GAS}(
-            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
-        );
-
-        // Get vault from manager
-        IAsyncRedeemVault vault = IAsyncRedeemVault(lastLinkedVault);
-
-        vm.startPrank(INVESTOR_A);
-        uint128 shares = uint128(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A));
-        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
-
-        vm.startPrank(FM);
-        uint32 redeemEpochId = h.batchRequestManager.nowRedeemEpoch(POOL_A, SC_1, s.usdcId);
-        D18 pricePoolPerAsset = h.hub.pricePoolPerAsset(POOL_A, SC_1, s.usdcId);
-        // approveRedeems sends no message and rejects value, so route it with value 0.
-        _brmManagerCall(
-            BatchRequestManagerCallLib.approveRedeems(SC_1, s.usdcId, redeemEpochId, shares, pricePoolPerAsset), 0
-        );
-
-        vm.startPrank(FM);
-        uint32 revokeEpochId = h.batchRequestManager.nowRevokeEpoch(POOL_A, SC_1, s.usdcId);
-        (D18 sharePrice,) = h.shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        _brmManagerCall(
-            BatchRequestManagerCallLib.revokeShares(SC_1, s.usdcId, revokeEpochId, sharePrice, HOOK_GAS, REFUND)
-        );
-
-        vm.startPrank(ANY);
-        h.batchRequestManager.notifyRedeem{value: GAS}(
-            POOL_A,
-            SC_1,
-            s.usdcId,
-            RequestId.wrap(uint256(INVESTOR_A.toBytes32())),
-            h.batchRequestManager.maxRedeemClaims(POOL_A, SC_1, INVESTOR_A.toBytes32(), s.usdcId),
-            REFUND
-        );
-
-        vm.startPrank(INVESTOR_A);
-        vault.withdraw(vault.maxWithdraw(INVESTOR_A), INVESTOR_A, INVESTOR_A);
-
-        assertEq(s.usdc.balanceOf(INVESTOR_A), shareToAsset(shares), "expected assets");
-
-        if (nonZeroPrices) {
-            assertEq(
-                s.spoke.availableBalanceOf(POOL_A, SC_1, address(s.usdc), 0),
-                0,
-                "escrow balance should be zero after full redemption"
-            );
-        }
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Test Cancellation & Edge Cases
-    //----------------------------------------------------------------------------------------------
-
-    function _testAsyncRedeemCancel(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, true) : _testSyncDeposit(sameChain, true);
-        uint128 expectedShares = assetToShare(USDC_AMOUNT_1);
-
-        _configurePricesForFlow(nonZeroPrices);
-
-        vm.startPrank(FM);
-        h.hub.updateRestriction{value: GAS}(
-            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
-        );
-
-        IAsyncRedeemVault vault = IAsyncRedeemVault(lastLinkedVault);
-
-        vm.startPrank(INVESTOR_A);
-        uint128 shares = uint128(IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A));
-        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
-        vault.cancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
-
-        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage(), REFUND);
-
-        vault.claimCancelRedeemRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
-
-        // CHECKS
-        assertEq(
-            IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1))).balanceOf(INVESTOR_A),
-            expectedShares,
-            "expected shares"
-        );
-    }
-
-    function _testUpdateAccountingAfterDeposit(bool sameChain, bool afterAsyncDeposit, bool nonZeroPrices) public {
-        (afterAsyncDeposit) ? _testAsyncDeposit(sameChain, nonZeroPrices) : _testSyncDeposit(sameChain, nonZeroPrices);
-
-        // If prices are zero and using sync deposit, the deposit failed
-        if (!nonZeroPrices && !afterAsyncDeposit) {
-            return;
-        }
-
-        vm.startPrank(BSM);
-        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
-        s.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
-
-        // CHECKS
-        (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
-        assertEq(amount, USDC_AMOUNT_1, "expected amount");
-        assertEq(value, assetToPool(USDC_AMOUNT_1), "expected value");
-
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), nonZeroPrices ? 1 : 2, "expected snapshots");
-
-        checkAccountValue(ASSET_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
-        checkAccountValue(EQUITY_ACCOUNT, assetToPool(USDC_AMOUNT_1), true);
-    }
-
-    function _testUpdateAccountingAfterRedeem(bool sameChain, bool afterAsyncDeposit) public {
-        _testAsyncRedeem(sameChain, afterAsyncDeposit, true);
-
-        vm.startPrank(BSM);
-        s.spoke.submitQueuedAssets{value: GAS}(POOL_A, SC_1, s.usdcId, EXTRA_GAS, REFUND);
-        s.spoke.submitQueuedShares{value: GAS}(POOL_A, SC_1, EXTRA_GAS, REFUND);
-
-        (uint128 amount, uint128 value,) = h.holdings.holding(POOL_A, SC_1, s.usdcId);
-        assertEq(amount, 0, "expected amount");
-        assertEq(value, assetToPool(0), "expected value");
-
-        assertEq(h.snapshotHook.synced(POOL_A, SC_1, s.centrifugeId), 2, "expected snapshots");
-
-        checkAccountValue(ASSET_ACCOUNT, assetToPool(0), true);
-        checkAccountValue(EQUITY_ACCOUNT, assetToPool(0), true);
+    function sameChainCall() internal view returns (bool) {
+        return s.centrifugeId == h.centrifugeId;
     }
 }
 
@@ -1072,6 +797,35 @@ contract EndToEndUseCases is EndToEndFlows {
     using CastLib for *;
     using MathLib for *;
     using MessageLib for *;
+
+    /// @dev A configuration update reaches a spoke target (the QueueManager) via the `managerCall`
+    ///      transport, addressing the target directly. Fuzzing `sameChain` covers both the local (direct
+    ///      `fromHub`) and cross-chain (serialized message) branches. The hub lives on CENTRIFUGE_ID_A, so
+    ///      the call is local iff `sameChain`: the `value` arg must equal `msg.value` locally and be 0
+    ///      remotely, while `{value: GAS}` still funds the cross-chain message.
+    /// forge-config: default.isolate = true
+    function testManagerCallReachesSpokeTarget(bool sameChain) public {
+        _configurePool(sameChain);
+
+        uint64 newMinDelay = 123;
+        (uint64 minDelay,,) = s.queueManager.scQueueState(POOL_A, SC_1);
+        assertEq(minDelay, 0, "minDelay starts unset");
+
+        vm.startPrank(FM);
+        h.hub.managerCall{value: sameChain ? 0 : GAS}(
+            POOL_A,
+            s.centrifugeId,
+            address(s.queueManager).toBytes32(),
+            abi.encode(SC_1.raw(), newMinDelay, uint64(0)),
+            EXTRA_GAS,
+            0,
+            REFUND
+        );
+        vm.stopPrank();
+
+        (minDelay,,) = s.queueManager.scQueueState(POOL_A, SC_1);
+        assertEq(minDelay, newMinDelay, "spoke target state updated via direct managerCall");
+    }
 
     /// forge-config: default.isolate = true
     function testWardUpgrade(bool sameChain) public {
@@ -1321,97 +1075,6 @@ contract EndToEndUseCases is EndToEndFlows {
     }
 
     /// forge-config: default.isolate = true
-    function testVaultManagement(bool sameChain) public {
-        _configurePool(sameChain);
-
-        vm.startPrank(FM);
-        address vault = _deployAndLinkVault(s.asyncVaultFactory);
-
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Unlink, bytes(""), EXTRA_GAS, REFUND
-        );
-
-        assertEq(s.spokeRegistry.isLinked(address(vault)), false);
-
-        h.hub.updateVault{value: GAS}(
-            POOL_A, SC_1, s.usdcId, vault.toBytes32(), VaultUpdateKind.Link, bytes(""), EXTRA_GAS, REFUND
-        );
-
-        assertEq(s.spokeRegistry.isLinked(address(vault)), true);
-    }
-
-    /// forge-config: default.isolate = true
-    function testAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testAsyncDeposit(sameChain, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testSyncDeposit(sameChain, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testAsyncDepositCancel(bool sameChain, bool nonZeroPrices) public {
-        _configurePool(sameChain);
-        _configurePricesForFlow(nonZeroPrices);
-
-        vm.startPrank(FM);
-        IAsyncVault vault = IAsyncVault(_deployAndLinkVault(s.asyncVaultFactory));
-
-        vm.startPrank(INVESTOR_A);
-        s.usdc.approve(address(vault), USDC_AMOUNT_1);
-        vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
-        vault.cancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A);
-
-        if (!sameChain) h.gateway.repay{value: GAS}(s.centrifugeId, _getLastUnpaidMessage(), REFUND);
-
-        vault.claimCancelDepositRequest(PLACEHOLDER_REQUEST_ID, INVESTOR_A, INVESTOR_A);
-
-        // CHECKS
-        assertEq(s.usdc.balanceOf(INVESTOR_A), USDC_AMOUNT_1, "expected assets");
-    }
-
-    /// forge-config: default.isolate = true
-    function testAsyncRedeem_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testAsyncRedeem(sameChain, true, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testAsyncRedeem_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testAsyncRedeem(sameChain, false, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testAsyncRedeemCancel_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testAsyncRedeemCancel(sameChain, true, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testAsyncRedeemCancel_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testAsyncRedeemCancel(sameChain, false, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterDeposit_AfterAsyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testUpdateAccountingAfterDeposit(sameChain, true, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterDeposit_AfterSyncDeposit(bool sameChain, bool nonZeroPrices) public {
-        _testUpdateAccountingAfterDeposit(sameChain, false, nonZeroPrices);
-    }
-
-    /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterRedeem_AfterAsyncDeposit(bool sameChain) public {
-        _testUpdateAccountingAfterRedeem(sameChain, true);
-    }
-
-    /// forge-config: default.isolate = true
-    function testUpdateAccountingAfterRedeem_AfterSyncDeposit(bool sameChain) public {
-        _testUpdateAccountingAfterRedeem(sameChain, false);
-    }
-
-    /// forge-config: default.isolate = true
     function testAdaptersPerPool() public {
         _setSpoke(IN_DIFFERENT_CHAINS);
         _createPool();
@@ -1523,6 +1186,619 @@ contract EndToEndUseCases is EndToEndFlows {
         );
 
         assertEq(RECEIVER.balance, VALUE);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Vault use cases
+    //----------------------------------------------------------------------------------------------
+
+    /// forge-config: default.isolate = true
+    function testAsyncDeposit(bool sameChain) public {
+        _testAsyncDeposit(sameChain);
+    }
+
+    /// forge-config: default.isolate = true
+    function testAsyncRedeem(bool sameChain) public {
+        IAsyncVault vault = _testAsyncDeposit(sameChain);
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+
+        // Redemptions are restricted: the investor must be a member before requesting.
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        vm.prank(INVESTOR_A);
+        RequestId requestId = RequestId.wrap(vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A));
+        assertEq(h.orderBook.redeemOrders(POOL_A, SC_1, s.usdcId, requestId), shares, "redeem order not registered");
+
+        _fulfill(false, requestId, shares);
+
+        assertEq(vault.maxWithdraw(INVESTOR_A), shareToAsset(shares), "payout not claimable");
+
+        vm.prank(INVESTOR_A);
+        vault.redeem(shares, INVESTOR_A);
+
+        assertEq(s.usdc.balanceOf(INVESTOR_A), shareToAsset(shares), "assets not paid out");
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), 0);
+    }
+
+    /// @dev Cancellation is order-level: the manager retires part of the outstanding order and the
+    ///      cancelled assets become claimable through the redeem side.
+    /// forge-config: default.isolate = true
+    function testAsyncDepositCancel(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        IAsyncVault vault = _deployVault();
+
+        RequestId requestId = _requestDeposit(vault, USDC_AMOUNT_1);
+        _cancel(true, requestId, USDC_AMOUNT_1);
+
+        assertEq(h.orderBook.depositOrders(POOL_A, SC_1, s.usdcId, requestId), 0, "order not retired");
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), 0, "pending not cleared");
+        assertEq(vault.maxWithdraw(INVESTOR_A), USDC_AMOUNT_1, "cancelled assets not claimable");
+
+        vm.prank(INVESTOR_A);
+        vault.withdraw(USDC_AMOUNT_1, INVESTOR_A);
+
+        assertEq(s.usdc.balanceOf(INVESTOR_A), USDC_AMOUNT_1, "cancelled assets not returned");
+    }
+
+    /// @dev A partial fill folds without completing the position, so the callback writes the fold snapshot
+    ///      where a full fill deletes it; the benchmark needs both.
+    /// forge-config: default.isolate = true
+    function testAsyncDepositPartialFillThenCancel(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        IAsyncVault vault = _deployVault();
+
+        RequestId requestId = _requestDeposit(vault, USDC_AMOUNT_1);
+        uint128 half = USDC_AMOUNT_1 / 2;
+        _fulfill(true, requestId, half);
+
+        assertEq(vault.maxDeposit(INVESTOR_A), half, "half claimable");
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), USDC_AMOUNT_1 - half, "half pending");
+
+        _cancel(true, requestId, USDC_AMOUNT_1 - half);
+
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), 0, "pending cleared");
+        assertEq(vault.maxWithdraw(INVESTOR_A), USDC_AMOUNT_1 - half, "rest refunded");
+    }
+
+    /// @dev Unlink detaches the vault from new requests; relinking reattaches it. Covers the Link and
+    ///      Unlink wire kinds (DeployAndLink is covered by every vault flow).
+    /// forge-config: default.isolate = true
+    function testVaultLinkUnlink(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        IAsyncVault vault = _deployVault();
+
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, address(vault).toBytes32(), VaultUpdateKind.Unlink, bytes(""), EXTRA_GAS, REFUND
+        );
+        assertFalse(s.spokeRegistry.isLinked(address(vault)), "vault still linked");
+
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, address(vault).toBytes32(), VaultUpdateKind.Link, bytes(""), EXTRA_GAS, REFUND
+        );
+        assertTrue(s.spokeRegistry.isLinked(address(vault)), "vault not relinked");
+        vm.stopPrank();
+
+        _requestDeposit(vault, USDC_AMOUNT_1);
+    }
+
+    /// @dev Retiring a vault, against the real Spoke and not a mock of it: a settled position is still claimed after
+    ///      `Unlink`, because every claim pays through the Spoke as a call by the vault, which only needs the vault to
+    ///      still be a manager. Revoking the role first freezes the claim with `NotManager`, and granting it back
+    ///      releases it, so the role stays until the claims are paid.
+    /// forge-config: default.isolate = true
+    function testAnUnlinkedVaultPaysItsClaimsOnlyWhileItIsStillAManager(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        IAsyncVault vault = _deployVault();
+        RequestId requestId = _requestDeposit(vault, USDC_AMOUNT_1);
+        _fulfill(true, requestId, USDC_AMOUNT_1);
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+
+        vm.startPrank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, address(vault).toBytes32(), VaultUpdateKind.Unlink, bytes(""), EXTRA_GAS, REFUND
+        );
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s.centrifugeId, ManagerKind.Spoke, address(vault).toBytes32(), false, REFUND
+        );
+        vm.stopPrank();
+        assertFalse(s.spokeRegistry.isLinked(address(vault)), "still linked");
+        assertEq(vault.maxMint(INVESTOR_A), shares, "the claim is still on the ledger");
+
+        vm.prank(INVESTOR_A);
+        vm.expectRevert(ISpoke.NotManager.selector);
+        vault.deposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+
+        vm.prank(FM);
+        h.hub.updateManager{value: GAS}(
+            POOL_A, s.centrifugeId, ManagerKind.Spoke, address(vault).toBytes32(), true, REFUND
+        );
+        vm.prank(INVESTOR_A);
+        vault.deposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares, "the claim paid once the role was back");
+    }
+
+    /// @dev The same retirement with the role kept: `Unlink` alone leaves every claim payable.
+    /// forge-config: default.isolate = true
+    function testAnUnlinkedVaultThatKeepsItsRolePaysItsClaims(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        IAsyncVault vault = _deployVault();
+        RequestId requestId = _requestDeposit(vault, USDC_AMOUNT_1);
+        _fulfill(true, requestId, USDC_AMOUNT_1);
+
+        vm.prank(FM);
+        h.hub.updateVault{value: GAS}(
+            POOL_A, SC_1, s.usdcId, address(vault).toBytes32(), VaultUpdateKind.Unlink, bytes(""), EXTRA_GAS, REFUND
+        );
+
+        vm.prank(INVESTOR_A);
+        vault.deposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), assetToShare(USDC_AMOUNT_1), "paid unlinked");
+    }
+
+    /// @dev A fulfil forwards its value into the OrderBook's own batch: the batch cost is paid once and
+    ///      the remainder is refunded, so no value strands in the hub, envoy, order book, or manager.
+    /// forge-config: default.isolate = true
+    function testFulfillLeavesNoStrandedValue(bool sameChain) public {
+        IAsyncVault vault = _testAsyncDeposit(sameChain);
+
+        assertEq(address(h.hub).balance, 0, "value stranded in hub");
+        assertEq(address(h.orderBook).balance, 0, "value stranded in order book");
+        assertEq(address(h.feeRequestManager).balance, 0, "value stranded in fee manager");
+        assertEq(address(vault).balance, 0, "value stranded in vault");
+    }
+
+    /// @dev The same vault on `PerInvestorPolicy`, which is the default request model and had never
+    ///      run end to end: one bucket per controller per side, reused across requests.
+    function _deployPerInvestorVault() internal returns (IAsyncVault) {
+        VaultPlugins memory plugins = _defaultPlugins();
+        plugins.requestPolicy = s.perInvestorPolicy;
+        return _deployVaultWith(plugins);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Instant (ERC-4626) lane
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev The ERC-4626 lane against the real escrow. Every other test of it mocks the spoke, so
+    ///      nothing has ever checked that an instant deposit's assets reach the escrow, that the
+    ///      shares are minted against them, or that the fee leaves for its recipient — the three
+    ///      things that move money.
+    /// forge-config: default.isolate = true
+    function testInstantDeposit(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployInstantVault();
+        lastInstantVault = address(vault);
+        _configureInstantLane(USDC_AMOUNT_1 * 10, 0, 0, address(0));
+
+        assertEq(vault.maxDeposit(INVESTOR_A), USDC_AMOUNT_1 * 10, "the reserve headroom is the capacity");
+
+        address escrow = vault.escrow();
+        uint256 escrowBefore = s.usdc.balanceOf(escrow);
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        uint256 shares = vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+        vm.stopPrank();
+
+        assertEq(shares, assetToShare(USDC_AMOUNT_1), "priced at the notified prices");
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares, "shares issued to the investor");
+        assertEq(s.usdc.balanceOf(escrow) - escrowBefore, USDC_AMOUNT_1, "the assets reached the escrow");
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), 0, "an instant deposit is not a request");
+    }
+
+    /// @dev The entry fee leaves the flow entirely: the escrow receives the deposit less the fee, the
+    ///      recipient receives the fee, and the shares are priced on what actually backs them.
+    /// forge-config: default.isolate = true
+    function testInstantDepositChargesTheEntryFee(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployInstantVault();
+        lastInstantVault = address(vault);
+
+        address feeRecipient = makeAddr("feeRecipient");
+        // 1% on the way in.
+        _configureInstantLane(USDC_AMOUNT_1 * 10, 100, 0, feeRecipient);
+
+        address escrow = vault.escrow();
+        uint256 escrowBefore = s.usdc.balanceOf(escrow);
+        uint128 fee = USDC_AMOUNT_1 / 100;
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        uint256 shares = vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+        vm.stopPrank();
+
+        assertEq(s.usdc.balanceOf(feeRecipient), fee, "the fee left for its recipient");
+        assertEq(s.usdc.balanceOf(escrow) - escrowBefore, USDC_AMOUNT_1 - fee, "the escrow got the rest");
+        assertEq(shares, assetToShare(USDC_AMOUNT_1 - fee), "and the shares are priced on what backs them");
+    }
+
+    /// @dev The way back out, against the escrow the deposit filled. The shares are burnt and the
+    ///      assets leave the escrow for the investor, both through the real spoke accounting.
+    /// forge-config: default.isolate = true
+    function testInstantRedeem(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployInstantVault();
+        lastInstantVault = address(vault);
+        _configureInstantLane(USDC_AMOUNT_1 * 10, 0, 0, address(0));
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        uint256 shares = vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+        vm.stopPrank();
+
+        // An instant exit is a redeem request and its claim at once, so under RedemptionRestrictions
+        // it is closed to a holder who is not a member, as `requestRedeem` would be.
+        assertEq(vault.maxRedeem(INVESTOR_A), 0, "a non-member has no way out");
+        vm.prank(INVESTOR_A);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
+        vault.redeem(shares, INVESTOR_A);
+
+        _addMember(INVESTOR_A);
+
+        address escrow = vault.escrow();
+        uint256 escrowBefore = s.usdc.balanceOf(escrow);
+        uint256 investorBefore = s.usdc.balanceOf(INVESTOR_A);
+
+        assertGt(vault.maxRedeem(INVESTOR_A), 0, "the way out is open");
+
+        vm.prank(INVESTOR_A);
+        uint256 assets = vault.redeem(shares, INVESTOR_A);
+
+        assertEq(assets, USDC_AMOUNT_1, "a round trip at an unchanged price returns the deposit");
+        assertEq(s.usdc.balanceOf(INVESTOR_A) - investorBefore, assets, "the investor was paid");
+        assertEq(escrowBefore - s.usdc.balanceOf(escrow), assets, "out of the escrow");
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), 0, "and the shares were burnt");
+    }
+
+    /// @dev The exit fee stays behind: the investor receives the payout net of it and the recipient is
+    ///      paid out of the escrow, so the two legs together are what leaves.
+    /// forge-config: default.isolate = true
+    function testInstantRedeemChargesTheExitFee(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployInstantVault();
+        lastInstantVault = address(vault);
+
+        address feeRecipient = makeAddr("feeRecipient");
+        _configureInstantLane(USDC_AMOUNT_1 * 10, 0, 100, feeRecipient);
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        uint256 shares = vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+        vm.stopPrank();
+
+        _addMember(INVESTOR_A);
+        uint256 investorBefore = s.usdc.balanceOf(INVESTOR_A);
+        uint128 fee = USDC_AMOUNT_1 / 100;
+
+        vm.prank(INVESTOR_A);
+        uint256 assets = vault.redeem(shares, INVESTOR_A);
+
+        assertEq(assets, USDC_AMOUNT_1 - fee, "the payout is net of the exit fee");
+        assertEq(s.usdc.balanceOf(INVESTOR_A) - investorBefore, assets, "which is what the investor received");
+        assertEq(s.usdc.balanceOf(feeRecipient), fee, "and the fee reached its recipient");
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Request models
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev `PerInvestorPolicy` is the request model a pool gets unless it asks for another, and every
+    ///      end-to-end flow until now ran on `PerRequestPolicy`. The difference that matters here is
+    ///      that its bucket is keyed by controller and side, so a second request lands in the same
+    ///      bucket as the first and the position accumulates instead of forking.
+    /// forge-config: default.isolate = true
+    function testAsyncDepositOnThePerInvestorPolicy(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployPerInvestorVault();
+        uint128 half = USDC_AMOUNT_1 / 2;
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        RequestId first = RequestId.wrap(vault.requestDeposit(half, INVESTOR_A, INVESTOR_A));
+        RequestId second = RequestId.wrap(vault.requestDeposit(half, INVESTOR_A, INVESTOR_A));
+        vm.stopPrank();
+
+        assertEq(RequestId.unwrap(first), RequestId.unwrap(second), "both requests share one bucket");
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), USDC_AMOUNT_1, "and the position accumulated");
+        assertEq(
+            h.orderBook.depositOrders(POOL_A, SC_1, s.usdcId, first),
+            USDC_AMOUNT_1,
+            "the hub sees one order for the whole amount"
+        );
+
+        _fulfill(true, first, USDC_AMOUNT_1);
+
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+        assertEq(vault.maxMint(INVESTOR_A), shares, "the whole position is claimable at once");
+
+        vm.prank(INVESTOR_A);
+        vault.mint(shares, INVESTOR_A);
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares, "shares claimed");
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), 0);
+    }
+
+    /// @dev The bucket is derived from the controller rather than from a counter, so it is reused for
+    ///      good. A settled position must therefore leave it usable again, which is the whole reason
+    ///      the settlement library retires a sole owner's bucket.
+    /// forge-config: default.isolate = true
+    function testAPerInvestorBucketIsReusableAfterItSettles(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployPerInvestorVault();
+        uint128 half = USDC_AMOUNT_1 / 2;
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        RequestId requestId = RequestId.wrap(vault.requestDeposit(half, INVESTOR_A, INVESTOR_A));
+        vm.stopPrank();
+
+        _fulfill(true, requestId, half);
+
+        // Read before the prank: an argument is evaluated first, and would consume it.
+        uint256 claimable = vault.maxMint(INVESTOR_A);
+        assertGt(claimable, 0, "the first request settled");
+
+        vm.prank(INVESTOR_A);
+        vault.mint(claimable, INVESTOR_A);
+
+        // The same id again, on a bucket that has been through a full settlement.
+        vm.prank(INVESTOR_A);
+        RequestId again = RequestId.wrap(vault.requestDeposit(half, INVESTOR_A, INVESTOR_A));
+
+        assertEq(RequestId.unwrap(again), RequestId.unwrap(requestId), "the id is the controller's, for good");
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), half, "and it takes a new request");
+
+        _fulfill(true, again, half);
+        assertGt(vault.maxMint(INVESTOR_A), 0, "which settles like any other");
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Batching, gating and cancellation
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev `PerPeriodPolicy` is the only shipped model that puts more than one controller in a bucket,
+    ///      and the only one that batches: a window's requests accumulate spoke-side and reach the hub
+    ///      as a single order when the window closes. Nothing had run it end to end, so nothing had
+    ///      checked that the deferred transport actually defers, or that the pro-rata distribution
+    ///      arrives intact on the other side of the wire.
+    /// forge-config: default.isolate = true
+    function testABatchedWindowReachesTheHubAsOneOrder(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        PerPeriodPolicy perPeriod = new PerPeriodPolicy(1 days, 0, 0, 0);
+        VaultPlugins memory plugins = _defaultPlugins();
+        plugins.requestPolicy = perPeriod;
+
+        IAsyncVault vault = _deployVaultWith(plugins);
+        uint128 half = USDC_AMOUNT_1 / 2;
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        RequestId requestId = RequestId.wrap(vault.requestDeposit(half, INVESTOR_A, INVESTOR_A));
+        vault.requestDeposit(half, INVESTOR_A, INVESTOR_A);
+        vm.stopPrank();
+
+        assertEq(
+            h.orderBook.depositOrders(POOL_A, SC_1, s.usdcId, requestId),
+            0,
+            "a batched window is held spoke-side, not sent"
+        );
+        assertEq(
+            vault.bucket(uint96(RequestId.unwrap(requestId))).queued, USDC_AMOUNT_1, "it accumulates in the bucket"
+        );
+        assertEq(vault.pendingDepositRequest(0, INVESTOR_A), USDC_AMOUNT_1, "and counts as pending throughout");
+
+        // The window closes; anyone may push it, which is what makes the batch keeper-driven.
+        vm.warp(block.timestamp + 1 days);
+        vault.flushRequest(uint96(RequestId.unwrap(requestId)));
+
+        assertEq(
+            h.orderBook.depositOrders(POOL_A, SC_1, s.usdcId, requestId),
+            USDC_AMOUNT_1,
+            "the whole window arrived as one order"
+        );
+
+        _fulfill(true, requestId, USDC_AMOUNT_1);
+
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+        assertEq(vault.maxMint(INVESTOR_A), shares, "the fulfillment folded to the contributor");
+
+        vm.prank(INVESTOR_A);
+        vault.mint(shares, INVESTOR_A);
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares);
+    }
+
+    /// @dev Under `RedemptionRestrictions` a redeem request is a vault action the hook holds to members.
+    ///      It has no transfer leg the token would see, so this is the vault asking the hook itself.
+    /// forge-config: default.isolate = true
+    function testANonMemberCannotRequestARedemption(bool sameChain) public {
+        IAsyncVault vault = _testAsyncDeposit(sameChain);
+        uint256 shares = IShareToken(vault.share()).balanceOf(INVESTOR_A);
+
+        vm.prank(INVESTOR_A);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
+        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
+
+        _addMember(INVESTOR_A);
+        vm.prank(INVESTOR_A);
+        vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
+        assertEq(vault.pendingRedeemRequest(0, INVESTOR_A), shares, "a member can");
+    }
+
+    /// @dev A deposit request is gated on the controller not being frozen, before any asset moves.
+    /// forge-config: default.isolate = true
+    function testAFrozenControllerCannotRequestADeposit(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+        IAsyncVault vault = _deployVault();
+
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionFreezeMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
+        vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+        vm.stopPrank();
+
+        assertEq(s.usdc.balanceOf(INVESTOR_A), USDC_AMOUNT_1, "the assets never left");
+    }
+
+    /// @dev Taking on a redeem position means being able to redeem, so under `RedemptionRestrictions`
+    ///      a redeem request can only be transferred to a member.
+    /// forge-config: default.isolate = true
+    function testARedeemRequestCannotBeTransferredToANonMember(bool sameChain) public {
+        IAsyncVault vault = _testAsyncDeposit(sameChain);
+        uint256 shares = IShareToken(vault.share()).balanceOf(INVESTOR_A);
+        _addMember(INVESTOR_A);
+
+        VaultPlugins memory plugins = _defaultPlugins();
+        plugins.requestPolicy = new PerPeriodPolicy(1 days, 0, 0, 0);
+        IAsyncVault windowed = _deployVaultWith(plugins);
+
+        address recipient = makeAddr("recipient");
+        vm.prank(INVESTOR_A);
+        uint256 requestId = windowed.requestRedeem(shares, INVESTOR_A, INVESTOR_A);
+
+        vm.prank(INVESTOR_A);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
+        IERC8161RedeemTransferable(address(windowed)).transferRedeemRequest(requestId, INVESTOR_A, recipient);
+
+        _addMember(recipient);
+        vm.prank(INVESTOR_A);
+        IERC8161RedeemTransferable(address(windowed)).transferRedeemRequest(requestId, INVESTOR_A, recipient);
+        assertEq(windowed.pendingRedeemRequest(0, recipient), shares, "a member can take it on");
+    }
+
+    /// @dev The share class's restriction hook gates the claim on its escrow-to-receiver leg, an
+    ///      enforced transfer, and `maxDeposit` reads the same check through the token, so a frozen
+    ///      investor sees no capacity and cannot take delivery.
+    /// forge-config: default.isolate = true
+    function testTheShareHookGatesTheClaim(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployVaultWith(_defaultPlugins());
+
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        RequestId requestId = _requestDeposit(vault, USDC_AMOUNT_1);
+        _fulfill(true, requestId, USDC_AMOUNT_1);
+
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+        assertEq(vault.maxDeposit(INVESTOR_A), USDC_AMOUNT_1, "a member can take delivery");
+
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionFreezeMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        assertEq(vault.claimableDepositRequest(0, INVESTOR_A), USDC_AMOUNT_1, "the fulfillment is still a fact");
+        assertEq(vault.maxDeposit(INVESTOR_A), 0, "but a frozen investor cannot take delivery of it");
+
+        // The claim is refused by the hook before any share moves
+        vm.prank(INVESTOR_A);
+        vm.expectRevert(ITransferHook.TransferBlocked.selector);
+        vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionUnfreezeMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        assertEq(vault.maxDeposit(INVESTOR_A), USDC_AMOUNT_1, "unfreezing reopens the claim");
+
+        vm.prank(INVESTOR_A);
+        vault.deposit(USDC_AMOUNT_1, INVESTOR_A);
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares, "and it goes through");
+    }
+
+    /// @dev The redeem-side cancellation, which had no end-to-end test. Cancelled redeem shares stay
+    ///      parked in the escrow and are claimed through the *deposit* side, so an integrator
+    ///      recovers them through `mint` without knowing cancellation exists.
+    /// forge-config: default.isolate = true
+    function testAsyncRedeemCancel(bool sameChain) public {
+        IAsyncVault vault = _testAsyncDeposit(sameChain);
+        uint128 shares = assetToShare(USDC_AMOUNT_1);
+
+        vm.prank(FM);
+        h.hub.updateRestriction{value: GAS}(
+            POOL_A, SC_1, s.centrifugeId, _updateRestrictionMemberMsg(INVESTOR_A), EXTRA_GAS, REFUND
+        );
+
+        vm.prank(INVESTOR_A);
+        RequestId requestId = RequestId.wrap(vault.requestRedeem(shares, INVESTOR_A, INVESTOR_A));
+        assertEq(vault.pendingRedeemRequest(0, INVESTOR_A), shares, "the shares are in flight");
+
+        _cancel(false, requestId, shares);
+
+        assertEq(h.orderBook.redeemOrders(POOL_A, SC_1, s.usdcId, requestId), 0, "the order was retired");
+        assertEq(vault.pendingRedeemRequest(0, INVESTOR_A), 0, "and nothing is pending any more");
+        assertEq(vault.maxMint(INVESTOR_A), shares, "the shares come back through the deposit side");
+
+        vm.prank(INVESTOR_A);
+        vault.mint(shares, INVESTOR_A);
+
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), shares, "the investor has them back");
+        assertEq(vault.maxMint(INVESTOR_A), 0);
+    }
+
+    /// @dev The two lanes share one address and one position, and the routing between them is the
+    ///      specification's central deviation from ERC-4626. With an open request the 2-arg entrypoints must
+    ///      claim rather than trade, however much instant capacity the policy is offering.
+    /// forge-config: default.isolate = true
+    function testAPendingRequestClosesTheInstantLaneForThatController(bool sameChain) public {
+        _configurePool(sameChain);
+        _configurePrices(IntegrationConstants.assetPrice(), IntegrationConstants.sharePrice());
+
+        IAsyncVault vault = _deployInstantVault();
+        lastInstantVault = address(vault);
+        _configureInstantLane(USDC_AMOUNT_1 * 10, 0, 0, address(0));
+
+        assertGt(vault.maxDeposit(INVESTOR_A), 0, "the instant lane is open to start with");
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        RequestId requestId = RequestId.wrap(vault.requestDeposit(USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A));
+        vm.stopPrank();
+
+        assertEq(vault.maxDeposit(INVESTOR_A), 0, "an open request closes it for this controller");
+
+        _fulfill(true, requestId, USDC_AMOUNT_1);
+        uint128 claimable = assetToShare(USDC_AMOUNT_1);
+        assertEq(vault.maxMint(INVESTOR_A), claimable, "and it reopens as a claim, not as capacity");
+
+        vm.prank(INVESTOR_A);
+        vault.mint(claimable, INVESTOR_A);
+        assertEq(IShareToken(vault.share()).balanceOf(INVESTOR_A), claimable, "the 2-arg mint claimed");
+
+        assertGt(vault.maxDeposit(INVESTOR_A), 0, "with nothing in flight the instant lane is back");
     }
 
     /// forge-config: default.isolate = true

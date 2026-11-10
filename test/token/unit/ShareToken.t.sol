@@ -11,6 +11,8 @@ import {MockRoot} from "../../core/mocks/MockRoot.sol";
 import {MockEscrowProvider} from "../../core/mocks/MockEscrowProvider.sol";
 import {MockFullRestrictions} from "../../core/spoke/mocks/MockFullRestrictions.sol";
 
+import {MockVaultRegistry} from "../../hooks/mocks/MockVaultRegistry.sol";
+
 import "forge-std/Test.sol";
 
 import {ShareToken} from "../../../src/token/ShareToken.sol";
@@ -40,7 +42,7 @@ contract ShareTokenTest is Test {
         fullRestrictionsHook = new MockFullRestrictions(
             address(new MockRoot()),
             makeAddr("envoy"),
-            spoke,
+            address(new MockVaultRegistry()),
             makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),

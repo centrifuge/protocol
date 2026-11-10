@@ -4,17 +4,11 @@ pragma solidity ^0.8.28;
 import {d18} from "../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../src/misc/libraries/CastLib.sol";
 
-import {ISpokeRegistry} from "../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
-import {VaultUpdateKind, ManagerKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
-
-import {SyncDepositVault} from "../../../src/vaults/SyncDepositVault.sol";
-
-import {VmSafe} from "forge-std/Vm.sol";
+import {ManagerKind} from "../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {TokenBridge} from "../../../src/bridge/TokenBridge.sol";
 import {IShareToken} from "../../../src/token/interfaces/IShareToken.sol";
 import {ThreeChainEndToEndDeployment} from "../../integration/ThreeChainEndToEnd.t.sol";
-import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
 abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
     using CastLib for *;
@@ -23,7 +17,6 @@ abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
     uint128 constant DEFAULT_AMOUNT = 100_000_000;
 
     TokenBridge tokenBridge;
-    SyncDepositVault vault;
     IShareToken shareToken;
 
     address user = makeAddr("user");
@@ -41,45 +34,10 @@ abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
         _setSpoke(deployC, CENTRIFUGE_ID_C, dest);
         _configurePoolInSpoke(dest);
 
-        // Deploy sync vault on chain A
+        // Shares are issued straight off the balance sheet: the bridge only needs investors holding
+        // share tokens, so no vault is involved.
         vm.startPrank(FM);
-        h.hub
-            .managerCall(
-                POOL_A,
-                s.centrifugeId,
-                address(s.syncManager).toBytes32(),
-                _syncManagerMaxReserveMsg(type(uint128).max),
-                0,
-                0,
-                FM
-            );
-        vm.recordLogs();
-        h.hub
-            .updateVault(
-                POOL_A, SC_1, s.usdcId, s.syncDepositVaultFactory, VaultUpdateKind.DeployAndLink, bytes(""), 0, FM
-            );
-
-        address vaultAddr;
-        {
-            VmSafe.Log[] memory logs_ = vm.getRecordedLogs();
-            for (uint256 i; i < logs_.length; i++) {
-                if (logs_[i].topics[0] == ISpokeRegistry.LinkVault.selector) {
-                    (, vaultAddr) = abi.decode(logs_[i].data, (uint256, address));
-                }
-            }
-        }
-
-        h.hub
-            .managerCall(
-                POOL_A,
-                s.centrifugeId,
-                address(s.shareTokenRegistrar).toBytes32(),
-                abi.encode(uint8(IShareTokenRegistrar.RegistrarCall.SetVault), SC_1, s.usdcId.raw(), vaultAddr),
-                0,
-                0,
-                FM
-            );
-
+        h.hub.updateManager(POOL_A, s.centrifugeId, ManagerKind.Spoke, FM.toBytes32(), true, FM);
         h.hub
             .updateManager(
                 POOL_A, s.centrifugeId, ManagerKind.Bridger, address(deployA.tokenBridge()).toBytes32(), true, FM
@@ -87,7 +45,6 @@ abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
         vm.stopPrank();
 
         shareToken = IShareToken(address(s.spokeRegistry.shareToken(POOL_A, SC_1)));
-        vault = SyncDepositVault(shareToken.vault(address(s.usdc)));
 
         tokenBridge = deployA.tokenBridge();
         vm.prank(address(h.root));
@@ -98,11 +55,8 @@ abstract contract TokenBridgeBaseTest is ThreeChainEndToEndDeployment {
     }
 
     function depositSync(address _investor, uint256 amount) internal {
-        s.usdc.mint(_investor, amount);
-        vm.startPrank(_investor);
-        s.usdc.approve(address(vault), amount);
-        vault.deposit(amount, _investor);
-        vm.stopPrank();
+        vm.prank(FM);
+        s.spoke.issue(POOL_A, SC_1, _investor, uint128(amount));
     }
 }
 

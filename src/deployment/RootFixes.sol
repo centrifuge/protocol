@@ -17,14 +17,13 @@ import {Root} from "../admin/Root.sol";
 contract RootFixes {
     Root public immutable root;
     address public immutable spoke;
+    address public immutable spokeHandler;
     address public immutable vaultRouter;
     address public immutable tokenBridge;
     address public immutable shareManager;
-    address public immutable spokeHandler;
     address public immutable messageProcessor;
     address public immutable protocolGuardian;
     address public immutable messageDispatcher;
-    address public immutable asyncRequestManager;
 
     bool public done;
 
@@ -33,14 +32,13 @@ contract RootFixes {
     constructor(NonCoreReport memory report) {
         root = report.core.root;
         spoke = address(report.core.spoke);
+        spokeHandler = address(report.core.spokeHandler);
         vaultRouter = address(report.vaultRouter);
         tokenBridge = address(report.tokenBridge);
         shareManager = address(report.shareManager);
-        spokeHandler = address(report.core.spokeHandler);
         messageProcessor = address(report.core.messageProcessor);
         protocolGuardian = address(report.core.protocolGuardian);
         messageDispatcher = address(report.core.messageDispatcher);
-        asyncRequestManager = address(report.asyncRequestManager);
     }
 
     /// @notice Grants and endorses what the action batchers skipped, then hands the ward back.
@@ -54,10 +52,9 @@ contract RootFixes {
 
         root.endorse(spoke);
         root.endorse(spokeHandler);
-        root.endorse(asyncRequestManager);
-        root.endorse(vaultRouter);
         root.endorse(tokenBridge);
         root.endorse(shareManager);
+        if (vaultRouter != address(0)) root.endorse(vaultRouter);
 
         root.deny(address(this));
     }

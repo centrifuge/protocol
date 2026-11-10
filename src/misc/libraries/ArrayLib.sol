@@ -14,4 +14,15 @@ library ArrayLib {
             arr[i] -= 1;
         }
     }
+
+    /// @dev Removes `count` entries starting at `from`, keeping the order of the rest.
+    function remove(uint96[] storage arr, uint256 from, uint256 count) internal {
+        uint256 length = arr.length;
+        for (uint256 i = from + count; i < length; i++) {
+            arr[i - count] = arr[i];
+        }
+        for (uint256 i; i < count; i++) {
+            arr.pop();
+        }
+    }
 }

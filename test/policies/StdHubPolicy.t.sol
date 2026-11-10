@@ -19,8 +19,6 @@ import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySe
 
 import {UpdateRestrictionType} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
-
 import "forge-std/Test.sol";
 
 import {IStdHubPolicy} from "../../src/policies/hub/interfaces/IStdHubPolicy.sol";
@@ -47,8 +45,8 @@ contract StdHubPolicyTest is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable supervisor = makeAddr("supervisor");
-    address immutable brm = makeAddr("BRM");
     address immutable hook = makeAddr("bridgingHook");
+    address immutable oracle = makeAddr("spokeOracle");
     address immutable manager = makeAddr("manager");
     address immutable outsider = makeAddr("outsider");
     address immutable who = makeAddr("who");
@@ -88,7 +86,7 @@ contract StdHubPolicyTest is Test {
         view
         returns (IStdHubPolicy.Config memory)
     {
-        return _config(cap, rate, onchain, nav, price, type(uint128).max, new IStdHubPolicy.Entry[](0));
+        return _config(cap, rate, onchain, nav, price, new IStdHubPolicy.Entry[](0));
     }
 
     function _config(
@@ -97,26 +95,6 @@ contract StdHubPolicyTest is Test {
         bool onchain,
         address nav,
         address price,
-        IStdHubPolicy.Entry[] memory allowlist
-    ) internal view returns (IStdHubPolicy.Config memory) {
-        return _config(cap, rate, onchain, nav, price, type(uint128).max, allowlist);
-    }
-
-    function _config(uint128 cap, uint128 rate, bool onchain, address nav, address price, uint128 maxDeviation)
-        internal
-        view
-        returns (IStdHubPolicy.Config memory)
-    {
-        return _config(cap, rate, onchain, nav, price, maxDeviation, new IStdHubPolicy.Entry[](0));
-    }
-
-    function _config(
-        uint128 cap,
-        uint128 rate,
-        bool onchain,
-        address nav,
-        address price,
-        uint128 maxDeviation,
         IStdHubPolicy.Entry[] memory allowlist
     ) internal view returns (IStdHubPolicy.Config memory) {
         return IStdHubPolicy.Config({
@@ -125,14 +103,17 @@ contract StdHubPolicyTest is Test {
             escalation: ESCALATION,
             maxAbsolutePriceDelta: cap,
             thresholdPerSecond: rate,
-            maxBrmPriceDeviation: maxDeviation,
             onchainAccounting: onchain,
             isRestrictionUpdateInstant: false,
             navManager: nav,
             simplePriceManager: price,
-            requestManager: brm,
             bridgingHook: hook,
+            spokeOracle: oracle,
             oracleValuation: address(0),
+            orderBook: address(0),
+            maxFulfillPriceDeviation: type(uint128).max,
+            maxFeeBps: type(uint128).max,
+            maxRebateBps: type(uint128).max,
             allowlist: allowlist
         });
     }
@@ -694,23 +675,16 @@ contract StdHubPolicyTest is Test {
         );
     }
 
-    function testManagerCallToRequestManagerInPolicy() public {
-        // managerCall targeting the configured request manager (BRM) is in policy: routine keeper ops run
-        // synchronously, no authorization needed. The opaque payload is not inspected (target is pinned).
-        vm.prank(address(hub));
-        policy.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), abi.encode(uint8(1), bytes16(0))));
-    }
-
-    function testManagerCallToRequestManagerOnRemoteChainDelayed() public {
-        // Target pins (BRM, bridging hook, forwarder) are local addresses with no cross-chain guarantee
-        // (CREATE3 determinism is not a security invariant). A remote-dispatched managerCall must fall
-        // through to delay even if the target byte-matches a local pin.
+    function testManagerCallToPinnedTargetOnRemoteChainDelayed() public {
+        // Target pins are local addresses with no cross-chain guarantee (CREATE3 determinism is not a
+        // security invariant). A remote-dispatched managerCall must fall through to delay even if the
+        // target byte-matches a local pin (here: a SetPaused to the bridging hook, instant locally).
         bytes memory d = abi.encodeWithSelector(
             IHub.managerCall.selector,
             POOL_A,
             LOCAL_CENTRIFUGE_ID + 1,
-            bytes32(bytes20(brm)),
-            abi.encode(uint8(1), bytes16(0)),
+            bytes32(bytes20(hook)),
+            abi.encode(uint256(0), bytes16("sc1"), true),
             uint128(0),
             uint256(0),
             address(0)
@@ -724,6 +698,20 @@ contract StdHubPolicyTest is Test {
         // a Supervisor RemoveSentinel (kind byte 1) is disguised as a BRM ApproveDeposits (also kind 1).
         assertEq(
             _delayOf(_managerCall(bytes32(bytes20(supervisor)), abi.encode(uint8(1), makeAddr("attacker")))), DELAY
+        );
+    }
+
+    function testSponsorChangesOnTheInstantPolicyAreTimelocked() public {
+        // Sponsors are set through a managerCall to the instant policy, which no pin covers, so the change waits
+        // out the delay and stays open to a sentinel veto.
+        assertEq(
+            _delayOf(
+                _managerCall(
+                    bytes32(bytes20(makeAddr("reserveInstantPolicy"))),
+                    abi.encode(uint8(3), makeAddr("vault"), abi.encode(makeAddr("sponsor"), true))
+                )
+            ),
+            DELAY
         );
     }
 
@@ -783,182 +771,38 @@ contract StdHubPolicyTest is Test {
         hubRegistry.setPolicy(POOL_A, policy);
     }
 
-    // ─── BRM price-deviation guard ─────────────────────────────────────────────────
-
-    uint128 constant DEVIATION = 1e16; // 1%
-    AssetId constant ASSET = AssetId.wrap(7);
-
-    /// @dev A BRM issue/revoke inner payload carrying `pricePoolPerShare` at word 4 (offset 144).
-    function _brmShareAction(ManagerAction kind, uint128 price) internal pure returns (bytes memory) {
-        return abi.encode(uint8(kind), ShareClassId.unwrap(SC_A), uint128(0), uint32(0), price, uint128(0), address(0));
+    function testManagerCallSpokeOraclePauseInPolicy() public {
+        // Pausing the oracle only closes the instant lane and the previews, so it cannot wait out the delay.
+        vm.prank(address(hub));
+        policy.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(oracle)), abi.encode(true)));
     }
 
-    /// @dev A BRM approve deposits/redeems inner payload carrying `pricePoolPerAsset` at word 5 (offset 176).
-    function _brmApproveAction(ManagerAction kind, uint128 price) internal pure returns (bytes memory) {
-        return abi.encode(
-            uint8(kind), ShareClassId.unwrap(SC_A), AssetId.unwrap(ASSET), uint32(0), uint128(0), price, address(0)
+    function testManagerCallSpokeOracleUnpauseDelayed() public {
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), abi.encode(false))), DELAY);
+    }
+
+    function testManagerCallSpokeOracleMalformedDelayed() public {
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), abi.encode(uint256(2)))), DELAY);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), bytes(""))), DELAY);
+    }
+
+    function testManagerCallPauseToAnotherTargetDelayed() public {
+        // The same payload to any other config target (a request policy, a route) keeps the delay.
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(makeAddr("requestPolicy"))), abi.encode(true))), DELAY);
+    }
+
+    function testManagerCallSpokeOraclePauseOnRemoteChainDelayed() public {
+        bytes memory d = abi.encodeWithSelector(
+            IHub.managerCall.selector,
+            POOL_A,
+            LOCAL_CENTRIFUGE_ID + 1,
+            bytes32(bytes20(oracle)),
+            abi.encode(true),
+            uint128(0),
+            uint256(0),
+            address(0)
         );
-    }
-
-    /// @dev Classify a BRM-targeted managerCall through a policy carrying `maxDev`.
-    function _classifyBrm(uint128 maxDev, bytes memory inner) internal returns (uint48) {
-        // Fresh factory per call: this helper classifies many throwaway policies whose configs may
-        // repeat, and a shared factory's deterministic CREATE2 address would collide on a repeat.
-        IStdHubPolicy policy_ = new StdHubPolicyFactory(hub, multiAdapter, scm)
-            .newHubPolicy(_config(CAP, RATE, false, address(0), address(0), maxDev));
-        return policy_.authorizationDelay(POOL_A, manager, _managerCall(bytes32(bytes20(brm)), inner));
-    }
-
-    function _mockAssetPrice(uint128 raw) internal {
-        vm.mockCall(
-            address(hub),
-            abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET),
-            abi.encode(D18.wrap(raw))
-        );
-    }
-
-    function testBrmIssueWithinBoundInPolicy() public {
-        // Main share price = 1e18 (setUp). A move under 1% is in policy.
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 1e18 + 5e15)), 0);
-    }
-
-    function testBrmIssueBeyondBoundDelayed() public {
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 1e18 + 2e16)), DELAY);
-    }
-
-    function testBrmRevokeWithinBoundInPolicy() public {
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.RevokeShares, 1e18 - 5e15)), 0);
-    }
-
-    function testBrmRevokeBeyondBoundDelayed() public {
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.RevokeShares, 1e18 - 2e16)), DELAY);
-    }
-
-    function testBrmApproveDepositsWithinBoundInPolicy() public {
-        _mockAssetPrice(1e18);
-        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveDeposits, 1e18 + 5e15)), 0);
-    }
-
-    function testBrmApproveDepositsBeyondBoundDelayed() public {
-        _mockAssetPrice(1e18);
-        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveDeposits, 1e18 + 2e16)), DELAY);
-    }
-
-    function testBrmApproveRedeemsWithinBoundInPolicy() public {
-        _mockAssetPrice(1e18);
-        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveRedeems, 1e18 - 5e15)), 0);
-    }
-
-    function testBrmApproveRedeemsBeyondBoundDelayed() public {
-        _mockAssetPrice(1e18);
-        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveRedeems, 1e18 + 2e16)), DELAY);
-    }
-
-    function testBrmExactMatchBoundDeRwa() public {
-        // maxBrmPriceDeviation == 0: exact match is in policy, any nonzero delta is out (deRWA semantics).
-        assertEq(_classifyBrm(0, _brmShareAction(ManagerAction.IssueShares, 1e18)), 0);
-        assertEq(_classifyBrm(0, _brmShareAction(ManagerAction.IssueShares, 1e18 + 1)), DELAY);
-    }
-
-    function testBrmMainSharePriceZeroDelayed() public {
-        // No committed share price (reference reads 0): fails closed — requires a timelock authorization.
-        vm.mockCall(
-            address(scm),
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
-            abi.encode(D18.wrap(0), uint64(0))
-        );
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 5e18)), DELAY);
-    }
-
-    function testBrmMainSharePriceZeroRevokeDelayed() public {
-        // Same guard applies to RevokeShares.
-        vm.mockCall(
-            address(scm),
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
-            abi.encode(D18.wrap(0), uint64(0))
-        );
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.RevokeShares, 5e18)), DELAY);
-    }
-
-    function testBrmMainAssetPriceZeroDelayed() public {
-        // A zero asset price from the oracle also fails closed.
-        vm.mockCall(
-            address(hub),
-            abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET),
-            abi.encode(D18.wrap(0))
-        );
-        assertEq(_classifyBrm(DEVIATION, _brmApproveAction(ManagerAction.ApproveDeposits, 1e18)), DELAY);
-    }
-
-    function testBrmApproveAssetPriceRevertBubblesUp() public {
-        // A reverting oracle bubbles up: a manager must not approve against a broken price source.
-        IStdHubPolicy policy_ = factory.newHubPolicy(_config(CAP, RATE, false, address(0), address(0), DEVIATION));
-        vm.mockCallRevert(
-            address(hub), abi.encodeWithSelector(IHub.pricePoolPerAsset.selector, POOL_A, SC_A, ASSET), "PriceNotSet"
-        );
-        bytes memory call = _managerCall(bytes32(bytes20(brm)), _brmApproveAction(ManagerAction.ApproveDeposits, 1e18));
-        vm.expectRevert();
-        policy_.authorizationDelay(POOL_A, manager, call);
-    }
-
-    function testBrmGuardDisabledAnyPriceInPolicy() public {
-        // maxBrmPriceDeviation == type(uint128).max disables the guard: any price is in policy.
-        assertEq(_classifyBrm(type(uint128).max, _brmShareAction(ManagerAction.IssueShares, 100e18)), 0);
-    }
-
-    /// @dev A BRM force-cancel inner payload (no price field).
-    function _brmForceCancel(ManagerAction kind) internal pure returns (bytes memory) {
-        return abi.encode(uint8(kind), ShareClassId.unwrap(SC_A), bytes32(0), AssetId.unwrap(ASSET), address(0));
-    }
-
-    function testBrmForceCancelDepositNoPriceInPolicy() public {
-        // Force-cancels carry no price field: in policy regardless of the bound.
-        assertEq(_classifyBrm(DEVIATION, _brmForceCancel(ManagerAction.ForceCancelDepositRequest)), 0);
-    }
-
-    function testBrmForceCancelRedeemNoPriceInPolicy() public {
-        assertEq(_classifyBrm(DEVIATION, _brmForceCancel(ManagerAction.ForceCancelRedeemRequest)), 0);
-    }
-
-    function testBrmUnknownActionKindDelayed() public {
-        // A kind outside the known ManagerAction set (price-bearing or force-cancel) fails closed to
-        // delay rather than being waved through in-policy - deny-by-default, not deny-by-exception.
-        bytes memory inner = abi.encode(uint8(99), bytes16(0));
-        assertEq(_classifyBrm(DEVIATION, inner), DELAY);
-    }
-
-    function testBrmMalformedShortPayloadDelayed() public {
-        // A price-bearing kind whose payload is too short to hold the price word fails closed -> delay.
-        bytes memory inner = abi.encode(uint8(ManagerAction.IssueShares), ShareClassId.unwrap(SC_A));
-        assertEq(_classifyBrm(DEVIATION, inner), DELAY);
-    }
-
-    function testBrmIssueDustReferenceZeroPriceDelayed() public {
-        vm.mockCall(
-            address(scm),
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
-            abi.encode(D18.wrap(1), uint64(0))
-        );
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 0)), DELAY);
-    }
-
-    function testBrmIssueDustReferenceTwoPriceDelayed() public {
-        vm.mockCall(
-            address(scm),
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
-            abi.encode(D18.wrap(1), uint64(0))
-        );
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 2)), DELAY);
-    }
-
-    function testBrmIssueDustReferenceExactMatchInPolicy() public {
-        // price=1 == ref=1: delta=0, always passes.
-        vm.mockCall(
-            address(scm),
-            abi.encodeWithSelector(IShareClassManager.pricePoolPerShare.selector, POOL_A, SC_A),
-            abi.encode(D18.wrap(1), uint64(0))
-        );
-        assertEq(_classifyBrm(DEVIATION, _brmShareAction(ManagerAction.IssueShares, 1)), 0);
+        assertEq(_delayOf(d), DELAY);
     }
 
     // ─── managerCall payload robustness ───────────────────────────────────────────

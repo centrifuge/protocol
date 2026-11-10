@@ -27,6 +27,8 @@ import {MessageProcessor} from "../core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../core/messaging/MessageDispatcher.sol";
 import {MAX_ADAPTER_COUNT} from "../core/messaging/interfaces/IMultiAdapter.sol";
 
+import {VaultRequestRouter} from "../vaults/messaging/VaultRequestRouter.sol";
+
 import {Root} from "../admin/Root.sol";
 import {GasService} from "../admin/GasService.sol";
 import {ISafe} from "../admin/interfaces/ISafe.sol";
@@ -34,13 +36,10 @@ import {OpsGuardian} from "../admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../admin/ProtocolGuardian.sol";
 import {IAdapterWiring} from "../admin/interfaces/IAdapterWiring.sol";
 
-import {FreezeOnly} from "../token/hooks/FreezeOnly.sol";
 import {NAVManager} from "../hooks/accounting/NAVManager.sol";
-import {FullRestrictions} from "../token/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../token/hooks/FreelyTransferable.sol";
+import {ShareTokenHook} from "../token/hooks/ShareTokenHook.sol";
 import {BridgeCircuitBreaker} from "../hooks/bridge/BridgeCircuitBreaker.sol";
 import {SimplePriceManager} from "../hooks/accounting/SimplePriceManager.sol";
-import {RedemptionRestrictions} from "../token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../managers/spoke/QueueManager.sol";
 import {ShareManager} from "../managers/spoke/ShareManager.sol";
@@ -49,12 +48,9 @@ import {OnOffRampFactory} from "../managers/spoke/OnOffRamp.sol";
 import {OracleValuation} from "../valuations/OracleValuation.sol";
 import {IdentityValuation} from "../valuations/IdentityValuation.sol";
 
-import {SyncManager} from "../vaults/SyncManager.sol";
+import {OrderBook} from "../vaults/hub/OrderBook.sol";
 import {VaultRouter} from "../vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "../vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../vaults/BatchRequestManager.sol";
-import {AsyncVaultFactory} from "../vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "../vaults/factories/SyncDepositVaultFactory.sol";
+import {VaultFactory} from "../vaults/factories/VaultFactory.sol";
 
 import {TokenBridge} from "../bridge/TokenBridge.sol";
 import {SubsidyManager} from "../utils/SubsidyManager.sol";
@@ -95,25 +91,24 @@ struct NonCoreReport {
     CoreReport core;
     SubsidyManager subsidyManager;
     RefundEscrowFactory refundEscrowFactory;
-    AsyncVaultFactory asyncVaultFactory;
-    AsyncRequestManager asyncRequestManager;
-    SyncDepositVaultFactory syncDepositVaultFactory;
-    SyncManager syncManager;
-    VaultRouter vaultRouter;
-    FreezeOnly freezeOnlyHook;
-    FullRestrictions fullRestrictionsHook;
-    FreelyTransferable freelyTransferableHook;
-    RedemptionRestrictions redemptionRestrictionsHook;
+    ShareTokenHook freezeOnlyHook;
+    ShareTokenHook fullRestrictionsHook;
+    ShareTokenHook freelyTransferableHook;
+    ShareTokenHook redemptionRestrictionsHook;
     QueueManager queueManager;
     OnOffRampFactory onOffRampFactory;
     ShareManager shareManager;
-    BatchRequestManager batchRequestManager;
     IdentityValuation identityValuation;
     OracleValuation oracleValuation;
     NAVManager navManager;
     SimplePriceManager simplePriceManager;
     TokenBridge tokenBridge;
     BridgeCircuitBreaker bridgeCircuitBreaker;
+    // vaultFactory, vaultRequestRouter and vaultRouter are zero on a chain without the vault spoke half
+    VaultFactory vaultFactory;
+    VaultRequestRouter vaultRequestRouter;
+    VaultRouter vaultRouter;
+    OrderBook orderBook;
 }
 
 struct AdaptersReport {
@@ -351,67 +346,40 @@ contract NonCoreActionBatcher {
         report.tokenBridge.rely(address(report.core.opsGuardian));
         report.subsidyManager.rely(root);
         report.refundEscrowFactory.rely(root);
-        report.asyncVaultFactory.rely(root);
-        report.asyncRequestManager.rely(root);
-        report.syncDepositVaultFactory.rely(root);
-        report.syncManager.rely(root);
-        report.vaultRouter.rely(root);
 
         report.freezeOnlyHook.rely(root);
         report.fullRestrictionsHook.rely(root);
         report.freelyTransferableHook.rely(root);
         report.redemptionRestrictionsHook.rely(root);
 
-        report.batchRequestManager.rely(root);
+        report.orderBook.rely(root);
 
         // Rely bridgeCircuitBreaker
         report.bridgeCircuitBreaker.rely(root);
         report.bridgeCircuitBreaker.rely(address(report.core.hubHandler));
 
         // Rely spokeHandler
-        report.asyncRequestManager.rely(address(report.core.spokeHandler));
         report.freezeOnlyHook.rely(address(report.core.shareTokenRegistrar));
         report.fullRestrictionsHook.rely(address(report.core.shareTokenRegistrar));
         report.freelyTransferableHook.rely(address(report.core.shareTokenRegistrar));
         report.redemptionRestrictionsHook.rely(address(report.core.shareTokenRegistrar));
-        report.asyncVaultFactory.rely(address(report.core.spokeHandler));
-        report.syncDepositVaultFactory.rely(address(report.core.spokeHandler));
 
         // Rely hubHandler
-        report.batchRequestManager.rely(address(report.core.hubHandler));
+        report.orderBook.rely(address(report.core.hubHandler));
 
         // Rely subsidyManager
         report.refundEscrowFactory.rely(address(report.subsidyManager));
 
-        // Rely asyncRequestManager
-        report.subsidyManager.rely(address(report.asyncRequestManager));
-
-        // Rely asyncVaultFactory
-        report.asyncRequestManager.rely(address(report.asyncVaultFactory));
-
-        // Rely syncDepositVaultFactory
-        report.syncManager.rely(address(report.syncDepositVaultFactory));
-        report.asyncRequestManager.rely(address(report.syncDepositVaultFactory));
+        if (address(report.vaultFactory) != address(0)) _wireVaultSpoke(report, root);
 
         // File methods
         report.refundEscrowFactory.file(bytes32("controller"), address(report.subsidyManager));
         report.refundEscrowFactory.file(bytes32("root"), root);
 
-        report.asyncRequestManager.file("spoke", address(report.core.spoke));
-        report.asyncRequestManager.file("spokeRegistry", address(report.core.spokeRegistry));
-
-        report.syncManager.file("spoke", address(report.core.spoke));
-        report.syncManager.file("spokeRegistry", address(report.core.spokeRegistry));
-        report.syncManager.file("envoy", address(report.core.envoy));
-
         report.subsidyManager.file("envoy", address(report.core.envoy));
-
-        report.batchRequestManager.file("hub", address(report.core.hub));
 
         // Endorse methods
         if (wireRoot) {
-            report.core.root.endorse(address(report.asyncRequestManager));
-            report.core.root.endorse(address(report.vaultRouter));
             report.core.root.endorse(address(report.tokenBridge));
             // The ShareManager needs it to pull shares on the revoke path, and it is safe to grant: its only
             // entrypoint is the envoy-gated `fromHub`, so every call matured through the hub policy, and it
@@ -419,16 +387,13 @@ contract NonCoreActionBatcher {
             // `fromHub` carries only a `poolId`, so the contract has no way to tell which pool an arbitrary
             // token belongs to, and anything sent here needs administrative recovery instead
             report.core.root.endorse(address(report.shareManager));
+            // Holds shares mid-batch, so it is exempt from membership hooks like the other endorsed contracts
+            if (address(report.vaultRouter) != address(0)) report.core.root.endorse(address(report.vaultRouter));
         }
 
         // Revoke batcher permissions
         report.tokenBridge.deny(address(this));
         report.refundEscrowFactory.deny(address(this));
-        report.asyncVaultFactory.deny(address(this));
-        report.asyncRequestManager.deny(address(this));
-        report.syncDepositVaultFactory.deny(address(this));
-        report.syncManager.deny(address(this));
-        report.vaultRouter.deny(address(this));
         report.subsidyManager.deny(address(this));
 
         report.freezeOnlyHook.deny(address(this));
@@ -436,11 +401,26 @@ contract NonCoreActionBatcher {
         report.freelyTransferableHook.deny(address(this));
         report.redemptionRestrictionsHook.deny(address(this));
 
-        report.batchRequestManager.deny(address(this));
-
         report.bridgeCircuitBreaker.deny(address(this));
 
+        report.orderBook.deny(address(this));
+
         if (wireRoot) report.core.root.deny(address(this));
+    }
+
+    function _wireVaultSpoke(NonCoreReport memory report, address root) internal {
+        report.vaultRequestRouter.rely(root);
+        report.vaultRouter.rely(root);
+
+        // Rely spokeHandler
+        report.vaultRequestRouter.rely(address(report.core.spokeHandler));
+
+        // Rely vaultRequestRouter: it withdraws a pool's message subsidy when it forwards a cross-chain request
+        report.subsidyManager.rely(address(report.vaultRequestRouter));
+
+        // Revoke batcher permissions
+        report.vaultRequestRouter.deny(address(this));
+        report.vaultRouter.deny(address(this));
     }
 }
 

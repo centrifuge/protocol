@@ -8,6 +8,9 @@ library MathLib {
         Zero // Toward zero
     }
 
+    /// @notice 100% in basis points.
+    uint256 internal constant BPS = 10_000;
+
     error MulDiv_Overflow();
     error Uint8_Overflow();
     error Uint16_Overflow();
@@ -156,6 +159,12 @@ library MathLib {
         return result;
     }
 
+    /// @notice The fraction `part / total` of `value`, that is `value * part / total`, following the selected
+    ///         rounding direction. Zero when `part` is zero, even if `total` is.
+    function fractionOf(uint256 value, uint256 part, uint256 total, Rounding rounding) internal pure returns (uint256) {
+        return part == 0 ? 0 : mulDiv(value, part, total, rounding);
+    }
+
     /// @notice Safe type conversion from uint256 to uint8.
     function toUint8(uint256 value) internal pure returns (uint8) {
         require(value <= type(uint8).max, Uint8_Overflow());
@@ -187,6 +196,23 @@ library MathLib {
     function toUint128(uint256 value) internal pure returns (uint128) {
         require(value <= type(uint128).max, Uint128_Overflow());
         return uint128(value);
+    }
+
+    /// @notice Safe type conversion from uint256 to int128.
+    function toInt128(uint256 value) internal pure returns (int128) {
+        require(value <= uint128(type(int128).max), Int128_Overflow());
+        return int128(uint128(value));
+    }
+
+    /// @notice Saturating addition: `a + b`, or `type(uint128).max` when the sum does not fit.
+    function saturatingAdd(uint128 a, uint128 b) internal pure returns (uint128) {
+        uint256 sum = uint256(a) + b;
+        return sum > type(uint128).max ? type(uint128).max : uint128(sum);
+    }
+
+    /// @notice Saturating subtraction: `a - b`, or zero when `b > a`.
+    function saturatingSub(uint128 a, uint128 b) internal pure returns (uint128) {
+        return a > b ? a - b : 0;
     }
 
     /// @notice Returns the smallest of two numbers.

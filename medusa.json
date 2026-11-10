@@ -2,7 +2,7 @@
   "fuzzing": {
     "workers": 10,
     "workerResetLimit": 50,
-    "timeout": 0,
+    "timeout": 3600,
     "testLimit": 0,
     "callSequenceLength": 100,
     "corpusDirectory": "medusa",
@@ -14,7 +14,7 @@
       "CryticE2ETester"
     ],
     "targetContractsBalances": [
-      "0x27b46536c66c8e3000000"
+      "0x1043561a8829300000"
     ],
     "constructorArgs": {},
     "deployerAddress": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
@@ -23,8 +23,8 @@
       "0x20000",
       "0x30000"
     ],
-    "blockNumberDelayMax": 60480,
-    "blockTimestampDelayMax": 604800,
+    "blockNumberDelayMax": 300,
+    "blockTimestampDelayMax": 3600,
     "blockGasLimit": 125000000,
     "transactionGasLimit": 12500000,
     "testing": {
@@ -39,20 +39,20 @@
         "panicCodeConfig": {
           "failOnCompilerInsertedPanic": false,
           "failOnAssertion": true,
-          "failOnArithmeticUnderflow": false,
-          "failOnDivideByZero": false,
+          "failOnArithmeticUnderflow": true,
+          "failOnDivideByZero": true,
           "failOnEnumTypeConversionOutOfBounds": false,
           "failOnIncorrectStorageAccess": false,
           "failOnPopEmptyArray": false,
-          "failOnOutOfBoundsArrayAccess": false,
+          "failOnOutOfBoundsArrayAccess": true,
           "failOnAllocateTooMuchMemory": false,
           "failOnCallUninitializedVariable": false
         }
       },
       "propertyTesting": {
-        "enabled": true,
+        "enabled": false,
         "testPrefixes": [
-          "invariant_"
+          "property_"
         ]
       },
       "optimizationTesting": {
@@ -68,12 +68,16 @@
         "cheatCodesEnabled": true,
         "enableFFI": false
       }
-    }
+    },
+    "coverageFormats": [
+      "lcov",
+      "html"
+    ]
   },
   "compilation": {
     "platform": "crytic-compile",
     "platformConfig": {
-      "target": ".",
+      "target": "test/integration/recon-end-to-end/CryticE2ETester.sol",
       "solcVersion": "",
       "exportDirectory": "",
       "args": [

@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="770" height="826" viewBox="0 0 1100 1180" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arrowstart" viewBox="0 0 12 12" refX="1" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M10,2 L1,6 L10,10" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="1098" height="1178" rx="16" fill="#ffffff" stroke="#ececec" stroke-width="1"/>
+  <text x="48" y="76" font-size="28" font-weight="bold" fill="#17202a">Components</text>
+  <g>
+<rect x="60" y="226" width="124" height="40" rx="12" fill="#eef0f2"/>
+<rect x="60" y="240" width="1000" height="540" rx="14" fill="#eef0f2"/>
+<text x="92" y="280" font-size="21" font-weight="bold" fill="#1f2a37">Spoke chain</text>
+<rect x="60" y="836" width="124" height="40" rx="12" fill="#eef0f2"/>
+<rect x="60" y="850" width="1000" height="280" rx="14" fill="#eef0f2"/>
+<text x="92" y="890" font-size="21" font-weight="bold" fill="#1f2a37">Hub chain</text>
+<rect x="100" y="420" width="660" height="330" rx="14" fill="#ffffff"/>
+<text x="132" y="462" font-size="21" font-weight="bold" fill="#1f2a37">Policies, fixed per vault</text>
+  </g>
+  <g fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round">
+<path d="M555,990 L555,1030" stroke-dasharray="2 6"/>
+<path d="M455,190 L455,306" marker-end="url(#arrow)"/>
+<path d="M304,345 L366,345" marker-end="url(#arrow)" marker-start="url(#arrowstart)"/>
+<path d="M540,333 L736,333" marker-end="url(#arrow)"/>
+<path d="M740,363 L544,363" marker-end="url(#arrow)"/>
+<path d="M455,380 L455,420"/>
+<path d="M830,380 L830,916" marker-end="url(#arrow)"/>
+<path d="M940,920 L940,384" marker-end="url(#arrow)"/>
+<path d="M390,955 L446,955" marker-end="url(#arrow)"/>
+<path d="M660,955 L736,955" marker-end="url(#arrow)"/>
+<path d="M885,990 L885,1030"/>
+  </g>
+  <g>
+<rect x="305" y="120" width="300" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="339" cy="155.0" r="17" fill="#cfe0f7"/>
+<text x="339" y="155.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">A</text>
+<text x="369" y="155.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Investor or integrator</text>
+<rect x="100" y="310" width="200" height="70" rx="10" fill="#ffffff"/>
+<text x="124" y="345.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Pool escrow</text>
+<rect x="370" y="310" width="170" height="70" rx="10" fill="#fde9b8"/>
+<circle cx="404" cy="345.0" r="17" fill="#fbe6b0"/>
+<text x="404" y="345.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+<text x="434" y="345.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Vault</text>
+<rect x="740" y="310" width="290" height="70" rx="10" fill="#ffffff"/>
+<circle cx="774" cy="345.0" r="17" fill="#fbe6b0"/>
+<text x="774" y="345.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+<text x="804" y="345.0" font-size="21" fill="#1f2a37" dominant-baseline="central">VaultRequestRouter</text>
+<rect x="124" y="485" width="296" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="158" cy="520.0" r="17" fill="#d6f3d2"/>
+<text x="158" y="520.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="188" y="520.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Request policy</text>
+<rect x="440" y="485" width="296" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="474" cy="520.0" r="17" fill="#d6f3d2"/>
+<text x="474" y="520.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="504" y="520.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Instant policy</text>
+<rect x="124" y="570" width="296" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="158" cy="605.0" r="17" fill="#d6f3d2"/>
+<text x="158" y="605.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="188" y="605.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Liquidity route</text>
+<rect x="440" y="570" width="296" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="474" cy="605.0" r="17" fill="#d6f3d2"/>
+<text x="474" y="605.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="504" y="605.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Settlement observer</text>
+<rect x="124" y="655" width="296" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="158" cy="690.0" r="17" fill="#d6f3d2"/>
+<text x="158" y="690.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="188" y="690.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Oracle</text>
+<rect x="440" y="655" width="296" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="474" cy="690.0" r="17" fill="#d6f3d2"/>
+<text x="474" y="690.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">I</text>
+<text x="504" y="690.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Vault hook</text>
+<rect x="100" y="920" width="290" height="70" rx="10" fill="#ffffff"/>
+<circle cx="134" cy="955.0" r="17" fill="#fbe6b0"/>
+<text x="134" y="955.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+<text x="164" y="955.0" font-size="21" fill="#1f2a37" dominant-baseline="central">FeeRequestManager</text>
+<rect x="450" y="920" width="210" height="70" rx="10" fill="#ffffff"/>
+<circle cx="484" cy="955.0" r="17" fill="#fbe6b0"/>
+<text x="484" y="955.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+<text x="514" y="955.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Hub</text>
+<rect x="450" y="1030" width="210" height="70" rx="10" fill="#ffffff"/>
+<text x="474" y="1065.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Pool policy</text>
+<rect x="740" y="920" width="290" height="70" rx="10" fill="#ffffff"/>
+<circle cx="774" cy="955.0" r="17" fill="#fbe6b0"/>
+<text x="774" y="955.0" font-size="17" font-weight="bold" fill="#2f3a45" text-anchor="middle" dominant-baseline="central">C</text>
+<text x="804" y="955.0" font-size="21" fill="#1f2a37" dominant-baseline="central">OrderBook</text>
+<rect x="740" y="1030" width="290" height="70" rx="10" fill="#ffffff"/>
+<text x="764" y="1065.0" font-size="21" fill="#1f2a37" dominant-baseline="central">Accounting and NAV</text>
+  </g>
+  <g>
+<rect x="559" y="995" width="72" height="30" rx="4" fill="#eef0f2"/>
+<text x="565" y="1010" font-size="18" fill="#3d4753" text-anchor="start" dominant-baseline="central">enforce</text>
+<rect x="568" y="295" width="144" height="30" rx="4" fill="#eef0f2"/>
+<text x="640" y="310" font-size="18" fill="#3d4753" text-anchor="middle" dominant-baseline="central">flushed requests</text>
+<rect x="572.5" y="373" width="135" height="30" rx="4" fill="#eef0f2"/>
+<text x="640" y="388" font-size="18" fill="#3d4753" text-anchor="middle" dominant-baseline="central">typed callbacks</text>
+<rect x="732" y="800" width="94" height="30" rx="4" fill="#ffffff"/>
+<text x="820" y="815" font-size="18" fill="#3d4753" text-anchor="end" dominant-baseline="central">messages</text>
+<rect x="944" y="788" width="95" height="54" rx="4" fill="#ffffff"/>
+<text x="950" y="803" font-size="18" fill="#3d4753" text-anchor="start" dominant-baseline="central">settlement</text>
+<text x="950" y="827" font-size="18" fill="#3d4753" text-anchor="start" dominant-baseline="central">callbacks</text>
+<rect x="399" y="913" width="38" height="30" rx="4" fill="#eef0f2"/>
+<text x="418" y="928" font-size="18" fill="#3d4753" text-anchor="middle" dominant-baseline="central">fills</text>
+  </g>
+</svg>

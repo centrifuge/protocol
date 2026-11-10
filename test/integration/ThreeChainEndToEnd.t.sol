@@ -19,8 +19,8 @@ import {ISpokeHandler} from "../../src/core/spoke/interfaces/ISpokeHandler.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 
+import {ShareTokenHook} from "../../src/token/hooks/ShareTokenHook.sol";
 import {IFreezable} from "../../src/token/hooks/interfaces/IFreezable.sol";
-import {FullRestrictions} from "../../src/token/hooks/FullRestrictions.sol";
 
 import {FullDeployer} from "../../script/deploy/FullDeployer.s.sol";
 
@@ -331,7 +331,7 @@ contract ThreeChainEndToEndTransferHooks is ThreeChainEndToEndDeployment {
     }
 
     function testSpokeHandlerCannotBeFrozen() public {
-        FullRestrictions hook = deployB.fullRestrictionsHook();
+        ShareTokenHook hook = deployB.fullRestrictionsHook();
         address handler = address(deployB.spokeHandler());
         address token = makeAddr("token");
 

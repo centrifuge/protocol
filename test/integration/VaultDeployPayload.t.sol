@@ -18,16 +18,24 @@ contract PayloadVault {
     }
 }
 
-/// @dev Factory that records the deployment payload the spoke forwards to `newVault`.
+/// @dev Factory that emits the deployment payload the spoke forwards to `newVault`, and returns a vault
+///      deployed ahead of the message, as `VaultFactory` does. An event rather than storage, which a payload this
+///      size would not fit into the priced gas of a register and link.
 contract PayloadRecordingFactory {
-    bytes public lastPayload;
+    event Payload(bytes payload);
 
-    function newVault(PoolId poolId, ShareClassId scId, address, uint256, address, bytes calldata payload)
+    address public immutable vault;
+
+    constructor(address vault_) {
+        vault = vault_;
+    }
+
+    function newVault(PoolId, ShareClassId, address, uint256, address, bytes calldata payload)
         external
         returns (address)
     {
-        lastPayload = payload;
-        return address(new PayloadVault(poolId, scId));
+        emit Payload(payload);
+        return vault;
     }
 }
 
@@ -37,7 +45,7 @@ contract VaultDeployPayloadTest is EndToEndFlows {
     function testDeployVaultForwardsLargePayloadCrossChain() public {
         _configurePool(false);
 
-        PayloadRecordingFactory factory = new PayloadRecordingFactory();
+        PayloadRecordingFactory factory = new PayloadRecordingFactory(address(new PayloadVault(POOL_A, SC_1)));
 
         // >256 bytes forces a multi-byte length prefix on the wire, so a truncated read would corrupt it.
         bytes memory payload = new bytes(300);
@@ -45,6 +53,8 @@ contract VaultDeployPayloadTest is EndToEndFlows {
             payload[i] = bytes1(uint8(i));
         }
 
+        vm.expectEmit(address(factory));
+        emit PayloadRecordingFactory.Payload(payload);
         vm.prank(FM);
         h.hub.updateVault{value: GAS}(
             POOL_A,
@@ -56,7 +66,5 @@ contract VaultDeployPayloadTest is EndToEndFlows {
             EXTRA_GAS,
             REFUND
         );
-
-        assertEq(factory.lastPayload(), payload, "payload corrupted across the message round-trip");
     }
 }

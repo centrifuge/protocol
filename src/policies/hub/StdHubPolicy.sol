@@ -9,7 +9,6 @@ import {MathLib} from "../../misc/libraries/MathLib.sol";
 import {BytesLib} from "../../misc/libraries/BytesLib.sol";
 
 import {PoolId} from "../../core/types/PoolId.sol";
-import {AssetId} from "../../core/types/AssetId.sol";
 import {IHub} from "../../core/hub/interfaces/IHub.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
 import {IHubRegistry} from "../../core/hub/interfaces/IHubRegistry.sol";
@@ -20,7 +19,7 @@ import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.s
 import {IBridgeCircuitBreaker} from "../../hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
 import {UpdateRestrictionType} from "../../token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
+import {OrderBookAction, Fulfillment, Cancellation} from "../../vaults/hub/interfaces/IOrderBook.sol";
 
 /// @title  Standard Hub Policy
 /// @notice Default pool policy installed on the Hub via {IHub.setPolicy}. A pure classifier; the
@@ -43,9 +42,10 @@ import {ManagerAction} from "../../vaults/interfaces/IBatchRequestManager.sol";
 ///         - `cancelAuthorization` and `unauthorizeSpokeCall` are in policy and stay instant, but still pass
 ///           the allowlist, so a pool confining a caller that must be able to veto or revoke has to list that
 ///           selector for it.
-///         - `managerCall` is out of policy, additionally bounded by {_checkManagerCall}, which pins the
-///           call by target: the configured request manager (BRM) is bounded by {_checkRequestPrice}, a
-///           SetPaused to the configured bridging hook is instant, every other target is out of policy.
+///         - `managerCall` is out of policy unless {_checkManagerCall} pins it by target as instant: a
+///           SetPaused to the configured bridging hook, a pause (not an unpause) of the configured
+///           SpokeOracle, or an OrderBook fulfillment or cancellation within the fee and price bounds
+///           ({_checkOrderBook}). Every other target is out of policy.
 ///         - `setPolicy` and `setSpokePolicy` use `escalation` instead of `delay`.
 ///         - `updateRestriction` is out of policy except a canonical Freeze, unless `isRestrictionUpdateInstant` is set,
 ///           which makes it instant.
@@ -64,9 +64,10 @@ contract StdHubPolicy is IStdHubPolicy {
 
     // Dependencies
     IHub public immutable hub;
+    address public immutable orderBook;
     address public immutable navManager;
+    address public immutable spokeOracle;
     address public immutable bridgingHook;
-    address public immutable requestManager;
     address public immutable oracleValuation;
     IHubRegistry public immutable hubRegistry;
     IMultiAdapter public immutable multiAdapter;
@@ -77,10 +78,12 @@ contract StdHubPolicy is IStdHubPolicy {
     uint48 public immutable delay;
     uint48 public immutable expiry;
     uint48 public immutable escalation;
+    uint128 public immutable maxFeeBps;
+    uint128 public immutable maxRebateBps;
     bool public immutable onchainAccounting;
     uint128 public immutable thresholdPerSecond;
-    uint128 public immutable maxBrmPriceDeviation;
     uint128 public immutable maxAbsolutePriceDelta;
+    uint128 public immutable maxFulfillPriceDeviation;
     bool public immutable isRestrictionUpdateInstant;
 
     // State
@@ -90,11 +93,13 @@ contract StdHubPolicy is IStdHubPolicy {
 
     constructor(IHub hub_, IMultiAdapter multiAdapter_, IShareClassManager shareClassManager_, Config memory config) {
         require(config.delay > 0 && config.escalation > config.delay && config.expiry > 0, InvalidConfig());
+        require(_isBpsBound(config.maxFeeBps) && _isBpsBound(config.maxRebateBps), InvalidConfig());
 
         // Dependencies
         hub = hub_;
+        orderBook = config.orderBook;
         navManager = config.navManager;
-        requestManager = config.requestManager;
+        spokeOracle = config.spokeOracle;
         bridgingHook = config.bridgingHook;
         oracleValuation = config.oracleValuation;
         hubRegistry = hub_.hubRegistry();
@@ -106,10 +111,12 @@ contract StdHubPolicy is IStdHubPolicy {
         delay = config.delay;
         expiry = config.expiry;
         escalation = config.escalation;
+        maxFeeBps = config.maxFeeBps;
+        maxRebateBps = config.maxRebateBps;
         onchainAccounting = config.onchainAccounting;
         thresholdPerSecond = config.thresholdPerSecond;
-        maxBrmPriceDeviation = config.maxBrmPriceDeviation;
         maxAbsolutePriceDelta = config.maxAbsolutePriceDelta;
+        maxFulfillPriceDeviation = config.maxFulfillPriceDeviation;
         isRestrictionUpdateInstant = config.isRestrictionUpdateInstant;
 
         for (uint256 i; i < config.allowlist.length; i++) {
@@ -224,8 +231,7 @@ contract StdHubPolicy is IStdHubPolicy {
         ) return delay;
 
         // Out of policy: a manager grant or revoke (instant mass-revocation by one manager could strip
-        // all others), a share-price move beyond the rate/cap guard, a non-withdrawal contract update,
-        // or a BRM managerCall whose price deviates beyond `maxBrmPriceDeviation`.
+        // all others), a share-price move beyond the rate/cap guard, or a non-withdrawal contract update.
         if (selector == IHub.updateManager.selector) return delay;
         if (_isSharePriceUpdate(selector)) {
             return _checkSharePrice(poolId, payload);
@@ -263,6 +269,11 @@ contract StdHubPolicy is IStdHubPolicy {
         return delay;
     }
 
+    /// @dev A basis-point bound is at most 100%, or `type(uint128).max` to disable it.
+    function _isBpsBound(uint128 bps) internal pure returns (bool) {
+        return bps <= MathLib.BPS || bps == type(uint128).max;
+    }
+
     function _isSharePriceUpdate(bytes4 selector) private pure returns (bool) {
         return selector == UPDATE_SHARE_PRICE_WITH_TIMESTAMP || selector == UPDATE_SHARE_PRICE;
     }
@@ -292,10 +303,9 @@ contract StdHubPolicy is IStdHubPolicy {
         return 0;
     }
 
-    /// @dev `managerCall` classification, pinned by target: the BRM is in policy but bounded by
-    ///      {_checkRequestPrice}, a SetPaused to the bridging hook is in policy, everything else is
-    ///      `delay`. Target pins are local addresses, so a remote `centrifugeId` always falls through to
-    ///      `delay`.
+    /// @dev `managerCall` classification, pinned by target: a SetPaused to the bridging hook, a SpokeOracle
+    ///      pause and a bounded OrderBook fulfillment or cancellation are in policy, everything else is `delay`.
+    ///      Target pins are local addresses, so a remote `centrifugeId` always falls through to `delay`.
     function _checkManagerCall(PoolId poolId, bytes calldata payload) internal view returns (uint48) {
         // Below 224 bytes (7 x 32, the managerCall tuple's minimum ABI encoding), abi.decode would revert;
         // classify as out-of-policy instead. {Supervisor._checkNotSelfRemoval} shares this shape and
@@ -306,46 +316,63 @@ contract StdHubPolicy is IStdHubPolicy {
         if (centrifugeId != hub.sender().localCentrifugeId()) return delay;
 
         address targetAddr = target.toAddress();
-        if (targetAddr == requestManager) return _checkRequestPrice(poolId, inner);
+        if (orderBook != address(0) && targetAddr == orderBook) return _checkOrderBook(poolId, inner);
         if (
             bridgingHook != address(0) && targetAddr == bridgingHook && inner.length >= 32
                 && inner.toUint256(0) == uint256(IBridgeCircuitBreaker.ConfigKind.SetPaused)
         ) return 0;
+        // SpokeOracle decodes `abi.encode(bool paused)`: pausing only tightens, unpausing waits out `delay`.
+        if (spokeOracle != address(0) && targetAddr == spokeOracle && inner.length >= 32 && inner.toUint256(0) == 1) {
+            return 0;
+        }
         return delay;
     }
 
-    /// @dev Bounds the BRM-supplied price against the pool's committed price (share price for issue/revoke,
-    ///      asset price for approvals). Unknown shapes and a reverting/zero reference fail closed to `delay`.
-    function _checkRequestPrice(PoolId poolId, bytes memory inner) internal view returns (uint48) {
-        if (maxBrmPriceDeviation == type(uint128).max) return 0; // guard disabled
+    /// @dev {OrderBook} managerCall classification, decoding as the OrderBook does. `Fulfill` is bounded
+    ///      on the fee delta and both prices against their committed references; `Cancel` on the fee
+    ///      delta only, and never as a rebate. Anything else is `delay`.
+    function _checkOrderBook(PoolId poolId, bytes memory inner) internal view returns (uint48) {
         if (inner.length < 32) return delay; // malformed: fail closed
+        uint256 word = inner.toUint256(0);
+        if (word > type(uint8).max) return delay; // not an action byte, which the OrderBook would refuse
+        uint8 kind = uint8(word);
 
-        uint8 kind = uint8(inner.toUint256(0));
-
-        D18 brmPrice;
-        D18 mainPrice;
-        if (kind == uint8(ManagerAction.IssueShares) || kind == uint8(ManagerAction.RevokeShares)) {
-            if (inner.length < 160) return delay; // need the scId + price words
-            ShareClassId scId = ShareClassId.wrap(inner.toBytes16(32));
-            brmPrice = D18.wrap(inner.toUint128(144));
-            (mainPrice,) = shareClassManager.pricePoolPerShare(poolId, scId);
-        } else if (kind == uint8(ManagerAction.ApproveDeposits) || kind == uint8(ManagerAction.ApproveRedeems)) {
-            if (inner.length < 192) return delay; // need the scId + assetId + price words
-            ShareClassId scId = ShareClassId.wrap(inner.toBytes16(32));
-            AssetId assetId = AssetId.wrap(inner.toUint128(80));
-            brmPrice = D18.wrap(inner.toUint128(176));
-            mainPrice = hub.pricePoolPerAsset(poolId, scId, assetId); // direct call: a revert bubbles up
-        } else if (
-            kind == uint8(ManagerAction.ForceCancelDepositRequest)
-                || kind == uint8(ManagerAction.ForceCancelRedeemRequest)
-        ) {
-            return 0; // returns the investor's own pending funds, carries no price
-        } else {
-            return delay; // unrecognized kind: deny-by-default, don't wave through instantly
+        // The length guards are the kind word plus the struct's field count (8 and 10 words).
+        if (kind == uint8(OrderBookAction.Cancel)) {
+            if (inner.length < 32 * 9) return delay;
+            (, Cancellation memory c) = abi.decode(inner, (uint8, Cancellation));
+            return c.net <= c.amount && _withinFee(c.amount, c.net) ? 0 : delay;
         }
+        if (kind != uint8(OrderBookAction.Fulfill)) return delay; // SetObserver / unknown: out of policy
+        if (inner.length < 32 * 11) return delay;
+        (, Fulfillment memory f) = abi.decode(inner, (uint8, Fulfillment));
 
-        if (mainPrice.isZero()) return delay; // no committed reference: fail closed
-        return brmPrice.withinDeviation(mainPrice, maxBrmPriceDeviation) ? 0 : delay;
+        if (!_withinFee(f.fill, f.net)) return delay;
+        if (maxFulfillPriceDeviation == type(uint128).max) return 0; // price guard disabled
+
+        // Without a holding the hub prices the asset at 1.0, a reference that is nothing a fill could be held to
+        if (!hub.holdings().isInitialized(poolId, f.scId, f.assetId)) return delay;
+        (D18 committedShare,) = shareClassManager.pricePoolPerShare(poolId, f.scId);
+        D18 committedAsset = hub.pricePoolPerAsset(poolId, f.scId, f.assetId); // direct call: a revert bubbles up
+
+        if (committedShare.isZero() || committedAsset.isZero()) return delay; // no reference: fail closed
+        bool ok = f.pricePoolPerAsset.withinDeviation(committedAsset, maxFulfillPriceDeviation)
+            && f.pricePoolPerShare.withinDeviation(committedShare, maxFulfillPriceDeviation);
+        return ok ? 0 : delay;
+    }
+
+    /// @dev The fill-vs-net delta must be within `maxFeeBps` of the fill for a fee (`net <= fill`) and
+    ///      within `maxRebateBps` for a rebate the pool pre-funds (`net > fill`). `type(uint128).max`
+    ///      disables either bound.
+    function _withinFee(uint128 fill, uint128 net) internal view returns (bool) {
+        // A fee rounds up like the fee it bounds, so one of exactly `maxFeeBps` stays in policy. A rebate has no
+        // such producer, so its bound rounds down and never admits more than the configured rate.
+        if (net <= fill) {
+            return maxFeeBps == type(uint128).max
+                || uint256(fill - net) <= MathLib.fractionOf(fill, maxFeeBps, MathLib.BPS, MathLib.Rounding.Up);
+        }
+        return maxRebateBps == type(uint128).max
+            || uint256(net - fill) <= MathLib.fractionOf(fill, maxRebateBps, MathLib.BPS, MathLib.Rounding.Down);
     }
 
     /// @dev Out of policy if the single move exceeds `maxAbsolutePriceDelta` or the move/second since the

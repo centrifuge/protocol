@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {BaseSyncDepositVault} from "./BaseVaults.sol";
-import {IBaseVault} from "./interfaces/IBaseVault.sol";
 import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
+import {VaultActionLib, VaultActionKind, VaultAction} from "./libraries/VaultActionLib.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {Multicall} from "../misc/Multicall.sol";
 import {Recoverable} from "../misc/Recoverable.sol";
-import {CastLib} from "../misc/libraries/CastLib.sol";
-import {IERC7540Deposit} from "../misc/interfaces/IERC7540.sol";
+import {MathLib} from "../misc/libraries/MathLib.sol";
+import {IMulticall} from "../misc/interfaces/IMulticall.sol";
 import {IERC20, IERC20Permit} from "../misc/interfaces/IERC20.sol";
 import {SafeTransferLib} from "../misc/libraries/SafeTransferLib.sol";
 
@@ -25,35 +24,33 @@ import {IShareToken} from "../token/interfaces/IShareToken.sol";
 /// @notice This is a helper contract, designed to be the entrypoint for EOAs.
 ///         It removes the need to know about all other contracts and simplifies the way to interact with the protocol.
 ///         It bundles several calls into one transaction via multicall, each dispatching its own cross-chain
-///         message. Investment requests are paid for by the pool through the request manager, so the caller
-///         should not attach native tokens for them: any value sent for such a call stays in the router
+///         message. Investment requests are paid for by the pool through the vault's request router, so the
+///         caller should not attach native tokens for them: any value sent for such a call stays in the router
 ///         and is only recoverable via `Recoverable`.
 /// @dev    It is critical to ensure that at the end of any transaction, no funds remain in the
 ///         VaultRouter. Any funds that do remain are at risk of being taken by other users.
 contract VaultRouter is Multicall, Recoverable, IVaultRouter {
-    using CastLib for address;
-
-    /// @dev Requests for Centrifuge pool are non-fungible and all have ID = 0
-    uint256 private constant REQUEST_ID = 0;
-
     ISpoke public immutable spoke;
     ISpokeRegistry public immutable spokeRegistry;
+
+    bool private transient _inBatch;
+    bool private transient _valueSpent;
 
     constructor(ISpoke spoke_, ISpokeRegistry spokeRegistry_, address deployer) Auth(deployer) {
         spoke = spoke_;
         spokeRegistry = spokeRegistry_;
     }
 
-    //----------------------------------------------------------------------------------------------
-    // Enable interactions
-    //----------------------------------------------------------------------------------------------
-
-    function enable(IBaseVault vault) public payable protected {
-        vault.setEndorsedOperator(msg.sender, true);
-    }
-
-    function disable(IBaseVault vault) external payable protected {
-        vault.setEndorsedOperator(msg.sender, false);
+    /// @dev A multicall gives every call the same `msg.value`, so the value a batch carries funds one bridge transfer.
+    function multicall(bytes[] calldata data) public payable override(IMulticall, Multicall) {
+        // A nested multicall must not end the batch it runs in, or the outer calls could spend the value again.
+        bool outermost = !_inBatch;
+        _inBatch = true;
+        super.multicall(data);
+        if (outermost) {
+            _inBatch = false;
+            _valueSpent = false;
+        }
     }
 
     //----------------------------------------------------------------------------------------------
@@ -67,28 +64,24 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         protected
     {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
+        // The router is a public relay and an investor's operator, so a request it relayed for another controller
+        // would pass the vault's check as that controller's own, with no consent from them.
+        require(controller == msg.sender, InvalidController());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
         require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());
-        if (owner == address(this)) {
-            _approveMax(vaultDetails.asset, address(vault));
-        }
+        if (owner == address(this)) _approveMax(vaultDetails.asset, address(vault));
 
         vault.requestDeposit(amount, controller, owner);
     }
 
     /// @inheritdoc IVaultRouter
-    function deposit(BaseSyncDepositVault vault, uint256 assets, address receiver, address owner)
-        external
-        payable
-        protected
-    {
+    function deposit(IAsyncVault vault, uint256 assets, address receiver, address owner) external payable protected {
         require(owner == msg.sender || owner == address(this), InvalidOwner());
-        require(!vault.supportsInterface(type(IERC7540Deposit).interfaceId), NonSyncDepositVault());
-        require(vault.isPermissioned(msg.sender), InvalidSender());
 
         VaultDetails memory vaultDetails = spokeRegistry.vaultDetails(address(vault));
         require(vaultDetails.asset != address(0), ISpokeRegistry.UnknownVault());
+        _requirePayer(vault, receiver, assets);
         if (owner != address(this)) SafeTransferLib.safeTransferFrom(vaultDetails.asset, owner, address(this), assets);
         _approveMax(vaultDetails.asset, address(vault));
 
@@ -96,8 +89,39 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
+    function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
+        _canClaim(vault, receiver, controller);
+        vault.mint(vault.maxMint(controller), receiver, controller);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Redeem
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IVaultRouter
+    function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner)
+        external
+        payable
+        protected
+    {
+        require(owner == msg.sender || owner == address(this), InvalidOwner());
+        require(controller == msg.sender, InvalidController());
+        vault.requestRedeem(amount, controller, owner);
+    }
+
+    /// @inheritdoc IVaultRouter
+    function claimRedeem(IAsyncVault vault, address receiver, address controller) external payable protected {
+        _canClaim(vault, receiver, controller);
+        vault.withdraw(vault.maxWithdraw(controller), receiver, controller);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Cross-chain transfers
+    //----------------------------------------------------------------------------------------------
+
+    /// @inheritdoc IVaultRouter
     function crosschainTransferShares(
-        BaseSyncDepositVault vault,
+        IAsyncVault vault,
         uint128 shares,
         uint16 centrifugeId,
         bytes32 receiver,
@@ -136,6 +160,11 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
         uint128 remoteExtraGasLimit,
         address refund
     ) internal {
+        if (_inBatch && msg.value != 0) {
+            require(!_valueSpent, ValueAlreadySpent());
+            _valueSpent = true;
+        }
+
         spoke.crosschainTransferShares{value: msg.value}(
             centrifugeId,
             vaultDetails.poolId,
@@ -148,64 +177,6 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
             remoteExtraGasLimit,
             refund
         );
-    }
-
-    /// @inheritdoc IVaultRouter
-    function claimDeposit(IAsyncVault vault, address receiver, address controller) external payable protected {
-        _canClaim(vault, receiver, controller);
-        uint256 maxMint = vault.maxMint(controller);
-        vault.mint(maxMint, receiver, controller);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function cancelDepositRequest(IAsyncVault vault) external payable protected {
-        vault.cancelDepositRequest(REQUEST_ID, msg.sender);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function claimCancelDepositRequest(IAsyncVault vault, address receiver, address controller)
-        external
-        payable
-        protected
-    {
-        _canClaim(vault, receiver, controller);
-        vault.claimCancelDepositRequest(REQUEST_ID, receiver, controller);
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Redeem
-    //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IVaultRouter
-    function requestRedeem(IAsyncVault vault, uint256 amount, address controller, address owner)
-        external
-        payable
-        protected
-    {
-        require(owner == msg.sender || owner == address(this), InvalidOwner());
-        vault.requestRedeem(amount, controller, owner);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function claimRedeem(IBaseVault vault, address receiver, address controller) external payable protected {
-        _canClaim(vault, receiver, controller);
-        uint256 maxWithdraw = vault.maxWithdraw(controller);
-        vault.withdraw(maxWithdraw, receiver, controller);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function cancelRedeemRequest(IAsyncVault vault) external payable protected {
-        vault.cancelRedeemRequest(REQUEST_ID, msg.sender);
-    }
-
-    /// @inheritdoc IVaultRouter
-    function claimCancelRedeemRequest(IAsyncVault vault, address receiver, address controller)
-        external
-        payable
-        protected
-    {
-        _canClaim(vault, receiver, controller);
-        vault.claimCancelRedeemRequest(REQUEST_ID, receiver, controller);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -242,13 +213,28 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     }
 
     /// @inheritdoc IVaultRouter
-    function hasPermissions(IBaseVault vault, address controller) external view returns (bool) {
-        return vault.isPermissioned(controller);
+    function isEnabled(IAsyncVault vault, address controller) public view returns (bool) {
+        return vault.isOperator(controller, address(this));
     }
 
-    /// @inheritdoc IVaultRouter
-    function isEnabled(IBaseVault vault, address controller) public view returns (bool) {
-        return vault.isOperator(controller, address(this));
+    //----------------------------------------------------------------------------------------------
+    // Internal methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev The vault sees the router as the depositor, and the router is endorsed, so the share hook's instant
+    ///      deposit check would pass whoever pays. The router asks it for the caller, as a direct deposit would be.
+    ///      The shares are the vault's own quote, net of the spread, as the vault's check carries them.
+    function _requirePayer(IAsyncVault vault, address receiver, uint256 assets) internal view {
+        uint128 shares = MathLib.toUint128(vault.previewDeposit(assets));
+        require(
+            VaultActionLib.check(
+                vault.share(),
+                VaultAction(
+                    VaultActionKind.InstantDeposit, msg.sender, msg.sender, receiver, MathLib.toUint128(assets), shares
+                )
+            ),
+            InvalidSender()
+        );
     }
 
     /// @notice Gives the max approval to `to` for spending the given `asset` if not already approved.
@@ -261,7 +247,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
 
     /// @notice Ensures msg.sender is either the controller, or can permissionlessly claim
     ///         on behalf of the controller.
-    function _canClaim(IBaseVault vault, address receiver, address controller) internal view {
+    function _canClaim(IAsyncVault vault, address receiver, address controller) internal view {
         require(controller == msg.sender || (controller == receiver && isEnabled(vault, controller)), InvalidSender());
     }
 }

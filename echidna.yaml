@@ -1,31 +1,47 @@
+## Protocol-wide suite: test/integration/recon-end-to-end. Target the tester's file, not `.`: a whole-project
+## compile pulls in test contracts with unlinked libraries, which Echidna refuses.
+## FOUNDRY_PROFILE=echidna echidna test/integration/recon-end-to-end/CryticE2ETester.sol \
+##   --contract CryticE2ETester --config echidna.yaml --test-limit 1000000
+## FOUNDRY_PROFILE=echidna is load-bearing: the default profile drops the solc metadata (bytecode_hash none,
+## cbor_metadata false), and Echidna then attributes no coverage to the contracts the tester deploys (Hub, Spoke,
+## Vault, ... at 0%, "Unique codehashes" 109 instead of ~45; building-secure-contracts FAQ: do not disable metadata).
+## Run length (testLimit, workers, timeout, seed) is set on the command line, as for echidna-messaging.yaml. The
+## workflow derives the smoke (stopOnFail) and high-delay (maxTimeDelay) variants from this file with sed.
+## Every property is an assertion-mode function, so the mode must stay "assertion" (a bool `echidna_*` property
+## would never be read), and there is no `optimize_*` test (a rounding quantity worth maximising would need its own suite), so no `prefix` is set.
 testMode: "assertion"
-prefix: "optimize_"
+## Slither is off knowingly. It crashes on this repo (measured 2026-10-30: slither-analyzer 0.11.5 asserts in
+## convert_constant_types, 0.10.4 in find_variable), after which Echidna continues anyway, "less effective" (the
+## loss, constants and function info for the generator, is unquantified). Re-enable once Slither analyses the repo.
+disableSlither: true
 coverage: true
+## lcov for tooling and txt for reading the reverted ("r") lines; the 7 MB html report per run is not kept.
+coverageFormats: ["txt", "lcov"]
 corpusDir: "echidna"
-balanceAddr: 0x1043561a8829300000
-balanceContract: 0x1043561a8829300000
-## Entries MUST be contract-qualified. A bare "property_authorizationBypass()" is accepted by the config
-## parser and then silently matches nothing, so the function keeps being called.
-##
-## Suppressed, NOT fixed: property_authorizationBypass is an acknowledged issue.
-## Its handlers run `asAdmin` while _trackAuthorization
-## records _getActor(), so a switch_actor followed by any manager-gated Spoke op flags a bypass that never
-## happened. It fires in every campaign, eats the shrink budget, and echidna panics printing its trace
-## before writing the coverage report. Remove this entry once the ghost tracks the effective caller.
-filterFunctions: ["CryticE2ETester.property_authorizationBypass()"]
 deployer: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
 contractAddr: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
-## ONLY USE LOCALLY: a finding used to stall the whole campaign for ~13 min of shrinking while
-## fuzzing sat frozen. Raise it only when shrinking a specific reproducer to a minimal sequence.
-# shrinkLimit: 5000
-shrinkLimit: 100000
-## Rely on Foundry compilation, compile and build libraries to those addresses
-cryticArgs: ["--foundry-compile-all", "--compile-libraries=(MathLib,0xf01),(CastLib,0xf02),(BytesLib,0xf03),(MessageLib,0xf04),(TransientStorageLib,0xf05)"]
-## Deploy them to these addresses
-deployContracts: [
-  ["0xf01", "MathLib"],
-  ["0xf02", "CastLib"],
-  ["0xf03", "BytesLib"],
-  ["0xf04", "MessageLib"],
-  ["0xf05", "TransientStorageLib"]
-]
+sender: ["0x0000000000000000000000000000000000010000", "0x0000000000000000000000000000000000020000", "0x0000000000000000000000000000000000030000"]
+balanceAddr: 0x1043561a8829300000
+balanceContract: 0x1043561a8829300000
+## The tester deploys the whole protocol in its constructor, and the vault and its factory exceed
+## EIP-170 by design (they deploy only where EIP-7907 is active), so size limits are lifted.
+codeSize: 0xffffffff
+## Delay profile A (this file, the default campaign). Every handler warps or deals for itself, and the oracle
+## (Setup: ORACLE_MAX_AGE one day, ORACLE_MAX_SKEW 12 h) goes stale after ~24 mean-sized (30 min) jumps, so 1 h per
+## call keeps the instant lane mostly open. 300 blocks x 12 s = 3600 s keeps block and time deltas consistent.
+## Profile B (maxTimeDelay 172800 = 2 x maxAge, maxBlockDelay 14400) is derived in CI: one jump can cross maxAge,
+## which exercises the stale-oracle and weekly-clock paths that profile A reaches only through the oracle_* handlers.
+maxTimeDelay: 3600
+maxBlockDelay: 300
+## Sequence length (Echidna default 100, stated so a smoke run cannot silently shorten it): multi-step lifecycles
+## (request, approve, issue, notify, claim) need depth, and state resets after every sequence.
+seqLen: 100
+## Discovery default: keep going after a failure so one known break does not hide the rest. The PR smoke run
+## (workflow) overrides it with stopOnFail: true. Echidna exits non-zero on any falsified test either way.
+stopOnFail: false
+## Shrinking a long reproducer can stall a campaign for minutes; raise it only to minimise one locally.
+shrinkLimit: 5000
+## Foundry compiles; nothing in the tester's import closure needs linking.
+cryticArgs: ["--foundry-compile-all"]
+filterBlacklist: true
+filterFunctions: []

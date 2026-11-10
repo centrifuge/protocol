@@ -20,19 +20,19 @@ import {EscrowFactory} from "../../src/core/spoke/factories/EscrowFactory.sol";
 import {MessageProcessor} from "../../src/core/messaging/MessageProcessor.sol";
 import {MessageDispatcher} from "../../src/core/messaging/MessageDispatcher.sol";
 
+import {VaultRequestRouter} from "../../src/vaults/messaging/VaultRequestRouter.sol";
+
 import {Root} from "../../src/admin/Root.sol";
 import {GasService} from "../../src/admin/GasService.sol";
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
 import {OpsGuardian} from "../../src/admin/OpsGuardian.sol";
 import {ProtocolGuardian} from "../../src/admin/ProtocolGuardian.sol";
 
-import {FreezeOnly} from "../../src/token/hooks/FreezeOnly.sol";
+import {HookPolicies} from "../../src/token/hooks/HookPolicies.sol";
 import {NAVManager} from "../../src/hooks/accounting/NAVManager.sol";
-import {FullRestrictions} from "../../src/token/hooks/FullRestrictions.sol";
-import {FreelyTransferable} from "../../src/token/hooks/FreelyTransferable.sol";
+import {ShareTokenHook} from "../../src/token/hooks/ShareTokenHook.sol";
 import {BridgeCircuitBreaker} from "../../src/hooks/bridge/BridgeCircuitBreaker.sol";
 import {SimplePriceManager} from "../../src/hooks/accounting/SimplePriceManager.sol";
-import {RedemptionRestrictions} from "../../src/token/hooks/RedemptionRestrictions.sol";
 
 import {QueueManager} from "../../src/managers/spoke/QueueManager.sol";
 import {ShareManager} from "../../src/managers/spoke/ShareManager.sol";
@@ -49,12 +49,14 @@ import {IOnchainPMFactory} from "../../src/managers/spoke/interfaces/IOnchainPMF
 import {OracleValuation} from "../../src/valuations/OracleValuation.sol";
 import {IdentityValuation} from "../../src/valuations/IdentityValuation.sol";
 
-import {SyncManager} from "../../src/vaults/SyncManager.sol";
+import {OrderBook} from "../../src/vaults/hub/OrderBook.sol";
 import {VaultRouter} from "../../src/vaults/VaultRouter.sol";
-import {AsyncRequestManager} from "../../src/vaults/AsyncRequestManager.sol";
-import {BatchRequestManager} from "../../src/vaults/BatchRequestManager.sol";
-import {AsyncVaultFactory} from "../../src/vaults/factories/AsyncVaultFactory.sol";
-import {SyncDepositVaultFactory} from "../../src/vaults/factories/SyncDepositVaultFactory.sol";
+import {SpokeOracle} from "../../src/vaults/oracles/SpokeOracle.sol";
+import {VaultFactory} from "../../src/vaults/factories/VaultFactory.sol";
+import {FeeRequestManager} from "../../src/vaults/hub/FeeRequestManager.sol";
+import {VaultLiquidityRoute} from "../../src/vaults/liquidity/VaultLiquidityRoute.sol";
+import {ReserveInstantPolicy} from "../../src/vaults/policies/ReserveInstantPolicy.sol";
+import {PerInvestorPolicy, PerPeriodPolicy, PerRequestPolicy} from "../../src/vaults/policies/RequestPolicies.sol";
 
 import {VmSafe} from "forge-std/Vm.sol";
 
@@ -125,10 +127,27 @@ struct DeployerInput {
     // Root is deployed with, and is ignored where one is kept
     address root;
     uint256 delay;
+    // The spoke half of the Vault Development Kit, which needs EIP-7907
+    bool vaults;
     AdaptersInput adapters;
 }
 
 contract FullDeployer is GatedDeployer {
+    /// @dev The canonical `SpokeOracle` bounds both the age of each price and the gap between the pair. With
+    ///      `maxSkew` equal to `maxAge` the gap bound adds nothing: two prices each within a day of now are within a
+    ///      day of each other, so the pair is held to `maxAge` alone. Only the instant lane and the previews read it checked, and an instant lane needs a freshness
+    ///      bound, so the shared default is the bounded one. A pool notifying less often than daily that
+    ///      still wants an instant lane deploys an oracle of its own, as it would for any other bound.
+    uint64 internal constant SPOKE_ORACLE_MAX_AGE = 1 days;
+    uint64 internal constant SPOKE_ORACLE_MAX_SKEW = 1 days;
+
+    /// @dev The canonical batching window: daily, closing at 00:00 UTC, which is the "24 hours or more"
+    ///      the open-access shape asks for. A pool wanting another cutoff deploys its own instance.
+    uint64 internal constant PER_PERIOD_WINDOW = 1 days;
+    uint64 internal constant PER_PERIOD_OFFSET = 0;
+    uint64 internal constant PER_PERIOD_DEPOSIT_NOTICE = 0;
+    uint64 internal constant PER_PERIOD_REDEEM_NOTICE = 0;
+
     Root public root;
     ProtocolGuardian public protocolGuardian;
     OpsGuardian public opsGuardian;
@@ -157,19 +176,14 @@ contract FullDeployer is GatedDeployer {
 
     SubsidyManager public subsidyManager;
     RefundEscrowFactory public refundEscrowFactory;
-    AsyncVaultFactory public asyncVaultFactory;
-    AsyncRequestManager public asyncRequestManager;
-    SyncDepositVaultFactory public syncDepositVaultFactory;
-    SyncManager public syncManager;
-    VaultRouter public vaultRouter;
 
     TokenBridge public tokenBridge;
     BridgeCircuitBreaker public bridgeCircuitBreaker;
 
-    FreezeOnly public freezeOnlyHook;
-    FullRestrictions public fullRestrictionsHook;
-    FreelyTransferable public freelyTransferableHook;
-    RedemptionRestrictions public redemptionRestrictionsHook;
+    ShareTokenHook public freezeOnlyHook;
+    ShareTokenHook public fullRestrictionsHook;
+    ShareTokenHook public freelyTransferableHook;
+    ShareTokenHook public redemptionRestrictionsHook;
 
     QueueManager public queueManager;
     AdapterFailover public adapterFailover;
@@ -182,13 +196,25 @@ contract FullDeployer is GatedDeployer {
     ApprovalGuard public approvalGuard;
     CircuitBreakerGuard public circuitBreakerGuard;
     SlippageGuard public slippageGuard;
-    BatchRequestManager public batchRequestManager;
 
     IdentityValuation public identityValuation;
     OracleValuation public oracleValuation;
 
     NAVManager public navManager;
     SimplePriceManager public simplePriceManager;
+
+    VaultFactory public vaultFactory;
+    VaultRequestRouter public vaultRequestRouter;
+    VaultRouter public vaultRouter;
+    OrderBook public orderBook;
+    FeeRequestManager public feeRequestManager;
+    SpokeOracle public spokeOracle;
+    PerRequestPolicy public perRequestPolicy;
+    PerRequestPolicy public transferablePerRequestPolicy;
+    PerInvestorPolicy public perInvestorPolicy;
+    PerPeriodPolicy public perPeriodPolicy;
+    ReserveInstantPolicy public reserveInstantPolicy;
+    VaultLiquidityRoute public vaultLiquidityRoute;
 
     ChainlinkAdapter chainlinkAdapter;
     AxelarAdapter axelarAdapter;
@@ -225,31 +251,11 @@ contract FullDeployer is GatedDeployer {
     {
         _initGated(input.deploymentId, phase, namespace_, executors_);
 
-        // Committing deploys the whole protocol locally, at the addresses it will really occupy, since only
-        // running the init code reveals the runtime code to commit to, and constructors that wire their
-        // dependencies need to find them. That is then rolled back, to leave the addresses free for the
-        // executor: the commitment is carried across in memory, which a rollback does not touch.
-        //
-        // Everything the walk put in storage does go, this script's own included, which is what keeps the
-        // addresses it registered out of the deployment manifest: only the deploy phase reports any.
+        // Committing deploys the whole protocol locally and rolls it back: see `_startCommitWalk`
         if (phase == DeployPhase.Commit) {
-            bool bracketed = vm.isContext(VmSafe.ForgeContext.ScriptGroup) && !proposing;
-            if (bracketed) vm.stopBroadcast();
-
-            uint256 snapshot = vm.snapshotState();
-
+            (uint256 snapshot, bool bracketed) = _startCommitWalk();
             _deployProtocol(input);
-            (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
-
-            // Carried across the rollback in memory, as the commitment is, so that a validating run can still
-            // name the one address it leaves work behind at
-            address rootFixes_ = address(rootFixes);
-            vm.revertToState(snapshot);
-            rootFixes = RootFixes(rootFixes_);
-
-            if (bracketed) vm.startBroadcast();
-
-            _commit(salts, initCodeHashes);
+            _endCommitWalk(snapshot, bracketed);
         } else {
             _deployProtocol(input);
 
@@ -265,6 +271,34 @@ contract FullDeployer is GatedDeployer {
                 );
             }
         }
+    }
+
+    /// @dev Committing deploys the walk locally, at the addresses it will really occupy, since only running
+    ///      the init code reveals the runtime code to commit to, and constructors that wire their
+    ///      dependencies need to find them. That is then rolled back, to leave the addresses free for the
+    ///      executor: the commitment is carried across in memory, which a rollback does not touch.
+    ///
+    ///      Everything the walk put in storage does go, this script's own included, which is what keeps the
+    ///      addresses it registered out of the deployment manifest: only the deploy phase reports any.
+    function _startCommitWalk() internal returns (uint256 snapshot, bool bracketed) {
+        bracketed = vm.isContext(VmSafe.ForgeContext.ScriptGroup) && !proposing;
+        if (bracketed) vm.stopBroadcast();
+
+        snapshot = vm.snapshotState();
+    }
+
+    function _endCommitWalk(uint256 snapshot, bool bracketed) internal {
+        (bytes32[] memory salts, bytes32[] memory initCodeHashes) = _queuedCommitment();
+
+        // Carried across the rollback in memory, as the commitment is, so that a validating run can still
+        // name the one address it leaves work behind at
+        address rootFixes_ = address(rootFixes);
+        vm.revertToState(snapshot);
+        rootFixes = RootFixes(rootFixes_);
+
+        if (bracketed) vm.startBroadcast();
+
+        _commit(salts, initCodeHashes);
     }
 
     /// @dev One walk of the whole protocol. Deploys through the DeployGate, or locally when probing.
@@ -551,53 +585,12 @@ contract FullDeployer is GatedDeployer {
             )
         );
 
-        asyncRequestManager = AsyncRequestManager(
-            payable(submit(
-                    "asyncRequestManager",
-                    V3_3,
-                    abi.encodePacked(type(AsyncRequestManager).creationCode, abi.encode(subsidyManager, batcher))
-                ))
-        );
-
-        syncManager = SyncManager(
-            submit("syncManager", V3_3, abi.encodePacked(type(SyncManager).creationCode, abi.encode(batcher)))
-        );
-
-        vaultRouter = VaultRouter(
-            submit(
-                "vaultRouter",
-                V3_3,
-                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(spoke, spokeRegistry, batcher))
-            )
-        );
-
-        asyncVaultFactory = AsyncVaultFactory(
-            submit(
-                "asyncVaultFactory",
-                V3_3,
-                abi.encodePacked(
-                    type(AsyncVaultFactory).creationCode, abi.encode(address(root), asyncRequestManager, batcher)
-                )
-            )
-        );
-
-        syncDepositVaultFactory = SyncDepositVaultFactory(
-            submit(
-                "syncDepositVaultFactory",
-                V3_3,
-                abi.encodePacked(
-                    type(SyncDepositVaultFactory).creationCode,
-                    abi.encode(address(root), syncManager, asyncRequestManager, batcher)
-                )
-            )
-        );
-
-        freezeOnlyHook = FreezeOnly(
+        freezeOnlyHook = ShareTokenHook(
             submit(
                 "freezeOnlyHook",
                 V3_3,
                 abi.encodePacked(
-                    type(FreezeOnly).creationCode,
+                    type(ShareTokenHook).creationCode,
                     abi.encode(
                         address(root),
                         address(envoy),
@@ -605,18 +598,19 @@ contract FullDeployer is GatedDeployer {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(escrowFactory)
+                        address(escrowFactory),
+                        HookPolicies.freezeOnly()
                     )
                 )
             )
         );
 
-        fullRestrictionsHook = FullRestrictions(
+        fullRestrictionsHook = ShareTokenHook(
             submit(
                 "fullRestrictionsHook",
                 V3_3,
                 abi.encodePacked(
-                    type(FullRestrictions).creationCode,
+                    type(ShareTokenHook).creationCode,
                     abi.encode(
                         address(root),
                         address(envoy),
@@ -624,18 +618,19 @@ contract FullDeployer is GatedDeployer {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(escrowFactory)
+                        address(escrowFactory),
+                        HookPolicies.fullRestrictions()
                     )
                 )
             )
         );
 
-        freelyTransferableHook = FreelyTransferable(
+        freelyTransferableHook = ShareTokenHook(
             submit(
                 "freelyTransferableHook",
                 V3_3,
                 abi.encodePacked(
-                    type(FreelyTransferable).creationCode,
+                    type(ShareTokenHook).creationCode,
                     abi.encode(
                         address(root),
                         address(envoy),
@@ -643,18 +638,19 @@ contract FullDeployer is GatedDeployer {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(escrowFactory)
+                        address(escrowFactory),
+                        HookPolicies.freelyTransferable()
                     )
                 )
             )
         );
 
-        redemptionRestrictionsHook = RedemptionRestrictions(
+        redemptionRestrictionsHook = ShareTokenHook(
             submit(
                 "redemptionRestrictionsHook",
                 V3_3,
                 abi.encodePacked(
-                    type(RedemptionRestrictions).creationCode,
+                    type(ShareTokenHook).creationCode,
                     abi.encode(
                         address(root),
                         address(envoy),
@@ -662,7 +658,8 @@ contract FullDeployer is GatedDeployer {
                         address(spoke),
                         address(spokeHandler),
                         batcher,
-                        address(escrowFactory)
+                        address(escrowFactory),
+                        HookPolicies.redemptionRestrictions()
                     )
                 )
             )
@@ -739,16 +736,6 @@ contract FullDeployer is GatedDeployer {
             )
         );
 
-        batchRequestManager = BatchRequestManager(
-            submit(
-                "batchRequestManager",
-                V3_3,
-                abi.encodePacked(
-                    type(BatchRequestManager).creationCode, abi.encode(hubRegistry, gateway, address(envoy), batcher)
-                )
-            )
-        );
-
         identityValuation = IdentityValuation(
             submit(
                 "identityValuation",
@@ -796,6 +783,124 @@ contract FullDeployer is GatedDeployer {
                     type(TokenBridge).creationCode,
                     abi.encode(spoke, gateway, input.centrifugeId, address(envoy), batcher)
                 )
+            )
+        );
+
+        _deployVaultHub(batcher);
+        if (input.vaults) _deployVaultSpoke(batcher);
+    }
+
+    /// @dev The hub half of the Vault Development Kit, on every chain: a pool's hub settles through it for
+    ///      vaults on any spoke, including when its own chain cannot run vaults.
+    function _deployVaultHub(address batcher) internal {
+        orderBook = OrderBook(
+            submit(
+                "orderBook",
+                V3_3,
+                abi.encodePacked(type(OrderBook).creationCode, abi.encode(hubRegistry, hub, gateway, envoy, batcher))
+            )
+        );
+
+        // Reads the local centrifugeId off `hub.sender()`, which the core batcher has filed by now
+        feeRequestManager = FeeRequestManager(
+            submit(
+                "feeRequestManager",
+                V3_3,
+                abi.encodePacked(type(FeeRequestManager).creationCode, abi.encode(hub, orderBook, envoy, gateway))
+            )
+        );
+    }
+
+    /// @dev The spoke half of the Vault Development Kit: per-network singletons every pool shares, and the
+    ///      factory its vaults come from. Opt-in, since `VaultFactory` is over EIP-170 and would revert the
+    ///      whole launch on a chain without EIP-7907.
+    ///
+    ///      A vault is per position, deployed through `VaultFactory.deploy` ahead of the hub's `DeployAndLink`,
+    ///      never here. `BasinLiquidityRoute` is not deployed either: it is one route per Basin venue, and which venues a
+    ///      chain has is deployment data, not something this branch can name. Its only ward is the
+    ///      chain's Root, which whoever deploys it passes in (the constructor refuses only the zero address), and it
+    ///      needs no other protocol wiring, only the pools that draw on it enabling it, so deploying it after the
+    ///      launch, against a venue and the deployed `AccountingToken`, loses nothing.
+    function _deployVaultSpoke(address batcher) internal {
+        vaultFactory = VaultFactory(
+            submit(
+                "vaultFactory",
+                V3_3,
+                abi.encodePacked(type(VaultFactory).creationCode, abi.encode(address(root), spoke, spokeRegistry))
+            )
+        );
+
+        vaultRequestRouter = VaultRequestRouter(
+            payable(submit(
+                    "vaultRequestRouter",
+                    V3_3,
+                    abi.encodePacked(
+                        type(VaultRequestRouter).creationCode,
+                        abi.encode(spoke, spokeRegistry, subsidyManager, envoy, batcher)
+                    )
+                ))
+        );
+
+        vaultRouter = VaultRouter(
+            submit(
+                "vaultRouter",
+                V3_3,
+                abi.encodePacked(type(VaultRouter).creationCode, abi.encode(spoke, spokeRegistry, batcher))
+            )
+        );
+
+        spokeOracle = SpokeOracle(
+            submit(
+                "spokeOracle",
+                V3_3,
+                abi.encodePacked(
+                    type(SpokeOracle).creationCode,
+                    abi.encode(spokeRegistry, SPOKE_ORACLE_MAX_AGE, SPOKE_ORACLE_MAX_SKEW, envoy)
+                )
+            )
+        );
+
+        // The closed-access shape by default: request transfers are declined by the policy
+        perRequestPolicy = PerRequestPolicy(
+            submit("perRequestPolicy", V3_3, abi.encodePacked(type(PerRequestPolicy).creationCode, abi.encode(false)))
+        );
+
+        transferablePerRequestPolicy = PerRequestPolicy(
+            submit(
+                "transferablePerRequestPolicy",
+                V3_3,
+                abi.encodePacked(type(PerRequestPolicy).creationCode, abi.encode(true))
+            )
+        );
+
+        perInvestorPolicy = PerInvestorPolicy(submit("perInvestorPolicy", V3_3, type(PerInvestorPolicy).creationCode));
+
+        perPeriodPolicy = PerPeriodPolicy(
+            submit(
+                "perPeriodPolicy",
+                V3_3,
+                abi.encodePacked(
+                    type(PerPeriodPolicy).creationCode,
+                    abi.encode(
+                        PER_PERIOD_WINDOW, PER_PERIOD_OFFSET, PER_PERIOD_DEPOSIT_NOTICE, PER_PERIOD_REDEEM_NOTICE
+                    )
+                )
+            )
+        );
+
+        reserveInstantPolicy = ReserveInstantPolicy(
+            submit(
+                "reserveInstantPolicy",
+                V3_3,
+                abi.encodePacked(type(ReserveInstantPolicy).creationCode, abi.encode(spoke, envoy))
+            )
+        );
+
+        vaultLiquidityRoute = VaultLiquidityRoute(
+            submit(
+                "vaultLiquidityRoute",
+                V3_3,
+                abi.encodePacked(type(VaultLiquidityRoute).creationCode, abi.encode(spoke, envoy, root))
             )
         );
     }
@@ -954,11 +1059,6 @@ contract FullDeployer is GatedDeployer {
             coreReport(),
             subsidyManager,
             refundEscrowFactory,
-            asyncVaultFactory,
-            asyncRequestManager,
-            syncDepositVaultFactory,
-            syncManager,
-            vaultRouter,
             freezeOnlyHook,
             fullRestrictionsHook,
             freelyTransferableHook,
@@ -966,13 +1066,16 @@ contract FullDeployer is GatedDeployer {
             queueManager,
             onOffRampFactory,
             shareManager,
-            batchRequestManager,
             identityValuation,
             oracleValuation,
             navManager,
             simplePriceManager,
             tokenBridge,
-            bridgeCircuitBreaker
+            bridgeCircuitBreaker,
+            vaultFactory,
+            vaultRequestRouter,
+            vaultRouter,
+            orderBook
         );
     }
 

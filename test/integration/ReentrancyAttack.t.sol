@@ -247,7 +247,7 @@ contract MaliciousERC20 is ERC20 {
 /// ├─────────────────────────────────┼────────────────┼─────────────────────────────────────────┤
 /// │ Malicious SnapshotHook          │ VULNERABLE     │ Re-add removed manager                  │
 /// │ Refund Parameter Callback       │ MITIGATED      │ msgValue() returns 0 during multicall   │
-/// │ Malicious ERC20 Transfer        │ VULNERABLE     │ Drain other assets from pool escrow     │
+/// │ Malicious ERC20 Transfer        │ VULNERABLE     │ Drain other assets from escrow     │
 /// └─────────────────────────────────┴────────────────┴─────────────────────────────────────────┘
 contract ReentrancyAttackTest is EndToEndFlows {
     address immutable BOB = makeAddr("BOB");
@@ -523,7 +523,7 @@ contract ReentrancyAttackTest is EndToEndFlows {
         MaliciousERC20 maliciousToken = new MaliciousERC20();
         maliciousToken.setAttackParams(s.spoke, POOL_A, SC_1, address(s.usdc), attackerReceiver);
 
-        // 3. Register the malicious token as an asset, then fund the pool escrow with it directly.
+        // 3. Register the malicious token as an asset, then fund the escrow with it directly.
         // This simulates a stablecoin that was legitimately registered and later turned malicious via a
         // compromised/malicious upgrade (noteDeposit requires a registered asset to resolve its AssetId).
         vm.prank(ANY);

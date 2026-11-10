@@ -85,7 +85,7 @@ contract SimplePriceManagerTest is Test {
 
 contract SimplePriceManagerConstructorTest is SimplePriceManagerTest {
     function testConstructorSuccess() public view {
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (int128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
 
         assertEq(address(priceManager.hub()), hub);
         assertEq(address(priceManager.shareClassManager()), shareClassManager);
@@ -96,7 +96,7 @@ contract SimplePriceManagerConstructorTest is SimplePriceManagerTest {
 
 contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
     function testOnUpdateFirstUpdate() public {
-        uint128 netAssetValue = 1000;
+        int128 netAssetValue = 1000;
 
         vm.expectCall(
             address(hub),
@@ -109,11 +109,11 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, netAssetValue);
 
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (int128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
         assertEq(globalIssuance, 100);
         assertEq(globalNAV, netAssetValue);
 
-        (uint128 networkNAV, uint128 networkIssuance,,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
+        (int128 networkNAV, uint128 networkIssuance,,,,) = priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
         assertEq(networkNAV, netAssetValue);
         assertEq(networkIssuance, 100);
     }
@@ -122,7 +122,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
 
-        uint128 netAssetValue2 = 1700;
+        int128 netAssetValue2 = 1700;
 
         // (1000+1700)/(100+200) = 9
         vm.expectCall(address(hub), abi.encodeWithSelector(UPDATE_SHARE_PRICE, POOL_A, SC_1, d18(9, 1)));
@@ -133,7 +133,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, netAssetValue2);
 
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (int128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
         assertEq(globalIssuance, 300); // 100 + 200
         assertEq(globalNAV, 2700); // 1000 + 1700
     }
@@ -148,7 +148,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
             abi.encode(150)
         );
 
-        uint128 newNetAssetValue = 1200;
+        int128 newNetAssetValue = 1200;
 
         vm.expectEmit(true, true, true, true);
         emit ISimplePriceManager.Update(POOL_A, SC_1, 1200, 150, d18(8, 1)); // 1200/150 = 8
@@ -156,7 +156,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, newNetAssetValue);
 
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (int128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
         assertEq(globalIssuance, 150);
         assertEq(globalNAV, 1200);
     }
@@ -179,7 +179,7 @@ contract SimplePriceManagerOnUpdateTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
 
-        (uint128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        (int128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
         assertEq(globalIssuance, 0);
         assertEq(globalNAV, 1000);
     }
@@ -265,6 +265,77 @@ contract SimplePriceManagerPricePoolPerShareTest is SimplePriceManagerTest {
         assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(9, 1).raw());
     }
 
+    /// @dev A network that carries debt the pool's other networks hold the assets for reports a negative NAV, and
+    ///      the price nets it: flooring each network first would drop the debt and publish 400 / 300.
+    function testANetworksDebtIsNettedAgainstTheAssetsOfAnother() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, -100); // issuance=100, owes 100 against assets elsewhere
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 400); // issuance=200
+
+        (int128 globalNAV,) = priceManager.metrics(POOL_A);
+        assertEq(globalNAV, 300, "the signed sum");
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), d18(1, 1).raw(), "300 / 300");
+    }
+
+    /// @dev Only the pool-wide sum is floored: a pool that owes more than it holds prices its shares at zero.
+    function testAPoolThatOwesMoreThanItHoldsPricesAtZero() public {
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, -100);
+
+        vm.prank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, 50);
+
+        assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), 0);
+    }
+
+    /// @dev Whatever each network reports, signed and in any order, the pool's NAV is the signed sum of the latest
+    ///      report of each, and only the price floors it: a debt on one network is never dropped before the sum.
+    function testPoolNAVIsTheSignedSumOfTheNetworks(int64 a, int64 b, int64 c, int64 b2) public {
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_3),
+            abi.encode(300)
+        );
+
+        vm.startPrank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, a);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, b);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_3, c);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_2, b2);
+        vm.stopPrank();
+
+        int256 sum = int256(a) + int256(b2) + int256(c);
+        (int128 globalNAV, uint128 globalIssuance) = priceManager.metrics(POOL_A);
+        assertEq(int256(globalNAV), sum, "the pool NAV is not the signed sum");
+        assertEq(globalIssuance, 600, "the pool issuance is not the sum of the networks'");
+
+        uint256 expectedPrice = sum <= 0 ? 0 : uint256(sum) * 1e18 / 600;
+        assertEq(
+            priceManager.pricePoolPerShare(POOL_A).raw(), expectedPrice, "the price is not the floored sum / issuance"
+        );
+    }
+
+    /// @dev A report that does not change leaves the sum where it was: the old report leaves before the new one joins,
+    ///      so a network near `int128.max` can report again without the sum passing through `int128.max`.
+    function testAnUnchangedReportNearInt128MaxDoesNotOverflowTheSum() public {
+        vm.mockCall(
+            shareClassManager,
+            abi.encodeWithSelector(IShareClassManager.issuance.selector, POOL_A, SC_1, CENTRIFUGE_ID_1),
+            abi.encode(uint128(1e30))
+        );
+        int128 nav = type(int128).max / 2 + 1;
+
+        vm.startPrank(caller);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, nav);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, nav);
+        vm.stopPrank();
+
+        (int128 globalNAV,) = priceManager.metrics(POOL_A);
+        assertEq(globalNAV, nav);
+    }
+
     function testPricePoolPerShareAfterUpdate() public {
         vm.prank(caller);
         priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, 1000);
@@ -287,7 +358,7 @@ contract SimplePriceManagerPricePoolPerShareTest is SimplePriceManagerTest {
 
     function testPricePoolPerShareFuzz(uint128 nav, uint128 issuance) public {
         vm.assume(issuance > 0);
-        vm.assume(nav > 0);
+        vm.assume(nav > 0 && nav <= uint128(type(int128).max));
         vm.assume(uint256(nav) * 1e18 / issuance < type(uint128).max);
 
         vm.mockCall(
@@ -297,7 +368,7 @@ contract SimplePriceManagerPricePoolPerShareTest is SimplePriceManagerTest {
         );
 
         vm.prank(caller);
-        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, nav);
+        priceManager.onUpdate(POOL_A, SC_1, CENTRIFUGE_ID_1, int128(nav));
 
         uint256 expectedPrice = (uint256(nav) * 1e18) / issuance;
         assertEq(priceManager.pricePoolPerShare(POOL_A).raw(), expectedPrice);
@@ -324,9 +395,9 @@ contract SimplePriceManagerOnTransferTest is SimplePriceManagerTest {
         vm.prank(caller);
         priceManager.onTransfer(POOL_A, SC_1, CENTRIFUGE_ID_1, CENTRIFUGE_ID_2, sharesTransferred);
 
-        (uint128 fromNAV, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
+        (int128 fromNAV, uint128 fromIssuance, uint128 fromTransferredIn, uint128 fromTransferredOut,,) =
             priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_1);
-        (uint128 toNAV, uint128 toIssuance, uint128 toTransferredIn, uint128 toTransferredOut,,) =
+        (int128 toNAV, uint128 toIssuance, uint128 toTransferredIn, uint128 toTransferredOut,,) =
             priceManager.networkMetrics(POOL_A, CENTRIFUGE_ID_2);
 
         // Issuance should remain unchanged until next onUpdate

@@ -9,6 +9,7 @@ contract ArrayLibTest is Test {
     using ArrayLib for *;
 
     int16[8] storedArray;
+    uint96[] ids;
 
     function testCountPositiveValues(int16[8] memory array, uint8 valuesToCheck) public pure {
         valuesToCheck = uint8(bound(valuesToCheck, 0, 8));
@@ -36,6 +37,21 @@ contract ArrayLibTest is Test {
     function _sum(int16[8] memory arr) internal pure returns (int256 count) {
         for (uint256 i; i < arr.length; i++) {
             count += int256(arr[i]);
+        }
+    }
+
+    function testRemoveKeepsTheOrderOfTheRest(uint96[8] memory values, uint8 fromSeed, uint8 countSeed) public {
+        for (uint256 i; i < values.length; i++) {
+            ids.push(values[i]);
+        }
+        uint256 from = bound(fromSeed, 0, 8);
+        uint256 count = bound(countSeed, 0, 8 - from);
+
+        ids.remove(from, count);
+
+        assertEq(ids.length, 8 - count);
+        for (uint256 i; i < ids.length; i++) {
+            assertEq(ids[i], values[i < from ? i : i + count]);
         }
     }
 }
