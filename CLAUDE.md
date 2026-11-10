@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Project Overview
-Centrifuge V3 is a DeFi RWA protocol implementing ERC7540 vaults with async/sync investment logic. Modular hub-and-spoke architecture for multi-chain tokenization with automated management capabilities.
+Centrifuge V3 is a DeFi RWA protocol implementing ERC7540 vaults with async and instant investment logic. Modular hub-and-spoke architecture for multi-chain tokenization with automated management capabilities.
 
 Build and test using Foundry Forge.
 
@@ -63,6 +63,23 @@ src/
 │       ├── AccountingToken.sol # ERC-6909 tracking in-flight requests and liabilities
 │       ├── FlashLoanHelper.sol # Aave V3 flash loan bridge for OnchainPM
 │       └── guards/             # bookend contracts that check state after a weiroll script
+├── vaults/
+│   ├── Vault.sol               # one flat contract: ~38.5 KiB runtime, so it needs EIP-7907; launched only where `network.vaults` is set
+│   ├── VaultRouter.sol         # investor entrypoint: multicall of approvals, requests, claims, cross-chain transfers; Root-endorsed to hold shares mid-batch
+│   ├── hub/                    # hub-side request managers, deployed on every chain
+│   │   ├── OrderBook.sol       # the order engine the hub settles vault requests through
+│   │   └── FeeRequestManager.sol # reference manager wrapping OrderBook with fees
+│   ├── messaging/              # the vault's transport and wire format (RequestMessageLib, RequestCallbackMessageLib)
+│   │   └── VaultRequestRouter.sol # the only contract that speaks the request wire, one per network
+│   ├── factories/
+│   │   └── VaultFactory.sol    # deploys a vault ahead of the hub's DeployAndLink; payload abi.encode(VaultPlugins, uint64 variant, uint256 foldHorizon)
+│   ├── libraries/              # BucketLib (buckets and folding), HorizonLib (the fold horizon), VaultActionLib (actions as hook role checks), VaultPricingLib, VaultRequestIdLib
+│   ├── policies/               # RequestPolicies.sol (per-investor, per-request, per-period) and ReserveInstantPolicy.sol
+│   ├── oracles/
+│   │   └── SpokeOracle.sol     # hub-notified prices with age and skew bounds and a per-pool pause
+│   └── liquidity/
+│       ├── VaultLiquidityRoute.sol # fund of funds: instant exits through underlying vaults
+│       └── BasinLiquidityRoute.sol # one per Basin venue, so deployed against a venue rather than by FullDeployer
 ├── hooks/
 │   └── bridge/
 │       └── BridgeCircuitBreaker.sol # pause and rate limit on outbound transfers
@@ -81,14 +98,14 @@ certora/                        # submodule (centrifuge/protocol-certora): the C
 ```
 
 ### Async Vault Lifecycle (ERC-7540)
-A deposit, step by step (detail in `src/vaults/README.md`):
-1. **Request** (`vault.requestDeposit`): `AsyncRequestManager` calls `spoke.noteDeposit`, a reservation the hub does not account for yet, and the vault moves the assets into the pool's `Escrow`.
-2. **Approve** (`ManagerAction.ApproveDeposits`, arriving at `BatchRequestManager.fromHub`, which only the `Envoy` may call): the hub's callback runs `spoke.unreserve`, and the assets enter the hub-accounted holding.
-3. **Issue** (`ManagerAction.IssueShares`): the callback mints the shares to the `Escrow` (`spoke.issue`).
-4. **Notify** (`BatchRequestManager.notifyDeposit`, callable by anyone): the callback raises the controller's `maxMint` in `AsyncRequestManager`.
-5. **Claim** (`vault.deposit`/`mint`): `spoke.withdrawShares` moves the shares from the `Escrow` to the receiver, and `maxMint` drops.
+A deposit, step by step (detail in `src/vaults/ARCHITECTURE.md`):
+1. **Request** (`vault.requestDeposit`): the vault moves the assets into the pool's `Escrow` and calls `spoke.noteDeposit` then `spoke.reserve`, whose queued updates cancel, so the pending deposit is not hub-accounted yet. The request policy picks the bucket the request contributes to; `VaultRequestRouter` serializes it and calls `spoke.request`.
+2. **Auto-approve**: `OrderBook` books the request into the order's `outstanding` bucket on receipt. There is no manager approve step and the request carries no price.
+3. **Fulfil**: the manager calls `OrderBook` with the committed prices, and it sends one `SettledDeposit` callback.
+4. **Apply** (`VaultRequestRouter.callback`): applied to the vault the request id names as three calls in order, inside the one callback: `approveDeposits` (`spoke.unreserve`, so the assets enter the hub-accounted holding), `issueShares` (`spoke.issue` mints to the `Escrow`), then `fulfillDepositRequest` (settles the bucket through `BucketLib`). The settlement observer is told after each leg.
+5. **Claim** (`vault.deposit`/`mint`): the contributor's pro-rata slice folds into their claimable ledger and `spoke.withdrawShares` moves the shares from the `Escrow` to the receiver.
 
-A redeem mirrors it (`ApproveRedeems`, `RevokeShares`, `notifyRedeem`, then `redeem`/`withdraw`). `SyncDepositVault` deposits in one call and redeems asynchronously. The `Escrow` holds both the assets and the shares; for vaults launched before v3.1.0 the ABI's `globalEscrow()` returns it.
+A redeem mirrors it (`SettledRedeem` becomes `revokeShares`, then `fulfillRedeemRequest`, then `redeem`/`withdraw`). With an `IInstantPolicy` set, the instant lane runs the whole thing in one call. The `Escrow` holds both the assets and the shares.
 
 ## Branches: main vs live
 
@@ -136,12 +153,15 @@ type ShareClassId is bytes16;
 ### Cross-chain addresses
 - The standard CREATE3 flow gives a contract the same address on every network, but that is not a protocol invariant: some EVM chains derive addresses differently, a legacy pre-CREATE3 salt path has no cross-chain guarantee, and a non-EVM chain may have no comparable address. Never validate a remote-chain address against a local one as a security check.
 
+### Pool-chosen components are trusted by their pool
+The policies, hooks, routes, oracles and observers a pool configures are that pool's choice. Do not defend against them with gas caps, fallback values or hardcoded ceilings in the vault or in core. A pool whose component reverts, burns gas or misreports harms its own users: that is a pool-manager self-own, not a protocol bug. Call them plainly and state the trust assumption in the spec. Defend only where an actor the pool did not choose can reach the path (another pool's state, an investor, a third party pushing positions onto someone), and there prefer catching ordinary reverts over capping gas. Gas numbers belong in `GasService` message pricing, not as caps in contracts.
+
 ### Core Patterns
 - Asset resolution: `spokeRegistry.assetToId(assetAddress, tokenId)` (for a standard ERC20, `tokenId` is `0`)
 - Interface casting: declare the interface type explicitly before use, and check the contract implements it:
 
 ```solidity
-IBaseVault vault = IBaseVault(vaultAddress);
+IERC7575 vault = IERC7575(vaultAddress);
 uint256 totalAssets = vault.totalAssets();
 
 IERC7540Deposit asyncVault = IERC7540Deposit(vaultAddress);

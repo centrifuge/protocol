@@ -1,49 +1,47 @@
-# Vaults
+# Vault Development Kit
 
-The vaults module implements ERC-4626 and ERC-7540 tokenized vault standards for Centrifuge pools, providing both synchronous and asynchronous deposit/redeem workflows. It includes vault implementations, request managers for handling epoch-based operations, and routing infrastructure for simplified user interactions.
+The Vault Development Kit (VDK) is one vault contract, configured rather than forked. `Vault` is a single immutable contract per `(pool, share class, asset, variant)` that serves both an instant lane (ERC-4626 deposits and redemptions at oracle prices) and an async lane (ERC-7540 requests settled by the pool's hub), with ERC-7575 multi-asset shares and ERC-8161 transferable pending requests. Product behavior lives in narrow plugin contracts fixed at construction, so a tokenized treasury (instant exits from a liquidity buffer or Basin, plus dealing windows), private credit (notice periods, gates, lockups), a yield-bearing token (cooldown exits), a fund of funds (instant exits through the underlying funds' own liquidity) and tranched credit (a hub-side waterfall) are the same bytecode with different plugins. How it works under the hood, with diagrams, is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-![Vaults architecture](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/vaults/vaults.puml)
+[`SPECIFICATION.md`](SPECIFICATION.md) states what the stack guarantees and what it deliberately does not, row by row with the tests behind each. [`docs/vaults-policies.md`](../../docs/vaults-policies.md) evaluates dozens of real fund mechanics against the policy surface and records how each is expressed, or why it is out of scope.
 
-### `AsyncVault`
+![The vault, its five plugin slots and the contracts it talks to on the spoke and hub chains](../../docs/architecture/vaults/contract-map.svg)
 
-`AsyncVault` implements the ERC-7540 asynchronous tokenized vault standard, extending ERC-4626 with request-based deposit and redeem workflows. Users submit deposit and redeem requests that are queued for execution in the next epoch. After epoch execution, users can claim their shares or assets using standard ERC-4626 methods. The vault integrates with `AsyncRequestManager` for request handling and supports ERC-7887 cancellation flows.
+### The two lanes
 
-The vault enforces controller/owner validation for all operations and integrates with pool-specific escrows via `Spoke` for asset and share custody during pending requests. It tracks pending and claimable amounts per controller, enabling users to monitor their request status. The vault supports operator endorsements, allowing approved addresses to act on behalf of users for deposits and redemptions. That approval covers the controller's whole position rather than one vault's share of it: an operator can move the controller's free balance into a request and claim the proceeds to any receiver. Since the hub keys requests by pool, share class, asset and investor, every vault linked to one such tuple shares a single position, and a settlement for it is applied to the vault named by the share token's pointer. An operator approved on that vault therefore reaches the investor's whole tuple position, including requests made through the other linked vaults, while an operator approved only elsewhere reaches nothing unless the pool re-points.
+**Async.** A request is funded when it is made and joins a bucket that the request policy picks: one per investor, one per request, or one per dealing window. The bucket reaches the hub as one order, the hub's manager fills or cancels it, and each investor's slice is credited to their claimable ledger when it is folded, then claimed through the ERC-7540 functions. [`ARCHITECTURE.md`](ARCHITECTURE.md) follows one request end to end.
 
-### `SyncDepositVault`
+**Instant.** With an instant policy set, `deposit`, `mint`, `withdraw` and `redeem` called by the controller itself, with nothing claimable and no request pending, execute at the oracle's prices up to the policy's capacity, and a redemption larger than the escrow draws the shortfall from a liquidity route. With anything claimable or pending they claim instead, never a mixture, and an operator can only claim.
 
-`SyncDepositVault` provides a hybrid model with synchronous deposits (immediate share issuance) and asynchronous redemptions (epoch-based). It implements ERC-4626 for deposits and ERC-7540 for redemptions, offering the best of both models. Deposits execute immediately at the current share price via `SyncManager`, while redemptions follow the async request-fulfill-claim pattern via `AsyncRequestManager`.
+### Written by the builder, provided by the kit
 
-This vault type is ideal for pools that want to enable instant deposits while maintaining controlled, epoch-based redemptions for liquidity management. It integrates with both `SyncManager` (sync deposits) and `AsyncRequestManager` (async redemptions), requiring separate manager configurations for each operation type.
+The **VDK plugins** are the six contracts a pool chooses that the vault calls: the five `VaultPlugins` slots, fixed when the vault is deployed (request policy, instant policy, liquidity route, oracle, settlement observer), and the share token's role hook (`IRoleHook`), which the token carries and can change. What a plugin exposes itself, such as `ReserveInstantPolicy`'s allowlists or `PerPeriodPolicy`'s windows, is that plugin's configuration. The hub's request manager is not a plugin: it settles orders for every vault of the pool. A builder typically writes one or two; every one but the settlement observer has a shipped reference implementation, deployed once per network and shared by every pool.
 
-### `BatchRequestManager`
+| Interface | Decides | Shipped implementation |
+|---|---|---|
+| `IRequestPolicy` (required for async) | who may request, which bucket a request joins, whether requests are batched (`isBatched`), when a batch is flushed to the hub, `maxOpenBuckets` | `PerInvestorPolicy`, `PerRequestPolicy` (transfers off or on), `PerPeriodPolicy` (dealing windows) |
+| `IInstantPolicy` (optional; unset means async only) | instant capacity per call, entry and exit fees (paid to a recipient, or retained for the holders), caller allowlists, who may fund a position credited to another controller (sponsors) | `ReserveInstantPolicy`: deposits up to a target reserve, redemptions against escrow plus route |
+| `ILiquidityRoute` (optional) | where instant redemption liquidity comes from when the escrow is short (`provide`), and where fresh deposits go (`forward`) | `BasinLiquidityRoute` (one per Basin venue, per-vault credit line), `VaultLiquidityRoute` (fund of funds) |
+| `IVaultOracle` (required) | the prices every conversion uses, and whether they are valid for the instant lane | `SpokeOracle`: hub-notified prices with `maxAge`, `maxSkew` and a per-pool pause, which the pool's spoke managers can also set locally (unpausing is hub-only) |
+| `ISettlementObserver` (optional) | reactions to each settlement, told once with its fill or cancellation (true-ups, accrual, registers) | none shipped |
+| `IRoleHook` (on the share token) | who may hold, leave or be paid: memberlists, freezes and lockups by role, which the vault asks for each party of its actions ([`ARCHITECTURE.md`](ARCHITECTURE.md#share-token-restrictions)) | the four `src/token/hooks` flavors |
+| Hub request manager | how a request is priced, filled, partially filled or cancelled | `OrderBook`, wrapped by `FeeRequestManager` |
 
-`BatchRequestManager` handles epoch-based deposit and redeem requests on the Hub side, managing request aggregation, epoch execution, and fulfillment coordination. It tracks pending requests per pool, share class, and asset, aggregating them into epochs that can be approved or rejected. The manager maintains user order state, queued orders for cancellations, and epoch execution history.
+The kit provides the rest: the vault's state and both flows, pro-rata bucket settlement with partial fills and a per-controller claimable ledger, request ids and transport, the segregated escrow with reservations and double-entry books behind NAV (from `src/core`), cross-chain messaging, batching and issuance, and conformance with ERC-4626, ERC-7540, ERC-7575, ERC-8161 and ERC-165, apart from the deviations the specification lists (previews and `max*` on a dual-mode vault, no allowance flow on instant exits, no self-operator). There is no upgrade path and no setter: configuration is constructor-fixed, and a change ships as a new vault (a new `variant` runs it beside the old one).
 
-The contract implements `IHubRequestManager` and receives request callbacks from spoke chains via the `Hub`. It supports force cancellation flows with safeguards, requiring explicit permission before allowing managers to cancel user requests. Epoch management tracks invest and redeem amounts separately, with fulfillment calculations based on approved amounts and share prices. The manager integrates with `Hub` for accounting updates and cross-chain communication back to spoke vaults.
+### Composition idioms
 
-### `AsyncRequestManager`
+One contract may fill several plugin slots, and plugins read whatever they need from public state (prices, escrow balances, route headroom, per-controller positions), so hook signatures carry only identity and amounts. A settlement observer blocks by reverting, so a best-effort one guards its own calls. `available` is advisory and `provide` is all-or-nothing. The [three levers](../../docs/vaults-policies.md#the-three-levers) and the per-policy tables there show how each mechanic is built from them.
 
-`AsyncRequestManager` is the primary spoke-side contract that vaults interact with for deposit and redeem request handling. It manages request submission, cancellation, and claim workflows, coordinating with `Spoke` for share issuance/burning and pool-specific `Escrow` contracts for asset and share custody. The manager tracks per-vault, per-investor state including pending requests, claimable amounts, and cancellation status. That keying is per vault while the Hub aggregates the order it belongs to per pool, share class, asset and investor, so several vaults linked to one such tuple share a single Hub order while holding separate local amounts. Fulfillments are applied to the vault named by the share token's pointer, so a pool running more than one vault on a tuple — an `AsyncVault` and a `SyncDepositVault` redeem through this manager alike — is expected to keep requests on the pointed-at vault. A request made through another linked vault joins the shared order and settles elsewhere, leaving its own pending amount stale, and cancelling that stale amount sets the vault's pending-cancellation flag with nothing left for the Hub to cancel: no callback follows, and the vault stays blocked for that investor until the pool points back at it and force-cancels a fresh order from the Hub. No funds are at risk in the meantime, the position being claimable on the pointed-at vault throughout.
+### Writing a plugin
 
-The contract handles cross-chain request callbacks from the Hub, processing approvals, rejections, and cancellation confirmations. It delegates gas subsidization for cross-chain requests to the `SubsidyManager`. The manager supports both deposit and redeem flows, validating request transitions and ensuring users can only claim what's been approved by the Hub.
+- **Only the vault calls its plugins.** A vault plugin can rely on `msg.sender` being the vault it was deployed for (the role hook is the share token's, which calls it too), and a hub-configured one accepts `fromHub` from the Envoy only. It reads whatever else it needs from public state.
+- **Blocking is reverting.** A request, instant or settlement hook that reverts stops that action, which is how allowlists, gates and lockups are written. Hooks that must not block (accrual, registers) guard their own external calls.
+- **Views must be safe to call.** `max*`, `available` and the previews feed the vault's own views and ERC-4626 integrators, so they return a number, never revert on unfavorable state, and stay cheap.
+- **A bad plugin of a vault breaks that vault only.** The vault's five plugins are fixed at construction and scoped to it, so a faulty one cannot affect another vault of the pool or the protocol; [Trust in pool-chosen components](SPECIFICATION.md#trust-in-pool-chosen-components) lists what a pool can and cannot do to its investors.
 
-The following diagram shows how funds flow in and out of the pool escrow:
-
-![Flow of funds](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/centrifuge/protocol/refs/heads/main/docs/architecture/vaults/flow-of-funds.puml)
-
-### `SyncManager`
-
-`SyncManager` enables synchronous ERC-4626 deposits by coordinating immediate share issuance based on current valuations. It integrates with pool-specific `ISyncDepositValuation` contracts to determine share prices and validates reserve limits to prevent over-issuance. The manager coordinates with `Spoke` for share minting and asset deposits.
-
-The contract supports trusted contract updates for configuring valuation contracts and max reserve limits per pool, share class, and asset. It implements deposit and mint operations, calculating share amounts from assets and vice versa based on the configured valuation. Reserve limits protect pools from excessive deposits when liquidity is constrained.
-
-### `VaultRouter`
-
-`VaultRouter` serves as a user-friendly entrypoint for EOA interactions with vaults, simplifying the multi-step processes required for deposits, redemptions, and claims. It provides convenience methods that handle token approvals, request submissions, and batch operations in single transactions. The router integrates with `Spoke` and `SpokeRegistry`, holding assets transiently within itself during multi-step operations rather than in a dedicated escrow.
-
-The contract supports permit-based approvals (ERC-2612) to reduce transaction overhead, locked request tracking to prevent double-spending during multi-step operations, and multicall batching for complex workflows. It's critical that no funds remain in the router after transactions, as any leftover funds could be claimed by other users. The router manages operator endorsements, allowing users to authorize it to act on their behalf for vault operations.
-
-### Gas subsidies (`SubsidyManager` / `RefundEscrow`)
-
-Cross-chain requests are paid for by the pool rather than the user. `AsyncRequestManager` draws on the `SubsidyManager`, which holds per-pool ETH subsidies in `RefundEscrow` contracts and funds the outbound message. Pools deposit subsidies that are consumed to pay for requests requiring cross-chain communication. Both `SubsidyManager` and `RefundEscrow` live in `src/utils/`, not in the vaults module.
+| Product | Request policy | Instant policy | Route |
+|---|---|---|---|
+| Async only, per-investor accounting | `PerInvestorPolicy` | none | none |
+| Dealing windows (private credit, funds) | `PerPeriodPolicy` | none | none |
+| Tokenized treasury | `PerPeriodPolicy` | `ReserveInstantPolicy` | `BasinLiquidityRoute` |
+| Fund of funds | `PerRequestPolicy` | `ReserveInstantPolicy` | `VaultLiquidityRoute` |

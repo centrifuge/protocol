@@ -41,11 +41,14 @@ jobs:
           echo "${CHANGED:-no test inputs changed}"
           echo "changed=$([ -n "$CHANGED" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
+      - if: steps.inputs.outputs.changed == 'true'
+        uses: ./.github/actions/add-swap
+
       - name: Install Foundry
         if: steps.inputs.outputs.changed == 'true'
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.4
+          version: nightly-8e47a24a36283247c57fd735d1e6db961ca5efc1
 
       - name: Build ir profile
         if: steps.inputs.outputs.changed == 'true'
@@ -58,8 +61,10 @@ jobs:
           FOUNDRY_PROFILE: ci
 
   coverage:
-    # Temporarily disabled: the runner has been flaking with mid-run shutdown/cancellation
-    # unrelated to test correctness. Re-enable once that infra issue is resolved.
+    # Disabled: on the standard hosted runner every run since early July 2026 died mid-coverage with
+    # "The hosted runner lost communication with the server ... starves it for CPU/Memory", i.e. the
+    # unoptimized coverage build plus the run exhausts the runner rather than failing a test. Re-enable
+    # on a larger runner label, or once the coverage build fits; flipping this alone will not help.
     if: false
     runs-on: ubuntu-latest
     permissions:
@@ -68,10 +73,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: ./.github/actions/add-swap
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.4
+          version: nightly-8e47a24a36283247c57fd735d1e6db961ca5efc1
 
       - name: Build ir profile
         run: FOUNDRY_PROFILE=ir forge build

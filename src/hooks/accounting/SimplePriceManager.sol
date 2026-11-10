@@ -31,7 +31,7 @@ contract SimplePriceManager is ISimplePriceManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVHook
-    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) public virtual {
+    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, int128 netAssetValue) public virtual {
         require(msg.sender == navUpdater, NotAuthorized());
         require(scId.index() == 1, InvalidShareClass());
 
@@ -50,7 +50,8 @@ contract SimplePriceManager is ISimplePriceManager {
 
         metrics_.issuance = isIncrease ? metrics_.issuance + issuanceDelta : metrics_.issuance - issuanceDelta;
 
-        metrics_.netAssetValue = metrics_.netAssetValue + netAssetValue - networkMetrics_.netAssetValue;
+        // The old report leaves before the new one joins, so the sum never passes through a value it does not reach
+        metrics_.netAssetValue = metrics_.netAssetValue - networkMetrics_.netAssetValue + netAssetValue;
         networkMetrics_.netAssetValue = netAssetValue;
         networkMetrics_.issuance = newIssuance;
         networkMetrics_.transferredIn = 0;
@@ -86,7 +87,8 @@ contract SimplePriceManager is ISimplePriceManager {
 
     function pricePoolPerShare(PoolId poolId) public view returns (D18) {
         Metrics memory metrics_ = metrics[poolId];
-        return metrics_.issuance == 0 ? d18(1, 1) : d18(metrics_.netAssetValue) / d18(metrics_.issuance);
+        if (metrics_.issuance == 0) return d18(1, 1);
+        return metrics_.netAssetValue <= 0 ? d18(0) : d18(uint128(metrics_.netAssetValue)) / d18(metrics_.issuance);
     }
 
     function _calculateIssuanceDelta(

@@ -171,4 +171,75 @@ contract MathLibTest is Test {
         assertEq(MathLib.absDiff(a, b), MathLib.absDiff(b, a));
         assertEq(MathLib.absDiff(a, b), a > b ? a - b : b - a);
     }
+
+    function testToInt128(uint256 x) public pure {
+        x = bound(x, 0, uint128(type(int128).max));
+
+        assertEq(uint256(int256(MathLib.toInt128(x))), x);
+    }
+
+    function testToInt128Boundary() public pure {
+        assertEq(MathLib.toInt128(0), 0);
+        assertEq(MathLib.toInt128(uint128(type(int128).max)), type(int128).max);
+    }
+
+    /// forge-config: default.allow_internal_expect_revert = true
+    function testToInt128Overflow(uint256 x) public {
+        x = bound(x, uint256(uint128(type(int128).max)) + 1, type(uint256).max);
+        vm.expectRevert(MathLib.Int128_Overflow.selector);
+        MathLib.toInt128(x);
+    }
+
+    function testFuzzSaturatingAdd(uint128 a, uint128 b) public pure {
+        uint256 sum = uint256(a) + b;
+        assertEq(MathLib.saturatingAdd(a, b), sum > type(uint128).max ? type(uint128).max : sum);
+    }
+
+    function testSaturatingSub() public pure {
+        assertEq(MathLib.saturatingSub(7, 3), 4);
+        assertEq(MathLib.saturatingSub(3, 3), 0);
+        assertEq(MathLib.saturatingSub(3, 7), 0);
+        assertEq(MathLib.saturatingSub(0, type(uint128).max), 0);
+        assertEq(MathLib.saturatingSub(type(uint128).max, 0), type(uint128).max);
+    }
+
+    function testFuzzSaturatingSub(uint128 a, uint128 b) public pure {
+        uint128 diff = MathLib.saturatingSub(a, b);
+
+        assertEq(diff, a > b ? a - b : 0);
+        assertLe(diff, a);
+        assertEq(uint256(diff) + MathLib.min(a, b), a, "the result and the subtrahend recompose the minuend");
+    }
+
+    function testFractionOfMatchesMulDiv(uint128 value, uint128 part, uint128 total) public pure {
+        total = uint128(bound(total, 1, type(uint128).max));
+        part = uint128(bound(part, 0, total));
+
+        assertEq(uint256(value).fractionOf(part, total, MathLib.Rounding.Down), MathLib.mulDiv(value, part, total));
+        uint256 down = uint256(value).fractionOf(part, total, MathLib.Rounding.Down);
+        uint256 up = uint256(value).fractionOf(part, total, MathLib.Rounding.Up);
+        assertTrue(up == down || up == down + 1, "up is down or one more");
+        assertLe(down, value, "a part of the total never exceeds the value");
+    }
+
+    /// @dev The whole of a total is exactly the value, whichever way it rounds, so no remainder is stranded
+    function testFractionOfTheWholeIsTheValue(uint128 value, uint128 total) public pure {
+        total = uint128(bound(total, 1, type(uint128).max));
+
+        assertEq(uint256(value).fractionOf(total, total, MathLib.Rounding.Down), value);
+        assertEq(uint256(value).fractionOf(total, total, MathLib.Rounding.Up), value);
+    }
+
+    /// @dev A zero part is zero even against a zero total, which `mulDiv` alone would revert on
+    function testFractionOfNothingIsZero(uint128 value) public pure {
+        assertEq(uint256(value).fractionOf(0, 0, MathLib.Rounding.Down), 0);
+        assertEq(uint256(value).fractionOf(0, 0, MathLib.Rounding.Up), 0);
+    }
+
+    function testFractionOfRounds() public pure {
+        assertEq(uint256(10).fractionOf(1, 3, MathLib.Rounding.Down), 3);
+        assertEq(uint256(10).fractionOf(1, 3, MathLib.Rounding.Up), 4);
+        assertEq(uint256(10).fractionOf(2, 3, MathLib.Rounding.Down), 6);
+        assertEq(uint256(10).fractionOf(2, 3, MathLib.Rounding.Up), 7);
+    }
 }

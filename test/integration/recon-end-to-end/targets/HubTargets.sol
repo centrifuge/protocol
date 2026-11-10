@@ -1,563 +1,476 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-// Recon Deps
-
+import {D18, d18} from "../../../../src/misc/types/D18.sol";
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
-import {Escrow} from "../../../../src/core/spoke/Escrow.sol";
-import {PoolId} from "../../../../src/core/types/PoolId.sol";
-import {AssetId} from "../../../../src/core/types/AssetId.sol";
-import {ShareClassId} from "../../../../src/core/types/ShareClassId.sol";
-import {IEscrow} from "../../../../src/core/spoke/interfaces/IEscrow.sol";
-import {ManagerKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
-import {IHubRequestManager} from "../../../../src/core/hub/interfaces/IHubRequestManager.sol";
+import {AccountId} from "../../../../src/core/types/AccountId.sol";
+import {RequestId} from "../../../../src/core/types/RequestId.sol";
+import {PricingLib} from "../../../../src/core/libraries/PricingLib.sol";
+import {JournalEntry} from "../../../../src/core/hub/interfaces/IAccounting.sol";
 
-import {IBaseVault} from "../../../../src/vaults/interfaces/IBaseVault.sol";
+import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
-import {BatchRequestManagerHarness} from "../mocks/BatchRequestManagerHarness.sol";
+import {Bucket, IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
+import {FeeManagerAction} from "../../../../src/vaults/hub/interfaces/IFeeRequestManager.sol";
+import {IReserveInstantPolicy} from "../../../../src/vaults/policies/interfaces/IVaultPlugins.sol";
+import {IVaultLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
-import {MAX_MESSAGE_COST} from "../../../utils/GasConstants.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
 
-// Dependencies
-
-// Test Utils
-
+/// @notice Pool manager actions: settling orders through the OrderBook, prices and valuation, the
+///         journal, restrictions, manager roles, request caps and time.
 abstract contract HubTargets is BaseTargetFunctions, Properties {
-    // ═══════════════════════════════════════════════════════════════
-    // TARGET FUNCTIONS - Public entry points for invariant testing
-    // ═══════════════════════════════════════════════════════════════
-    uint128 constant GAS = MAX_MESSAGE_COST;
+    using CastLib for *;
+    using UpdateRestrictionMessageLib for *;
 
-    // Struct to reduce stack pressure in complex functions
-    struct NotifyDepositParams {
-        address actor;
-        PoolId poolId;
-        ShareClassId scId;
-        AssetId assetId;
-        bytes32 investor;
-        uint32 maxClaims;
-        bool hasClaimedAll;
-        uint128 pendingBeforeSCM;
-        uint128 queuedDepositAmountBefore;
-        uint256 maxMintBefore;
+    /// @dev The largest fee the FeeRequestManager and the instant policy accept: below `MathLib.BPS`.
+    uint256 internal constant MAX_FEE_BPS = 9_999;
+
+    //----------------------------------------------------------------------------------------------
+    // Settlement
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Fulfils part or all of an outstanding order through the FeeRequestManager, the path
+    ///      production uses. What the fill makes claimable is read off the bucket it settled.
+    function hub_fulfill(uint256 reqSeed, uint256 amount, bool full) public updateGhosts(OpType.MANAGER) {
+        (Req memory r, uint128 outstanding) = _pickOrder(reqSeed, true);
+        if (outstanding == 0) return;
+        _fulfill(r, full ? outstanding : uint128(between(amount, _dust(r.isDeposit), outstanding)));
     }
 
-    /// CUSTOM TARGET FUNCTIONS - Add your own target functions here ///
-
-    // NOTE: this notifies for all epochs until all have been claimed
-    function hub_notifyDeposit_clamped(uint32 maxClaims) public {
-        // Clamp maxClaims to valid range
-        bytes32 investor = CastLib.toBytes32(_getActor());
-        PoolId poolId = _getVault().poolId();
-        ShareClassId scId = _getVault().scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
-
-        uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(poolId, scId, investor, assetId);
-        maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
-
-        hub_notifyDeposit(maxClaims);
+    function _fulfill(Req memory r, uint128 fill) internal returns (bool success) {
+        _feeNoInstantInCall = true;
+        Bucket memory settledBefore = vaults[r.vault].bucket(uint96(r.requestId));
+        uint256[2] memory claimableBefore;
+        (claimableBefore[0], claimableBefore[1]) = _claimable(r.vault);
+        uint256[6] memory actorsBefore = _actorClaimable(r.vault);
+        bytes memory data = abi.encodeCall(
+            feeRequestManager.fulfill, (poolA, scA, usdcId, RequestId.wrap(r.requestId), r.isDeposit, fill, 0, REFUND)
+        );
+        (success,) = _callAs(FM, address(feeRequestManager), data);
+        if (!success) {
+            _reverted("hub_fulfill");
+            return false;
+        }
+        _recordFill(r, fill, settledBefore, claimableBefore, actorsBefore);
+        _ok("hub_fulfill");
     }
 
-    // NOTE: this notifies for all epochs until all have been claimed
-    function hub_notifyRedeem_clamped(uint32 maxClaims) public {
-        // Clamp maxClaims to valid range
-        bytes32 investor = CastLib.toBytes32(_getActor());
-        PoolId poolId = _getVault().poolId();
-        ShareClassId scId = _getVault().scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(_getVault())).assetId;
-
-        uint32 maxClaimsBound = batchRequestManager.maxRedeemClaims(poolId, scId, investor, assetId);
-        maxClaims = uint32(between(maxClaims, 0, maxClaimsBound));
-
-        hub_notifyRedeem(maxClaims);
+    function _recordFill(
+        Req memory r,
+        uint128 fill,
+        Bucket memory settledBefore,
+        uint256[2] memory claimableBefore,
+        uint256[6] memory actorsBefore
+    ) internal {
+        _noteActorsOwed(r.vault, actorsBefore, true);
+        (uint256 sharesAfter, uint256 assetsAfter) = _claimable(r.vault);
+        address vault = address(vaults[r.vault]);
+        ghost_fulfilledGross[vault][r.isDeposit] += fill;
+        ghost_settlements++;
+        _noteStanding(r);
+        uint256 sharesCredited =
+            _nonNegativeDelta(sharesAfter, claimableBefore[0], "a fill lowered the claimable shares");
+        uint256 assetsCredited =
+            _nonNegativeDelta(assetsAfter, claimableBefore[1], "a fill lowered the claimable assets");
+        ghost_sharesOwed[vault] += sharesCredited;
+        ghost_assetsOwed[vault] += assetsCredited;
+        _checkFillPrice(
+            r.isDeposit,
+            fill,
+            vaults[r.vault].bucket(uint96(r.requestId)),
+            settledBefore,
+            r.isDeposit ? sharesCredited : assetsCredited
+        );
     }
 
-    /// AUTO GENERATED TARGET FUNCTIONS - WARNING: DO NOT DELETE OR MODIFY THIS LINE ///
-
-    // ═══════════════════════════════════════════════════════════════
-    // PERMISSIONLESS FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
-    function hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint) public returns (PoolId poolId) {
-        require(poolCount < RECON_MAX_POOLS, "pool deploy cap");
-
-        return _hub_createPool(poolIdAsUint, admin, assetIdAsUint);
+    function _noteStanding(Req memory r) internal {
+        Bucket memory b = vaults[r.vault].bucket(uint96(r.requestId));
+        if (b.total != 0 && b.settlements == 1) ghost_standingBuckets++;
     }
 
-    /// @dev Uncapped, so the one-shot deploy shortcut can never be locked out by the cap
-    function _hub_createPool(uint64 poolIdAsUint, address admin, uint128 assetIdAsUint)
+    /// @dev A settlement records exactly what its price and fee allow, read off the bucket it settled rather than
+    ///      the claimable views, which a fill can also grow by surfacing older slices: a deposit fill less the fee
+    ///      buys shares at the hub's prices, a redemption fill less the fee pays assets at them. Two-sided: a fill that
+    ///      records less than its price allows under-credits the investors just as one that records more over-credits
+    ///      them. A sole owner's bucket is retired by the eager fold inside the fill, so it reads as empty; the
+    ///      claimable views carry its credit then, and nothing else moves in a fill.
+    function _checkFillPrice(bool isDeposit, uint128 fill, Bucket memory after_, Bucket memory before, uint256 credited)
         internal
-        updateGhosts
-        asActor
-        returns (PoolId poolId)
     {
-        PoolId _poolId = PoolId.wrap(poolIdAsUint);
-        AssetId _assetId = AssetId.wrap(assetIdAsUint);
-
-        hub.createPool(_poolId, admin, _assetId);
-
-        _addPool(_poolId.raw());
-        poolCount++;
-
-        return _poolId;
-    }
-
-    /// @dev The investor is explicitly clamped to one of the actors to make checking properties over all actors easier
-    /// @dev Property: After successfully calling claimDeposit for an investor (via notifyDeposit), their
-    /// depositRequest[..].lastUpdate equals the nowDepositEpoch for the deposit
-    /// @dev Property: Escrow.total increases by exactly totalPaymentAssetAmount
-    /// @dev Property: Escrow.reserved does not change during deposit processing
-    ///
-    /// @notice Deposit Flow Tracking:
-    /// - Tracks AsyncRequestManager pending deltas (pendingBeforeARM - pendingAfterARM)
-    /// - Tracks maxMint changes for symmetry with redeem flow
-    /// - Validates Escrow state changes
-    /// - Uses BatchRequestManagerHarness.notifyDepositWithReturn() return values for reliable state tracking
-    /// - Updates ghost variables: sumOfFulfilledDeposits, sumOfClaimedDeposits, userDepositProcessed
-    function hub_notifyDeposit(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        address actor = _getActor();
-        IBaseVault vault = _getVault();
-        bytes32 investor = CastLib.toBytes32(actor);
-
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-
-        // Calculate max claims
-        uint32 maxClaimsBound = batchRequestManager.maxDepositClaims(poolId, scId, investor, assetId);
-
-        // Capture validation state if needed
-        bool hasClaimedAll = _hasClaimedAllEpochs(maxClaims, maxClaimsBound);
-        uint128 pendingBeforeSCM;
-        uint128 queuedDepositAmountBefore;
-        uint256 maxMintBefore;
-        if (hasClaimedAll) {
-            (pendingBeforeSCM,, maxMintBefore) = _captureDepositStateBefore(investor);
-            // Capture queued deposit amount: _postClaimUpdateQueued adds queued.amount
-            // back to pending after claim, offsetting the decrease from _claimDeposit
-            (, queuedDepositAmountBefore) = batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
+        // A zero price converts to nothing, so a fill at one is bounded by nothing the conversion can express
+        (D18 pps,) = shareClassManager.pricePoolPerShare(poolA, scA);
+        if (hub.pricePoolPerAsset(poolA, scA, usdcId).isZero() || pps.isZero()) return;
+        uint128 bound = _fillOutput(isDeposit, fill);
+        bool retired = after_.total == 0 && before.total != 0;
+        uint256 assets;
+        uint256 shares;
+        if (!retired) {
+            assets =
+                _nonNegativeDelta(after_.fulfilledAssets, before.fulfilledAssets, "a fill lowered the bucket's assets");
+            shares =
+                _nonNegativeDelta(after_.fulfilledShares, before.fulfilledShares, "a fill lowered the bucket's shares");
+        } else {
+            (assets, shares) = isDeposit ? (uint256(fill), credited) : (credited, uint256(fill));
         }
-
-        // Execute call and validation in separate function (fresh stack frame)
-        _executeNotifyDepositAndValidate(
-            NotifyDepositParams({
-                actor: actor,
-                poolId: poolId,
-                scId: scId,
-                assetId: assetId,
-                investor: investor,
-                maxClaims: maxClaims,
-                hasClaimedAll: hasClaimedAll,
-                pendingBeforeSCM: pendingBeforeSCM,
-                queuedDepositAmountBefore: queuedDepositAmountBefore,
-                maxMintBefore: maxMintBefore
-            })
-        );
-    }
-
-    function _executeNotifyDepositAndValidate(NotifyDepositParams memory params) private {
-        IBaseVault vault = _getVault();
-
-        IEscrow poolEscrow = escrowFactory.escrow(params.poolId);
-        address asset = address(vault.asset());
-        (uint128 escrowTotalBefore, uint128 escrowReservedBefore) =
-            Escrow(address(poolEscrow)).holding(params.scId, asset, 0);
-
-        vm.prank(params.actor);
-        (uint128 totalPayoutShareAmount, uint128 totalPaymentAssetAmount, uint128 totalCancelledAssetAmount) = BatchRequestManagerHarness(
-                address(batchRequestManager)
-            )
-            .notifyDepositWithReturn(
-                params.poolId, params.scId, params.assetId, params.investor, params.maxClaims, params.actor
-            );
-
-        (uint128 escrowTotalAfter, uint128 escrowReservedAfter) =
-            Escrow(payable(address(poolEscrow))).holding(params.scId, asset, 0);
-        t(
-            escrowTotalAfter == escrowTotalBefore,
-            "hub_notifyDeposit: Escrow.total must not change (updates happen in approval phase)"
-        );
-        t(escrowReservedAfter == escrowReservedBefore, "hub_notifyDeposit: Escrow.reserved must not change");
-
-        _updateDepositGhostVariables(totalPayoutShareAmount, totalPaymentAssetAmount, totalCancelledAssetAmount);
-
-        // Handle validation
-        if (params.hasClaimedAll) {
-            _validateDepositClaimComplete(
-                params.investor,
-                params.pendingBeforeSCM,
-                params.queuedDepositAmountBefore,
-                params.maxMintBefore,
-                totalPaymentAssetAmount
-            );
+        if (isDeposit) {
+            eq(shares, bound, "a deposit fill did not record the shares its price allows");
+            eq(assets, fill, "a deposit fill did not record the assets it filled");
+        } else {
+            eq(assets, bound, "a redemption fill did not record the assets its price allows");
+            eq(shares, fill, "a redemption fill did not record the shares it filled");
         }
     }
 
-    /// @dev Property: After successfully claimRedeem for an investor (via notifyRedeem), their
-    /// redeemRequest[..].lastUpdate equals the nowRedeemEpoch for the redemption
-    ///
-    /// @notice Redeem Flow Tracking:
-    /// - Tracks claimable withdrawal deltas (investorClaimableAfter - investorClaimableBefore)
-    /// - Tracks share balance changes (investorSharesBefore vs investorSharesAfter)
-    /// - Uses BatchRequestManagerHarness.notifyRedeemWithReturn() return values for reliable state tracking
-    /// - Updates ghost variables: sumOfWithdrawable, userRedemptionsProcessed, userCancelledRedeems
-    function hub_notifyRedeem(uint32 maxClaims) public updateGhostsWithType(OpType.NOTIFY) asActor {
-        _executeNotifyRedeem(maxClaims);
+    /// @dev What a fill converts to at the hub's prices and the fee: shares for a deposit, assets for a redemption.
+    function _fillOutput(bool isDeposit, uint128 fill) internal view returns (uint128) {
+        uint128 net =
+            fill - uint128(MathLib.mulDiv(fill, feeRequestManager.feeBps(poolA, usdcId), 1e4, MathLib.Rounding.Up));
+        D18 ppa = hub.pricePoolPerAsset(poolA, scA, usdcId);
+        (D18 pps,) = shareClassManager.pricePoolPerShare(poolA, scA);
+        return isDeposit
+            ? PricingLib.assetToShareAmount(address(shareA), address(usdc), 0, net, ppa, pps, MathLib.Rounding.Down)
+            : PricingLib.shareToAssetAmount(address(shareA), net, address(usdc), 0, pps, ppa, MathLib.Rounding.Down);
     }
 
-    function _executeNotifyRedeem(uint32 maxClaims) private {
-        // Setup vault context and investor
-        IBaseVault vault = _getVault();
-        address actor = _getActor();
-        uint256 investorClaimableBefore = asyncRequestManager.maxWithdraw(vault, actor);
+    /// @dev Cancelled deposits come back as assets on the redeem side, cancelled redemptions as shares
+    ///      on the deposit side.
+    function hub_cancel(uint256 reqSeed, uint256 amount, bool full) public updateGhosts(OpType.MANAGER) {
+        (Req memory r, uint128 outstanding) = _pickOrder(reqSeed, false);
+        if (outstanding == 0) return;
+        _cancel(r, full ? outstanding : uint128(between(amount, 1, outstanding)));
+    }
 
-        // Execute notifyRedeemWithReturn and get return values
-        vm.prank(actor);
-        (uint128 totalPayoutAssetAmount, uint128 totalPaymentShareAmount, uint128 totalCancelledShareAmount) = BatchRequestManagerHarness(
-                address(batchRequestManager)
-            )
-            .notifyRedeemWithReturn(
-                vault.poolId(),
-                vault.scId(),
-                spokeRegistry.vaultDetails(address(vault)).assetId,
-                CastLib.toBytes32(actor),
-                maxClaims,
-                actor
-            );
-
-        _updateRedeemGhostVariables(
-            investorClaimableBefore,
-            asyncRequestManager.maxWithdraw(vault, actor),
-            totalPaymentShareAmount,
-            totalCancelledShareAmount,
-            totalPayoutAssetAmount
+    function _cancel(Req memory r, uint128 gross) internal returns (bool success) {
+        _feeNoInstantInCall = true;
+        Bucket memory settledBefore = vaults[r.vault].bucket(uint96(r.requestId));
+        uint256[2] memory claimableBefore;
+        (claimableBefore[0], claimableBefore[1]) = _claimable(r.vault);
+        uint256[6] memory actorsBefore = _actorClaimable(r.vault);
+        bytes memory data = abi.encodeCall(
+            feeRequestManager.cancel, (poolA, scA, usdcId, RequestId.wrap(r.requestId), r.isDeposit, gross, 0, REFUND)
         );
+        (success,) = _callAs(FM, address(feeRequestManager), data);
+        if (!success) {
+            _reverted("hub_cancel");
+            return false;
+        }
+        _recordCancel(r, gross, settledBefore, claimableBefore, actorsBefore);
+        _ok("hub_cancel");
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // EXECUTION FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @dev Multicall is publicly exposed without access protections so can be called by anyone
-    function hub_multicall(bytes[] memory data) public payable updateGhostsWithType(OpType.BATCH) asActor {
-        hub.multicall{value: msg.value}(data);
+    function _recordCancel(
+        Req memory r,
+        uint128 gross,
+        Bucket memory settledBefore,
+        uint256[2] memory claimableBefore,
+        uint256[6] memory actorsBefore
+    ) internal {
+        _noteActorsOwed(r.vault, actorsBefore, true);
+        (uint256 sharesAfter, uint256 assetsAfter) = _claimable(r.vault);
+        address vault = address(vaults[r.vault]);
+        ghost_cancelledGross[vault][r.isDeposit] += gross;
+        ghost_settlements++;
+        _noteStanding(r);
+        ghost_sharesOwed[
+            vault
+        ] += _nonNegativeDelta(sharesAfter, claimableBefore[0], "a cancel lowered the claimable shares");
+        ghost_assetsOwed[
+            vault
+        ] += _nonNegativeDelta(assetsAfter, claimableBefore[1], "a cancel lowered the claimable assets");
+        // No cancellation fee: the bucket retires exactly the gross, all of it refundable (a retired bucket reads empty)
+        Bucket memory settledAfter = vaults[r.vault].bucket(uint96(r.requestId));
+        if (settledAfter.total != 0) {
+            uint256 net =
+                _nonNegativeDelta(settledAfter.cancelledNet, settledBefore.cancelledNet, "a cancel lowered net");
+            eq(net, gross, "a cancel recorded other than the gross as refundable");
+        }
     }
 
-    /// @dev Makes a call directly to the unclamped handler so doesn't include asActor modifier or else would cause
-    /// errors with foundry testing
-    function hub_multicall_clamped() public payable {
-        this.hub_multicall{value: msg.value}(queuedCalls);
-
-        queuedCalls = new bytes[](0);
+    /// @dev The FeeRequestManager's per-asset fee: fills then credit less than they consume. Usually up to 5%, one
+    ///      call in four anywhere up to the 99.99% the manager accepts, where a fee takes almost every fill.
+    function hub_setFee(uint16 bps, bool wide) public updateGhosts(OpType.TERMS) {
+        bps = uint16(wide ? between(bps, 501, MAX_FEE_BPS) : between(bps, 0, 500));
+        _managerCall(poolA, address(feeRequestManager), abi.encode(uint8(FeeManagerAction.SetFee), usdcId.raw(), bps));
+        _ok("hub_setFee");
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // ADMIN FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
-    function hub_setRequestManager(
-        uint64 poolId,
-        bytes16,
-        /* shareClassId */
-        uint128,
-        /* assetId */
-        address requestManager
-    )
+    //----------------------------------------------------------------------------------------------
+    // Instant lanes and routes
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Re-terms an instant vault's lane: its fees, whether redemptions are open, which lanes are gated and the
+    ///      reserve its deposits fill. The fee destination stays what setup chose for that vault. Gates are mostly
+    ///      off and caps mostly generous, so the lanes keep trading between the changes.
+    function policy_configure(uint256 vaultSeed, uint16 feeBps, uint256 flags, uint256 capSeed, bool wide)
         public
-        asAdmin
+        updateGhosts(OpType.TERMS)
     {
-        hub.setRequestManager{value: GAS}(
-            PoolId.wrap(poolId),
-            CENTRIFUGE_CHAIN_ID,
-            IHubRequestManager(address(batchRequestManager)),
-            CastLib.toBytes32(requestManager),
-            _getActor()
+        IAsyncVault vault = vaults[2 + vaultSeed % 2];
+        (address feeRecipient,,,,,,) = reserveInstantPolicy.config(address(vault));
+        uint128 cap = capSeed % 6 == 0 ? 0 : uint128(between(capSeed, ACTOR_FUNDS / 10, ACTOR_FUNDS));
+        // Wide: fees up to the policy's bound and a reserve far above anything funded, as large as the accounts leave
+        // room for, since a deposit that fills it is booked in them
+        if (wide) cap = uint128(_larger(_hugeAssets() / 4, ACTOR_FUNDS));
+        (uint256 maxFee, uint256 maxRedeemFee) = wide ? (MAX_FEE_BPS, MAX_FEE_BPS) : (500, 500);
+        bytes memory terms = abi.encode(
+            feeRecipient,
+            uint16(between(feeBps, 0, maxFee)),
+            uint16(between(feeBps / 2, 0, maxRedeemFee)),
+            flags % 8 != 0,
+            flags % 5 == 0,
+            flags % 7 == 0,
+            cap
         );
-    }
-
-    function hub_updateSpokeManager(uint16 chainId, uint64 poolId, address manager, bool enable) public asAdmin {
-        hub.updateManager{value: GAS}(
-            PoolId.wrap(poolId), chainId, ManagerKind.Spoke, CastLib.toBytes32(manager), enable, address(this)
+        _managerCall(
+            poolA,
+            address(reserveInstantPolicy),
+            abi.encode(IReserveInstantPolicy.ConfigKind.Terms, address(vault), terms)
         );
+        _ok("policy_configure");
     }
 
-    /// @dev Reproducer-only: writing the hub ledger directly desyncs the snapshot nonce from `SnapshotQueue`
-    ///      (every later `submitQueued*` reverts `InvalidNonce`) and moves `holdings.amount` with no escrow move
-    function hub_updateAssets(uint128 amount, bool isIncrease) internal updateGhosts asAdmin {
-        IBaseVault vault = IBaseVault(_getVault());
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-        uint16 centrifugeId = assetId.centrifugeId();
-
-        (, uint64 nonce) = holdings.snapshot(poolId, scId, centrifugeId);
-
-        hubHandler.updateAssets(centrifugeId, poolId, scId, assetId, amount, isIncrease, true, nonce);
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // HELPER FUNCTIONS
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @dev Helper to determine if all available epochs have been claimed
-    /// @param maxClaims Number of claims to process
-    /// @param maxClaimsBound Maximum claims allowed
-    /// @return True if all epochs have been claimed
-    function _hasClaimedAllEpochs(uint32 maxClaims, uint32 maxClaimsBound) private pure returns (bool) {
-        return maxClaims == maxClaimsBound && maxClaims > 0;
-    }
-
-    /// @dev `hub_notifyDeposit` gates its claim-completeness check on `maxClaims == bound`, so pass the exact bound
-    function _maxDepositClaims() internal view returns (uint32) {
-        IBaseVault vault = _getVault();
-        return batchRequestManager.maxDepositClaims(
-            vault.poolId(),
-            vault.scId(),
-            CastLib.toBytes32(_getActor()),
-            spokeRegistry.vaultDetails(address(vault)).assetId
-        );
-    }
-
-    function _maxRedeemClaims() internal view returns (uint32) {
-        IBaseVault vault = _getVault();
-        return batchRequestManager.maxRedeemClaims(
-            vault.poolId(),
-            vault.scId(),
-            CastLib.toBytes32(_getActor()),
-            spokeRegistry.vaultDetails(address(vault)).assetId
-        );
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // STATE CAPTURE FUNCTIONS - Before/after state tracking
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @return pendingBeforeSCM Pending deposit amount in ShareClassManager
-    /// @return pendingBeforeARM Pending deposit amount in AsyncRequestManager
-    /// @return maxMintBefore Maximum mint capacity before claim
-    function _captureDepositStateBefore(bytes32 investor)
-        private
-        view
-        returns (uint128 pendingBeforeSCM, uint128 pendingBeforeARM, uint256 maxMintBefore)
+    /// @dev Allows or bars one account on a gated lane. Only the caller is gated, never the receiver.
+    function policy_allow(uint256 vaultSeed, uint256 actorSeed, bool isDeposit, bool allowed)
+        public
+        updateGhosts(OpType.TERMS)
     {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-
-        (pendingBeforeSCM,) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
-        (,,,, pendingBeforeARM,,,,,) = asyncRequestManager.investments(vault, _getActor());
-        maxMintBefore = asyncRequestManager.maxMint(vault, _getActor());
-    }
-
-    /// @dev Captures cancellation state before notifyDeposit call
-    /// @param poolId Pool identifier
-    /// @param scId Share class identifier
-    /// @param assetId Asset identifier
-    /// @param investor Investor address as bytes32
-    /// @param maxClaims Number of claims to process
-    /// @return cancelledAssetAmount Cancelled amount if applicable, else 0
-    function _captureDepositCancellationState(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint32 maxClaims
-    ) private view returns (uint128 cancelledAssetAmount) {
-        (bool isCancelling, uint128 queuedAmount) =
-            batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
-
-        if (!isCancelling) return 0;
-
-        (uint128 pending, uint32 lastUpdate) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
-
-        uint32 nowEpoch = batchRequestManager.nowDepositEpoch(poolId, scId, assetId);
-
-        // Check if claiming to last epoch
-        if (lastUpdate + maxClaims >= nowEpoch) {
-            cancelledAssetAmount = pending + queuedAmount;
-        }
-    }
-
-    /// @dev Captures cancellation state before notifyRedeem call
-    /// @param poolId Pool identifier
-    /// @param scId Share class identifier
-    /// @param assetId Asset identifier
-    /// @param investor Investor address as bytes32
-    /// @param maxClaims Number of claims to process
-    /// @return cancelledShareAmount Cancelled amount if applicable, else 0
-    function _captureRedeemCancellationState(
-        PoolId poolId,
-        ShareClassId scId,
-        AssetId assetId,
-        bytes32 investor,
-        uint32 maxClaims
-    ) private view returns (uint128 cancelledShareAmount) {
-        (bool isCancelling, uint128 queuedAmount) =
-            batchRequestManager.queuedRedeemRequest(poolId, scId, assetId, investor);
-
-        if (!isCancelling) return 0;
-
-        (uint128 pending, uint32 lastUpdate) = batchRequestManager.redeemRequest(poolId, scId, assetId, investor);
-
-        uint32 nowEpoch = batchRequestManager.nowRedeemEpoch(poolId, scId, assetId);
-
-        // Check if claiming to last epoch
-        if (lastUpdate + maxClaims >= nowEpoch) {
-            cancelledShareAmount = pending + queuedAmount;
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // GHOST VARIABLE UPDATES - Tracking for invariant properties
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @dev Updates all ghost variables after deposit claim
-    /// @param totalPayoutShareAmount Total shares paid out from claim
-    /// @param totalPaymentAssetAmount Total assets used for payment
-    /// @param cancelledAssetAmount Amount of assets cancelled
-    function _updateDepositGhostVariables(
-        uint128 totalPayoutShareAmount,
-        uint128 totalPaymentAssetAmount,
-        uint128 cancelledAssetAmount
-    ) private {
-        IBaseVault vault = _getVault();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-        ShareClassId scId = vault.scId();
-        address actor = _getActor();
-
-        sumOfClaimedDeposits[vault.share()] += totalPayoutShareAmount;
-        userDepositProcessed[scId][assetId][actor] += totalPaymentAssetAmount;
-        userCancelledDeposits[scId][assetId][actor] += cancelledAssetAmount;
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // VALIDATION FUNCTIONS - Assertion checks
-    // ═══════════════════════════════════════════════════════════════
-
-    /// @dev Validates deposit claim completion when all epochs are claimed
-    /// @param investor The investor's address as bytes32
-    /// @param maxMintBefore Maximum mint capacity before claim
-    /// @param totalPaymentAssetAmount Total assets used for payment
-    function _validateDepositClaimComplete(
-        bytes32 investor,
-        uint128 pendingBeforeSCM,
-        uint128 queuedDepositAmountBefore,
-        uint256 maxMintBefore,
-        uint128 totalPaymentAssetAmount
-    ) private {
-        _validateDepositEpochUpdate(investor);
-        _validateNoCancellationQueued(investor);
-        _validateDepositPendingDelta(investor, pendingBeforeSCM, queuedDepositAmountBefore, totalPaymentAssetAmount);
-        _validateMaxMintDecrease(maxMintBefore, totalPaymentAssetAmount);
-    }
-
-    /// @dev Validates that deposit epoch update occurred correctly
-    /// @param investor The investor's address as bytes32
-    function _validateDepositEpochUpdate(bytes32 investor) private {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-
-        (, uint32 lastUpdate) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
-        (uint32 depositEpochId,,,) = batchRequestManager.epochId(poolId, scId, assetId);
-
-        eq(lastUpdate, depositEpochId + 1, "lastUpdate != nowDepositEpoch");
-    }
-
-    /// @dev Validates no cancellation is queued after claiming
-    /// @param investor The investor's address as bytes32
-    function _validateNoCancellationQueued(bytes32 investor) private {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-
-        (bool isCancellingAfter,) = batchRequestManager.queuedDepositRequest(poolId, scId, assetId, investor);
-
-        t(!isCancellingAfter, "queued cancellation post claiming should not be possible");
-    }
-
-    /// @dev Validates pending deposit amount delta
-    /// @param investor The investor's address as bytes32
-    /// @param pendingBeforeSCM Pending amount before claim
-    /// @param totalPaymentAssetAmount Total assets used for payment
-    /// @dev Validates pending deposit amount delta accounting for queued deposits.
-    /// After claim, BatchRequestManager._postClaimUpdateQueued adds queued.amount back to pending,
-    /// so the observed delta is: paymentAmount - queuedAmount (net decrease).
-    /// The invariant: pendingDelta + queuedDepositAmountBefore >= totalPaymentAssetAmount
-    function _validateDepositPendingDelta(
-        bytes32 investor,
-        uint128 pendingBeforeSCM,
-        uint128 queuedDepositAmountBefore,
-        uint128 totalPaymentAssetAmount
-    ) private {
-        IBaseVault vault = _getVault();
-        PoolId poolId = vault.poolId();
-        ShareClassId scId = vault.scId();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-
-        (uint128 pendingAfterSCM,) = batchRequestManager.depositRequest(poolId, scId, assetId, investor);
-
-        uint128 pendingDelta = pendingBeforeSCM >= pendingAfterSCM ? pendingBeforeSCM - pendingAfterSCM : 0;
-
-        // _claimDeposit decreases pending by paymentAmount, then _postClaimUpdateQueued
-        // adds back queuedAmount. So: pendingDelta = paymentAmount - queuedAmount
-        // Therefore: pendingDelta + queuedAmount >= paymentAmount
-        gte(
-            uint256(pendingDelta) + uint256(queuedDepositAmountBefore),
-            totalPaymentAssetAmount,
-            "pending delta + queued deposit should be >= payment asset amount"
+        IAsyncVault vault = vaults[2 + vaultSeed % 2];
+        _managerCall(
+            poolA,
+            address(reserveInstantPolicy),
+            abi.encode(
+                isDeposit ? IReserveInstantPolicy.ConfigKind.Depositor : IReserveInstantPolicy.ConfigKind.Redeemer,
+                address(vault),
+                abi.encode(_actor(actorSeed), allowed)
+            )
         );
+        _ok("policy_allow");
     }
 
-    /// @dev Validates maxMint decrease after claiming
-    /// @param maxMintBefore Maximum mint capacity before claim
-    /// @param totalPaymentAssetAmount Total assets used for payment
-    function _validateMaxMintDecrease(uint256 maxMintBefore, uint128 totalPaymentAssetAmount) private {
-        IBaseVault vault = _getVault();
-        address actor = _getActor();
-
-        uint256 maxMintAfter = asyncRequestManager.maxMint(vault, actor);
-        uint256 expectedMaxMint = maxMintBefore >= totalPaymentAssetAmount ? maxMintBefore - totalPaymentAssetAmount : 0;
-
-        gte(maxMintAfter, expectedMaxMint, "maxMint should decrease by at most the payment asset amount after claiming");
+    /// @dev The underlying pool grants or withdraws the top vault's right to draw on it.
+    function route_consent(bool allowed) public updateGhosts(OpType.MANAGER) {
+        _managerCall(
+            poolC,
+            address(vaultRoute),
+            abi.encode(
+                IVaultLiquidityRoute.ConfigKind.Consent, address(vaultC), abi.encode(address(vaults[2]), allowed)
+            )
+        );
+        _ok("route_consent");
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // EXECUTION HELPERS - Core logic for notify operations
-    // ═══════════════════════════════════════════════════════════════
+    /// @dev The top pool routes to the underlying, or to nothing.
+    function route_setRoutes(bool include) public updateGhosts(OpType.MANAGER) {
+        address[] memory underlying = new address[](include ? 1 : 0);
+        if (include) underlying[0] = address(vaultC);
+        _managerCall(
+            poolA,
+            address(vaultRoute),
+            abi.encode(IVaultLiquidityRoute.ConfigKind.Routes, address(vaults[2]), abi.encode(underlying))
+        );
+        _ok("route_setRoutes");
+    }
 
-    /// @dev Updates all ghost variables after redeem claim
-    /// @param investorClaimableBefore Claimable amount before claim
-    /// @param investorClaimableAfter Claimable amount after claim
-    /// @param paymentShareAmount Total shares used for payment
-    /// @param cancelledShareAmount Amount of shares cancelled
-    /// @param payoutAssetAmount Total assets paid out by the fulfilled redemption (asset-denominated payout)
-    function _updateRedeemGhostVariables(
-        uint256 investorClaimableBefore,
-        uint256 investorClaimableAfter,
-        uint128 paymentShareAmount,
-        uint128 cancelledShareAmount,
-        uint128 payoutAssetAmount
-    ) private {
-        IBaseVault vault = _getVault();
-        AssetId assetId = spokeRegistry.vaultDetails(address(vault)).assetId;
-        ShareClassId scId = vault.scId();
-        address actor = _getActor();
+    //----------------------------------------------------------------------------------------------
+    // Prices and valuation
+    //----------------------------------------------------------------------------------------------
 
-        if (investorClaimableAfter >= investorClaimableBefore) {
-            sumOfWithdrawable[vault.asset()] += (investorClaimableAfter - investorClaimableBefore);
+    /// @dev Reprices pool A's share class on the hub and notifies both prices to the spoke.
+    function hub_updateSharePrice(uint256 price, uint8 mode) public updateGhosts(OpType.PRICE) {
+        _pushPrices(poolA, scA, _price(price, mode, 5e17, 4e18, 1e27));
+        _ok("hub_updateSharePrice");
+    }
+
+    /// @dev Feeds a new USDC price and revalues the holding. Right after `update()` the holding is worth
+    ///      exactly its valuation's quote for its amount.
+    function hub_updateHoldingValue(uint256 price, uint8 mode) public updateGhosts(OpType.PRICE) {
+        D18 newPrice = _holdingPrice(price, mode);
+        _authorize(poolA, abi.encodeCall(hub.updateHoldingValue, (poolA, scA, usdcId)));
+        vm.prank(FEEDER);
+        oracleValuation.setPrice(poolA, scA, usdcId, newPrice);
+        _fm();
+        hub.updateHoldingValue(poolA, scA, usdcId);
+        uint128 amount = holdings.amount(poolA, scA, usdcId);
+        eq(
+            holdings.value(poolA, scA, usdcId),
+            oracleValuation.getQuote(poolA, scA, usdcId, amount),
+            "holding value != getQuote(amount) after update"
+        );
+        _fm();
+        hub.notifyAssetPrice(poolA, scA, usdcId, REFUND);
+        _ok("hub_updateHoldingValue");
+    }
+
+    /// @dev Time passes, closing per-period windows. Prices are re-notified so the oracle's freshness
+    ///      bound does not close the instant lanes for the rest of the run.
+    function hub_warp(uint256 secs) public updateGhosts(OpType.PRICE) {
+        vm.warp(block.timestamp + between(secs, 1 minutes, 3 hours));
+        (D18 pps,) = shareClassManager.pricePoolPerShare(poolA, scA);
+        _pushPrices(poolA, scA, pps);
+        _pushPrices(poolC, scC, _poolCPrice());
+        _ok("hub_warp");
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Journal
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Manual entries between the non-asset accounts. An unbalanced entry must never land.
+    ///      One entry in eight is as large as the accounts have room for: up to half of `int128.max` in total, which the
+    ///      protocol's own flows must never be pushed past, so `property_accountTotalsFitInt128` stays meaningful.
+    function hub_updateJournal(uint8 debitSeed, uint8 creditSeed, uint128 debit, uint128 credit, uint8 mode)
+        public
+        updateGhosts(OpType.MANAGER)
+    {
+        AccountId[3] memory accounts = [EQUITY_ACCOUNT, GAIN_ACCOUNT, LOSS_ACCOUNT];
+        uint256 room = _journalRoom(accounts[debitSeed % 3], accounts[creditSeed % 3]);
+        uint256 cap = mode % 8 == 0 ? room : MathLib.min(room, 1_000_000 * ONE_SHARE);
+        if (cap == 0) return;
+        JournalEntry[] memory debits = new JournalEntry[](1);
+        JournalEntry[] memory credits = new JournalEntry[](1);
+        debits[0] = JournalEntry({value: uint128(between(debit, 1, cap)), accountId: accounts[debitSeed % 3]});
+        credits[0] = JournalEntry({value: uint128(between(credit, 1, cap)), accountId: accounts[creditSeed % 3]});
+        if (debitSeed % 2 == 0) credits[0].value = debits[0].value;
+
+        (bool success,) = _callAs(FM, address(hub), abi.encodeCall(hub.updateJournal, (poolA, debits, credits)));
+        if (success) {
+            eq(debits[0].value, credits[0].value, "an unbalanced journal entry landed");
+            _ok("hub_updateJournal");
+        } else {
+            _reverted("hub_updateJournal");
         }
+    }
 
-        userRedemptionsProcessed[scId][assetId][actor] += paymentShareAmount;
+    //----------------------------------------------------------------------------------------------
+    // Restrictions and roles
+    //----------------------------------------------------------------------------------------------
 
-        userRedemptionsProcessedAssets[scId][assetId][actor] += payoutAssetAmount;
+    /// @dev At most one investor is frozen at a time, so the others keep the flows moving.
+    function hub_freeze(uint256 actorSeed) public updateGhosts(OpType.MANAGER) {
+        address actor = _actor(actorSeed);
+        for (uint256 i; i < actors.length; i++) {
+            if (frozen[actors[i]]) return;
+        }
+        _updateRestriction(
+            poolA, scA, UpdateRestrictionMessageLib.UpdateRestrictionFreeze({user: actor.toBytes32()}).serialize()
+        );
+        frozen[actor] = true;
+        _ok("hub_freeze");
+    }
 
-        userCancelledRedeems[scId][assetId][actor] += cancelledShareAmount;
+    function hub_unfreeze() public updateGhosts(OpType.MANAGER) {
+        for (uint256 i; i < actors.length; i++) {
+            if (!frozen[actors[i]]) continue;
+            _updateRestriction(
+                poolA,
+                scA,
+                UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze({user: actors[i].toBytes32()}).serialize()
+            );
+            frozen[actors[i]] = false;
+            _ok("hub_unfreeze");
+        }
+    }
+
+    /// @dev Sets when the outsider's membership lapses: at most a few hours out, or never. Membership can
+    ///      only be shortened to a time not yet passed, so a lapse is reached by warping past it.
+    function hub_updateMember(uint256 duration, bool forever) public updateGhosts(OpType.MANAGER) {
+        uint64 validUntil = forever ? type(uint64).max : uint64(block.timestamp + between(duration, 0, 6 hours));
+        _updateRestriction(
+            poolA,
+            scA,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: OUTSIDER.toBytes32(), validUntil: validUntil
+            }).serialize()
+        );
+        outsiderValidUntil = validUntil;
+        _ok("hub_updateMember");
+    }
+
+    /// @dev Grants or revokes the auxiliary balance-sheet manager through the hub.
+    function hub_updateSpokeManager(bool canManage) public updateGhosts(OpType.MANAGER) {
+        _updateManager(poolA, AUX_MANAGER, canManage);
+        if (auxIsManager != canManage) ghost_authorizationChanges++;
+        auxIsManager = canManage;
+        _ok("hub_updateSpokeManager");
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Claimable shares and assets across the actors, unfolded slices included (`investments` reads
+    ///      them), so a settlement's credit is measured whichever policy folds it, and without folding:
+    ///      a fold here would leave the fold handlers nothing to do.
+    /// @dev The first order from `reqSeed` with something outstanding. A fulfillment skips dust: an order
+    ///      that converts to nothing is refused by the OrderBook and can only be cancelled.
+    function _pickOrder(uint256 reqSeed, bool skipDust) internal view returns (Req memory r, uint128 outstanding) {
+        for (uint256 i; i < reqs.length; i++) {
+            r = reqs[(reqSeed + i) % reqs.length];
+            outstanding = _outstanding(r);
+            if (outstanding != 0 && (!skipDust || outstanding >= _dust(r.isDeposit))) return (r, outstanding);
+        }
+        return (r, 0);
+    }
+
+    function _outstanding(Req memory r) internal view returns (uint128) {
+        RequestId rid = RequestId.wrap(r.requestId);
+        return r.isDeposit
+            ? orderBook.depositOrders(poolA, scA, usdcId, rid)
+            : orderBook.redeemOrders(poolA, scA, usdcId, rid);
+    }
+
+    /// @dev Whether a fill of `fill` assets buys any shares at the hub's prices and the fee: the OrderBook refuses one
+    ///      that buys none. A larger fill buys at least as much, so the smallest a flow makes decides for them all.
+    function _fillBuysShares(uint128 fill) internal view returns (bool) {
+        D18 ppa = hub.pricePoolPerAsset(poolA, scA, usdcId);
+        (D18 pps,) = shareClassManager.pricePoolPerShare(poolA, scA);
+        if (ppa.isZero() || pps.isZero()) return false;
+        uint128 net =
+            fill - uint128(MathLib.mulDiv(fill, feeRequestManager.feeBps(poolA, usdcId), 1e4, MathLib.Rounding.Up));
+        return
+            PricingLib.assetToShareAmount(address(shareA), address(usdc), 0, net, ppa, pps, MathLib.Rounding.Down) > 0;
+    }
+
+    /// @dev A price in the band the pool usually trades in, one call in eight anywhere from a billionth of par up to
+    ///      `wideHi`, and one in 64 zero, which the oracle passes on and the vault refuses. The USDC price tops out at a
+    ///      thousand times par, so that the value of the assets, which every flow books in the accounts, cannot reach
+    ///      `int128.max` through ordinary traffic.
+    function _price(uint256 seed, uint8 mode, uint256 lo, uint256 hi, uint256 wideHi) internal returns (D18) {
+        if (mode % 64 == 0) return d18(0);
+        if (mode % 8 == 1) return d18(uint128(between(seed, 1e9, wideHi)));
+        return d18(uint128(between(seed, lo, hi)));
+    }
+
+    /// @dev The USDC price the feeder reports. Held to what keeps the holding's value, and so the accounts it is
+    ///      booked in, under a quarter of their room: the revaluation books the whole difference.
+    function _holdingPrice(uint256 seed, uint8 mode) internal returns (D18 price) {
+        price = _price(seed, mode, 5e17, 2e18, 1e21);
+        // Every asset that exists can end up in the holding, so the price is bounded against the whole supply
+        uint256 maxPrice = _accountRoom() / 4 * 1e18 * ONE_ASSET / (usdc.totalSupply() * ONE_SHARE + 1);
+        if (price.raw() > maxPrice) price = d18(uint128(MathLib.min(maxPrice, type(uint128).max)));
+    }
+
+    /// @dev Pool C's current share price, so a refresh keeps what the fuzzer set rather than resetting it to par.
+    function _poolCPrice() internal view returns (D18 price) {
+        (price,) = shareClassManager.pricePoolPerShare(poolC, scC);
+    }
+
+    /// @dev Room for a journal entry between two accounts: half of `int128.max`, less what either side holds.
+    function _journalRoom(AccountId debitAccount, AccountId creditAccount) internal view returns (uint256) {
+        (uint128 totalDebit,,,,) = accounting.accounts(poolA, debitAccount);
+        (, uint128 totalCredit,,,) = accounting.accounts(poolA, creditAccount);
+        uint256 budget = uint256(uint128(type(int128).max)) / 2;
+        uint256 most = _larger(totalDebit, totalCredit);
+        return most >= budget ? 0 : budget - most;
+    }
+
+    function _dust(bool isDeposit) internal pure returns (uint128) {
+        return isDeposit ? DUST_ASSETS : DUST_SHARES;
     }
 }

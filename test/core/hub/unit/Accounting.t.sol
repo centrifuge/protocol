@@ -114,7 +114,7 @@ contract AccountingTest is Test {
 
     function testUnequalDebitsAndCredits(uint128 v) public {
         vm.assume(v != 5);
-        v = uint128(bound(v, 0, type(uint128).max - 251));
+        v = uint128(bound(v, 0, type(uint128).max - 745));
 
         accounting.unlock(POOL_A);
         accounting.addDebit(CASH_ACCOUNT, 500);

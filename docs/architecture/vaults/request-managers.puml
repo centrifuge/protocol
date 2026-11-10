@@ -9,34 +9,58 @@ skinparam nodesep 25
 package core {
     class "Escrow" as Escrow<<pool>>
     class Envoy
+    class Hub
     interface IManagerCallFromHub
+    interface IHubRequestManager
 }
 
 package spoke {
     class Spoke
-    class SnapshotQueue
+    class SpokeRegistry
     interface ISpokeRequestManager
 }
 
-interface IBaseRequestManager
-interface IAsyncRequestManager
-interface ISyncManager
+package "spoke side" {
+    class Vault
+    class VaultRequestRouter
+    interface IVaultRequestManager
+    interface IVaultRequestRouter
+    interface IVaultDepositCallbacks
+    interface IVaultRedeemCallbacks
+}
 
-IBaseRequestManager -up-|> ISpokeRequestManager
+package "hub side" {
+    class OrderBook
+    class FeeRequestManager
+    interface IRequestObserver
+    class StdHubPolicy
+}
 
-IAsyncRequestManager -up-|> IBaseRequestManager
+Vault -up-|> IVaultDepositCallbacks
+Vault -up-|> IVaultRedeemCallbacks
+Vault --> IVaultRequestManager : flush
+Vault --> Spoke : issue / revoke / reserve
+Vault ..> SpokeRegistry : request manager of pool
 
-Envoy --> IManagerCallFromHub
+VaultRequestRouter -up-|> IVaultRequestManager
+VaultRequestRouter -up-|> IVaultRequestRouter
+VaultRequestRouter -up-|> ISpokeRequestManager
+VaultRequestRouter --> Spoke : request
+VaultRequestRouter --> IVaultDepositCallbacks : callbacks
+VaultRequestRouter --> IVaultRedeemCallbacks : callbacks
 
-AsyncRequestManager -up-> Spoke
-AsyncRequestManager -up-|> IAsyncRequestManager
 Spoke -up-> Escrow
-Spoke -up-> SnapshotQueue
 
-SyncManager -up-|> ISyncManager
-SyncManager -up-|> IManagerCallFromHub
-SyncManager -up--> Spoke
+Hub --> IHubRequestManager : request
+OrderBook ..|> IHubRequestManager : call surface only
+OrderBook -up-|> IManagerCallFromHub
+OrderBook --> Hub : requestCallback
+OrderBook ..> IRequestObserver : on arrival
 
-VaultRouter -up-> Spoke
+FeeRequestManager -up-|> IManagerCallFromHub
+FeeRequestManager --> Hub : managerCall(OrderBook)
+Envoy --> IManagerCallFromHub
+StdHubPolicy ..> OrderBook : bounds Fulfill / Cancel
+FeeRequestManager ..> StdHubPolicy : authorizationDelay(original caller)
 
 @enduml

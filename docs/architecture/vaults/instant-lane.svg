@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1210" width="1440" height="1210" role="img" aria-labelledby="ttl dsc"><title id="ttl">The instant lane</title><desc id="dsc">How a call is routed to the instant lane or to a claim, and where the money goes in an instant deposit and an instant redeem: a fee to a recipient, a retained part that stays in the escrow for the existing holders.</desc>
+<defs><marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6"/></marker><marker id="arrow-p" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#7c5cd6" stroke-width="1.6"/></marker><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#f6f7f8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c9d0d9" stroke-width="3"/></pattern></defs>
+<rect x="0.5" y="0.5" width="1439" height="1209" rx="16" fill="#ffffff" stroke="#ececec"/>
+<text x="48" y="76" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#17202a" text-anchor="start">The instant lane</text>
+<circle cx="62" cy="130" r="15" fill="#46536b"/>
+<text x="62" y="135" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+<text x="88" y="137" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Which path does a call take?</text>
+<rect x="60" y="170" width="180" height="70" rx="10" fill="#f6f7f8"/>
+<text x="150.0" y="201.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">deposit, mint,</text>
+<text x="150.0" y="219.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">withdraw or redeem</text>
+<rect x="300" y="170" width="190" height="70" rx="10" fill="#ece6fb"/>
+<text x="395.0" y="201.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">is the caller the</text>
+<text x="395.0" y="219.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">controller?</text>
+<rect x="550" y="170" width="260" height="70" rx="10" fill="#ece6fb"/>
+<text x="680.0" y="201.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">anything claimable or pending</text>
+<text x="680.0" y="219.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">on this side?</text>
+<rect x="870" y="170" width="260" height="70" rx="10" fill="#ece6fb"/>
+<text x="1000.0" y="201.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">linked, price valid and</text>
+<text x="1000.0" y="219.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">within the policy's capacity?</text>
+<rect x="1190" y="170" width="210" height="70" rx="10" fill="#d3e4fb"/>
+<text x="1295.0" y="201.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="middle">instant, at the oracle</text>
+<text x="1295.0" y="219.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="middle">price</text>
+<path d="M240,205 H298" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M490,205 H548" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="499.8" y="191" width="40.4" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="520.0" y="209.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">yes</text>
+<path d="M810,205 H868" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="823.2" y="191" width="33.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="840.0" y="209.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">no</text>
+<path d="M1130,205 H1188" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1139.8" y="191" width="40.4" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1160.0" y="209.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">yes</text>
+<path d="M395.0,240 V282" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="378.2" y="247" width="33.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="395.0" y="265.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">no</text>
+<rect x="300" y="284" width="190" height="50" rx="10" fill="#f6f7f8"/>
+<text x="395.0" y="305.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">claim only</text>
+<text x="395.0" y="323.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">(an operator)</text>
+<path d="M680.0,240 V282" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="659.8" y="247" width="40.4" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="680.0" y="265.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">yes</text>
+<rect x="550" y="284" width="260" height="40" rx="10" fill="#f6f7f8"/>
+<text x="680.0" y="309.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">claim from the ledger</text>
+<path d="M1000.0,240 V282" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="983.2" y="247" width="33.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1000.0" y="265.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">no</text>
+<rect x="870" y="284" width="260" height="40" rx="10" fill="#f6f7f8"/>
+<text x="1000.0" y="309.0" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">revert: no request is created</text>
+<text x="550" y="358" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">Deposit and mint look at the deposit side, withdraw and redeem at the redeem side.</text>
+<text x="60" y="408" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">Example: price 1 and a 1% fee on the gross amount. The pool's instant policy picks one of two homes for the fee.</text>
+<circle cx="62" cy="450" r="15" fill="#46536b"/>
+<text x="62" y="455" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+<text x="88" y="457" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Instant deposit: the caller pays 1000</text>
+<rect x="40" y="480" width="660" height="30" rx="8" fill="#eef0f2"/>
+<text x="56" y="501" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">A fee recipient is set: the fee is paid out</text>
+<rect x="740" y="480" width="660" height="30" rx="8" fill="#eef0f2"/>
+<text x="756" y="501" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">No recipient: the fee stays in the escrow</text>
+<rect x="40" y="595" width="160" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="74" cy="630.0" r="17" fill="#cfe2fb"/>
+<circle cx="74" cy="625.0" r="5" fill="#2f3a45"/>
+<path d="M65,640.0 Q74,628.0 83,640.0 Z" fill="#2f3a45"/>
+<text x="104" y="637.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Caller</text>
+<rect x="255" y="650" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="289" cy="685.0" r="17" fill="#fbe6b0"/>
+<text x="289" y="690.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="319" y="681" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Escrow</text>
+<text x="319" y="703" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">receives 990</text>
+<rect x="255" y="535" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="289" cy="570.0" r="17" fill="#cfe2fb"/>
+<circle cx="289" cy="565.0" r="5" fill="#2f3a45"/>
+<path d="M280,580.0 Q289,568.0 298,580.0 Z" fill="#2f3a45"/>
+<text x="319" y="577.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Fee recipient</text>
+<rect x="500" y="650" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="534" cy="685.0" r="17" fill="#cfe2fb"/>
+<circle cx="534" cy="680.0" r="5" fill="#2f3a45"/>
+<path d="M525,695.0 Q534,683.0 543,695.0 Z" fill="#2f3a45"/>
+<text x="564" y="681" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Receiver</text>
+<text x="564" y="703" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">shares worth 990</text>
+<path d="M200,620 H227 V570 H253" fill="none" stroke="#f2a93b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="196.6" y="556" width="60.8" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="227" y="574.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">fee 10</text>
+<path d="M200,630 H227 V685 H253" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M445,685 H498" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="740" y="595" width="160" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="774" cy="630.0" r="17" fill="#cfe2fb"/>
+<circle cx="774" cy="625.0" r="5" fill="#2f3a45"/>
+<path d="M765,640.0 Q774,628.0 783,640.0 Z" fill="#2f3a45"/>
+<text x="804" y="637.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Caller</text>
+<rect x="955" y="595" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="989" cy="630.0" r="17" fill="#fbe6b0"/>
+<text x="989" y="635.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1019" y="626" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Escrow</text>
+<text x="1019" y="648" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">receives 1000</text>
+<rect x="1200" y="535" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1234" cy="570.0" r="17" fill="#cfe2fb"/>
+<circle cx="1234" cy="565.0" r="5" fill="#2f3a45"/>
+<path d="M1225,580.0 Q1234,568.0 1243,580.0 Z" fill="#2f3a45"/>
+<text x="1264" y="566" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Receiver</text>
+<text x="1264" y="588" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">shares worth 990</text>
+<rect x="1200" y="650" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1234" cy="685.0" r="17" fill="#cfe2fb"/>
+<circle cx="1234" cy="680.0" r="5" fill="#2f3a45"/>
+<path d="M1225,695.0 Q1234,683.0 1243,695.0 Z" fill="#2f3a45"/>
+<text x="1264" y="681" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Holders</text>
+<text x="1264" y="703" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">already there: +10</text>
+<path d="M900,630 H953" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1145,615 H1172 V570 H1198" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1145,645 H1172 V685 H1198" fill="none" stroke="#14a39a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1138.2" y="671" width="67.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1172" y="689.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">kept 10</text>
+<text x="60" y="748" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">shares = (paid - fee) / price either way. A retained fee reaches the escrow but backs no shares, so the holders already there own it.</text>
+<circle cx="62" cy="795" r="15" fill="#46536b"/>
+<text x="62" y="800" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+<text x="88" y="802" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Instant redeem: shares worth 1000 are burned</text>
+<rect x="40" y="825" width="660" height="30" rx="8" fill="#eef0f2"/>
+<text x="56" y="846" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">A fee recipient is set: the fee is paid out</text>
+<rect x="740" y="825" width="660" height="30" rx="8" fill="#eef0f2"/>
+<text x="756" y="846" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">No recipient: the fee stays in the escrow</text>
+<rect x="40" y="915" width="178" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="74" cy="950.0" r="17" fill="#cfe2fb"/>
+<circle cx="74" cy="945.0" r="5" fill="#2f3a45"/>
+<path d="M65,960.0 Q74,948.0 83,960.0 Z" fill="#2f3a45"/>
+<text x="104" y="957.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Redeemer</text>
+<rect x="255" y="915" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="289" cy="950.0" r="17" fill="#fbe6b0"/>
+<text x="289" y="955.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="319" y="946" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Escrow</text>
+<text x="319" y="968" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">pays out 1000</text>
+<rect x="500" y="865" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="534" cy="900.0" r="17" fill="#cfe2fb"/>
+<circle cx="534" cy="895.0" r="5" fill="#2f3a45"/>
+<path d="M525,910.0 Q534,898.0 543,910.0 Z" fill="#2f3a45"/>
+<text x="564" y="896" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Receiver</text>
+<text x="564" y="918" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">gets 990</text>
+<rect x="500" y="960" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="534" cy="995.0" r="17" fill="#cfe2fb"/>
+<circle cx="534" cy="990.0" r="5" fill="#2f3a45"/>
+<path d="M525,1005.0 Q534,993.0 543,1005.0 Z" fill="#2f3a45"/>
+<text x="564" y="991" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Fee recipient</text>
+<text x="564" y="1013" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">gets 10</text>
+<path d="M218,950 H253" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M445,935 H472 V900 H498" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M445,965 H472 V995 H498" fill="none" stroke="#f2a93b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="441.6" y="981" width="60.8" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="472" y="999.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">fee 10</text>
+<rect x="255" y="1060" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="289" cy="1095.0" r="17" fill="#d6f3d2"/>
+<text x="289" y="1100.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">I</text>
+<text x="319" y="1091" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">ILiquidityRoute</text>
+<text x="319" y="1113" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">draws any shortfall</text>
+<path d="M350,1060 V988" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<rect x="295.8" y="1010" width="108.39999999999999" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="350" y="1028.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">escrow short?</text>
+<rect x="740" y="915" width="178" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="774" cy="950.0" r="17" fill="#cfe2fb"/>
+<circle cx="774" cy="945.0" r="5" fill="#2f3a45"/>
+<path d="M765,960.0 Q774,948.0 783,960.0 Z" fill="#2f3a45"/>
+<text x="804" y="957.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Redeemer</text>
+<rect x="955" y="915" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="989" cy="950.0" r="17" fill="#fbe6b0"/>
+<text x="989" y="955.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1019" y="946" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Escrow</text>
+<text x="1019" y="968" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">pays out 990</text>
+<rect x="1200" y="865" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1234" cy="900.0" r="17" fill="#cfe2fb"/>
+<circle cx="1234" cy="895.0" r="5" fill="#2f3a45"/>
+<path d="M1225,910.0 Q1234,898.0 1243,910.0 Z" fill="#2f3a45"/>
+<text x="1264" y="896" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Receiver</text>
+<text x="1264" y="918" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">gets 990</text>
+<rect x="1200" y="960" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1234" cy="995.0" r="17" fill="#cfe2fb"/>
+<circle cx="1234" cy="990.0" r="5" fill="#2f3a45"/>
+<path d="M1225,1005.0 Q1234,993.0 1243,1005.0 Z" fill="#2f3a45"/>
+<text x="1264" y="991" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Holders</text>
+<text x="1264" y="1013" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">already there: +10</text>
+<path d="M918,950 H953" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1145,935 H1172 V900 H1198" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1145,965 H1172 V995 H1198" fill="none" stroke="#14a39a" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1138.2" y="981" width="67.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1172" y="999.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">kept 10</text>
+<text x="740" y="1090" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">The shares burn at their full value either way, so a retained fee</text>
+<text x="740" y="1110" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">stays in the escrow and accrues to the holders who stay.</text>
+<text x="60" y="1160" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">fee = fee bps of the gross, rounded up. mint and withdraw are the exact-out forms: the policy grosses the net up, rounding up.</text>
+<text x="60" y="1180" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">A negative fee is a rebate paid by the fee recipient, so it needs one; the shipped policy never answers one.</text>
+</svg>

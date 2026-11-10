@@ -101,28 +101,28 @@ contract GasService is IGasService {
 
         // forgefmt: disable-next-item
         coldSlotsPerMessageType = _pack(
-            [uint8(0), 14, 13, 15, 40, 23, 24, 17, 19, 20, 42, 29, 23, 0, 36, 24, 29, 41, 17, 13, 29, 17, 17, 17, 17, 35, 21, 20]
+            [uint8(0), 14, 13, 15, 40, 23, 24, 17, 19, 20, 42, 33, 28, 0, 36, 24, 17, 53, 17, 13, 30, 17, 17, 17, 17, 24, 21, 20]
         );
         coldAccountsPerMessageType = _pack(
-            [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 19, 13, 13, 0, 14, 11, 12, 17, 9, 9, 15, 9, 9, 9, 9, 14, 9, 9]
+            [uint8(0), 7, 7, 9, 7, 11, 11, 9, 9, 11, 19, 13, 13, 0, 14, 11, 10, 18, 9, 9, 16, 9, 9, 9, 9, 11, 9, 9]
         );
 
         scheduleUpgrade = _gasValue(161033);
         cancelUpgrade = _gasValue(141526);
         registerAsset = _gasValue(168164);
         setPoolAdapters = _gasValue(790115); // using MAX_ADAPTER_COUNT
-        request = _gasValue(281382);
-        notifyPool = _gasValue(1378159);
-        notifyShareClass = _gasValue(1874967);
+        request = _gasValue(184410);
+        notifyPool = _gasValue(1388981);
+        notifyShareClass = _gasValue(1885595);
         notifyPricePoolPerShare = _gasValue(176749);
         notifyPricePoolPerAsset = _gasValue(183284);
         notifyShareMetadata = _gasValue(198851);
-        initiateTransferShares = _gasValue(382832);
-        executeTransferShares = _gasValue(299265);
-        updateRestriction = _gasValue(212813);
-        managerCallFromHub = _gasValue(377978);
-        requestCallback = _gasValue(463976); // approve deposit case
-        updateVaultDeployAndLink = _gasValue(2868928);
+        initiateTransferShares = _gasValue(392868);
+        executeTransferShares = _gasValue(297058);
+        updateRestriction = _gasValue(225812);
+        managerCallFromHub = _gasValue(384610);
+        requestCallback = _gasValue(572872); // SettledDeposit + eager fold
+        updateVaultDeployAndLink = _gasValue(341623);
         updateVaultLink = _gasValue(191174);
         updateVaultUnlink = _gasValue(171934);
         setRequestManager = _gasValue(175521);

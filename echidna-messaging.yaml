@@ -1,10 +1,18 @@
 testMode: "assertion"
+## Slither is off, as in echidna.yaml (it crashes on the protocol sources; not separately measured for this suite).
+disableSlither: true
 coverage: true
+## lcov for tooling (the CI coverage check reads it) and txt for the reverted lines; no 7 MB html per run.
+coverageFormats: ["txt", "lcov"]
 corpusDir: "echidna-messaging"
 filterFunctions: []
 deployer: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
 contractAddr: "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496"
 shrinkLimit: 100000
+## Time windows: left at the Echidna defaults on purpose (1 week / 60480 blocks per call). Whether the Gateway
+## and MultiAdapter windows need a smaller range has not been evaluated; stated here so it is a choice, not an omission.
+maxTimeDelay: 604800
+maxBlockDelay: 60480
 ## Rely on Foundry compilation; link the external libraries the messaging suite ACTUALLY uses
 ## (Gateway/MultiAdapter closure). Only libraries in the CryticMessagingTester.sol import closure may
 ## be listed: on Recon Cloud the target is that single file, so linking a lib it doesn't import (e.g.

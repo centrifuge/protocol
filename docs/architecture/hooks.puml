@@ -1,25 +1,28 @@
 @startuml hooks
-title Transfer Hooks
+title Transfer and Role Hooks
 hide empty members
 
 package token {
     class ShareToken
     interface ITransferHook
+    interface IRoleHook
 }
 
-abstract BaseTransferHook
-class FreelyTransferable
-class FreezeOnly
-class FullRestrictions
-class RedemptionRestrictions
+package vaults {
+    class Vault
+    class VaultActionLib <<library>>
+}
 
-BaseTransferHook -up-|> ITransferHook
+class ShareTokenHook
+class HookPolicies <<library>>
 
-FreelyTransferable -up-|> BaseTransferHook
-FreezeOnly -up-|> BaseTransferHook
-FullRestrictions -up-|> BaseTransferHook
-RedemptionRestrictions -up-|> BaseTransferHook
+HookPolicies ..> ShareTokenHook : presets
+ShareTokenHook -up-|> ITransferHook
+ShareTokenHook -up-|> IRoleHook
+
 
 ShareToken --> ITransferHook
+Vault ..> VaultActionLib : vault actions
+VaultActionLib ..> IRoleHook : role checks, via the share token's hook
 
 @enduml

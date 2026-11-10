@@ -84,8 +84,9 @@ contract ShareTokenRegistrar is Auth, IRegistrar, IShareTokenRegistrar, IManager
         }
     }
 
-    /// @dev Points the token's ERC-7575 vault for `asset` at (or clears it, with address(0), once unlinked
-    ///      from) the registry's currently-linked vault, so the pointer can never diverge from the registry.
+    /// @dev Points the token's ERC-7575 vault for `asset` at the registry's currently-linked vault, or clears it with
+    ///      address(0). It is checked when set only: linking and unlinking leave the pointer alone, so it can name a
+    ///      vault that has since been unlinked.
     function _setVault(PoolId poolId, ShareClassId scId, address token, bytes calldata payload) private {
         (,, uint128 assetId, address vault) = abi.decode(payload, (uint8, bytes16, uint128, address));
         AssetId assetId_ = AssetId.wrap(assetId);

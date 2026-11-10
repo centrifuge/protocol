@@ -2,32 +2,65 @@
 title Vaults
 hide empty members
 
-package core {
-    interface IVault
+interface IVault
+interface IVaultBase
+interface IAsyncVault
+interface IERC7540Deposit
+interface IERC7540Redeem
+interface IERC7540Operator
+interface "IERC8161{Deposit,Redeem}Transferable" as ITransferable
+interface IERC7575
+interface IVaultDepositCallbacks
+interface IVaultRedeemCallbacks
+
+IVaultBase -up-|> IVault
+IVaultBase -up-|> IERC7540Operator
+IAsyncVault -up-|> IVaultBase
+IAsyncVault -up-|> IERC7540Deposit
+IAsyncVault -up-|> IERC7540Redeem
+IAsyncVault -up-|> ITransferable
+IAsyncVault -up-|> IERC7575
+IAsyncVault -up-|> IVaultDepositCallbacks
+IAsyncVault -up-|> IVaultRedeemCallbacks
+
+class Vault
+class VaultFactory
+Vault .up.|> IAsyncVault : serves the ABI
+VaultFactory --> Vault : CREATE2 per position
+
+package plugins {
+    interface IRequestPolicy
+    interface IInstantPolicy
+    interface ILiquidityRoute
+    interface ISettlementObserver
+    interface IVaultOracle
+
+    class PerInvestorPolicy
+    class PerRequestPolicy
+    class PerPeriodPolicy
+    class ReserveInstantPolicy
+    class BasinLiquidityRoute
+    class VaultLiquidityRoute
+    class SpokeOracle
 }
 
-interface IBaseVault
-interface IAsyncRedeemVault
-interface IAsyncVault
+PerInvestorPolicy -up-|> IRequestPolicy
+PerRequestPolicy -up-|> IRequestPolicy
+PerPeriodPolicy -up-|> IRequestPolicy
+ReserveInstantPolicy -up-|> IInstantPolicy
+BasinLiquidityRoute -up-|> ILiquidityRoute
+VaultLiquidityRoute -up-|> ILiquidityRoute
+SpokeOracle -up-|> IVaultOracle
 
-IBaseVault -up-|> IVault
-IAsyncRedeemVault -up-|> IBaseVault
-IAsyncVault -up-|> IAsyncRedeemVault
+Vault --> IRequestPolicy
+Vault --> IInstantPolicy
+Vault --> ILiquidityRoute
+Vault --> ISettlementObserver
+Vault --> IVaultOracle
 
-abstract BaseVault
-abstract BaseAsyncRedeemVault
-abstract BaseSyncDepositVault
-class AsyncVault
-class SyncDepositVault
-
-BaseAsyncRedeemVault -up-|> BaseVault
-BaseSyncDepositVault -up-|> BaseVault
-AsyncVault -up-|> BaseAsyncRedeemVault
-SyncDepositVault -up-|> BaseAsyncRedeemVault
-SyncDepositVault -up-|> BaseSyncDepositVault
-
-BaseVault -up-|> IBaseVault
-BaseAsyncRedeemVault -up-|> IAsyncRedeemVault
-AsyncVault -up-|> IAsyncVault
+package token {
+    interface IRoleHook
+}
+Vault ..> IRoleHook : share token's hook, role checks
 
 @enduml

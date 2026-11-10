@@ -793,14 +793,14 @@ contract TestMessageLibUpdateVaultFraming is Test {
 
     function _updateVault(VaultUpdateKind kind, bytes memory payload) internal pure returns (bytes memory) {
         return MessageLib.UpdateVault({
-                poolId: POOL_ID,
-                scId: bytes16(uint128(2)),
-                assetId: 3,
-                vaultOrFactory: bytes32(uint256(4)),
-                kind: uint8(kind),
-                extraGasLimit: 5,
-                payload: payload
-            }).serialize();
+            poolId: POOL_ID,
+            scId: bytes16(uint128(2)),
+            assetId: 3,
+            vaultOrFactory: bytes32(uint256(4)),
+            kind: uint8(kind),
+            extraGasLimit: 5,
+            payload: payload
+        }).serialize();
     }
 
     function _payload(uint256 len) internal pure returns (bytes memory payload) {
