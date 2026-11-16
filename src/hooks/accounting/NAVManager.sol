@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {INAVManager, INAVHook, NAVAccount} from "./interfaces/INAVManager.sol";
 
+import {MathLib} from "../../misc/libraries/MathLib.sol";
+
 import {PoolId} from "../../core/types/PoolId.sol";
 import {AssetId} from "../../core/types/AssetId.sol";
 import {ShareClassId} from "../../core/types/ShareClassId.sol";
@@ -185,7 +187,7 @@ contract NAVManager is INAVManager {
 
         require(address(navHook[poolId]) != address(0), InvalidNAVHook());
 
-        uint128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
+        int128 netAssetValue_ = netAssetValue(poolId, centrifugeId);
         navHook[poolId].onUpdate(poolId, scId, centrifugeId, netAssetValue_);
 
         emit Sync(poolId, scId, centrifugeId, netAssetValue_);
@@ -259,7 +261,7 @@ contract NAVManager is INAVManager {
     //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc INAVManager
-    function netAssetValue(PoolId poolId, uint16 centrifugeId) public view returns (uint128) {
+    function netAssetValue(PoolId poolId, uint16 centrifugeId) public view returns (int128) {
         (bool equityIsPositive, uint128 equity) = accounting.accountValue(poolId, equityAccount(centrifugeId));
         (bool gainIsPositive, uint128 gain) = accounting.accountValue(poolId, gainAccount(centrifugeId));
         (bool lossIsPositive, uint128 loss) = accounting.accountValue(poolId, lossAccount(centrifugeId));
@@ -286,9 +288,10 @@ contract NAVManager is INAVManager {
         if (liabilityIsPositive) totalNegative += liability;
         else totalPositive += liability;
 
-        if (totalNegative >= totalPositive) return 0;
-
-        return totalPositive - totalNegative;
+        // Only the difference has to fit: either total alone may pass int128.max
+        int256 net = int256(uint256(totalPositive)) - int256(uint256(totalNegative));
+        require(net >= type(int128).min && net <= type(int128).max, MathLib.Int128_Overflow());
+        return int128(net);
     }
 
     //----------------------------------------------------------------------------------------------

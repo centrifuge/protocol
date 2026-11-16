@@ -19,7 +19,6 @@ contract StdHubPolicyFactoryTest is Test {
     IShareClassManager immutable scm = IShareClassManager(makeAddr("ShareClassManager"));
     IMultiAdapter immutable multiAdapter = IMultiAdapter(makeAddr("MultiAdapter"));
     address immutable hubRegistry = makeAddr("HubRegistry");
-    address immutable brm = makeAddr("BRM");
 
     StdHubPolicyFactory factory;
 
@@ -28,21 +27,24 @@ contract StdHubPolicyFactoryTest is Test {
         factory = new StdHubPolicyFactory(hub, multiAdapter, scm);
     }
 
-    function _config(uint128 maxDeviation) internal view returns (IStdHubPolicy.Config memory) {
+    function _config(uint128 priceDelta) internal pure returns (IStdHubPolicy.Config memory) {
         return IStdHubPolicy.Config({
             delay: DELAY,
             expiry: EXPIRY,
             escalation: ESCALATION,
-            maxAbsolutePriceDelta: 0,
+            maxAbsolutePriceDelta: priceDelta,
             thresholdPerSecond: 0,
-            maxBrmPriceDeviation: maxDeviation,
             onchainAccounting: false,
             isRestrictionUpdateInstant: false,
             navManager: address(0),
             simplePriceManager: address(0),
-            requestManager: brm,
             bridgingHook: address(0),
+            spokeOracle: address(0),
             oracleValuation: address(0),
+            orderBook: address(0),
+            maxFulfillPriceDeviation: type(uint128).max,
+            maxFeeBps: type(uint128).max,
+            maxRebateBps: type(uint128).max,
             allowlist: new IStdHubPolicy.Entry[](0)
         });
     }
@@ -54,11 +56,11 @@ contract StdHubPolicyFactoryTest is Test {
     }
 
     function testFactoryDeploys() public {
-        address predicted = factory.previewHubPolicy(_config(type(uint128).max));
+        address predicted = factory.previewHubPolicy(_config(0));
 
         vm.expectEmit();
         emit IStdHubPolicyFactory.DeployHubPolicy(predicted);
-        IStdHubPolicy policy = factory.newHubPolicy(_config(type(uint128).max));
+        IStdHubPolicy policy = factory.newHubPolicy(_config(0));
 
         assertEq(address(policy.hub()), address(hub));
         assertEq(address(policy.multiAdapter()), address(multiAdapter));
@@ -68,12 +70,10 @@ contract StdHubPolicyFactoryTest is Test {
         assertEq(policy.delay(), DELAY);
         assertEq(policy.expiry(), EXPIRY);
         assertEq(policy.escalation(), ESCALATION);
-        assertEq(policy.maxBrmPriceDeviation(), type(uint128).max);
-        assertEq(policy.requestManager(), brm);
     }
 
     function testFactoryPreviewMatchesDeploy() public {
-        IStdHubPolicy.Config memory config = _config(type(uint128).max);
+        IStdHubPolicy.Config memory config = _config(0);
         address predicted = factory.previewHubPolicy(config);
         IStdHubPolicy policy = factory.newHubPolicy(config);
         assertEq(address(policy), predicted);
@@ -81,12 +81,12 @@ contract StdHubPolicyFactoryTest is Test {
 
     function testFactoryPreviewDiffersByConfig() public view {
         // Distinct policies map to distinct deterministic addresses.
-        assertTrue(factory.previewHubPolicy(_config(type(uint128).max)) != factory.previewHubPolicy(_config(1e16)));
+        assertTrue(factory.previewHubPolicy(_config(0)) != factory.previewHubPolicy(_config(1e16)));
     }
 
     function testFactoryRedeployIdenticalConfigReverts() public {
-        factory.newHubPolicy(_config(type(uint128).max));
+        factory.newHubPolicy(_config(0));
         vm.expectRevert();
-        factory.newHubPolicy(_config(type(uint128).max));
+        factory.newHubPolicy(_config(0));
     }
 }

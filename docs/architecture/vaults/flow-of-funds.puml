@@ -19,45 +19,82 @@ skinparam sequence {
 actor Investor
 actor BalanceSheetManager
 participant Vault
-participant AsyncRequestManager as ARM
+participant "Share token hook\n(IRoleHook)" as Hook
+participant "Request policy" as Policy
 participant Spoke
 participant Escrow
+participant ShareToken
+participant VaultRequestRouter as Router
 participant Hub
-actor HubManager
+participant OrderBook
+actor "Manager\n(FeeRequestManager)" as Manager
 
-note over Hub, ARM
-    All Hub ↔ AsyncRequestManager communication
-    routes through Spoke & cross-chain Messaging
+note over Router, OrderBook
+    Spoke <-> Hub traffic routes through
+    the Gateway and cross-chain messaging
 end note
 
-== investor deposits ==
+== investor requests a deposit ==
 
 Investor -> Vault : requestDeposit()
-Vault -> ARM : requestDeposit()
-ARM -> Escrow : transfer assets from investor
-ARM -> Spoke : reserve(assets, REASON_DEPOSIT)
-Spoke -> Escrow : mark assets as reserved
+Vault -> Hook : onRoles([Entry owner controller, assets, ~shares, Grows])
+note right of Hook
+    each check: role, from, to, assets, shares, effect;
+    ~ is estimated at the current price,
+    unlimited before a valid one
+end note
+Vault -> Policy : onRequest() -> key
+Vault -> Escrow : transfer assets from owner
+Vault -> Spoke : noteDeposit(assets)
+Vault -> Spoke : reserve(assets, deposit reason of localId)
 
 note right of Escrow
     Assets in Escrow:
     total = X, reserved = X
-    reservedBy[ARM][REASON_DEPOSIT] = X
+    note + reserve cancel in the snapshot queue,
+    so the hub does not account them yet
 end note
 
-== hub manager approves ==
+== bucket is flushed ==
 
-HubManager -> Hub : approvedDeposits()
-Hub -> ARM : approvedDeposits()
-ARM -> Spoke : unreserve(assets, REASON_DEPOSIT)
-Spoke -> Escrow : decrease reserved counter
-ARM -> Spoke : noteDeposit()
-Spoke -> Escrow : deposit() [tracking only]
+Vault -> Router : sendDepositRequest(localId, amount)
+note left of Router
+    immediately for a non-batching policy,
+    or later via permissionless flushRequest()
+end note
+Router -> Spoke : request()
+Spoke -> Hub : request message
+Hub -> OrderBook : request()
 
+note right of OrderBook
+    Order auto-approved:
+    outstanding += amount
+end note
+
+== manager fulfills the deposit ==
+
+Manager -> Hub : managerCall(OrderBook, Fulfill)
+note right of Hub
+    StdHubPolicy bounds the prices
+    and the fill-vs-net fee delta
+end note
+Hub -> OrderBook : fromHub(Fulfill: fill, net, prices)
+OrderBook -> Hub : requestCallback(SettledDeposit)
+Hub --> Spoke : callback message
+Spoke -> Router : callback()
+Router -> Vault : approveDeposits(localId, assets)
+Vault -> Spoke : unreserve(assets, deposit reason)
 note right of Escrow
     Assets in Escrow:
     total = X, reserved = 0
-    [available for withdrawal]
+    now a hub-accounted holding
 end note
+Router -> Vault : issueShares(localId, shares)
+Vault -> Spoke : issue(shares, Escrow)
+Spoke -> ShareToken : mint(shares, Escrow)
+Router -> Vault : fulfillDepositRequest(localId, assets, shares)
+Vault -> Vault : settle bucket (pro-rata)
+Vault -> Vault : fold it, unless it is a batch
 
 == balance sheet manager withdraws ==
 
@@ -65,121 +102,76 @@ BalanceSheetManager -> Spoke : withdraw(assets)
 Spoke -> Escrow : withdraw() + authTransferTo()
 Escrow --> BalanceSheetManager : transfer assets
 
-note right of Escrow
-    Assets withdrawn for off-chain use
-end note
-
-== hub manager issues shares ==
-
-HubManager -> Hub : issueShares()
-Hub --> ARM : issuedShares()
-ARM -> Spoke : issue(shares)
-Spoke -> ShareToken : mint(shares, Escrow)
-ShareToken --> Escrow : shares minted
-ARM -> Spoke : reserve(shares, REASON_DEPOSIT)
-Spoke -> Escrow : mark shares as reserved
-
-note right of Escrow
-    Shares in Escrow:
-    total = Y, reserved = Y
-    reservedBy[ARM][REASON_DEPOSIT] = Y
-end note
-
-== bot triggers fulfillment ==
-
-Bot -> Hub : notifyDeposit()
-Hub --> ARM : fulfill deposit request
-
-note right of ARM
-    ARM.maxMint updated
-end note
-
 == investor claims shares ==
 
-Investor -> Vault : mint()
-Vault -> ARM : deposit() or mint()
-ARM -> Spoke : unreserve(shares, REASON_DEPOSIT)
-Spoke -> Escrow : decrease reserved counter
-ARM -> Spoke : withdraw(shares, investor)
-Spoke -> Escrow : authTransferTo(investor)
-Escrow --> Investor : transfer shares
+Investor -> Vault : deposit() / mint()
+Vault -> Vault : fold settled slices into maxMint
+Vault -> Spoke : withdrawShares(receiver)
+Spoke -> Escrow : authTransferTo(receiver)
+Escrow --> Investor : transfer shares [transfer hook applies]
 
-note right of Investor
-    Shares transferred to investor
-    Escrow: total = 0, reserved = 0
-end note
-
-== investor submit redemption request ==
+== investor requests a redemption ==
 
 Investor -> Vault : requestRedeem()
-Vault -> ARM : requestRedeem()
-ARM -> Spoke : transferSharesFrom(investor→escrow)
-Spoke -> Escrow : receive shares from investor
-ARM -> Spoke : reserve(shares, REASON_REDEEM)
-Spoke -> Escrow : mark shares as reserved
-
-note right of Escrow
-    Shares in Escrow:
-    total = Y, reserved = Y
-    reservedBy[ARM][REASON_REDEEM] = Y
-end note
-
-HubManager -> Hub : approvedRedeems()
+Vault -> Hook : onRoles([Exit 0 owner, ~assets, shares, Neutral])
+Vault -> Policy : onRequest() -> key
+Vault -> Spoke : transferSharesFrom(owner -> Escrow)
+Vault -> Router : sendRedeemRequest(localId, shares)
+Router -> Spoke : request()
+Spoke -> Hub : request message
+Hub -> OrderBook : request()
 
 == balance sheet manager repays ==
 
 BalanceSheetManager -> Spoke : deposit(assets)
 Spoke -> Escrow : receive assets
 
+== manager fulfills the redemption ==
+
+Manager -> Hub : managerCall(OrderBook, Fulfill)
+Hub -> OrderBook : fromHub(Fulfill: fill, net, prices)
+OrderBook -> Hub : requestCallback(SettledRedeem)
+Hub --> Spoke : callback message
+Spoke -> Router : callback()
+Router -> Vault : revokeShares(localId, assets, shares)
+Vault -> Spoke : reserve(assets, REASON_REDEEM)
 note right of Escrow
-    Assets received (unreserved)
-    Available for reservation
+    Assets: reserved += payout
+    (queues the holding decrease for the hub)
 end note
-
-== hub manager revokes shares ==
-
-HubManager -> Hub : revokeShares()
-Hub -> ARM : revokedShares()
-ARM -> Spoke : reserve(assets, REASON_REDEEM)
-Spoke -> Escrow : mark assets as reserved
-ARM -> Spoke : unreserve(shares, REASON_REDEEM)
-Spoke -> Escrow : mark shares as unreserved
-ARM -> Spoke : transferSharesFrom(escrow→ARM)
-Spoke -> Escrow : transfer shares to ARM
-ARM -> Spoke : revoke(shares)
+Vault -> Spoke : transferSharesFrom(Escrow -> Vault)
+Vault -> Spoke : revoke(shares)
 Spoke -> ShareToken : burn(shares)
-ARM -> Spoke : noteWithdraw(assets)
+Router -> Vault : fulfillRedeemRequest(localId, assets, shares)
+Vault -> Vault : settle bucket (pro-rata)
 
-note right of Escrow
-    Assets: total = Z, reserved = Z
-    Shares: burned (removed from supply)
-    reservedBy[ARM][REASON_REDEEM][assets] = Z
-    noteWithdraw queues asset decrease for Hub
-end note
+== investor claims the redemption ==
 
-== bot triggers fulfillment ==
-
-Bot -> Hub : notifyRedeem()
-Hub --> ARM : fulfill redeem request
-
-note right of ARM
-    ARM.maxWithdraw updated
-end note
-
-== investor claims redemption ==
-
-Investor -> Vault : withdraw()
-Vault --> ARM : withdraw() or redeem()
-ARM -> Spoke : unreserve(assets, REASON_REDEEM)
-Spoke -> Escrow : decrease reserved counter
-ARM -> Spoke : withdraw(EscrowAndTransfer)
-Spoke -> Escrow : withdraw() + authTransferTo()
+Investor -> Vault : withdraw() / redeem()
+Vault -> Vault : fold settled slices into maxWithdraw
+Vault -> Hook : onRoles([Payout controller receiver, assets paid, shares, Neutral])
+Vault -> Spoke : withdrawReserved(receiver, assets, REASON_REDEEM)
+Spoke -> Escrow : unreserve() + withdraw() + authTransferTo()
 Escrow --> Investor : transfer assets
 
-note right of Investor
-    Assets transferred to investor
-    EscrowAndTransfer: noteWithdraw already queued
-    Redemption complete
-end note
+== instant paths (instant policy configured) ==
+
+Investor -> Vault : deposit() / mint() with nothing claimable and no own request pending
+Vault -> Vault : instantPolicy.onInstantDeposit() -> fee, recipient
+Vault -> Hook : onRoles([Entry 0 caller, assets, shares, Neutral], [Entry caller receiver, assets, shares, Grows])
+Vault -> Spoke : noteDeposit(assets less a paid fee)
+Vault -> Spoke : issue(shares, receiver)
+Vault -> Escrow : transfer assets (a paid fee goes to the recipient; with no recipient it stays in the escrow)
+
+Investor -> Vault : withdraw() / redeem() with nothing claimable and no own request pending
+Vault -> Vault : instantPolicy.onInstantRedeem() -> fee, recipient
+Vault -> Hook : onRoles([Exit 0 caller, payout, shares, Shrinks], [Payout caller receiver, payout, shares, Neutral])
+opt escrow short of the payout
+    Vault -> Vault : liquidityRoute.provide() into Escrow
+    Vault -> Spoke : noteDeposit(provided)
+end
+Vault -> Spoke : transferSharesFrom(owner -> Vault) + revoke(shares)
+Vault -> Spoke : withdraw(assets, receiver)
+Escrow --> Investor : transfer assets
 
 @enduml

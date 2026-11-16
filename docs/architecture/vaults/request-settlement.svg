@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1190" width="1440" height="1190" role="img" aria-labelledby="ttl dsc"><title id="ttl">How requests settle</title><desc id="dsc">Investors contribute to a bucket, which goes to the hub as one order. Buckets are rows and investors are columns: each cell is a contribution, folded into that investor's ledger when someone asks. A claim folds only the latest rows of an investor, their horizon; a settlement folds an unbatched row, and foldRequest folds any row.</desc>
+<defs><marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6"/></marker><marker id="arrow-p" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#7c5cd6" stroke-width="1.6"/></marker><marker id="arrow-g" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#3f9c52" stroke-width="1.6"/></marker><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#f6f7f8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c9d0d9" stroke-width="3"/></pattern></defs>
+<rect x="0.5" y="0.5" width="1439" height="1189" rx="16" fill="#ffffff" stroke="#ececec"/>
+<text x="48" y="76" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#17202a" text-anchor="start">How requests settle</text>
+<circle cx="62" cy="130" r="15" fill="#46536b"/>
+<text x="62" y="135" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+<text x="88" y="137" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Requests pool into a bucket, which goes to the hub as one order</text>
+<rect x="60" y="170" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="94" cy="205" r="17" fill="#cfe2fb"/>
+<circle cx="94" cy="200" r="5" fill="#2f3a45"/>
+<path d="M85,215 Q94,203 103,215 Z" fill="#2f3a45"/>
+<text x="124" y="201" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Investor A</text>
+<rect x="124" y="213" width="10" height="10" rx="3" fill="#3b82f6"/>
+<text x="140" y="223" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">deposits 60</text>
+<rect x="60" y="260" width="200" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="94" cy="295" r="17" fill="#fde0b0"/>
+<circle cx="94" cy="290" r="5" fill="#2f3a45"/>
+<path d="M85,305 Q94,293 103,305 Z" fill="#2f3a45"/>
+<text x="124" y="291" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Investor B</text>
+<rect x="124" y="303" width="10" height="10" rx="3" fill="#f2a93b"/>
+<text x="140" y="313" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">deposits 40</text>
+<path d="M260,205 H300 Q320,205 320,225 V235 Q320,250 340,250 H420" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M260,295 H300 Q320,295 320,275 V265 Q320,250 340,250 H420" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="288.2" y="236" width="67.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="322" y="254.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">request</text>
+<rect x="420" y="156" width="116" height="30" rx="10" fill="#eef0f2"/>
+<rect x="420" y="170" width="380" height="190" rx="14" fill="#eef0f2"/>
+<text x="440" y="204" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#1f2a37" text-anchor="start">Bucket #7</text>
+<text x="780" y="203" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="end">total 100</text>
+<rect x="440" y="214" width="228" height="40" fill="#3b82f6"/>
+<text x="554.0" y="240.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">A 60</text>
+<rect x="668" y="214" width="112" height="40" fill="#f2a93b"/>
+<text x="724.0" y="240.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">B 40</text>
+<text x="440" y="288" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">filled by the hub</text>
+<rect x="440" y="298" width="170" height="40" fill="#58b368"/>
+<text x="525.0" y="324.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">50</text>
+<rect x="610" y="298" width="170" height="40" fill="url(#hatch)"/>
+<text x="695.0" y="324.0" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="normal" fill="#6b7686" text-anchor="middle">waits</text>
+<path d="M800,234 H960" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<rect x="853.0" y="220" width="54.0" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="880" y="238.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">flush</text>
+<rect x="960" y="199" width="260" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="994" cy="234" r="17" fill="#fbe6b0"/>
+<text x="994" y="239.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1024" y="230" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">OrderBook</text>
+<text x="1024" y="252" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">one order: 100</text>
+<path d="M1090,269 V318 H800" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<rect x="918.6" y="304" width="162.79999999999998" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1000" y="322.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">fills 50 at price 2.0</text>
+<circle cx="62" cy="420" r="15" fill="#46536b"/>
+<text x="62" y="425" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+<text x="88" y="427" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Buckets are rows, contributions are cells, a horizon is an investor's latest rows</text>
+<text x="60" y="458" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">Cells are assets, the ledger is shares. A fold credits a cell to its investor's ledger: slice = fill x contribution / total, then / 2.0 price</text>
+<rect x="60" y="478" width="14" height="14" rx="3" fill="#58b368"/>
+<text x="80" y="490" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="start">settled by the hub</text>
+<rect x="210" y="478" width="14" height="14" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<text x="230" y="490" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="start">still pending</text>
+<rect x="320" y="478" width="14" height="14" rx="3" fill="#9aa4b0"/>
+<text x="340" y="490" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="start">already folded</text>
+<rect x="450" y="478" width="14" height="14" rx="3" fill="none" stroke="#7c5cd6" stroke-width="2" stroke-dasharray="3 2"/>
+<text x="470" y="490" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="start">an investor's horizon</text>
+<rect x="410" y="505" width="220" height="630" rx="14" fill="#f1f6fe"/>
+<rect x="420" y="515" width="200" height="40" rx="10" fill="#cfe2fb"/>
+<circle cx="446" cy="535" r="17" fill="#cfe2fb"/>
+<circle cx="446" cy="530" r="5" fill="#2f3a45"/>
+<path d="M437,545 Q446,533 455,545 Z" fill="#2f3a45"/>
+<text x="472" y="541" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#1f2a37" text-anchor="start">Investor A</text>
+<rect x="660" y="505" width="220" height="630" rx="14" fill="#fff6e8"/>
+<rect x="670" y="515" width="200" height="40" rx="10" fill="#fde0b0"/>
+<circle cx="696" cy="535" r="17" fill="#fde0b0"/>
+<circle cx="696" cy="530" r="5" fill="#2f3a45"/>
+<path d="M687,545 Q696,533 705,545 Z" fill="#2f3a45"/>
+<text x="722" y="541" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#1f2a37" text-anchor="start">Investor B</text>
+<rect x="60" y="578" width="330" height="60" rx="10" fill="#f6f7f8"/>
+<text x="76" y="602" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">bucket #3</text>
+<text x="374" y="602" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="end">total 100</text>
+<rect x="76" y="614" width="200" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="76" y="614" width="200.0" height="10" rx="3" fill="#58b368"/>
+<g opacity="0.55">
+<rect x="420" y="578" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="434" y="605" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">40</text>
+<rect x="434" y="618" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="434" y="618" width="120.0" height="10" rx="3" fill="#9aa4b0"/>
+<text x="608" y="608" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#6b7686" text-anchor="end">folded</text>
+</g>
+<g opacity="0.55">
+<rect x="670" y="578" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="684" y="605" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">20</text>
+<rect x="684" y="618" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="684" y="618" width="120.0" height="10" rx="3" fill="#9aa4b0"/>
+<text x="858" y="608" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#6b7686" text-anchor="end">folded</text>
+</g>
+<rect x="60" y="648" width="330" height="60" rx="10" fill="#f6f7f8"/>
+<text x="76" y="672" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">bucket #4</text>
+<text x="374" y="672" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="end">total 100</text>
+<rect x="76" y="684" width="200" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="76" y="684" width="200.0" height="10" rx="3" fill="#58b368"/>
+<g opacity="0.55">
+<rect x="420" y="648" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="434" y="675" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">30</text>
+<rect x="434" y="688" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="434" y="688" width="120.0" height="10" rx="3" fill="#9aa4b0"/>
+<text x="608" y="678" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#6b7686" text-anchor="end">folded</text>
+</g>
+<g opacity="0.55">
+<rect x="670" y="648" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="684" y="675" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">10</text>
+<rect x="684" y="688" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="684" y="688" width="120.0" height="10" rx="3" fill="#9aa4b0"/>
+<text x="858" y="678" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#6b7686" text-anchor="end">folded</text>
+</g>
+<rect x="60" y="746" width="330" height="60" rx="10" fill="#f6f7f8"/>
+<text x="76" y="770" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">bucket #5</text>
+<text x="374" y="770" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="end">total 80</text>
+<rect x="76" y="782" width="200" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<g opacity="1">
+<rect x="420" y="746" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="434" y="773" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">50</text>
+<rect x="434" y="786" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+</g>
+<g opacity="1">
+<rect x="670" y="746" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="684" y="773" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">30</text>
+<rect x="684" y="786" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+</g>
+<rect x="60" y="816" width="330" height="60" rx="10" fill="#f6f7f8"/>
+<text x="76" y="840" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">bucket #6</text>
+<text x="374" y="840" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="end">total 50</text>
+<rect x="76" y="852" width="200" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<g opacity="1">
+<rect x="420" y="816" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="434" y="843" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">40</text>
+<rect x="434" y="856" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+</g>
+<g opacity="1">
+<rect x="670" y="816" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="684" y="843" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">10</text>
+<rect x="684" y="856" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+</g>
+<rect x="60" y="886" width="330" height="60" rx="10" fill="#f6f7f8"/>
+<text x="76" y="910" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">bucket #7</text>
+<text x="374" y="910" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="end">total 100</text>
+<rect x="76" y="922" width="200" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="76" y="922" width="100.0" height="10" rx="3" fill="#58b368"/>
+<g opacity="1">
+<rect x="420" y="886" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="434" y="913" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">60</text>
+<rect x="434" y="926" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="434" y="926" width="60.0" height="10" rx="3" fill="#58b368"/>
+<text x="608" y="916" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#2f8a3d" text-anchor="end">+15 shares</text>
+</g>
+<g opacity="1">
+<rect x="670" y="886" width="200" height="60" rx="10" fill="#ffffff"/>
+<text x="684" y="913" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="start">40</text>
+<rect x="684" y="926" width="120" height="10" rx="3" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="684" y="926" width="60.0" height="10" rx="3" fill="#58b368"/>
+<text x="858" y="916" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#2f8a3d" text-anchor="end">+10 shares</text>
+</g>
+<rect x="414" y="732" width="212" height="222" rx="12" fill="none" stroke="#7c5cd6" stroke-width="2.5" stroke-dasharray="7 5"/>
+<text x="420" y="726" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#7c5cd6" text-anchor="start">A's horizon</text>
+<rect x="664" y="732" width="212" height="222" rx="12" fill="none" stroke="#7c5cd6" stroke-width="2.5" stroke-dasharray="7 5"/>
+<text x="670" y="726" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#7c5cd6" text-anchor="start">B's horizon</text>
+<rect x="60" y="986" width="330" height="48" rx="10" fill="#ffffff" stroke="#d5d9e0"/>
+<text x="76" y="1008" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">ledger: already folded</text>
+<text x="76" y="1026" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3d4753" text-anchor="start">rows folded earlier, added up</text>
+<rect x="60" y="1056" width="330" height="64" rx="10" fill="#ffffff" stroke="#46536b" stroke-width="2"/>
+<text x="76" y="1082" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">total claimable</text>
+<text x="76" y="1102" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3d4753" text-anchor="start">folded rows + the horizon's settled slices</text>
+<rect x="420" y="986" width="200" height="48" rx="10" fill="#ffffff"/>
+<text x="520.0" y="1006" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#1f2a37" text-anchor="middle">35 shares</text>
+<text x="520.0" y="1024" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3d4753" text-anchor="middle">20 (#3) + 15 (#4)</text>
+<path d="M520.0,960 V986" fill="none" stroke="#7c5cd6" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow-p)"/>
+<rect x="465.8" y="959" width="108.39999999999999" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="520.0" y="977.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">a claim folds</text>
+<rect x="420" y="1056" width="200" height="64" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2.5"/>
+<text x="520.0" y="1083" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="middle">50 shares</text>
+<text x="520.0" y="1105" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="middle">35 + 15 from #7</text>
+<path d="M520.0,1034 V1056" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="670" y="986" width="200" height="48" rx="10" fill="#ffffff"/>
+<text x="770.0" y="1006" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="bold" fill="#1f2a37" text-anchor="middle">15 shares</text>
+<text x="770.0" y="1024" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="normal" fill="#3d4753" text-anchor="middle">10 (#3) + 5 (#4)</text>
+<path d="M770.0,960 V986" fill="none" stroke="#7c5cd6" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow-p)"/>
+<rect x="715.8" y="959" width="108.39999999999999" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="770.0" y="977.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">a claim folds</text>
+<rect x="670" y="1056" width="200" height="64" rx="10" fill="#ffffff" stroke="#f2a93b" stroke-width="2.5"/>
+<text x="770.0" y="1083" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="bold" fill="#1f2a37" text-anchor="middle">25 shares</text>
+<text x="770.0" y="1105" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="middle">15 + 10 from #7</text>
+<path d="M770.0,1034 V1056" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="930" y="600" width="450" height="92" rx="10" fill="#f6f7f8"/>
+<text x="950" y="628" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">anyone, via foldRequest</text>
+<text x="950" y="650" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">folds any row, in a horizon or not (#3 and #4 earlier);</text>
+<text x="950" y="670" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">the vault does it for unbatched buckets</text>
+<path d="M930,678 H878" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<rect x="930" y="712" width="450" height="92" rx="10" fill="#f6f7f8"/>
+<text x="950" y="740" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">a claim</text>
+<text x="950" y="762" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">folds only the claimant's horizon: a few rows,</text>
+<text x="950" y="782" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">reached without any keeper. Older settled rows wait.</text>
+<path d="M930,790 H890" fill="none" stroke="#7c5cd6" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow-p)"/>
+<rect x="930" y="826" width="450" height="70" rx="10" fill="#f6f7f8"/>
+<text x="950" y="854" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">views</text>
+<text x="950" y="876" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">count the horizon's settled slices as claimable</text>
+<rect x="930" y="916" width="450" height="92" rx="10" fill="#f6f7f8"/>
+<text x="950" y="944" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#1f2a37" text-anchor="start">the hub fills in any order</text>
+<text x="950" y="966" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">#7 is settled while #5 and #6 are untouched,</text>
+<text x="950" y="986" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">so there is no cursor to walk: each row stands alone</text>
+</svg>

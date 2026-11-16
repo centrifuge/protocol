@@ -27,9 +27,12 @@ interface IStdHubPolicy is IHubPolicy {
 
     /// @notice Policy configuration set at construction.
     /// @dev Optional per pool: `isRestrictionUpdateInstant` makes every `updateRestriction` instant for a manager, with no
-    ///      canonical-Freeze check and no sentinel veto. Two price guards with opposite disable sentinels:
+    ///      canonical-Freeze check and no sentinel veto. Price guards with opposite disable sentinels:
     ///      `maxAbsolutePriceDelta` + `thresholdPerSecond` bound `updateSharePrice` (each `0` = off),
-    ///      `maxBrmPriceDeviation` bounds BRM call prices (`type(uint128).max` = off, `0` = exact match).
+    ///      `maxFulfillPriceDeviation` bounds the OrderBook's fulfillment prices (`type(uint128).max` = off, `0` =
+    ///      exact match). `maxFeeBps` bounds the OrderBook's fill-vs-net fee and `maxRebateBps` its fulfillment
+    ///      rebate, in basis points of the fill (at most 10_000, or `type(uint128).max` = off). A cancellation can
+    ///      never rebate.
     struct Config {
         uint48 delay;
         uint48 expiry;
@@ -39,12 +42,15 @@ interface IStdHubPolicy is IHubPolicy {
         bool onchainAccounting;
         bool isRestrictionUpdateInstant;
         uint128 thresholdPerSecond;
-        uint128 maxBrmPriceDeviation;
         uint128 maxAbsolutePriceDelta;
         address simplePriceManager;
-        address requestManager;
         address bridgingHook;
+        address spokeOracle;
         address oracleValuation;
+        address orderBook;
+        uint128 maxFulfillPriceDeviation;
+        uint128 maxFeeBps;
+        uint128 maxRebateBps;
     }
 
     function hub() external view returns (IHub);
@@ -55,15 +61,18 @@ interface IStdHubPolicy is IHubPolicy {
     function expiry() external view returns (uint48);
     function escalation() external view returns (uint48);
     function thresholdPerSecond() external view returns (uint128);
-    function maxBrmPriceDeviation() external view returns (uint128);
     function maxAbsolutePriceDelta() external view returns (uint128);
     function onchainAccounting() external view returns (bool);
     function isRestrictionUpdateInstant() external view returns (bool);
     function navManager() external view returns (address);
     function simplePriceManager() external view returns (address);
-    function requestManager() external view returns (address);
     function bridgingHook() external view returns (address);
+    function spokeOracle() external view returns (address);
     function oracleValuation() external view returns (address);
+    function orderBook() external view returns (address);
+    function maxFulfillPriceDeviation() external view returns (uint128);
+    function maxFeeBps() external view returns (uint128);
+    function maxRebateBps() external view returns (uint128);
     function lastPriceUpdate(PoolId poolId, ShareClassId scId) external view returns (uint64);
     function restricted(PoolId poolId, address caller) external view returns (bool);
     function allowed(PoolId poolId, address caller, bytes4 selector) external view returns (bool);

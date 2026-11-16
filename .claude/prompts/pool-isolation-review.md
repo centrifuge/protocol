@@ -5,11 +5,14 @@ spend state that **belongs to another pool**.
 
 ## Why this class matters here
 
-Centrifuge is multi-tenant. Pools are mutually distrusting tenants sharing a single set of
-singleton contracts — one `Spoke`, one `SpokeRegistry`, one `Hub`, one `AsyncRequestManager`,
-one set of hooks and managers. The only thing separating tenants is that every piece of state
-and every transfer is supposed to be keyed by, or derived from, a `PoolId` that was
-authenticated for the caller.
+Centrifuge is multi-tenant. Pools are mutually distrusting tenants sharing per-network
+singletons: `Spoke`, `SpokeRegistry`, `Hub`, the `Envoy`, `VaultRequestRouter` (every pool's
+spoke request manager), hub-side `OrderBook` and `FeeRequestManager`, `SpokeOracle`, the request
+policies, `ReserveInstantPolicy`, the liquidity routes, and one set of hooks and managers. Several
+of these hold manager rights on, or accept configuration from, every pool that uses them. Vaults
+are per position with immutable policies; escrows are per pool. The only thing separating tenants
+is that every piece of state and every transfer is supposed to be keyed by, or derived from, a
+`PoolId` that was authenticated for the caller.
 
 The trust model (see `docs/audits/out-of-scope/`) says a pool manager is **fully trusted
 within the context of their own pool** and **untrusted everywhere else**. So:
@@ -21,77 +24,101 @@ within the context of their own pool** and **untrusted everywhere else**. So:
   permitted for their own pool.
 
 That second sentence is the whole review. The interesting bugs are not "an unauthorized
-caller got in" — authentication is generally correct. They are "an *authorized* caller was
+caller got in": authentication is generally correct. They are "an *authorized* caller was
 correctly authenticated for pool A, and the effect landed on pool B."
 
-## Calibration: a real instance of this class
+## Calibration: two instances of this class
 
-From the v3.1 Sherlock contest, issue H-1, *"Pool managers can steal all other pools' pending
-deposits from globalEscrow via malicious requestManager swapping"*:
+**History (v3.1 Sherlock, H-1).** *"Pool managers can steal all other pools' pending deposits
+from globalEscrow via malicious requestManager swapping."* `Spoke.request()` checked
+`msg.sender == requestManager[poolId]`, but the callback re-resolved `requestManager[poolId]`
+later, so a pool could request under a malicious manager, swap to the shared manager, and have
+the callback credit its own escrow from an escrow shared by every pool. That mechanism is gone:
+escrows are per pool and the vault stores no manager.
 
-A pool could set its own pluggable request manager — a permitted, pool-local configuration
-choice. `Spoke.request()` correctly checked `msg.sender == requestManager[poolId]`. But the
-matching callback resolved `requestManager[poolId]` **again, later**, so a pool could submit
-requests under a malicious manager, swap to the shared `AsyncRequestManager`, and have the
-callback credit its own escrow from `globalEscrow` — a resource **shared across all pools**.
-Every step was authorized for the attacker's pool. The funds belonged to everyone else's.
+**Current shape (VDK).** `VaultRequestRouter` is registered as every pool's request manager, so
+a vault's `onlyRequestManager` check resolves to the same address whichever pool authorised the
+settlement. Before the router compared the callback's `(poolId, scId, assetId)` against the
+target vault's registry record, a pool registering its own hub-side request manager could send
+a callback for its own pool naming another pool's vault and have it applied.
 
-Note the shape, because it recurs:
+The shape both share:
 
 1. The attacker only ever configured **their own** pool.
 2. Every authentication check **passed** and was correct as written.
-3. The boundary broke at the point where an **effect target** was resolved — a shared escrow,
-   and a manager identity re-read at a different time than it was authorized.
+3. The boundary broke where an **effect target** was resolved: a shared resource, an identity
+   re-read later, or an address taken from somewhere the attacker controls.
 
-Do not go looking for this specific bug; it is fixed. Go looking for its *shape*.
+Do not go looking for these specific bugs; they are fixed. Go looking for the shape.
 
 ## What to examine
 
 Start from **every externally reachable entry point that takes or implies a `PoolId`**: user
-calls, manager calls, guardian calls, and every inbound cross-chain message handler. For each,
-trace from the authentication check to every state write and every value movement, and ask:
+calls, manager calls, Envoy `fromHub` targets, guardian calls, and every inbound cross-chain
+message handler. For each, trace from the authentication check to every state write and every
+value movement, and ask:
 
 > Is the pool id that authorized this call the same pool id that ends up keyed in storage,
 > and the same pool whose assets move?
 
 Then check these specific ways the answer becomes "no":
 
-1. **Shared or global resources.** Any escrow, balance, queue, counter, accounting entry or
-   allowance that is *not* partitioned per pool, or is partitioned by something coarser than a
-   pool. Ask who else's value sits in the same bucket, and whether a first-claimer can drain it.
+0. **Identity source.** For every singleton keyed by vault, confirm the pool comes from
+   `spokeRegistry.vaultDetails`, never from the vault itself. Then ask what the registry does
+   *not* prove: any pool can link any contract with code through its own vault factory, so
+   "linked" is pool identity, not code. Anything read from a vault-shaped address at execution
+   time (`share()`, `asset()`, previews, quotes, what it claims to have paid) is attacker data
+   unless it is the caller's own pool's vault.
+
+1. **Shared or transient resources.** Per-pool escrows are not the main risk any more.
+   Singletons that hold tokens, ETH or approvals transiently (the liquidity routes, the router)
+   are. Look for balance-based sweeps (`balanceOf(this)` rather than the delta of this call) and
+   approvals left unconsumed after a call returns.
 
 2. **Effect target derived from attacker-controlled data.** The authenticated id is used to
-   *look something up*, and the looked-up object then supplies the pool context for the actual
-   effect. If the lookup passes through anything a pool controls — a token, registrar, factory,
-   hook, manager, valuation, adapter, or any address a pool supplied — the result must be
-   re-validated against the authenticated id before it is used. Following such a pointer without
-   checking where it landed is the single highest-yield thing to look for.
+   *look something up*, and the looked-up object then supplies the pool context or the token for
+   the actual effect. If the lookup passes through anything a pool controls (a token, registrar,
+   factory, hook, manager, valuation, adapter, linked vault, or any address a pool supplied), the
+   result must be re-validated against the authenticated id before it is used. Following such a
+   pointer without checking where it landed is the single highest-yield thing to look for.
 
 3. **State keyed by a proxy object rather than by pool.** Mappings keyed by a vault, token,
    escrow, manager, or request id instead of by `PoolId` inherit whatever pool that object is
-   currently associated with. If the association can change, or can be chosen by a pool, the
-   key is not a trust boundary.
+   associated with. If the association can change, or can be chosen by a pool, the key is not a
+   trust boundary. Registry vault entries are permanent; check that every proxy key in use is.
 
-4. **Identity drift between two points in time.** Anything authorized at request time and
-   re-resolved at callback, claim, settlement, or retry time. Configuration a pool can change
-   in between is attacker-controlled. Compare what was checked *then* with what is used *now*.
+4. **Identity drift between two points in time.** Anything authorized at configuration or
+   request time and re-resolved at callback, claim, draw, settlement, or retry time.
+   Configuration a pool can change in between is attacker-controlled. Compare what was checked
+   *then* with what is used *now*.
+
+4a. **Callback binding.** Every inbound request callback must be bound to the target vault's
+   registry tuple, since the vault's own caller check names the same router for every pool. A
+   locally settling request manager registered by one pool must not reach another pool's vault.
 
 5. **Namespace collisions.** Salts, ids, addresses, or slots derived from values a pool
-   chooses. Can one pool compute into another pool's namespace, reserve an address another
-   pool will later need, or claim a slot it does not own?
+   chooses: vault CREATE2 salts, vault-namespaced request ids `(vault << 96) | localId`, policy
+   local ids. Can one pool compute into another pool's namespace, reserve an address another pool
+   will later need, or claim a slot it does not own?
 
-6. **Reuse across trust domains.** Any handle — an address, an id, an index — that is
-   released, retired, unlinked, or deleted, and can then be re-acquired by a different pool
-   while still carrying state, permissions, or pointers from its previous owner.
+6. **Reuse across trust domains.** Any handle (an address, an id, an index) that is released,
+   retired, unlinked, or deleted, and can then be re-acquired by a different pool while still
+   carrying state, permissions, or pointers from its previous owner.
 
-7. **Aggregate buckets with no per-claimant accounting.** Reservations, entitlements, or
-   allowances tracked as a single total per (share class, asset, reason) rather than per user
-   or per request. Anyone who can produce a claim against the aggregate can consume value
-   another pool's users put there.
+7. **Aggregate buckets with no per-claimant accounting.** Reservations, entitlements, credit
+   lines or allowances tracked as one total per (share class, asset, reason) or per venue rather
+   than per vault or per request. Anyone who can produce a claim against the aggregate can
+   consume value another pool's users put there. Note which aggregates are acknowledged (shared
+   route liquidity, per-vault payout reservations) and look for consequences beyond the ones
+   acknowledged.
 
 8. **Cross-chain message handling.** An inbound message carries a pool id chosen by the
    sender. Verify what actually constrains it, and whether a pool that controls its own
    messaging path can emit a message naming a pool it does not own.
+
+8a. **Envoy targets.** Every `fromHub(poolId, payload)` must key its state by the Envoy-supplied
+   `poolId` and validate any payload address (vault, underlying route, observer) against it
+   through the registry. The Envoy is reachable by every pool's managers.
 
 ## Method
 
@@ -103,22 +130,23 @@ Then check these specific ways the answer becomes "no":
   and the exact storage or transfer that crosses between them, you do not have a finding.
 - Prefer reading the whole flow to grepping for a pattern. These bugs live in the seam between
   two functions that are each correct alone.
-- Check the out-of-scope list before reporting, and say why your finding is not covered by it.
-  An item that acknowledges a mechanism but scopes its consequence to the pool's own liveness
-  or its own users does **not** cover a cross-pool loss of funds.
+- Check `src/vaults/SPECIFICATION.md` (the deployment model and its `n` rows) and the
+  out-of-scope list before reporting, and say why your finding is not covered by them. An item
+  that acknowledges a mechanism but scopes its consequence to the pool's own liveness or its own
+  users does **not** cover a cross-pool loss of funds.
 
 ## Output
 
 For each finding, in severity order:
 
-- **Title** — one line.
-- **Path** — entry point → authentication that passes → where the pool id is lost or replaced
+- **Title**: one line.
+- **Path**: entry point → authentication that passes → where the pool id is lost or replaced
   → the state write or transfer that lands on another pool. Cite `file:line` at each step.
-- **Attacker setup** — what the attacker configures for their own pool, and why each step is
+- **Attacker setup**: what the attacker configures for their own pool, and why each step is
   permitted.
-- **Impact** — what the victim pool loses, and what bounds it.
-- **Why it is in scope** — against the trust model and the out-of-scope list.
-- **Fix** — the smallest check that restores the invariant.
+- **Impact**: what the victim pool loses, and what bounds it.
+- **Why it is in scope**: against the trust model, the spec and the out-of-scope list.
+- **Fix**: the smallest check that restores the invariant.
 
 If a path looks suspicious but you cannot complete it, report it separately as
 *unconfirmed*, with the specific thing you could not establish. Do not pad the list: a single

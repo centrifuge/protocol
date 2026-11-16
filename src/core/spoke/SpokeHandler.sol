@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
 import {ISpokeHandler} from "./interfaces/ISpokeHandler.sol";
 import {ISpokeRegistry} from "./interfaces/ISpokeRegistry.sol";
+import {IVaultPosition} from "./interfaces/IVaultPosition.sol";
 import {IVaultFactory} from "./factories/interfaces/IVaultFactory.sol";
 import {IEscrowFactory} from "./factories/interfaces/IEscrowFactory.sol";
 import {ISpokeRequestManager} from "./interfaces/ISpokeRequestManager.sol";
@@ -124,6 +125,10 @@ contract SpokeHandler is Auth, ISpokeHandler, ISpokeGatewayHandler {
             require(shareToken != address(0), ISpokeRegistry.ShareTokenDoesNotExist());
 
             address vault_ = IVaultFactory(vaultOrFactory).newVault(poolId, scId, asset, tokenId, shareToken, payload);
+            require(
+                IVaultPosition(vault_).poolId() == poolId && IVaultPosition(vault_).scId() == scId,
+                ISpokeRegistry.InvalidVault()
+            );
 
             spokeRegistry.registerVault(
                 poolId, scId, assetId, asset, tokenId, IVaultFactory(vaultOrFactory), vault_, payload

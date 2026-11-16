@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1090" width="1440" height="1090" role="img" aria-labelledby="ttl dsc"><title id="ttl">How the hub reaches the vault side</title><desc id="dsc">Two sequences. A pool manager configures a target through the hub, a message and the Envoy; and fills an order through the fee manager, hub and Envoy, after which the fill returns to the vault as a callback.</desc>
+<defs><marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6"/></marker><marker id="arrow-p" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#7c5cd6" stroke-width="1.6"/></marker><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#f6f7f8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c9d0d9" stroke-width="3"/></pattern></defs>
+<rect x="0.5" y="0.5" width="1439" height="1089" rx="16" fill="#ffffff" stroke="#ececec"/>
+<text x="48" y="76" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#17202a" text-anchor="start">How the hub reaches the vault side</text>
+<text x="60" y="126" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Configuring a policy, an oracle or a route</text>
+<rect x="62" y="150" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="88" cy="175" r="17" fill="#cfe2fb"/>
+<circle cx="88" cy="170" r="5" fill="#2f3a45"/>
+<path d="M79,185 Q88,173 97,185 Z" fill="#2f3a45"/>
+<text x="110" y="181" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Pool manager</text>
+<rect x="352" y="150" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="378" cy="175" r="14" fill="#fbe6b0"/>
+<text x="378" y="180" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="400" y="181" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Hub</text>
+<rect x="672" y="150" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="698" cy="175" r="14" fill="#fbe6b0"/>
+<text x="698" y="180" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="720" y="181" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Envoy</text>
+<rect x="1092" y="150" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="1118" cy="175" r="14" fill="#fbe6b0"/>
+<text x="1118" y="180" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1140" y="181" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Target</text>
+<line x1="150" y1="200" x2="150" y2="425" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="440" y1="200" x2="440" y2="425" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="760" y1="200" x2="760" y2="425" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="1180" y1="200" x2="1180" y2="425" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<path d="M150,240 H436" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="168" cy="220" r="11" fill="#46536b"/>
+<text x="168" y="224.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+<text x="188" y="225" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">Hub.managerCall(target, payload)</text>
+<rect x="430" y="248" width="369.0" height="28" rx="8" fill="#fdf0d5"/>
+<text x="442" y="267" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" fill="#a8690a" text-anchor="start">check</text>
+<text x="486" y="267" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#1f2a37" text-anchor="start">the pool's hub policy: immediate, or timelocked</text>
+<path d="M440,340 H756" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<circle cx="458" cy="320" r="11" fill="#46536b"/>
+<text x="458" y="324.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+<text x="478" y="325" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">message</text>
+<path d="M760,395 H1176" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="778" cy="375" r="11" fill="#46536b"/>
+<text x="778" y="379.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+<text x="798" y="380" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">target.fromHub(poolId, payload)</text>
+<rect x="765.0" y="403" width="425.0" height="28" rx="8" fill="#fdf0d5"/>
+<text x="777.0" y="422" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" fill="#a8690a" text-anchor="start">check</text>
+<text x="821.0" y="422" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#1f2a37" text-anchor="start">only the Envoy may call; the vault belongs to this pool</text>
+<text x="60" y="462" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">The Envoy is the one msg.sender every target trusts, so the hub can be replaced without re-wiring policies, oracles or routes.</text>
+<text x="60" y="520" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">Filling an order, and the fill coming back</text>
+<rect x="52" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="78" cy="595" r="17" fill="#cfe2fb"/>
+<circle cx="78" cy="590" r="5" fill="#2f3a45"/>
+<path d="M69,605 Q78,593 87,605 Z" fill="#2f3a45"/>
+<text x="100" y="601" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Pool manager</text>
+<rect x="242" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="268" cy="595" r="14" fill="#fbe6b0"/>
+<text x="268" y="600" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="290" y="601" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#1f2a37" text-anchor="start">FeeRequestManager</text>
+<rect x="432" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="458" cy="595" r="14" fill="#fbe6b0"/>
+<text x="458" y="600" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="480" y="601" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Hub</text>
+<rect x="622" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="648" cy="595" r="14" fill="#fbe6b0"/>
+<text x="648" y="600" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="670" y="601" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Envoy</text>
+<rect x="812" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="838" cy="595" r="14" fill="#fbe6b0"/>
+<text x="838" y="600" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="860" y="601" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">OrderBook</text>
+<rect x="1032" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="1058" cy="595" r="14" fill="#fbe6b0"/>
+<text x="1058" y="600" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1080" y="601" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#1f2a37" text-anchor="start">VaultRequestRouter</text>
+<rect x="1222" y="570" width="176" height="50" rx="10" fill="#f6f7f8"/>
+<circle cx="1248" cy="595" r="14" fill="#fbe6b0"/>
+<text x="1248" y="600" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1270" y="601" font-family="Arial, Helvetica, sans-serif" font-size="15.5" font-weight="normal" fill="#1f2a37" text-anchor="start">Vault</text>
+<rect x="48" y="548" width="880" height="20" rx="6" fill="#eef0f2"/>
+<text x="60" y="563" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#3d4753" text-anchor="start">Hub chain</text>
+<rect x="1010" y="548" width="380" height="20" rx="6" fill="#eef0f2"/>
+<text x="1022" y="563" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#3d4753" text-anchor="start">Spoke chain</text>
+<line x1="140" y1="620" x2="140" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="330" y1="620" x2="330" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="520" y1="620" x2="520" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="710" y1="620" x2="710" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="900" y1="620" x2="900" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="1120" y1="620" x2="1120" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<line x1="1310" y1="620" x2="1310" y2="1030" stroke="#d7dce2" stroke-width="2" stroke-dasharray="3 5"/>
+<path d="M140,660 H326" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="158" cy="640" r="11" fill="#46536b"/>
+<text x="158" y="644.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+<text x="178" y="645" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">fulfill(order, amount)</text>
+<rect x="320" y="668" width="530.0" height="28" rx="8" fill="#fdf0d5"/>
+<text x="332" y="687" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" fill="#a8690a" text-anchor="start">check</text>
+<text x="376" y="687" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#1f2a37" text-anchor="start">onlyManager; the hub policy is asked first, and a delayed call reverts</text>
+<path d="M330,745 H516" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="348" cy="725" r="11" fill="#46536b"/>
+<text x="348" y="729.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+<text x="368" y="730" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">Hub.managerCall(OrderBook, ...)</text>
+<path d="M520,800 H706" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="538" cy="780" r="11" fill="#46536b"/>
+<text x="538" y="784.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+<text x="558" y="785" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">callFromHub</text>
+<path d="M710,860 H896" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="728" cy="840" r="11" fill="#46536b"/>
+<text x="728" y="844.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+<text x="748" y="845" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">OrderBook.fromHub(Fulfill)</text>
+<rect x="422.0" y="868" width="488.0" height="28" rx="8" fill="#fdf0d5"/>
+<text x="434.0" y="887" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" fill="#a8690a" text-anchor="start">check</text>
+<text x="478.0" y="887" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#1f2a37" text-anchor="start">opens a gateway batch; the forwarded value pays for the callback</text>
+<path d="M900,940 H1116" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<circle cx="918" cy="920" r="11" fill="#46536b"/>
+<text x="918" y="924.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+<text x="938" y="925" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">requestCallback</text>
+<rect x="881.0" y="948" width="258.0" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1010" y="966.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">one message per fill, across chains</text>
+<path d="M1120,1010 H1306" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<circle cx="1138" cy="990" r="11" fill="#46536b"/>
+<text x="1138" y="994.5" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+<text x="1158" y="995" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">typed calls</text>
+<rect x="1049.0" y="1018" width="271.0" height="28" rx="8" fill="#fdf0d5"/>
+<text x="1061.0" y="1037" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" fill="#a8690a" text-anchor="start">check</text>
+<text x="1105.0" y="1037" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#1f2a37" text-anchor="start">registry-checked, one transaction</text>
+</svg>

@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" width="1440" height="900" role="img" aria-labelledby="ttl dsc"><title id="ttl">What the escrow holds, and what is reserved</title><desc id="dsc">Assets in the escrow are in one of three states: reserved for a pending deposit, in the pool's holding, or earmarked for a payout. Vault calls move them between states; a worked example follows the numbers.</desc>
+<defs><marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6"/></marker><marker id="arrow-p" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#7c5cd6" stroke-width="1.6"/></marker><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#f6f7f8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c9d0d9" stroke-width="3"/></pattern></defs>
+<rect x="0.5" y="0.5" width="1439" height="899" rx="16" fill="#ffffff" stroke="#ececec"/>
+<text x="48" y="76" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#17202a" text-anchor="start">What the escrow holds, and what is reserved</text>
+<text x="60" y="112" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="normal" fill="#3d4753" text-anchor="start">Every asset in the escrow is in exactly one of three states. The vault moves them between states as requests are made, filled and claimed.</text>
+<rect x="60" y="215" width="190" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="94" cy="250.0" r="17" fill="#cfe2fb"/>
+<circle cx="94" cy="245.0" r="5" fill="#2f3a45"/>
+<path d="M85,260.0 Q94,248.0 103,260.0 Z" fill="#2f3a45"/>
+<text x="124" y="257.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Investor</text>
+<rect x="330" y="150" width="330" height="190" rx="12" fill="url(#hatch)" stroke="#c9d0d9"/>
+<rect x="340" y="160" width="310" height="170" rx="8" fill="#ffffff" opacity="0.88"/>
+<text x="350" y="194" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="start">Reserved for a request</text>
+<text x="350" y="226" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">a pending deposit's assets, one</text>
+<text x="350" y="248" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">reason per bucket</text>
+<text x="350" y="270" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">not in the pool's holding: the hub</text>
+<text x="350" y="292" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">has not accounted them yet</text>
+<rect x="760" y="150" width="300" height="190" rx="12" fill="#f6f7f8"/>
+<rect x="760" y="150" width="300" height="10" rx="5" fill="#3b82f6"/>
+<text x="780" y="194" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="start">In the holding</text>
+<text x="780" y="226" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">counted in the pool's holding</text>
+<text x="780" y="248" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">and NAV</text>
+<text x="780" y="270" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">free for the instant lane and</text>
+<text x="780" y="292" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">the balance sheet manager</text>
+<rect x="1160" y="150" width="230" height="190" rx="12" fill="#f6f7f8"/>
+<rect x="1160" y="150" width="230" height="10" rx="5" fill="#8f73e6"/>
+<text x="1180" y="194" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="bold" fill="#1f2a37" text-anchor="start">Earmarked</text>
+<text x="1180" y="226" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">owed to an investor</text>
+<text x="1180" y="248" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">one shared redeem reason</text>
+<text x="1180" y="270" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">nothing else can take it</text>
+<path d="M250,250 H328" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="256.2" y="236" width="67.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="290" y="254.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">request</text>
+<path d="M660,250 H758" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="685.4" y="236" width="47.2" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="709" y="254.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">fill</text>
+<path d="M1060,250 H1158" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1061.6" y="236" width="94.8" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1109" y="254.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">redeem fill</text>
+<path d="M495,340 V372 H1275 V342" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="650.6" y="358" width="468.8" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="885" y="376.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">deposit cancel: the net is earmarked, the fee stays in the holding</text>
+<path d="M1275,150 V128" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1173.2" y="114" width="203.6" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1275" y="132.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">claim: paid to the receiver</text>
+<text x="60" y="455" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#17202a" text-anchor="start">One example, in numbers</text>
+<rect x="60" y="480" width="1340" height="40" rx="10" fill="#eef0f2"/>
+<text x="80" y="506" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#1f2a37" text-anchor="start">What happens</text>
+<text x="700" y="506" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#6b7686" text-anchor="middle">Reserved</text>
+<text x="850" y="506" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#3b82f6" text-anchor="middle">Holding</text>
+<text x="1000" y="506" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#8f73e6" text-anchor="middle">Earmarked</text>
+<text x="1150" y="506" font-family="Arial, Helvetica, sans-serif" font-size="14.5" font-weight="bold" fill="#3d4753" text-anchor="middle">Paid out</text>
+<rect x="60" y="534" width="1340" height="52" rx="8" fill="#f6f7f8"/>
+<text x="80" y="557" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">requestDeposit 1000</text>
+<text x="80" y="576" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">the assets are escrowed and reserved under this bucket</text>
+<text x="700" y="566" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#6b7686" text-anchor="middle">1000</text>
+<text x="850" y="566" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="1000" y="566" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="1150" y="566" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="80" y="609" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">the hub fills 500 (approveDeposits)</text>
+<text x="80" y="628" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">the filled part is released into the holding</text>
+<text x="700" y="618" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#6b7686" text-anchor="middle">500</text>
+<text x="850" y="618" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3b82f6" text-anchor="middle">500</text>
+<text x="1000" y="618" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="1150" y="618" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<rect x="60" y="638" width="1340" height="52" rx="8" fill="#f6f7f8"/>
+<text x="80" y="661" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">the rest is cancelled: gross 500, net 480</text>
+<text x="80" y="680" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">gross released, net earmarked, the 20 fee stays in the holding</text>
+<text x="700" y="670" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="850" y="670" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3b82f6" text-anchor="middle">520</text>
+<text x="1000" y="670" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#8f73e6" text-anchor="middle">480</text>
+<text x="1150" y="670" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="80" y="713" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">the investor withdraws 480</text>
+<text x="80" y="732" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">withdrawReserved pays the earmarked assets</text>
+<text x="700" y="722" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="850" y="722" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3b82f6" text-anchor="middle">520</text>
+<text x="1000" y="722" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="1150" y="722" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3d4753" text-anchor="middle">480</text>
+<rect x="60" y="742" width="1340" height="52" rx="8" fill="#f6f7f8"/>
+<text x="80" y="765" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">a redeem is filled for 500 (revokeShares)</text>
+<text x="80" y="784" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">shares burn, the payout is earmarked from the holding</text>
+<text x="700" y="774" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="850" y="774" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3b82f6" text-anchor="middle">20</text>
+<text x="1000" y="774" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#8f73e6" text-anchor="middle">500</text>
+<text x="1150" y="774" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3d4753" text-anchor="middle">480</text>
+<text x="80" y="817" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#1f2a37" text-anchor="start">the investor redeems</text>
+<text x="80" y="836" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">withdrawReserved pays the earmarked assets</text>
+<text x="700" y="826" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="850" y="826" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3b82f6" text-anchor="middle">20</text>
+<text x="1000" y="826" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="normal" fill="#b5bcc6" text-anchor="middle">0</text>
+<text x="1150" y="826" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#3d4753" text-anchor="middle">980</text>
+<text x="60" y="880" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="normal" fill="#3d4753" text-anchor="start">Reserved plus holding plus earmarked is what the escrow still holds; paid out is the running total that has left the escrow.</text>
+</svg>

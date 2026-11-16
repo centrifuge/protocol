@@ -461,14 +461,20 @@ contract ChainlinkAdapterTest is ChainlinkAdapterTestBase {
     function testERC165Support(bytes4 unsupportedInterfaceId) public view {
         bytes4 erc165 = 0x01ffc9a7;
         bytes4 any2EVMMessageReceiver = 0x85572ffb;
+        bytes4 any2EVMMessageReceiverV2 = 0x1bfc84d0;
 
-        vm.assume(unsupportedInterfaceId != erc165 && unsupportedInterfaceId != any2EVMMessageReceiver);
+        vm.assume(
+            unsupportedInterfaceId != erc165 && unsupportedInterfaceId != any2EVMMessageReceiver
+                && unsupportedInterfaceId != any2EVMMessageReceiverV2
+        );
 
         assertEq(type(IERC165).interfaceId, erc165);
         assertEq(type(IAny2EVMMessageReceiver).interfaceId, any2EVMMessageReceiver);
+        assertEq(type(IAny2EVMMessageReceiverV2).interfaceId, any2EVMMessageReceiverV2);
 
         assertEq(adapter.supportsInterface(erc165), true);
         assertEq(adapter.supportsInterface(any2EVMMessageReceiver), true);
+        assertEq(adapter.supportsInterface(any2EVMMessageReceiverV2), true);
 
         assertEq(adapter.supportsInterface(unsupportedInterfaceId), false);
     }

@@ -259,14 +259,14 @@ contract GasServiceTest is Test {
 
     function _updateVault(VaultUpdateKind kind, bytes memory payload) internal pure returns (bytes memory) {
         return MessageLib.UpdateVault({
-                poolId: 1,
-                scId: bytes16(uint128(2)),
-                assetId: 3,
-                vaultOrFactory: bytes32(uint256(4)),
-                kind: uint8(kind),
-                extraGasLimit: 0,
-                payload: payload
-            }).serialize();
+            poolId: 1,
+            scId: bytes16(uint128(2)),
+            assetId: 3,
+            vaultOrFactory: bytes32(uint256(4)),
+            kind: uint8(kind),
+            extraGasLimit: 0,
+            payload: payload
+        }).serialize();
     }
 
     function testMessageProcessingGasLimitIgnoresPayloadForLinkAndUnlink() public view {

@@ -8,7 +8,6 @@ import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
 import {IHub} from "../../src/core/hub/interfaces/IHub.sol";
-import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {IPolicy} from "../../src/core/utils/interfaces/IPolicy.sol";
 import {IRegistrar} from "../../src/core/spoke/interfaces/IRegistrar.sol";
 import {IHubRegistry} from "../../src/core/hub/interfaces/IHubRegistry.sol";
@@ -18,8 +17,6 @@ import {INAVManager} from "../../src/hooks/accounting/interfaces/INAVManager.sol
 
 import {SupervisorFactory} from "../../src/managers/hub/Supervisor.sol";
 import {ISupervisor, TrustedCall} from "../../src/managers/hub/interfaces/ISupervisor.sol";
-
-import {ManagerAction} from "../../src/vaults/interfaces/IBatchRequestManager.sol";
 
 import {MAX_MESSAGE_COST as GAS} from "../utils/GasConstants.sol";
 import {IStdHubPolicy} from "../../src/policies/hub/interfaces/IStdHubPolicy.sol";
@@ -68,14 +65,17 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         escalation: POLICY_ESCALATION,
                         maxAbsolutePriceDelta: 0,
                         thresholdPerSecond: 0,
-                        maxBrmPriceDeviation: type(uint128).max,
                         onchainAccounting: false,
                         isRestrictionUpdateInstant: false,
                         navManager: address(0),
                         simplePriceManager: address(0),
-                        requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
+                        spokeOracle: address(0),
                         oracleValuation: address(0),
+                        orderBook: address(0),
+                        maxFulfillPriceDeviation: type(uint128).max,
+                        maxFeeBps: type(uint128).max,
+                        maxRebateBps: type(uint128).max,
                         allowlist: new IStdHubPolicy.Entry[](0)
                     })
                 )
@@ -162,14 +162,17 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         escalation: POLICY_ESCALATION,
                         maxAbsolutePriceDelta: 0,
                         thresholdPerSecond: 0,
-                        maxBrmPriceDeviation: type(uint128).max,
                         onchainAccounting: false,
                         isRestrictionUpdateInstant: false,
                         navManager: address(0),
                         simplePriceManager: address(0),
-                        requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
+                        spokeOracle: address(0),
                         oracleValuation: address(0),
+                        orderBook: address(0),
+                        maxFulfillPriceDeviation: type(uint128).max,
+                        maxFeeBps: type(uint128).max,
+                        maxRebateBps: type(uint128).max,
                         allowlist: allowlist
                     })
                 )
@@ -314,14 +317,17 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             escalation: POLICY_ESCALATION,
                             maxAbsolutePriceDelta: 0,
                             thresholdPerSecond: 0,
-                            maxBrmPriceDeviation: type(uint128).max,
                             onchainAccounting: false,
                             isRestrictionUpdateInstant: false,
                             navManager: address(0),
                             simplePriceManager: address(0),
-                            requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
+                            spokeOracle: address(0),
                             oracleValuation: address(0),
+                            orderBook: address(0),
+                            maxFulfillPriceDeviation: type(uint128).max,
+                            maxFeeBps: type(uint128).max,
+                            maxRebateBps: type(uint128).max,
                             allowlist: new IStdHubPolicy.Entry[](0)
                         })
                     )
@@ -363,14 +369,17 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
                             escalation: POLICY_ESCALATION,
                             maxAbsolutePriceDelta: 0,
                             thresholdPerSecond: 0,
-                            maxBrmPriceDeviation: type(uint128).max,
                             onchainAccounting: false,
                             isRestrictionUpdateInstant: false,
                             navManager: address(0),
                             simplePriceManager: address(0),
-                            requestManager: address(batchRequestManager),
                             bridgingHook: address(0),
+                            spokeOracle: address(0),
                             oracleValuation: address(0),
+                            orderBook: address(0),
+                            maxFulfillPriceDeviation: type(uint128).max,
+                            maxFeeBps: type(uint128).max,
+                            maxRebateBps: type(uint128).max,
                             allowlist: new IStdHubPolicy.Entry[](0)
                         })
                     )
@@ -428,107 +437,6 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         assertTrue(target.sentinels(sentinel), "sentinel added via authorized managerCall");
     }
 
-    /// @notice `managerCall` targeting the configured request manager (BRM) is in policy: routine keeper ops
-    ///         (approve/issue/revoke/forceCancel) run synchronously, no authorization needed. Verified at the
-    ///         policy seam: `enforce` of a BRM-targeted call neither reverts nor consumes an authorization.
-    function testBrmManagerCallIsInPolicy() public {
-        uint16 localId = messageDispatcher.localCentrifugeId();
-        bytes32 target = address(batchRequestManager).toBytes32();
-        // Opaque payload: target is pinned, so its contents are not inspected by the classifier.
-        bytes memory payload = abi.encode(uint8(1), bytes16(0));
-        bytes memory call = abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, payload, 0, 0, address(0)));
-
-        // In policy: enforce succeeds with no prior authorize() (deny-by-default would revert Unauthorized).
-        vm.prank(address(hub));
-        policy.enforce(POOL_A, FM, call);
-    }
-
-    /// @dev BRM issue inner payload carrying `pricePoolPerShare` for SC_1.
-    function _brmIssueInner(uint128 price) internal view returns (bytes memory) {
-        return abi.encode(
-            uint8(ManagerAction.IssueShares),
-            ShareClassId.unwrap(SC_1),
-            uint128(0),
-            uint32(0),
-            price,
-            uint128(0),
-            address(0)
-        );
-    }
-
-    /// @notice A BRM issue within `maxBrmPriceDeviation` is in policy; one beyond is out-of-policy and requires
-    ///         the standard authorize -> delay -> consume flow. Reads the real ShareClassManager price.
-    ///
-    /// @dev The matured path consumes at the policy seam (`enforce`) rather than through a full
-    ///      `hub.managerCall`: the BRM `IssueShares` body needs live epoch/approval state and would revert
-    ///      inside the BRM, which is orthogonal to the price guard.
-    function testBrmManagerCallPriceDeviationGuard() public {
-        // Commit a main share price (setUp policy has share-price guard disabled, so this runs synchronously).
-        vm.prank(FM);
-        hub.updateSharePrice(POOL_A, SC_1, D18.wrap(1e18), uint64(block.timestamp));
-        (D18 mainPrice,) = shareClassManager.pricePoolPerShare(POOL_A, SC_1);
-        assertEq(mainPrice.raw(), 1e18, "main share price committed");
-
-        // Install a policy with a 1% price-deviation bound (Anemoy-style).
-        StdHubPolicy guarded = StdHubPolicy(
-            address(
-                policyFactory.newHubPolicy(
-                    IStdHubPolicy.Config({
-                        delay: POLICY_DELAY,
-                        expiry: POLICY_EXPIRY,
-                        escalation: POLICY_ESCALATION,
-                        maxAbsolutePriceDelta: 0,
-                        thresholdPerSecond: 0,
-                        maxBrmPriceDeviation: 1e16,
-                        onchainAccounting: false,
-                        isRestrictionUpdateInstant: false,
-                        navManager: address(0),
-                        simplePriceManager: address(0),
-                        requestManager: address(batchRequestManager),
-                        bridgingHook: address(0),
-                        oracleValuation: address(0),
-                        allowlist: new IStdHubPolicy.Entry[](0)
-                    })
-                )
-            )
-        );
-        vm.prank(address(root));
-        hub.setPolicy(POOL_A, guarded);
-
-        uint16 localId = messageDispatcher.localCentrifugeId();
-        bytes32 target = address(batchRequestManager).toBytes32();
-
-        // In-bound issue (within 1%): in policy. `enforce` runs synchronously, consumes no authorization.
-        bytes memory okCall =
-            abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, _brmIssueInner(1e18 + 5e15), 0, 0, address(0)));
-        assertEq(guarded.authorizationDelay(POOL_A, FM, okCall), 0, "in-bound issue is in policy");
-        vm.prank(address(hub));
-        guarded.enforce(POOL_A, FM, okCall);
-
-        // Over-deviating issue (>1%): out of policy.
-        bytes memory badInner = _brmIssueInner(1e18 + 2e16);
-        bytes memory badCall = abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, badInner, 0, 0, address(0)));
-        assertEq(guarded.authorizationDelay(POOL_A, FM, badCall), POLICY_DELAY, "over-deviating issue is out of policy");
-
-        // Without an authorization the live managerCall reverts at the policy gate, before the BRM body.
-        vm.prank(FM);
-        vm.expectRevert(IHubRegistry.Unauthorized.selector);
-        hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
-
-        // Operator authorizes the exact calldata on the real ledger; not matured yet -> still reverts.
-        vm.prank(operator);
-        hub.initiateAuthorization(POOL_A, badCall);
-        vm.prank(FM);
-        vm.expectRevert(IHubRegistry.Unauthorized.selector);
-        hub.managerCall(POOL_A, localId, target, badInner, 0, 0, address(0));
-
-        // After the delay the matured authorization is consumed at the policy seam.
-        skip(POLICY_DELAY);
-        vm.prank(address(hub));
-        guarded.enforce(POOL_A, FM, badCall);
-        assertEq(hubRegistry.authorizedAfter(hubRegistry.authId(POOL_A, badCall)), 0, "authorization consumed");
-    }
-
     // ─── share-price guard ─────────────────────────────────────────────────────
 
     function _priceGuardedPolicy() internal returns (StdHubPolicy) {
@@ -541,14 +449,17 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
                         escalation: POLICY_ESCALATION,
                         maxAbsolutePriceDelta: POLICY_PRICE_CAP,
                         thresholdPerSecond: POLICY_PRICE_RATE,
-                        maxBrmPriceDeviation: type(uint128).max,
                         onchainAccounting: false,
                         isRestrictionUpdateInstant: false,
                         navManager: address(0),
                         simplePriceManager: address(0),
-                        requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
+                        spokeOracle: address(0),
                         oracleValuation: address(0),
+                        orderBook: address(0),
+                        maxFulfillPriceDeviation: type(uint128).max,
+                        maxFeeBps: type(uint128).max,
+                        maxRebateBps: type(uint128).max,
                         allowlist: new IStdHubPolicy.Entry[](0)
                     })
                 )
@@ -776,7 +687,7 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
 
         uint16 localId = messageDispatcher.localCentrifugeId();
 
-        // The spoke-side share token must exist for SyncManager.setMaxReserve. notifyPool is in policy;
+        // The spoke-side share token must exist for the manager call below. notifyPool is in policy;
         // notifyShareClass is not, so it needs its own authorize -> mature -> execute cycle first.
         _notifyPool();
         bytes memory notifyCall = _notifyShareClassCall(address(shareTokenRegistrar), "");
@@ -786,9 +697,9 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.prank(FM);
         hub.notifyShareClass{value: GAS}(POOL_A, SC_1, localId, address(shareTokenRegistrar).toBytes32(), "", 0, FUNDED);
 
-        uint128 newMaxReserve = 123e6;
-        bytes32 target = address(syncManager).toBytes32();
-        bytes memory payload = _syncManagerMaxReserveMsg(SC_1, usdcId, newMaxReserve);
+        uint64 newMinDelay = 123;
+        bytes32 target = address(queueManager).toBytes32();
+        bytes memory payload = abi.encode(SC_1.raw(), newMinDelay, uint64(0));
         bytes memory call = abi.encodeCall(IHub.managerCall, (POOL_A, localId, target, payload, 0, 0, address(0)));
 
         // Out of policy: without an authorization the call reverts (deny-by-default).
@@ -803,31 +714,24 @@ contract StdHubPolicyIntegrationTest is CentrifugeIntegrationTestWithUtils {
         vm.expectRevert(IHubRegistry.Unauthorized.selector);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
 
-        // After the delay it runs, reaching the migrated spoke target (SyncManager) directly via the Envoy.
+        // After the delay it runs, reaching the spoke target (QueueManager) directly via the Envoy.
         skip(POLICY_DELAY);
         vm.prank(FM);
         hub.managerCall(POOL_A, localId, target, payload, 0, 0, address(0));
-        assertEq(
-            syncManager.maxReserve(POOL_A, SC_1, address(usdc), 0),
-            newMaxReserve,
-            "maxReserve set via authorized contract update"
-        );
+        (uint64 minDelay,,) = queueManager.scQueueState(POOL_A, SC_1);
+        assertEq(minDelay, newMinDelay, "queue config set via authorized contract update");
     }
 
     /// @notice R5 ward-graph guardrail. The two-method routing replaces the ERC165 probe, so the standing
     ///         invariant is now the ward chain that carries a hub managerCall up to the Envoy, plus the fact
     ///         that each managerCall target binds the Envoy by an immutable msg.sender check (not a ward).
-    ///         If any link breaks, `managerCall` to the BRM/Supervisor stops working.
+    ///         If any link breaks, `managerCall` to the Supervisor stops working.
     function testManagerCallWardGraph() public {
         // manager -> Hub -> MessageDispatcher -> Envoy
         assertEq(IAuth(address(messageDispatcher)).wards(address(hub)), 1, "Hub must be warded on MessageDispatcher");
         assertEq(
             IAuth(address(envoy)).wards(address(messageDispatcher)), 1, "MessageDispatcher must be warded on Envoy"
         );
-
-        // Envoy -> BatchRequestManager is an immutable msg.sender check, not a ward (matching the other
-        // managerCall targets). A dispatcher swap would force a BRM redeploy, which is why the dispatcher is final.
-        assertEq(batchRequestManager.envoy(), address(envoy), "BRM bound to Envoy by immutable ref");
 
         // The Supervisor is reached via the same immutable msg.sender check: it does not inherit Auth, so it
         // has no ward surface to grant. A real-dispatcher-bound Supervisor carries that immutable ref.

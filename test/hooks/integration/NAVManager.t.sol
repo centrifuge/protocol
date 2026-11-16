@@ -126,11 +126,11 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(NETWORK_A, POOL_A, scId, 500e18, true, true, 1);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
-        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
-        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
-        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+        int128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        int128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (int128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (int128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         assertEq(navHub, 500e18);
         assertEq(navSpoke, 3300e18);
@@ -157,11 +157,11 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         );
         navManager.updateHoldingValue(POOL_A, scId, asset3);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
-        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
-        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
-        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+        int128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        int128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (int128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (int128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
         (bool spokeGainIsPositive, uint128 spokeGain) =
             accounting.accountValue(POOL_A, navManager.gainAccount(NETWORK_B));
         (bool hubLossIsPositive, uint128 hubLoss) = accounting.accountValue(POOL_A, navManager.lossAccount(NETWORK_A));
@@ -221,11 +221,11 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
             NETWORK_A, NETWORK_B, POOL_A, scId, bytes32(0), bytes32("receiver"), sharesTransferred, 0, manager
         );
 
-        (uint128 navHub2, uint128 issuanceHub, uint128 transferredInHub, uint128 transferredOutHub,,) =
+        (int128 navHub2, uint128 issuanceHub, uint128 transferredInHub, uint128 transferredOutHub,,) =
             simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
-        (uint128 navSpoke2, uint128 issuanceSpoke, uint128 transferredInSpoke, uint128 transferredOutSpoke,,) =
+        (int128 navSpoke2, uint128 issuanceSpoke, uint128 transferredInSpoke, uint128 transferredOutSpoke,,) =
             simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
-        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+        (int128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // NAV and issuance should remain unchanged until next onUpdate
         // Transfers are tracked separately and applied during onUpdate
@@ -273,11 +273,11 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(NETWORK_A, POOL_A, scId, liabilityAsset, 50e18, true, true, 2);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
-        (uint128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
-        (uint128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
-        (uint128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
+        int128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        int128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        (int128 navHub2, uint128 issuanceHub,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_A);
+        (int128 navSpoke2, uint128 issuanceSpoke,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 globalNAV, uint128 globalIssuance) = simplePriceManager.metrics(POOL_A);
 
         // Liability reduces the NAV
         assertEq(navHub, 450e18);
@@ -370,8 +370,8 @@ contract NAVManagerIntegrationTest is CentrifugeIntegrationTest {
         assertEq(hubEquityAfter, hubEquityBefore - hubLoss);
         assertTrue(hubEquityIsPositiveAfter);
 
-        uint128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
-        uint128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
+        int128 navHub = navManager.netAssetValue(POOL_A, NETWORK_A);
+        int128 navSpoke = navManager.netAssetValue(POOL_A, NETWORK_B);
 
         assertEq(navHub, 250e18);
         assertEq(navSpoke, 3400e18);
@@ -416,7 +416,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         _testInitializeAndUpdate();
 
         // Baseline: NETWORK_B at 3300e18, no deficit.
-        (uint128 navBefore, uint128 issuanceBefore,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 navBefore, uint128 issuanceBefore,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navBefore, 3300e18);
         assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 0);
 
@@ -431,7 +431,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         // Gate engaged: live NAV reflects the shortfall, but the published price is held.
         assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 1);
         assertEq(navManager.netAssetValue(POOL_A, NETWORK_B), 2300e18); // live: equity down 1000e18
-        (uint128 navDuring, uint128 issuanceDuring,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 navDuring, uint128 issuanceDuring,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navDuring, navBefore); // frozen at last good
         assertEq(issuanceDuring, issuanceBefore);
 
@@ -440,7 +440,7 @@ contract NAVManagerDeficitGateTest is NAVManagerIntegrationTest {
         hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1500 * 10 ** asset1Decimals), true, true, 4);
 
         assertEq(holdings.deficitCount(POOL_A, scId, NETWORK_B), 0);
-        (uint128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 navAfter, uint128 issuanceAfter,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navAfter, 3300e18); // 1000 - 1500 + 1500 = 1000 asset1 restored -> NAV back to 3300e18
         assertEq(issuanceAfter, issuanceBefore);
     }
@@ -468,14 +468,17 @@ contract NAVManagerPriceGuardTest is NAVManagerIntegrationTest {
                         escalation: 7 days,
                         maxAbsolutePriceDelta: CAP,
                         thresholdPerSecond: RATE,
-                        maxBrmPriceDeviation: type(uint128).max,
                         onchainAccounting: true,
                         isRestrictionUpdateInstant: false,
                         navManager: address(navManager),
                         simplePriceManager: address(simplePriceManager),
-                        requestManager: address(batchRequestManager),
                         bridgingHook: address(0),
+                        spokeOracle: address(0),
                         oracleValuation: address(0),
+                        orderBook: address(0),
+                        maxFulfillPriceDeviation: type(uint128).max,
+                        maxFeeBps: type(uint128).max,
+                        maxRebateBps: type(uint128).max,
                         allowlist: new IStdHubPolicy.Entry[](0)
                     })
                 )
@@ -586,7 +589,7 @@ contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateShares(NETWORK_B, POOL_A, scId, 1500e18, true, true, 1);
 
-        (uint128 navBefore,,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 navBefore,,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navBefore, 1500e18, "the clean senior sync publishes both classes' inflows");
 
         // Junior over-decreases: 800 out against 500 held, so 300 is carried and its amount saturates at zero.
@@ -606,7 +609,7 @@ contract NAVManagerSharedAssetTest is NAVManagerIntegrationTest {
         vm.prank(address(messageDispatcher));
         hubHandler.updateAssets(NETWORK_B, POOL_A, scId, asset1, uint128(1 * 10 ** asset1Decimals), true, true, 2);
 
-        (uint128 navAfter,,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
+        (int128 navAfter,,,,,) = simplePriceManager.networkMetrics(POOL_A, NETWORK_B);
         assertEq(navAfter, navBefore, "the senior sync is held, so the published NAV stays pre-deficit");
     }
 }

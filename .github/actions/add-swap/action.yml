@@ -1,0 +1,21 @@
+name: Add swap
+description: >
+  Compiling the whole tree is one solc process that peaks near 7 GB, about all the memory of a standard runner on a
+  private repository. Past it the runner is killed mid-compile ("The runner has received a shutdown signal", exit
+  143). Extra swap on the runner's temp disk lets the peak spill instead.
+inputs:
+  size:
+    description: Swap to add, as fallocate takes it
+    default: 12G
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        SIZE: ${{ inputs.size }}
+      run: |
+        sudo fallocate -l "$SIZE" /mnt/extra.swap
+        sudo chmod 600 /mnt/extra.swap
+        sudo mkswap /mnt/extra.swap
+        sudo swapon /mnt/extra.swap
+        free -h

@@ -10,6 +10,11 @@ on:
     branches:
       - main
 
+# A push to a PR supersedes the run in progress, which would otherwise hold a runner for hours testing a stale head
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   FOUNDRY_PROFILE: ci
 
@@ -41,25 +46,35 @@ jobs:
           echo "${CHANGED:-no test inputs changed}"
           echo "changed=$([ -n "$CHANGED" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
+      - if: steps.inputs.outputs.changed == 'true'
+        uses: ./.github/actions/add-swap
+
       - name: Install Foundry
         if: steps.inputs.outputs.changed == 'true'
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.4
+          version: nightly-8e47a24a36283247c57fd735d1e6db961ca5efc1
 
       - name: Build ir profile
         if: steps.inputs.outputs.changed == 'true'
         run: FOUNDRY_PROFILE=ir forge build
 
+      # Invariant suites that take over 5 minutes here are left out, since one suite runs on one thread and the
+      # slowest sets the job's length: the BucketLib ones (6 minutes to 3 hours) and StatefulInvariant (over an hour,
+      # its handlers and properties are fuzzed by the Recon campaigns). Run them locally with
+      # FOUNDRY_PROFILE=ci forge test --match-contract "$SLOW_INVARIANTS"
       - name: Run tests
         if: steps.inputs.outputs.changed == 'true'
-        run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol"
+        run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol" --nmc "$SLOW_INVARIANTS"
         env:
           FOUNDRY_PROFILE: ci
+          SLOW_INVARIANTS: "^(BucketLib|BucketHorizon|BucketLibExtreme)InvariantsTest$|^StatefulInvariant$"
 
   coverage:
-    # Temporarily disabled: the runner has been flaking with mid-run shutdown/cancellation
-    # unrelated to test correctness. Re-enable once that infra issue is resolved.
+    # Disabled: on the standard hosted runner every run since early July 2026 died mid-coverage with
+    # "The hosted runner lost communication with the server ... starves it for CPU/Memory", i.e. the
+    # unoptimized coverage build plus the run exhausts the runner rather than failing a test. Re-enable
+    # on a larger runner label, or once the coverage build fits; flipping this alone will not help.
     if: false
     runs-on: ubuntu-latest
     permissions:
@@ -68,10 +83,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: ./.github/actions/add-swap
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: v1.4.4
+          version: nightly-8e47a24a36283247c57fd735d1e6db961ca5efc1
 
       - name: Build ir profile
         run: FOUNDRY_PROFILE=ir forge build

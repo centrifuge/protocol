@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 830" width="1440" height="830" role="img" aria-labelledby="ttl dsc"><title id="ttl">The vault and what it talks to</title><desc id="dsc">On the spoke chain an investor calls the VaultRouter or the Vault; the Vault holds five plugin slots and uses the Spoke's escrow. The VaultRequestRouter carries requests to the hub chain, where the OrderBook holds one order per bucket and a manager fills it.</desc>
+<defs><marker id="arrow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#46536b" stroke-width="1.6"/></marker><marker id="arrow-p" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse"><path d="M2,2 L11,6 L2,10" fill="none" stroke="#7c5cd6" stroke-width="1.6"/></marker><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#f6f7f8"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c9d0d9" stroke-width="3"/></pattern></defs>
+<rect x="0.5" y="0.5" width="1439" height="829" rx="16" fill="#ffffff" stroke="#ececec"/>
+<text x="48" y="76" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#17202a" text-anchor="start">The vault and what it talks to</text>
+<rect x="50" y="116" width="116" height="30" rx="10" fill="#eef0f2"/>
+<rect x="50" y="130" width="960" height="660" rx="14" fill="#eef0f2"/>
+<text x="70" y="164" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#1f2a37" text-anchor="start">Spoke chain</text>
+<rect x="70" y="190" width="250" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="104" cy="225.0" r="17" fill="#cfe2fb"/>
+<circle cx="104" cy="220.0" r="5" fill="#2f3a45"/>
+<path d="M95,235.0 Q104,223.0 113,235.0 Z" fill="#2f3a45"/>
+<text x="134" y="232.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Investor</text>
+<rect x="360" y="190" width="260" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="394" cy="225.0" r="17" fill="#fbe6b0"/>
+<text x="394" y="230.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="424" y="221" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">VaultRouter</text>
+<text x="424" y="243" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">multicall for investors</text>
+<rect x="70" y="330" width="250" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="104" cy="365.0" r="17" fill="#fbe6b0"/>
+<text x="104" y="370.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="134" y="361" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">VaultFactory</text>
+<text x="134" y="383" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">deploys the vault</text>
+<path d="M320,365 H358" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="360" y="330" width="260" height="70" rx="10" fill="#fde9b8"/>
+<circle cx="394" cy="365.0" r="17" fill="#fbe6b0"/>
+<text x="394" y="370.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="424" y="372.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Vault</text>
+<rect x="360" y="470" width="260" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="394" cy="505.0" r="17" fill="#fbe6b0"/>
+<text x="394" y="510.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="424" y="501" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Spoke</text>
+<text x="424" y="523" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">escrow and reservations</text>
+<rect x="360" y="610" width="260" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="394" cy="645.0" r="17" fill="#fbe6b0"/>
+<text x="394" y="650.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="424" y="641" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">ShareToken</text>
+<text x="424" y="663" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">its hook gates vault actions</text>
+<path d="M320,225 H358" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M490,260 V330" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M490,400 V470" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="398.4" y="421" width="183.2" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="490" y="439.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">reserve, issue, withdraw</text>
+<path d="M490,540 V610" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="446.0" y="561" width="88.0" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="490" y="579.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">mint, burn</text>
+<path d="M358,385 H339 V645 H358" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="315.4" y="501" width="47.2" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="339" y="519.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">hook</text>
+<rect x="650" y="156" width="116" height="30" rx="10" fill="#eef0f2"/>
+<rect x="650" y="170" width="330" height="410" rx="14" fill="#eef0f2"/>
+<text x="670" y="204" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#1f2a37" text-anchor="start">Five plugin slots</text>
+<rect x="670" y="225" width="290" height="60" rx="10" fill="#ffffff"/>
+<circle cx="704" cy="255.0" r="17" fill="#d6f3d2"/>
+<text x="704" y="260.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">I</text>
+<text x="734" y="256" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">IRequestPolicy</text>
+<text x="734" y="278" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">per investor, request or window</text>
+<rect x="670" y="293" width="290" height="60" rx="10" fill="#ffffff"/>
+<circle cx="704" cy="323.0" r="17" fill="#d6f3d2"/>
+<text x="704" y="328.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">I</text>
+<text x="734" y="324" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">IInstantPolicy</text>
+<text x="734" y="346" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">ReserveInstantPolicy</text>
+<rect x="670" y="361" width="290" height="60" rx="10" fill="#ffffff"/>
+<circle cx="704" cy="391.0" r="17" fill="#d6f3d2"/>
+<text x="704" y="396.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">I</text>
+<text x="734" y="392" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">ILiquidityRoute</text>
+<text x="734" y="414" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">Basin, or a fund of funds</text>
+<rect x="670" y="429" width="290" height="60" rx="10" fill="#ffffff"/>
+<circle cx="704" cy="459.0" r="17" fill="#d6f3d2"/>
+<text x="704" y="464.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">I</text>
+<text x="734" y="460" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">IVaultOracle</text>
+<text x="734" y="482" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">SpokeOracle</text>
+<rect x="670" y="497" width="290" height="60" rx="10" fill="#ffffff"/>
+<circle cx="704" cy="527.0" r="17" fill="#d6f3d2"/>
+<text x="704" y="532.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">I</text>
+<text x="734" y="528" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">ISettlementObserver</text>
+<text x="734" y="550" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">optional, none shipped</text>
+<path d="M620,350 H648" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="670" y="610" width="290" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="704" cy="645.0" r="17" fill="#fbe6b0"/>
+<text x="704" y="650.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="734" y="641" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">VaultRequestRouter</text>
+<text x="734" y="663" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">carries requests and callbacks</text>
+<path d="M620,388 H640 V645 H668" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1040" y="116" width="116" height="30" rx="10" fill="#eef0f2"/>
+<rect x="1040" y="130" width="360" height="660" rx="14" fill="#eef0f2"/>
+<text x="1060" y="164" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" fill="#1f2a37" text-anchor="start">Hub chain</text>
+<rect x="1070" y="190" width="310" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1104" cy="225.0" r="17" fill="#cfe2fb"/>
+<circle cx="1104" cy="220.0" r="5" fill="#2f3a45"/>
+<path d="M1095,235.0 Q1104,223.0 1113,235.0 Z" fill="#2f3a45"/>
+<text x="1134" y="232.5" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Pool manager</text>
+<rect x="1070" y="330" width="310" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1104" cy="365.0" r="17" fill="#fbe6b0"/>
+<text x="1104" y="370.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1134" y="361" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">FeeRequestManager</text>
+<text x="1134" y="383" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">fills an order, takes a fee</text>
+<rect x="1070" y="470" width="310" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1104" cy="505.0" r="17" fill="#fbe6b0"/>
+<text x="1104" y="510.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1134" y="501" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">OrderBook</text>
+<text x="1134" y="523" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">one order per bucket</text>
+<rect x="1070" y="610" width="310" height="70" rx="10" fill="#f6f7f8"/>
+<circle cx="1104" cy="645.0" r="17" fill="#fbe6b0"/>
+<text x="1104" y="650.5" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#2f3a45" text-anchor="middle">C</text>
+<text x="1134" y="641" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="normal" fill="#1f2a37" text-anchor="start">Hub</text>
+<text x="1134" y="663" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="normal" fill="#3d4753" text-anchor="start">prices, policy, accounting</text>
+<path d="M1225,260 V330" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1225,400 V470" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<rect x="1150.4" y="421" width="149.2" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1225" y="439.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">Hub, then the Envoy</text>
+<path d="M1170,540 V610" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<path d="M1285,610 V540" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" marker-end="url(#arrow)"/>
+<text x="1296" y="584" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="start">request</text>
+<text x="1180" y="584" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" fill="#3d4753" text-anchor="start">callback</text>
+<path d="M962,632 H1068" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<rect x="988.0" y="618" width="54.0" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1015" y="636.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">flush</text>
+<path d="M1068,664 H962" fill="none" stroke="#46536b" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 6" marker-end="url(#arrow)"/>
+<rect x="991.4" y="650" width="47.2" height="28" rx="14" fill="#f1f3f6" stroke="#ffffff" stroke-width="3" paint-order="stroke"/>
+<text x="1015" y="668.5" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#1f2a37" text-anchor="middle">fill</text>
+<text x="60" y="722" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">Dotted lines cross chains through the Gateway: one message per bucket out,</text>
+<text x="60" y="742" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">one per fill back. The plugins are chosen by the</text>
+<text x="60" y="762" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="normal" fill="#3d4753" text-anchor="start">pool; the vault's are fixed at deployment, the token's hook is not.</text>
+</svg>

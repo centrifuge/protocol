@@ -3,8 +3,11 @@ pragma solidity 0.8.28;
 
 import {IERC165} from "../../../../src/misc/interfaces/IERC7575.sol";
 
+import {MockVaultRegistry} from "../../../hooks/mocks/MockVaultRegistry.sol";
+
+import {HookPolicies} from "../../../../src/token/hooks/HookPolicies.sol";
+import {ShareTokenHook} from "../../../../src/token/hooks/ShareTokenHook.sol";
 import {IFreezable} from "../../../../src/token/hooks/interfaces/IFreezable.sol";
-import {FullRestrictions} from "../../../../src/token/hooks/FullRestrictions.sol";
 import {IMemberlist} from "../../../../src/token/hooks/interfaces/IMemberlist.sol";
 
 import {MockRoot} from "../../mocks/MockRoot.sol";
@@ -19,19 +22,20 @@ contract FullRestrictionsTest is Test {
     MockRoot root;
     address spoke = makeAddr("MockSpoke");
     ShareToken token;
-    FullRestrictions fullRestrictionsHook;
+    ShareTokenHook fullRestrictionsHook;
 
     function setUp() public {
         root = new MockRoot();
         token = new ShareToken(18);
-        fullRestrictionsHook = new FullRestrictions(
+        fullRestrictionsHook = new ShareTokenHook(
             address(root),
             makeAddr("envoy"),
-            spoke,
+            address(new MockVaultRegistry()),
             makeAddr("spoke"),
             makeAddr("crosschainSource"),
             address(this),
-            address(new MockEscrowProvider())
+            address(new MockEscrowProvider()),
+            HookPolicies.fullRestrictions()
         );
         token.file("hook", address(fullRestrictionsHook));
     }

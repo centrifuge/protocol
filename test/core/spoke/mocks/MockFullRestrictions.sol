@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {FullRestrictions} from "../../../../src/token/hooks/FullRestrictions.sol";
+import {HookPolicies} from "../../../../src/token/hooks/HookPolicies.sol";
+import {ShareTokenHook} from "../../../../src/token/hooks/ShareTokenHook.sol";
 
 import {Mock} from "../../mocks/Mock.sol";
 
 import {HookData} from "../../../../src/token/interfaces/ITransferHook.sol";
 
-contract MockFullRestrictions is FullRestrictions, Mock {
+contract MockFullRestrictions is ShareTokenHook, Mock {
     constructor(
         address root_,
         address envoy_,
@@ -16,7 +17,18 @@ contract MockFullRestrictions is FullRestrictions, Mock {
         address crosschainSource_,
         address deployer,
         address escrowProvider_
-    ) FullRestrictions(root_, envoy_, spokeRegistry_, spoke_, crosschainSource_, deployer, escrowProvider_) {}
+    )
+        ShareTokenHook(
+            root_,
+            envoy_,
+            spokeRegistry_,
+            spoke_,
+            crosschainSource_,
+            deployer,
+            escrowProvider_,
+            HookPolicies.fullRestrictions()
+        )
+    {}
 
     function onERC20Transfer(address from, address to, uint256 value, HookData calldata hookData)
         public

@@ -10,11 +10,8 @@ import {MockValuation} from "../core/mocks/MockValuation.sol";
 import {PoolId} from "../../src/core/types/PoolId.sol";
 import {AssetId} from "../../src/core/types/AssetId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
-import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {ISafe} from "../../src/admin/interfaces/ISafe.sol";
-
-import {ISyncManager} from "../../src/vaults/interfaces/IVaultManagers.sol";
 
 import {DeployerInput, FullDeployer, noAdaptersInput, defaultTxLimits} from "../../script/deploy/FullDeployer.s.sol";
 
@@ -48,6 +45,7 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
                 opsSafe: ISafe(makeAddr("OpsSafe")),
                 root: address(0),
                 delay: 0,
+                vaults: true,
                 adapters: noAdaptersInput()
             }),
             address(this),
@@ -60,19 +58,6 @@ contract CentrifugeIntegrationTest is FullDeployer, Test {
 
         // Accounts
         vm.deal(FUNDED, 100 ether);
-    }
-
-    /// @dev Core no longer keeps a tuple -> vault reverse lookup; recover a freshly DeployAndLink'd vault from
-    ///      the most recent DeployVault event. Requires `vm.recordLogs()` to be active across the deploy call.
-    function _deployedVaultFromLogs() internal returns (address vault_) {
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-        for (uint256 i = logs.length; i > 0; i--) {
-            if (logs[i - 1].topics[0] == ISpokeRegistry.DeployVault.selector) {
-                (,, address v) = abi.decode(logs[i - 1].data, (uint256, address, address));
-                return v;
-            }
-        }
-        revert("no DeployVault log");
     }
 }
 
@@ -118,14 +103,6 @@ contract CentrifugeIntegrationTestWithUtils is CentrifugeIntegrationTest {
 
         vm.prank(FM);
         hub.addShareClass(POOL_A, "ShareClass1", "sc1", bytes32(bytes8(POOL_A.raw())));
-    }
-
-    function _syncManagerMaxReserveMsg(ShareClassId scId, AssetId assetId, uint128 maxReserve)
-        internal
-        pure
-        returns (bytes memory)
-    {
-        return abi.encode(scId.raw(), uint8(ISyncManager.TrustedCall.MaxReserve), assetId.raw(), maxReserve);
     }
 }
 

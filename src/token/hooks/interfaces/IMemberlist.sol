@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+/// @title  IMemberlist
+/// @notice A per-token memberlist: each member is valid until a timestamp.
 interface IMemberlist {
     //----------------------------------------------------------------------------------------------
     // Events
@@ -19,8 +21,8 @@ interface IMemberlist {
     // Managing members
     //----------------------------------------------------------------------------------------------
 
-    /// @notice Add a member. Non-members cannot receive tokens, but can send tokens to valid members
-    /// @param  validUntil Timestamp until which the user will be a valid member
+    /// @notice Add or update a member. Which movements ask for membership is up to the hook
+    /// @param validUntil Timestamp until which the user will be a valid member
     function updateMember(address token, address user, uint64 validUntil) external;
 
     /// @notice Returns whether the user is a valid member of the token

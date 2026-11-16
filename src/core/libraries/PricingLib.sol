@@ -148,7 +148,9 @@ library PricingLib {
     /// @param  maxShares Maximum allowed shares (typically type(uint128).max)
     /// @param  pricePoolPerShare Price of share in pool units (numerator)
     /// @param  pricePoolPerAsset Price of asset in pool units (denominator)
-    /// @return Maximum asset amount that won't cause overflow, or type(uint256).max if no overflow possible
+    /// @return The largest asset amount that converts to at most `maxShares`. Reverts `MathLib.MulDiv_Overflow`
+    ///         when that amount does not fit 256 bits: an asset with more decimals than the share at an extreme
+    ///         share-to-asset price ratio, or an oversized `maxShares`.
     function maxConvertibleAssetAmount(
         address shareToken,
         address asset,

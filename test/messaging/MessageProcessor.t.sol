@@ -60,8 +60,8 @@ contract TestMessageFraming is TestCommon {
 
     function testRoutePoolId() public view {
         bytes memory message = MessageLib.SetPoolAdapters({
-                poolId: 1, threshold: 1, targetSessionId: 1, adapterList: new bytes32[](0)
-            }).serialize();
+            poolId: 1, threshold: 1, targetSessionId: 1, adapterList: new bytes32[](0)
+        }).serialize();
 
         assertEq(processor.routePoolId(message, true).raw(), message.messagePoolId().raw());
         assertEq(processor.routePoolId(message, false).raw(), 0);
@@ -105,24 +105,25 @@ contract TestMessageSourceClassification is Test {
         // Hub->spoke: only valid coming from the pool's home chain.
         cases[0] = Case(
             "SetPoolAdapters",
-            MessageLib.SetPoolAdapters({poolId: p, threshold: 0, targetSessionId: 1, adapterList: new bytes32[](0)})
-                .serialize(),
+            MessageLib.SetPoolAdapters({
+                poolId: p, threshold: 0, targetSessionId: 1, adapterList: new bytes32[](0)
+            }).serialize(),
             HOME_CHAIN
         );
         cases[1] = Case("NotifyPool", MessageLib.NotifyPool({poolId: p}).serialize(), HOME_CHAIN);
         cases[2] = Case(
             "NotifyShareClass",
             MessageLib.NotifyShareClass({
-                    poolId: p,
-                    scId: bytes16("sc"),
-                    name: "name",
-                    symbol: bytes32("SYM"),
-                    decimals: 6,
-                    salt: bytes32("salt"),
-                    registrar: bytes32("registrar"),
-                    extraGasLimit: 0,
-                    payload: ""
-                }).serialize(),
+                poolId: p,
+                scId: bytes16("sc"),
+                name: "name",
+                symbol: bytes32("SYM"),
+                decimals: 6,
+                salt: bytes32("salt"),
+                registrar: bytes32("registrar"),
+                extraGasLimit: 0,
+                payload: ""
+            }).serialize(),
             HOME_CHAIN
         );
         cases[3] = Case(
@@ -132,48 +133,50 @@ contract TestMessageSourceClassification is Test {
         );
         cases[4] = Case(
             "NotifyPricePoolPerAsset",
-            MessageLib.NotifyPricePoolPerAsset({poolId: p, scId: bytes16("sc"), assetId: 1, price: 1, timestamp: 0})
-                .serialize(),
+            MessageLib.NotifyPricePoolPerAsset({
+                poolId: p, scId: bytes16("sc"), assetId: 1, price: 1, timestamp: 0
+            }).serialize(),
             HOME_CHAIN
         );
         cases[5] = Case(
             "NotifyShareMetadata",
             MessageLib.NotifyShareMetadata({
-                    poolId: p, scId: bytes16("sc"), name: "name", symbol: bytes32("SYM"), extraGasLimit: 0
-                }).serialize(),
+                poolId: p, scId: bytes16("sc"), name: "name", symbol: bytes32("SYM"), extraGasLimit: 0
+            }).serialize(),
             HOME_CHAIN
         );
         cases[6] = Case(
             "ExecuteTransferShares",
             MessageLib.ExecuteTransferShares({
-                    poolId: p, scId: bytes16("sc"), receiver: bytes32("receiver"), amount: 1, extraGasLimit: 0
-                }).serialize(),
+                poolId: p, scId: bytes16("sc"), receiver: bytes32("receiver"), amount: 1, extraGasLimit: 0
+            }).serialize(),
             HOME_CHAIN
         );
         cases[7] = Case(
             "UpdateRestriction",
-            MessageLib.UpdateRestriction({poolId: p, scId: bytes16("sc"), extraGasLimit: 0, payload: bytes("")})
-                .serialize(),
+            MessageLib.UpdateRestriction({
+                poolId: p, scId: bytes16("sc"), extraGasLimit: 0, payload: bytes("")
+            }).serialize(),
             HOME_CHAIN
         );
         cases[8] = Case(
             "UpdateVault",
             MessageLib.UpdateVault({
-                    poolId: p,
-                    scId: bytes16("sc"),
-                    assetId: 1,
-                    vaultOrFactory: bytes32("vault"),
-                    kind: 0,
-                    extraGasLimit: 0,
-                    payload: bytes("")
-                }).serialize(),
+                poolId: p,
+                scId: bytes16("sc"),
+                assetId: 1,
+                vaultOrFactory: bytes32("vault"),
+                kind: 0,
+                extraGasLimit: 0,
+                payload: bytes("")
+            }).serialize(),
             HOME_CHAIN
         );
         cases[9] = Case(
             "RequestCallback",
             MessageLib.RequestCallback({
-                    poolId: p, scId: bytes16("sc"), assetId: 1, extraGasLimit: 0, payload: bytes("")
-                }).serialize(),
+                poolId: p, scId: bytes16("sc"), assetId: 1, extraGasLimit: 0, payload: bytes("")
+            }).serialize(),
             HOME_CHAIN
         );
         cases[10] = Case(
@@ -183,15 +186,16 @@ contract TestMessageSourceClassification is Test {
         );
         cases[11] = Case(
             "ManagerCall",
-            MessageLib.ManagerCallFromHub({poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")})
-                .serialize(),
+            MessageLib.ManagerCallFromHub({
+                poolId: p, target: bytes32("target"), extraGasLimit: 0, payload: bytes("")
+            }).serialize(),
             HOME_CHAIN
         );
         cases[12] = Case(
             "UpdateManager",
             MessageLib.UpdateManager({
-                    poolId: p, kind: uint8(ManagerKind.Adapter), who: bytes32("manager"), canManage: true
-                }).serialize(),
+                poolId: p, kind: uint8(ManagerKind.Adapter), who: bytes32("manager"), canManage: true
+            }).serialize(),
             HOME_CHAIN
         );
 
@@ -200,66 +204,62 @@ contract TestMessageSourceClassification is Test {
         cases[13] = Case(
             "InitiateTransferShares",
             MessageLib.InitiateTransferShares({
-                    poolId: p,
-                    scId: bytes16("sc"),
-                    centrifugeId: HOME_CHAIN,
-                    receiver: bytes32("receiver"),
-                    amount: 1,
-                    remoteExtraGasLimit: 0,
-                    extraGasLimit: 0,
-                    sender: bytes32("sender")
-                }).serialize(),
+                poolId: p,
+                scId: bytes16("sc"),
+                centrifugeId: HOME_CHAIN,
+                receiver: bytes32("receiver"),
+                amount: 1,
+                remoteExtraGasLimit: 0,
+                extraGasLimit: 0,
+                sender: bytes32("sender")
+            }).serialize(),
             0
         );
         cases[14] = Case(
             "UpdateHoldingAmount",
             MessageLib.UpdateAssets({
-                    poolId: p,
-                    scId: bytes16("sc"),
-                    assetId: newAssetId(FOREIGN_CHAIN, 0).raw(),
-                    amount: 1,
-                    timestamp: 0,
-                    isIncrease: true,
-                    isSnapshot: false,
-                    nonce: 0,
-                    extraGasLimit: 0
-                }).serialize(),
+                poolId: p,
+                scId: bytes16("sc"),
+                assetId: newAssetId(FOREIGN_CHAIN, 0).raw(),
+                amount: 1,
+                timestamp: 0,
+                isIncrease: true,
+                isSnapshot: false,
+                nonce: 0,
+                extraGasLimit: 0
+            }).serialize(),
             FOREIGN_CHAIN
         );
         cases[15] = Case(
             "UpdateShares",
             MessageLib.UpdateShares({
-                    poolId: p,
-                    scId: bytes16("sc"),
-                    shares: 1,
-                    timestamp: 0,
-                    isIssuance: true,
-                    isSnapshot: false,
-                    nonce: 0,
-                    extraGasLimit: 0
-                }).serialize(),
+                poolId: p,
+                scId: bytes16("sc"),
+                shares: 1,
+                timestamp: 0,
+                isIssuance: true,
+                isSnapshot: false,
+                nonce: 0,
+                extraGasLimit: 0
+            }).serialize(),
             0
         );
         cases[16] = Case(
             "Request",
             MessageLib.Request({
-                    poolId: p,
-                    scId: bytes16("sc"),
-                    assetId: newAssetId(FOREIGN_CHAIN, 0).raw(),
-                    extraGasLimit: 0,
-                    payload: bytes("")
-                }).serialize(),
+                poolId: p,
+                scId: bytes16("sc"),
+                assetId: newAssetId(FOREIGN_CHAIN, 0).raw(),
+                extraGasLimit: 0,
+                payload: bytes("")
+            }).serialize(),
             FOREIGN_CHAIN
         );
         cases[17] = Case(
             "ManagerCallFromSpoke",
             MessageLib.ManagerCallFromSpoke({
-                    poolId: p,
-                    target: bytes32("target"),
-                    sender: bytes32("sender"),
-                    extraGasLimit: 0,
-                    payload: bytes("")
-                }).serialize(),
+                poolId: p, target: bytes32("target"), sender: bytes32("sender"), extraGasLimit: 0, payload: bytes("")
+            }).serialize(),
             0
         );
 
@@ -352,8 +352,8 @@ contract TestHandleSetPoolAdapters is TestCommon {
         bytes32[] memory adapters = new bytes32[](1);
         adapters[0] = bytes32(bytes20(makeAddr("adapter")));
         return MessageLib.SetPoolAdapters({
-                poolId: poolId.raw(), threshold: 1, targetSessionId: 1, adapterList: adapters
-            }).serialize();
+            poolId: poolId.raw(), threshold: 1, targetSessionId: 1, adapterList: adapters
+        }).serialize();
     }
 
     function testDispatchesToMultiAdapter() public {
@@ -388,8 +388,8 @@ contract TestHandleUpdateManager is TestCommon {
 
     function _message(ManagerKind kind) internal view returns (bytes memory) {
         return MessageLib.UpdateManager({
-                poolId: poolId.raw(), kind: uint8(kind), who: bytes32(bytes20(who)), canManage: true
-            }).serialize();
+            poolId: poolId.raw(), kind: uint8(kind), who: bytes32(bytes20(who)), canManage: true
+        }).serialize();
     }
 
     function testDispatchesToMultiAdapter() public {

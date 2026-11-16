@@ -5,7 +5,7 @@ paths:
 
 # Code comments
 
-A comment must earn its place; the default is none. Write one only for a non-obvious *why* that a competent reader cannot get from the code, the names or the interface natspec, and that stays true beyond the current PR. Comment why, never what.
+A comment must earn its place; the default is none. Write one only for a non-obvious *why* that a competent reader cannot get from the code, the names or the interface natspec, and that stays true beyond the current PR. Comment why, never what. Prefer self-documenting code to a comment: extract a named helper (`_isInstant(controller, true)`) rather than commenting an inline condition.
 
 Never:
 
@@ -16,6 +16,9 @@ Never:
 5. Reference audit-finding, plan or ticket IDs (`G5`, `B24`, `yA1`).
 6. Run long. A comment is a clause or one line; anything needing a paragraph belongs in the interface natspec or a doc, or nowhere.
 7. Repeat the interface natspec in the contract body. Implementations get `@inheritdoc` and at most a terse `@dev`.
+8. Use an em-dash, in a comment or in natspec.
+
+Placement: one comment per logical block, a blank line above it and none between it and the code it describes; never one between every statement.
 
 A terse comment is earned by a non-obvious ordering or security reason (send before install), a subtle invariant or assumption not visible locally, or a genuine gotcha (repricing, rounding).
 

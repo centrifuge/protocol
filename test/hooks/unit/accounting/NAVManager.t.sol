@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {d18} from "../../../../src/misc/types/D18.sol";
+import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
 import {MockValuation} from "../../../core/mocks/MockValuation.sol";
 
@@ -759,23 +760,46 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 50, true);
 
-        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        int128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
         assertEq(nav, 1050);
     }
 
     function testNetAssetValueZero() public view {
-        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        int128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
         assertEq(nav, 0);
     }
 
-    function testNetAssetValueZeroWhenNegative() public {
+    /// @dev Not floored per network: the debt may be backed by assets another network holds, and only the pool-wide
+    ///      sum is floored where the price is taken.
+    function testNetAssetValueIsNegativeWhenLiabilitiesExceedAssets() public {
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), 500, true);
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 100, true);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 50, true);
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 600, true);
 
-        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
-        assertEq(nav, 0);
+        int128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        assertEq(nav, -50);
+    }
+
+    /// @dev Only the difference has to fit: either total alone may pass `int128.max`.
+    function testANetAssetValueThatFitsIsReportedWhenAGrossTotalDoesNot() public {
+        uint128 big = uint128(type(int128).max) + 100;
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), big, true);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), big - 7, true);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 0, true);
+
+        assertEq(navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1), 7);
+    }
+
+    function testANetAssetValueThatDoesNotFitReverts() public {
+        _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), uint128(type(int128).max) + 1, true);
+        _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), 0, true);
+        _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), 0, true);
+        _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), 0, true);
+
+        vm.expectRevert(MathLib.Int128_Overflow.selector);
+        navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
     }
 
     function testNetAssetValueWithUnexpectedSigns(
@@ -788,17 +812,17 @@ contract NAVManagerNetAssetValueTest is NAVManagerTest {
         uint128 lossAmount,
         uint128 liabilityAmount
     ) public {
-        equityAmount = uint128(bound(equityAmount, 1, type(uint128).max / 4));
-        gainAmount = uint128(bound(gainAmount, 1, type(uint128).max / 4));
-        lossAmount = uint128(bound(lossAmount, 0, type(uint128).max / 4));
-        liabilityAmount = uint128(bound(liabilityAmount, 0, type(uint128).max / 4));
+        equityAmount = uint128(bound(equityAmount, 1, type(uint128).max / 16));
+        gainAmount = uint128(bound(gainAmount, 1, type(uint128).max / 16));
+        lossAmount = uint128(bound(lossAmount, 0, type(uint128).max / 16));
+        liabilityAmount = uint128(bound(liabilityAmount, 0, type(uint128).max / 16));
 
         _mockAccountValue(navManager.equityAccount(CENTRIFUGE_ID_1), equityAmount, equityIsPositive);
         _mockAccountValue(navManager.gainAccount(CENTRIFUGE_ID_1), gainAmount, gainIsPositive);
         _mockAccountValue(navManager.lossAccount(CENTRIFUGE_ID_1), lossAmount, lossIsPositive);
         _mockAccountValue(navManager.liabilityAccount(CENTRIFUGE_ID_1), liabilityAmount, liabilityIsPositive);
 
-        uint128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
+        int128 nav = navManager.netAssetValue(POOL_A, CENTRIFUGE_ID_1);
 
         // If all accounts have expected signs and equity+gain > loss+liability, NAV should be positive
         if (equityIsPositive && gainIsPositive && lossIsPositive && liabilityIsPositive) {

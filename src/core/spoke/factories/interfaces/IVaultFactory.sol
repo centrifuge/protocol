@@ -12,10 +12,16 @@ import {ShareClassId} from "../../../types/ShareClassId.sol";
 ///         ({getVault}), so addresses (used as primary keys, and cross-chain) are knowable before
 ///         deployment. The deployment event is emitted by the registry ({ISpokeRegistry.DeployVault}),
 ///         the sole caller of {newVault}, so a separate factory-level event is not needed.
+///
+///         Vault convention: the vault a factory returns MUST implement {IVaultPosition} and name the pool and
+///         share class it was built for. The spoke handler refuses a vault that names another position when
+///         `DeployAndLink` registers it, which is what keeps a pool from registering a vault built for a different
+///         one: the factory is whatever address the pool's message names, so what it says about its own vault proves
+///         nothing.
 interface IVaultFactory {
     error UnsupportedTokenId();
 
-    /// @notice The deterministic address {newVault} deploys (or has deployed) for these parameters.
+    /// @notice The deterministic address of the vault {newVault} returns for these parameters.
     /// @dev    Computed from the factory's CREATE2 salt and init code, so it is valid before deployment.
     ///         Takes `payload` because a factory may derive the vault's address from it.
     function getVault(
@@ -27,7 +33,8 @@ interface IVaultFactory {
         bytes calldata payload
     ) external view returns (address vault);
 
-    /// @notice Deploys new vault for `poolId`, `scId` and `asset`.
+    /// @notice Returns the vault for `poolId`, `scId` and `asset`, at {getVault}'s address. A factory may deploy it
+    ///         here, or return one deployed ahead of the call.
     ///
     /// @param poolId Id of the pool. Id is one of the already supported pools.
     /// @param scId Id of the share class token. Id is one of the already supported share class tokens.

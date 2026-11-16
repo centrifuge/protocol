@@ -111,6 +111,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
     /// @dev What a launch is handed. Zero root means it deploys its own; the subclasses below vary them
     address internal existingRoot_;
     uint256 internal delay_ = MAINNET_DELAY;
+    bool internal vaults_ = true;
     AdapterConnections[] internal connections_;
     SetConfigParam[] internal layerZeroConfigParams_;
 
@@ -167,6 +168,7 @@ contract FullDeploymentConfigTest is Test, FullDeployer {
             opsSafe: OPS_SAFE,
             root: existingRoot_,
             delay: delay_,
+            vaults: vaults_,
             adapters: AdaptersInput({
                 axelar: AxelarInput({shouldDeploy: true, gateway: AXELAR_GATEWAY, gasService: AXELAR_GAS_SERVICE}),
                 layerZero: LayerZeroInput({
@@ -521,95 +523,13 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
     function testSubsidyManager(address nonWard) public view {
         // permissions set correctly
         vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(asyncRequestManager));
 
         assertEq(subsidyManager.wards(address(root)), 1);
-        assertEq(subsidyManager.wards(address(asyncRequestManager)), 1);
         assertEq(subsidyManager.wards(nonWard), 0);
 
         // dependencies set correctly
         assertEq(address(subsidyManager.refundEscrowFactory()), address(refundEscrowFactory));
         assertEq(subsidyManager.envoy(), address(envoy));
-    }
-
-    function testAsyncRequestManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
-        vm.assume(nonWard != address(syncDepositVaultFactory));
-        vm.assume(nonWard != address(asyncVaultFactory));
-
-        assertEq(asyncRequestManager.wards(address(root)), 1);
-        assertEq(asyncRequestManager.wards(address(spokeHandler)), 1);
-        assertEq(asyncRequestManager.wards(address(syncDepositVaultFactory)), 1);
-        assertEq(asyncRequestManager.wards(address(asyncVaultFactory)), 1);
-        assertEq(asyncRequestManager.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(asyncRequestManager.spoke()), address(spoke));
-        assertEq(address(asyncRequestManager.spokeRegistry()), address(spokeRegistry));
-        assertEq(address(asyncRequestManager.subsidyManager()), address(subsidyManager));
-
-        // root endorsements
-        assertEq(root.endorsed(address(asyncRequestManager)), true);
-    }
-
-    function testAsyncVaultFactory(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
-
-        assertEq(asyncVaultFactory.wards(address(root)), 1);
-        assertEq(asyncVaultFactory.wards(address(spokeHandler)), 1);
-        assertEq(asyncVaultFactory.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(asyncVaultFactory.root()), address(root));
-        assertEq(address(asyncVaultFactory.asyncRequestManager()), address(asyncRequestManager));
-    }
-
-    function testSyncDepositVaultFactory(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(spokeHandler));
-
-        assertEq(syncDepositVaultFactory.wards(address(root)), 1);
-        assertEq(syncDepositVaultFactory.wards(address(spokeHandler)), 1);
-        assertEq(syncDepositVaultFactory.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(syncDepositVaultFactory.root()), address(root));
-        assertEq(address(syncDepositVaultFactory.syncDepositManager()), address(syncManager));
-        assertEq(address(syncDepositVaultFactory.asyncRedeemManager()), address(asyncRequestManager));
-    }
-
-    function testSyncManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(syncDepositVaultFactory));
-
-        assertEq(syncManager.wards(address(root)), 1);
-        assertEq(syncManager.wards(address(syncDepositVaultFactory)), 1);
-        assertEq(syncManager.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(syncManager.spoke()), address(spoke));
-        assertEq(address(syncManager.spokeRegistry()), address(spokeRegistry));
-        assertEq(syncManager.envoy(), address(envoy));
-    }
-
-    function testVaultRouter(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-
-        assertEq(vaultRouter.wards(address(root)), 1);
-        assertEq(vaultRouter.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(address(vaultRouter.spoke()), address(spoke));
-
-        // root endorsements
-        assertEq(root.endorsed(address(vaultRouter)), true);
     }
 
     function testRefundEscrowFactory(address nonWard) public view {
@@ -639,7 +559,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(freezeOnlyHook.root()), address(root));
         assertEq(freezeOnlyHook.envoy(), address(envoy));
         assertEq(address(freezeOnlyHook.escrowProvider()), address(escrowFactory));
-        assertFalse(freezeOnlyHook.isPoolEscrow(nonWard));
+        assertFalse(freezeOnlyHook.isEscrow(nonWard));
     }
 
     function testRedemptionRestriction(address nonWard) public view {
@@ -655,7 +575,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(redemptionRestrictionsHook.root()), address(root));
         assertEq(redemptionRestrictionsHook.envoy(), address(envoy));
         assertEq(address(redemptionRestrictionsHook.escrowProvider()), address(escrowFactory));
-        assertFalse(redemptionRestrictionsHook.isPoolEscrow(nonWard));
+        assertFalse(redemptionRestrictionsHook.isEscrow(nonWard));
     }
 
     function testFreelyTransferable(address nonWard) public view {
@@ -671,7 +591,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(freelyTransferableHook.root()), address(root));
         assertEq(freelyTransferableHook.envoy(), address(envoy));
         assertEq(address(freelyTransferableHook.escrowProvider()), address(escrowFactory));
-        assertFalse(freelyTransferableHook.isPoolEscrow(nonWard));
+        assertFalse(freelyTransferableHook.isEscrow(nonWard));
     }
 
     function testFullRestriction(address nonWard) public view {
@@ -687,7 +607,7 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(fullRestrictionsHook.root()), address(root));
         assertEq(fullRestrictionsHook.envoy(), address(envoy));
         assertEq(address(fullRestrictionsHook.escrowProvider()), address(escrowFactory));
-        assertFalse(fullRestrictionsHook.isPoolEscrow(nonWard));
+        assertFalse(fullRestrictionsHook.isEscrow(nonWard));
     }
 
     function testOnOffRampFactory() public view {
@@ -741,20 +661,6 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(address(simplePriceManager.hub()), address(hub));
     }
 
-    function testBatchRequestManager(address nonWard) public view {
-        // permissions set correctly
-        vm.assume(nonWard != address(root));
-        vm.assume(nonWard != address(hubHandler));
-
-        assertEq(batchRequestManager.wards(address(root)), 1);
-        assertEq(batchRequestManager.wards(address(hub)), 0);
-        assertEq(batchRequestManager.wards(address(hubHandler)), 1);
-        assertEq(batchRequestManager.wards(nonWard), 0);
-
-        // dependencies set correctly
-        assertEq(batchRequestManager.envoy(), address(envoy));
-    }
-
     function testOnchainPMFactory() public view {
         // dependencies set correctly
         assertEq(onchainPMFactory.envoy(), address(envoy));
@@ -787,6 +693,109 @@ contract FullDeploymentTestNonCore is FullDeploymentConfigTest {
         assertEq(bridgeCircuitBreaker.envoy(), address(envoy));
         assertEq(bridgeCircuitBreaker.wards(address(hubHandler)), 1);
         assertEq(address(bridgeCircuitBreaker.circuitBreakerGuard()), address(circuitBreakerGuard));
+    }
+
+    function testVaultFactory() public view {
+        // dependencies set correctly
+        assertEq(vaultFactory.root(), address(root));
+        assertEq(address(vaultFactory.spoke()), address(spoke));
+        assertEq(address(vaultFactory.spokeRegistry()), address(spokeRegistry));
+    }
+
+    function testVaultRequestRouter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(spokeHandler));
+
+        assertEq(vaultRequestRouter.wards(address(root)), 1);
+        assertEq(vaultRequestRouter.wards(address(spokeHandler)), 1);
+        assertEq(vaultRequestRouter.wards(address(nonCoreBatcher)), 0);
+        assertEq(vaultRequestRouter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(vaultRequestRouter.spoke()), address(spoke));
+        assertEq(address(vaultRequestRouter.spokeRegistry()), address(spokeRegistry));
+        assertEq(address(vaultRequestRouter.subsidyManager()), address(subsidyManager));
+        assertEq(vaultRequestRouter.envoy(), address(envoy));
+
+        // it withdraws the message subsidy of the pools it forwards requests for
+        assertEq(subsidyManager.wards(address(vaultRequestRouter)), 1);
+    }
+
+    function testVaultRouter(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+
+        assertEq(vaultRouter.wards(address(root)), 1);
+        assertEq(vaultRouter.wards(address(nonCoreBatcher)), 0);
+        assertEq(vaultRouter.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(vaultRouter.spoke()), address(spoke));
+        assertEq(address(vaultRouter.spokeRegistry()), address(spokeRegistry));
+
+        // an endorsed operator of the vaults, and a holder of shares mid-batch
+        assertEq(root.endorsed(address(vaultRouter)), true);
+    }
+
+    function testOrderBook(address nonWard) public view {
+        // permissions set correctly
+        vm.assume(nonWard != address(root));
+        vm.assume(nonWard != address(hubHandler));
+
+        assertEq(orderBook.wards(address(root)), 1);
+        assertEq(orderBook.wards(address(hubHandler)), 1);
+        assertEq(orderBook.wards(address(nonCoreBatcher)), 0);
+        assertEq(orderBook.wards(nonWard), 0);
+
+        // dependencies set correctly
+        assertEq(address(orderBook.hub()), address(hub));
+        assertEq(address(orderBook.hubRegistry()), address(hubRegistry));
+        assertEq(address(orderBook.gateway()), address(gateway));
+        assertEq(orderBook.envoy(), address(envoy));
+    }
+
+    function testFeeRequestManager() public view {
+        // dependencies set correctly
+        assertEq(address(feeRequestManager.hub()), address(hub));
+        assertEq(address(feeRequestManager.orderBook()), address(orderBook));
+        assertEq(feeRequestManager.envoy(), address(envoy));
+        assertEq(feeRequestManager.localCentrifugeId(), CENTRIFUGE_ID);
+    }
+
+    function testSpokeOracle() public view {
+        // dependencies set correctly
+        assertEq(address(spokeOracle.spokeRegistry()), address(spokeRegistry));
+        assertEq(spokeOracle.envoy(), address(envoy));
+        assertEq(spokeOracle.maxAge(), 1 days);
+        assertEq(spokeOracle.maxSkew(), 1 days);
+    }
+
+    function testRequestPolicies() public view {
+        assertFalse(perRequestPolicy.supportsTransfers(), "the default per-request policy is closed-access");
+        assertTrue(transferablePerRequestPolicy.supportsTransfers());
+        assertTrue(address(perInvestorPolicy).code.length > 0);
+        assertEq(perPeriodPolicy.window(), 1 days);
+        assertEq(perPeriodPolicy.offset(), 0);
+
+        assertEq(perRequestPolicy.maxOpenBuckets(), 1);
+        assertEq(transferablePerRequestPolicy.maxOpenBuckets(), 1);
+        assertEq(perInvestorPolicy.maxOpenBuckets(), 1);
+        assertEq(perPeriodPolicy.maxOpenBuckets(), 1);
+    }
+
+    function testReserveInstantPolicy() public view {
+        // dependencies set correctly
+        assertEq(address(reserveInstantPolicy.spoke()), address(spoke));
+        assertEq(address(reserveInstantPolicy.spokeRegistry()), address(spokeRegistry));
+        assertEq(reserveInstantPolicy.envoy(), address(envoy));
+    }
+
+    function testVaultLiquidityRoute() public view {
+        // dependencies set correctly
+        assertEq(address(vaultLiquidityRoute.spoke()), address(spoke));
+        assertEq(vaultLiquidityRoute.envoy(), address(envoy));
+        assertEq(vaultLiquidityRoute.wards(address(root)), 1);
     }
 
     function testSlippageGuard() public view {
@@ -1326,7 +1335,8 @@ contract FullDeploymentTestAdaptersValidation is FullDeploymentConfigTest {
 ///      and at different addresses
 contract FullDeploymentGatedTest is FullDeploymentConfigTest {
     function testEverythingWentThroughTheDeployGate() public view {
-        assertGt(deployedContracts, 50, "the whole protocol should go through the DeployGate");
+        // A floor, not a count: it catches a deployment that produced almost nothing
+        assertGt(deployedContracts, 60, "the whole protocol should go through the DeployGate");
     }
 
     /// @dev The commitment is the whole of the gate's state, so a spent one leaves an executor nothing to
@@ -1364,7 +1374,6 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
         assertEq(hub.wards(deployGate_), 0, "hub");
         assertEq(hubRegistry.wards(deployGate_), 0, "hubRegistry");
         assertEq(shareTokenRegistrar.wards(deployGate_), 0, "shareTokenRegistrar");
-        assertEq(asyncRequestManager.wards(deployGate_), 0, "asyncRequestManager");
         assertEq(tokenBridge.wards(deployGate_), 0, "tokenBridge");
     }
 
@@ -1429,6 +1438,55 @@ contract FullDeploymentGatedTest is FullDeploymentConfigTest {
     }
 }
 
+/// @dev A chain that does not take the vault stack: the spoke half of the Vault Development Kit neither
+///      deployed, nor wired, nor reported, and the hub half there regardless, because any hub may settle for
+///      vaults on a peer that does take it
+contract FullDeploymentWithoutVaultsTest is FullDeploymentConfigTest {
+    function setUp() public override {
+        vaults_ = false;
+        super.setUp();
+    }
+
+    function testTheSpokeHalfIsNotDeployed() public {
+        string[10] memory names = [
+            "vaultFactory",
+            "vaultRequestRouter",
+            "vaultRouter",
+            "spokeOracle",
+            "perRequestPolicy",
+            "transferablePerRequestPolicy",
+            "perInvestorPolicy",
+            "perPeriodPolicy",
+            "reserveInstantPolicy",
+            "vaultLiquidityRoute"
+        ];
+
+        for (uint256 i; i < names.length; i++) {
+            assertEq(gatedAddress(names[i], V3_3).code.length, 0, names[i]);
+            assertFalse(_registered(names[i]), names[i]);
+        }
+
+        assertEq(address(vaultFactory), address(0), "vaultFactory");
+        assertEq(address(vaultRequestRouter), address(0), "vaultRequestRouter");
+        assertEq(registeredCount() + 3, deployedContracts, "everything deployed is reported but the batchers");
+    }
+
+    function testNothingIsWiredToIt() public {
+        assertEq(subsidyManager.wards(gatedAddress("vaultRequestRouter", V3_3)), 0, "no subsidy withdrawer");
+        assertFalse(root.endorsed(gatedAddress("vaultRouter", V3_3)), "no router endorsed");
+        assertEq(subsidyManager.wards(address(nonCoreBatcher)), 0, "the batcher revoked itself");
+    }
+
+    function testTheHubHalfIsDeployed() public view {
+        assertEq(orderBook.wards(address(root)), 1);
+        assertEq(orderBook.wards(address(hubHandler)), 1);
+        assertEq(orderBook.wards(address(nonCoreBatcher)), 0);
+        assertEq(address(orderBook.hub()), address(hub));
+
+        assertEq(address(feeRequestManager.orderBook()), address(orderBook));
+    }
+}
+
 /// @dev The point of the design: the admin signs a single transaction, and nothing but what it committed to
 ///      can then be deployed
 contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
@@ -1470,7 +1528,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
     }
 
     function testCommitPhaseCommitsEveryContract() public view virtual {
-        assertGt(committedContracts, 50, "the admin should commit the whole protocol in one transaction");
+        assertGt(committedContracts, 45, "the admin should commit the whole protocol in one transaction");
         assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("root", V3_3)) != 0, "root");
         assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("spoke", V3_3)) != 0, "spoke");
         assertTrue(deployGate.committed(namespace_, DEFAULT_COMMITMENT_ID, _gatedSalt("hub", V3_3)) != 0, "hub");
@@ -1497,7 +1555,7 @@ contract FullDeploymentPhasedTest is FullDeploymentConfigTest {
         _deploy(DeployPhase.Deploy);
 
         // Same deployment a single signer would have produced
-        assertGt(deployedContracts, 50);
+        assertGt(deployedContracts, 45);
         assertEq(address(hub.sender()), address(messageDispatcher));
         assertEq(address(protocolGuardian.safe()), address(ADMIN_SAFE));
         assertEq(gateway.wards(address(root)), 1);
@@ -1591,10 +1649,9 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(nonCoreBatcher)), 0, "nonCoreBatcher on root");
         assertFalse(root.endorsed(address(spoke)), "spoke endorsed");
         assertFalse(root.endorsed(address(spokeHandler)), "spokeHandler endorsed");
-        assertFalse(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
-        assertFalse(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertFalse(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
         assertFalse(root.endorsed(address(shareManager)), "shareManager endorsed");
+        assertFalse(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
     }
 
     /// @dev What the batchers left, done under a ward governance grants through the ordinary timelock
@@ -1613,10 +1670,9 @@ contract FullDeploymentExistingRootTest is FullDeploymentConfigTest {
         assertEq(root.wards(address(protocolGuardian)), 1, "protocolGuardian on root");
         assertTrue(root.endorsed(address(spoke)), "spoke endorsed");
         assertTrue(root.endorsed(address(spokeHandler)), "spokeHandler endorsed");
-        assertTrue(root.endorsed(address(asyncRequestManager)), "asyncRequestManager endorsed");
-        assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
         assertTrue(root.endorsed(address(tokenBridge)), "tokenBridge endorsed");
         assertTrue(root.endorsed(address(shareManager)), "shareManager endorsed");
+        assertTrue(root.endorsed(address(vaultRouter)), "vaultRouter endorsed");
 
         // And it gives the ward back, as the batchers do
         assertTrue(rootFixes.done());

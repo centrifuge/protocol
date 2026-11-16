@@ -1,102 +1,49 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-// Recon Deps
-
 import {vm} from "@chimera/Hevm.sol";
+import {OpType} from "../BeforeAfter.sol";
 import {Properties} from "../properties/Properties.sol";
 import {BaseTargetFunctions} from "@chimera/BaseTargetFunctions.sol";
-import {IShareToken} from "../../../../src/token/interfaces/IShareToken.sol";
 
-// Dependencies
-
-// Test Utils
-
-// Only for Share
+/// @notice Investor-to-investor share transfers under the pool's FullRestrictions hook.
 abstract contract ShareTokenTargets is BaseTargetFunctions, Properties {
-    /// @dev Property: must revert if sending to or from a frozen user
-    /// @dev Property: must revert if sending to a non-member who is not endorsed
-    function token_transfer(address to, uint256 value) public updateGhosts {
-        require(_canDonate(to), "never donate to escrow");
-        require(_isActor(to), "can't transfer to non-actors");
+    /// @dev Must revert to or from a frozen investor, and to a recipient who is not a member.
+    function token_transfer(uint256 fromSeed, uint256 toSeed, uint256 amount) public updateGhosts(OpType.USER) {
+        address from = _shareHolder(fromSeed);
+        address to = _recipient(toSeed);
+        uint256 balance = shareA.balanceOf(from);
+        if (from == to || balance == 0) return;
+        amount = between(amount, 1, balance);
 
-        // Clamp
-        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
-
-        vm.prank(_getActor());
-        try IShareToken(_getShareToken()).transfer(to, value) {
-            // NOTE: We're not checking for specifics!
-            // TT-1 Always revert if one of them is frozen
-            if (
-                fullRestrictions.isFrozen(_getShareToken(), to) == true
-                    || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
-            ) {
-                t(false, "TT-1 Must Revert");
-            }
-
-            // Not a member | NOTE: Non member actor and from can move tokens?
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
-            bool endorsed = root.endorsed(to);
-            if (!isMember && value > 0 && !endorsed) {
-                t(false, "TT-3 Must Revert");
-            }
-        } catch {}
+        (bool success,) = _callAs(from, address(shareA), abi.encodeCall(shareA.transfer, (to, amount)));
+        _checkTransfer(success, from, to, "token_transfer");
     }
 
-    // NOTE: We need this for transferFrom to work
-    function token_approve(address spender, uint256 value) public updateGhosts asActor {
-        IShareToken(_getShareToken()).approve(spender, value);
+    function token_transferFrom(uint256 fromSeed, uint256 toSeed, uint256 amount) public updateGhosts(OpType.USER) {
+        address from = _shareHolder(fromSeed);
+        address to = _recipient(toSeed);
+        address spender = _actor(fromSeed + 1);
+        uint256 balance = shareA.balanceOf(from);
+        if (from == to || balance == 0) return;
+        amount = between(amount, 1, balance);
+
+        vm.prank(from);
+        shareA.approve(spender, amount);
+        (bool success,) = _callAs(spender, address(shareA), abi.encodeCall(shareA.transferFrom, (from, to, amount)));
+        _checkTransfer(success, from, to, "token_transferFrom");
     }
 
-    /// @dev Property: must revert if sending to or from a frozen user
-    /// @dev Property: must revert if sending to a non-member who is not endorsed
-    function token_transferFrom(address to, uint256 value) public updateGhosts {
-        require(_canDonate(to), "never donate to escrow");
-        require(_isActor(to), "can't transfer to non-actors");
-
-        value = between(value, 0, IShareToken(_getShareToken()).balanceOf(_getActor()));
-
-        vm.prank(_getActor());
-        try IShareToken(_getShareToken()).transferFrom(_getActor(), to, value) {
-            // NOTE: We're not checking for specifics!
-            // TT-1 Always revert if one of them is frozen
-            if (
-                fullRestrictions.isFrozen(_getShareToken(), to) == true
-                    || fullRestrictions.isFrozen(_getShareToken(), _getActor()) == true
-            ) {
-                t(false, "TT-1 Must Revert");
-            }
-
-            // Recipient is not a member | NOTE: Non member actor and from can move tokens?
-            (bool isMember,) = fullRestrictions.isMember(_getShareToken(), to);
-            bool endorsed = root.endorsed(to);
-            if (!isMember && value > 0 && !endorsed) {
-                t(false, "TT-3 Must Revert");
-            }
-        } catch {}
+    function _checkTransfer(bool success, address from, address to, bytes32 action) internal {
+        if (!success) return _reverted(action);
+        t(!frozen[from] && !frozen[to], "a transfer to or from a frozen investor went through");
+        t(to != OUTSIDER || block.timestamp <= outsiderValidUntil, "a transfer to a non-member went through");
+        _ok(action);
     }
 
-    // NOTE: Removed because breaks solvency properties by allowing unrealistic minting
-    // function token_mint(address to, uint256 value) public notGovFuzzing {
-    //     require(_canDonate(to), "never donate to escrow");
-
-    //     bool hasReverted;
-
-    //     vm.prank(_getActor());
-    //     try token.mint(to, value) {
-    //         shareMints[address(token)] += value;
-    //     } catch {
-    //         hasReverted = true;
-    //     }
-
-    //     if (restrictedTransfers.isFrozen(address(token), to) == true) {
-    //         t(hasReverted, "TT-1 Must Revert");
-    //     }
-
-    //     // Not a member
-    //     (bool isMember,) = restrictedTransfers.isMember(address(token), to);
-    //     if (!isMember) {
-    //         t(hasReverted, "TT-3 Must Revert");
-    //     }
-    // }
+    /// @dev Mostly investors, sometimes the outsider whose membership the fuzzer toggles. Endorsed
+    ///      contracts are left out: the hook admits them as recipients by design.
+    function _recipient(uint256 seed) internal view returns (address) {
+        return seed % 5 == 4 ? OUTSIDER : _actor(seed);
+    }
 }

@@ -37,8 +37,8 @@ interface INAVHook {
     /// @param poolId The pool ID
     /// @param scId The share class ID
     /// @param centrifugeId The Centrifuge ID of the network
-    /// @param netAssetValue The new net asset value
-    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, uint128 netAssetValue) external;
+    /// @param netAssetValue The new net asset value, negative while the network's liabilities exceed its assets
+    function onUpdate(PoolId poolId, ShareClassId scId, uint16 centrifugeId, int128 netAssetValue) external;
 
     /// @notice Handle transfer shares between networks
     /// @param poolId The pool ID
@@ -79,7 +79,7 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     event InitializeHolding(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event InitializeLiability(PoolId indexed poolId, ShareClassId indexed scId, AssetId indexed assetId);
     event SetAccountMetadata(PoolId indexed poolId, AccountId indexed account, bytes metadata);
-    event Sync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, uint128 netAssetValue);
+    event Sync(PoolId indexed poolId, ShareClassId indexed scId, uint16 indexed centrifugeId, int128 netAssetValue);
     event SkipSync(
         PoolId indexed poolId,
         ShareClassId indexed scId,
@@ -169,10 +169,12 @@ interface INAVManager is ISnapshotHook, IManagerCallFromHub, IManagerCallFromSpo
     //----------------------------------------------------------------------------------------------
 
     /// @notice Calculate the net asset value for a specific network
-    /// @dev NAV = equity + gain - loss - liability
+    /// @dev NAV = equity + gain - loss - liability. Signed: a network whose liabilities exceed its assets reports a
+    ///      negative NAV, because the pool's other networks may hold the assets that back them. Only the pool-wide
+    ///      sum is floored at zero, where the price is taken.
     /// @param poolId The pool ID
     /// @param centrifugeId The Centrifuge ID of the network
-    function netAssetValue(PoolId poolId, uint16 centrifugeId) external view returns (uint128);
+    function netAssetValue(PoolId poolId, uint16 centrifugeId) external view returns (int128);
 
     //----------------------------------------------------------------------------------------------
     // Helpers

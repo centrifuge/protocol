@@ -10,6 +10,8 @@ import {VaultDetails, ISpokeRegistry} from "../../../src/core/spoke/interfaces/I
 
 import {Root} from "../../../src/admin/Root.sol";
 
+import {IVault} from "../../../src/vaults/interfaces/IVault.sol";
+
 import "forge-std/Test.sol";
 
 import {ShareToken} from "../../../src/token/ShareToken.sol";
@@ -247,6 +249,8 @@ contract ShareTokenRegistrarTest is Test {
                 VaultDetails({poolId: poolId, scId: scId, assetId: assetId, asset: asset, tokenId: 0, isLinked: true})
             )
         );
+        vm.mockCall(vault, abi.encodeWithSelector(IVault.poolId.selector), abi.encode(poolId));
+        vm.mockCall(vault, abi.encodeWithSelector(IVault.scId.selector), abi.encode(scId));
 
         bytes memory payload = abi.encode(IShareTokenRegistrar.RegistrarCall.SetVault, scId.raw(), assetId.raw(), vault);
 
