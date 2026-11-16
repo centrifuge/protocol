@@ -259,9 +259,47 @@ contract VaultPricingLibTest is Test {
         assertEq(VaultPricingLib.clampToConvertible(0, 6, 18, d18(1e18), d18(1e18)), 0);
     }
 
+    function testThePricesAtTheExtremesRevertPast256Bits() public {
+        D18 smallest = D18.wrap(1);
+        D18 largest = D18.wrap(type(uint128).max);
+
+        vm.expectRevert(MathLib.MulDiv_Overflow.selector);
+        this.sharesEstimate(type(uint128).max, 6, 18, largest, smallest);
+
+        vm.expectRevert(MathLib.MulDiv_Overflow.selector);
+        this.assetsEstimate(type(uint128).max, 18, 6, smallest, largest);
+
+        vm.expectRevert(MathLib.MulDiv_Overflow.selector);
+        this.clampToConvertible(1e18, 18, 6, smallest, largest);
+    }
+
     //----------------------------------------------------------------------------------------------
     // External entry points, so a revert can be expected
     //----------------------------------------------------------------------------------------------
+
+    function sharesEstimate(uint128 assets, uint8 assetDecimals, uint8 shareDecimals, D18 ppa, D18 pps)
+        external
+        pure
+        returns (uint128)
+    {
+        return VaultPricingLib.sharesEstimate(assets, assetDecimals, shareDecimals, ppa, pps);
+    }
+
+    function assetsEstimate(uint128 shares, uint8 assetDecimals, uint8 shareDecimals, D18 ppa, D18 pps)
+        external
+        pure
+        returns (uint128)
+    {
+        return VaultPricingLib.assetsEstimate(shares, assetDecimals, shareDecimals, ppa, pps);
+    }
+
+    function clampToConvertible(uint128 capacity, uint8 assetDecimals, uint8 shareDecimals, D18 ppa, D18 pps)
+        external
+        pure
+        returns (uint128)
+    {
+        return VaultPricingLib.clampToConvertible(capacity, assetDecimals, shareDecimals, ppa, pps);
+    }
 
     function toShares(uint128 assets, uint8 assetDecimals, uint8 shareDecimals, D18 ppa, D18 pps)
         external

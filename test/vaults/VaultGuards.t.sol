@@ -6,6 +6,7 @@ import {AmpleEscrow, IsContract, MockERC20, MockShareToken} from "./Vault.t.sol"
 import {D18} from "../../src/misc/types/D18.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../src/misc/libraries/MathLib.sol";
 import {IERC7575} from "../../src/misc/interfaces/IERC7575.sol";
 import {IERC7540Deposit, IERC7540Operator} from "../../src/misc/interfaces/IERC7540.sol";
 
@@ -22,23 +23,25 @@ import {
 } from "../../src/vaults/messaging/interfaces/IVaultRequestManager.sol";
 
 import {Vault} from "../../src/vaults/Vault.sol";
+import {RoleCheckLib} from "../../src/vaults/libraries/RoleCheckLib.sol";
 import {IVaultOracle} from "../../src/vaults/oracles/interfaces/IVaultOracle.sol";
 import {VaultRequestIdLib} from "../../src/vaults/libraries/VaultRequestIdLib.sol";
-import {VaultAction, VaultActionKind, VaultActionLib} from "../../src/vaults/libraries/VaultActionLib.sol";
 import {PerInvestorPolicy, PerPeriodPolicy, PerRequestPolicy} from "../../src/vaults/policies/RequestPolicies.sol";
-import {
-    IAsyncVault,
-    IVaultErrors,
-    IVaultEvents,
-    VaultConfig,
-    VaultPlugins
-} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {
     IInstantPolicy,
     IRequestPolicy,
     ILiquidityRoute,
     ISettlementObserver
 } from "../../src/vaults/policies/interfaces/IVaultPlugins.sol";
+import {
+    IAsyncVault,
+    IVaultErrors,
+    IVaultEvents,
+    VaultConfig,
+    VaultPlugins,
+    VaultAction,
+    VaultActionKind
+} from "../../src/vaults/interfaces/IAsyncVault.sol";
 
 import "forge-std/Test.sol";
 
@@ -286,8 +289,10 @@ contract VaultGuardsTest is Test {
         assertFalse(v.isOperator(controller, controller));
     }
 
-    /// @dev The registry takes any contract from a pool's factory, so a vault another pool registered under itself reads
-    ///      as linked to the registry but not to this vault's own position, and refuses what an unlinked vault refuses.
+    /// @dev A registration that is not this vault's own position reads as linked to the registry but not to the
+    ///      vault, which refuses what an unlinked vault refuses. `DeployAndLink` itself refuses a vault under another
+    ///      pool or share class, so this is the vault's own check, here with the registry mocked to say another pool;
+    ///      the asset is the part only the vault reads.
     function testAVaultRegisteredUnderAnotherPoolIsNotLinked() public {
         vm.mockCall(
             spokeRegistry,
@@ -1131,19 +1136,19 @@ contract VaultGuardsTest is Test {
         vm.stopPrank();
     }
 
-    /// @dev The policy's fee is the one signed quantity in the vault. `int128.min` cannot be negated, so it reverts
-    ///      rather than wrapping to itself, and `int128.max` is a charge no trade can pay: none of the four instant
-    ///      entrypoints ever takes either through.
+    /// @dev The policy's fee is the one signed quantity in the vault. `int128.min` is a rebate past any of these
+    ///      trades and `int128.max` a charge no trade can pay: none of the four instant entrypoints takes either
+    ///      through.
     function testExtremeSignedFeesRevertInsteadOfWrapping() public {
         _instantCaps(type(uint128).max, type(uint128).max);
 
         _instantFees(type(int128).min, type(int128).min);
         vm.startPrank(controller);
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(MathLib.Uint128_Overflow.selector);
         v.deposit(1_000e6, receiver);
         vm.expectRevert(stdError.arithmeticError);
         v.mint(1_000e18, receiver);
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(MathLib.Int128_Overflow.selector);
         v.redeem(1_000e18, receiver);
         vm.expectRevert(stdError.arithmeticError);
         v.withdraw(1_000e6, receiver);
@@ -2307,7 +2312,7 @@ contract VaultGuardsTest is Test {
             VaultAction(VaultActionKind.InstantDeposit, controller, controller, controller, 1_000e6, 990e18);
         vm.expectCall(
             actionHook,
-            abi.encodeWithSelector(IRoleHook.onRoles.selector, address(share), VaultActionLib.roleChecks(action))
+            abi.encodeWithSelector(IRoleHook.onRoles.selector, address(share), RoleCheckLib.roleChecks(action))
         );
         vm.prank(controller);
         v.deposit(1_000e6, controller);
@@ -2326,7 +2331,7 @@ contract VaultGuardsTest is Test {
             VaultAction(VaultActionKind.InstantRedeem, controller, controller, receiver, 110e6, 100e18);
         vm.expectCall(
             actionHook,
-            abi.encodeWithSelector(IRoleHook.onRoles.selector, address(share), VaultActionLib.roleChecks(action))
+            abi.encodeWithSelector(IRoleHook.onRoles.selector, address(share), RoleCheckLib.roleChecks(action))
         );
         vm.prank(controller);
         v.redeem(100e18, receiver);
@@ -2400,7 +2405,7 @@ contract VaultGuardsTest is Test {
     }
 
     /// @dev On a vault without an instant lane anyone may request for any controller, but a position the controller
-    ///      did not submit takes a free slot only: it never evicts one of the controller's own positions.
+    ///      did not submit or fund takes a free slot only: it never evicts one of the controller's own positions.
     function testARequestForAnotherControllerNeverEvictsTheirOwn() public {
         Vault asyncOnly = _vaultWith(address(requestPolicy), address(0));
         address stranger = makeAddr("stranger");
@@ -2532,6 +2537,178 @@ contract VaultGuardsTest is Test {
         vm.warp(block.timestamp + 1 days);
         vm.prank(controller);
         assertNotEq(grouped.requestDeposit(1_000e6, controller, controller), first, "the next window, by the clock");
+    }
+
+    function testARedeemOfTheOwnersSharesBySpenderIsTheOwnersOwn() public {
+        Vault asyncOnly = _vaultWith(address(requestPolicy), address(0));
+        address spender = makeAddr("spender");
+
+        vm.prank(controller);
+        uint256 first = asyncOnly.requestRedeem(100e18, controller, controller);
+
+        vm.expectEmit(address(asyncOnly));
+        emit IVaultEvents.OutsideHorizon(first, controller, false);
+        vm.prank(spender);
+        asyncOnly.requestRedeem(100e18, controller, controller);
+    }
+
+    function testARequestTheControllerSubmitsWithAnotherOwnersAssetsIsItsOwn() public {
+        Vault asyncOnly = _vaultWith(address(requestPolicy), address(0));
+        address funder = makeAddr("funder");
+        vm.prank(funder);
+        asyncOnly.setOperator(controller, true);
+
+        vm.prank(controller);
+        uint256 first = asyncOnly.requestDeposit(1_000e6, controller, funder);
+
+        vm.expectEmit(address(asyncOnly));
+        emit IVaultEvents.OutsideHorizon(first, controller, true);
+        vm.prank(controller);
+        asyncOnly.requestDeposit(1_000e6, controller, funder);
+    }
+
+    function testMaxDepositReadsZeroWhenARebateExceedsTheRoomLeft() public {
+        _instantCaps(type(uint128).max, type(uint128).max);
+        _instantFees(-10e6, 0);
+        // Room for 1e18 shares, which 1e6 assets buy at par: the rebate alone would not fit
+        share.setTotalSupply(type(uint128).max - 1e18);
+
+        assertEq(v.maxDeposit(controller), 0, "the rebate's part takes the whole capacity");
+    }
+
+    function testMaxDepositHoldsWhenARebateCarriesTheAmountPastUint128() public {
+        // One asset unit buys one share unit, so the capacity reaches `uint128.max` assets
+        _prices(ONE, D18.wrap(1e30));
+        _instantCaps(type(uint128).max, type(uint128).max);
+        _instantFees(-10e6, 0);
+
+        assertGt(v.maxDeposit(controller), 0, "the lane is open");
+    }
+
+    /// @dev The window's key names the batch, not its contributor, so a transfer must leave it in place.
+    function testATransferInAnOpenWindowKeepsTheWindowsBucket() public {
+        Vault grouped = _perPeriodVault();
+        address recipient = makeAddr("recipient");
+        address latecomer = makeAddr("latecomer");
+
+        vm.startPrank(controller);
+        uint256 window = grouped.requestDeposit(1_000e6, controller, controller);
+        grouped.transferDepositRequest(window, controller, recipient);
+        vm.stopPrank();
+
+        vm.prank(latecomer);
+        assertEq(grouped.requestDeposit(1_000e6, latecomer, latecomer), window, "the same window's bucket");
+        assertEq(grouped.bucket(uint96(window)).total, 2_000e6);
+    }
+
+    function testAMovedBucketTransferredOnLeavesTheOriginalOwnersNewKey() public {
+        Vault keyed = _vaultWithPolicy(address(new ControllerKeyPolicy(false)));
+        bytes32 key = CastLib.toBytes32(controller);
+        address recipient = makeAddr("recipient");
+        address third = makeAddr("third");
+
+        vm.startPrank(controller);
+        uint256 moved = keyed.requestDeposit(1_000e6, controller, controller);
+        keyed.transferDepositRequest(moved, controller, recipient);
+        uint256 own = keyed.requestDeposit(500e6, controller, controller);
+        vm.stopPrank();
+        assertEq(keyed.bucketOf(key, true), _localIdOf(own));
+
+        vm.prank(recipient);
+        keyed.transferDepositRequest(moved, recipient, third);
+        assertEq(keyed.bucketOf(key, true), _localIdOf(own), "the controller's key still names its own bucket");
+
+        vm.prank(controller);
+        assertEq(keyed.requestDeposit(500e6, controller, controller), own, "and its next request joins it");
+    }
+
+    function testMaxDepositKeepsTheCapacityWhenTheShareLimitMeetsItExactly() public {
+        vm.mockCall(
+            actionHook,
+            abi.encodeWithSelector(IRoleHook.maxAllowed.selector),
+            abi.encode(type(uint256).max, uint256(1_000_000e18))
+        );
+
+        assertEq(v.maxDeposit(controller), 1_000_000e6, "the capacity issues exactly the limit");
+        assertEq(v.maxMint(controller), 1_000_000e18);
+    }
+
+    function testMaxDepositFallsBackToTheLimitsAssetsWhenTheyIssueExactlyTheLimit() public {
+        vm.mockCall(
+            actionHook,
+            abi.encodeWithSelector(IRoleHook.maxAllowed.selector),
+            abi.encode(type(uint256).max, uint256(500e18))
+        );
+        // Only the exact-out quote at the limit's assets charges, so the grossed-up deposit issues past the limit
+        vm.mockCall(
+            instantPolicy,
+            abi.encodeWithSelector(
+                IInstantPolicy.quoteInstantDeposit.selector,
+                address(vault),
+                controller,
+                controller,
+                uint128(500e6),
+                true
+            ),
+            abi.encode(int128(1e6), feeRecipient)
+        );
+
+        assertEq(v.maxDeposit(controller), 500e6, "the limit's assets, which issue exactly the limit");
+    }
+
+    function testARefundRidingOnAMintToAnotherReceiverIsValuedInTheClaim() public {
+        _settleDeposit(1_000e6, 1_000e18);
+        uint96 localId = _requestRedeem(400e18);
+        vm.prank(router);
+        IVaultRedeemCallbacks(address(vault)).cancelRedeem(localId, 400e18, 400e18);
+
+        VaultAction memory claim =
+            VaultAction(VaultActionKind.DepositClaim, controller, address(0), receiver, 1_400e6, 1_400e18);
+        vm.expectCall(
+            actionHook,
+            abi.encodeWithSelector(IRoleHook.onRoles.selector, address(share), RoleCheckLib.roleChecks(claim))
+        );
+        vm.prank(controller);
+        v.mint(1_400e18, receiver, controller);
+    }
+
+    function testMaxRedeemReachesAPayoutCapTheNetPayoutMeetsExactly() public {
+        _instantFees(0, 1e6);
+        share.setBalance(controller, 100e18);
+        vm.mockCall(
+            actionHook,
+            abi.encodeWithSelector(IRoleHook.maxAllowed.selector),
+            abi.encode(uint256(99e6), type(uint256).max)
+        );
+
+        assertEq(v.maxRedeem(controller), 100e18, "redeeming the whole balance pays exactly the cap");
+    }
+
+    function testMaxRedeemUnderAPayoutCapDoesNotGrossUpByTheFee() public {
+        _instantFees(0, 1e6);
+        share.setBalance(controller, 100e18);
+        vm.mockCall(
+            actionHook,
+            abi.encodeWithSelector(IRoleHook.maxAllowed.selector),
+            abi.encode(uint256(50e6), type(uint256).max)
+        );
+        // No fee at 51e6, so redeeming its shares pays 51e6, past the cap, which the hook refuses
+        vm.mockCall(
+            instantPolicy,
+            abi.encodeWithSelector(
+                IInstantPolicy.quoteInstantRedeem.selector, address(vault), controller, controller, uint128(51e6), false
+            ),
+            abi.encode(int128(0), feeRecipient)
+        );
+        VaultAction memory over =
+            VaultAction(VaultActionKind.InstantRedeem, controller, controller, controller, 51e6, 51e18);
+        vm.mockCall(
+            actionHook,
+            abi.encodeWithSelector(IRoleHook.checkRoles.selector, address(share), RoleCheckLib.roleChecks(over)),
+            abi.encode(false)
+        );
+
+        assertEq(v.maxRedeem(controller), 50e18, "sized by the capped payout");
     }
 
     function _linkedTo(PoolId poolId, ShareClassId scId, AssetId assetId) internal {

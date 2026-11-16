@@ -526,6 +526,17 @@ abstract contract Properties is
         eq(price.raw(), expected, "the share price is not the pool's NAV over its issuance");
     }
 
+    /// @dev The strict policy measures a price move from the last executed update that moved the price, or the first
+    ///      it saw: a refused update, an authorization or a re-commit of the same price leaves the baseline alone.
+    function property_strictPolicyAnchorsOnExecutedMoves() public {
+        eq(
+            strictPolicy.lastPriceUpdate(poolP, scP),
+            ghostStrictPriceAnchor,
+            "the strict policy's price baseline is not the last executed price move"
+        );
+        t(address(hubRegistry.policy(poolP)) == address(strictPolicy), "pool P left its policy");
+    }
+
     //----------------------------------------------------------------------------------------------
     // Isolation
     //----------------------------------------------------------------------------------------------

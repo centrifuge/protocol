@@ -114,6 +114,34 @@ contract ReenteringRoute is ILiquidityRoute {
     }
 }
 
+/// @dev Delivers what it is asked for, after re-entering the vault's exact-assets exit once for itself.
+contract WithdrawReenteringRoute is ILiquidityRoute {
+    IAsyncVault internal _vault;
+    MockERC20 internal _asset;
+    uint128 internal _reenterAssets;
+
+    function arm(IAsyncVault vault_, MockERC20 asset_, uint128 assets) external {
+        _vault = vault_;
+        _asset = asset_;
+        _reenterAssets = assets;
+    }
+
+    function provide(address vault, uint128 assets) external {
+        if (_reenterAssets != 0) {
+            uint128 amount = _reenterAssets;
+            _reenterAssets = 0;
+            _vault.withdraw(amount, address(this), address(this));
+        }
+        _asset.mint(vault, assets);
+    }
+
+    function forward(address, uint128) external {}
+
+    function available(address) external pure returns (uint128) {
+        return type(uint128).max;
+    }
+}
+
 /// @dev A route whose `available` reverts, as a third-party venue's quote can.
 contract RevertingQuoteRoute is ILiquidityRoute {
     function provide(address, uint128) external {}
@@ -361,6 +389,24 @@ contract LiquidityRouteIntegrationTest is Test {
         assertEq(route.lastForward(), 0, "a redeem offers nothing out");
     }
 
+    /// @dev The cash is booked before the route runs. A route may release the pool's holdings and then call code it does
+    ///      not control, and a permissionless sync from there must not see the pool without both the holding and the
+    ///      cash.
+    function testTheDrawIsBookedBeforeTheRouteRuns() public {
+        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.availableBalanceOf.selector), abi.encode(uint128(100e6)));
+        route.setAvailable(1_000_000e6);
+
+        // Whichever of the two runs first is the revert the exit surfaces.
+        vm.mockCallRevert(
+            spoke, abi.encodeCall(ISpoke.noteDeposit, (POOL, SC, address(asset), 0, 900e6)), bytes("booked")
+        );
+        vm.mockCallRevert(address(route), abi.encodeWithSelector(ILiquidityRoute.provide.selector), bytes("route ran"));
+
+        vm.prank(controller);
+        vm.expectRevert(bytes("booked"));
+        v.redeem(1_000e18, receiver);
+    }
+
     /// @dev A manager may reserve past the escrow's total, ahead of arrival. What the route brings in meets that first,
     ///      so the capacity it adds is net of it, and the draw covers it: 100 held against 300 reserved leaves 200 to
     ///      cover, so a route offering 500 adds 300, and paying out 300 draws 500.
@@ -420,6 +466,39 @@ contract LiquidityRouteIntegrationTest is Test {
         vm.prank(controller);
         vm.expectRevert(ReentrancyProtection.Reentrancy.selector);
         IAsyncVault(address(reentrant)).redeem(1_000e18, receiver);
+    }
+
+    function testAReenteringRouteCannotFundASecondWithdraw() public {
+        WithdrawReenteringRoute hostile = new WithdrawReenteringRoute();
+        IAsyncVault reentrant = IAsyncVault(address(_vaultWithRoute(address(hostile))));
+        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.availableBalanceOf.selector), abi.encode(uint128(100e6)));
+
+        hostile.arm(reentrant, asset, 1_000e6);
+        vm.prank(controller);
+        vm.expectRevert(ReentrancyProtection.Reentrancy.selector);
+        reentrant.withdraw(1_000e6, receiver, controller);
+
+        hostile.arm(reentrant, asset, 0);
+        vm.prank(controller);
+        assertEq(reentrant.withdraw(1_000e6, receiver, controller), 1_000e18, "delivered without the re-entry");
+    }
+
+    /// @dev The retained leg never leaves the escrow, so the route covers only the payout's shortfall.
+    function testARetainedExitFeeIsNotDrawnFromTheRoute() public {
+        vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.availableBalanceOf.selector), abi.encode(uint128(100e6)));
+        vm.mockCall(
+            instantPolicy,
+            abi.encodeWithSelector(IInstantPolicy.quoteInstantRedeem.selector),
+            abi.encode(int128(100e6), address(0))
+        );
+        route.setAvailable(1_000_000e6);
+        route.setDelivery(asset, address(vault), 0);
+
+        vm.prank(controller);
+        uint256 payout = v.redeem(1_000e18, receiver);
+
+        assertEq(payout, 900e6, "the payout is net of the retained fee");
+        assertEq(route.lastProvide(), 800e6, "the route covers the payout less the escrow balance");
     }
 
     /// @dev The route is the pool's choice, so a quote that reverts takes the instant redeem views and

@@ -15,7 +15,7 @@ import {IManagerCallFromHub} from "../../core/utils/interfaces/IManagerCall.sol"
 /// @title  Spoke Oracle
 /// @notice Default vault oracle: the hub-notified prices from the spoke registry, valid unless the pool
 ///         paused it or they exceed the optional age and skew bounds. The pool unpauses from the hub only,
-///         but its spoke managers can pause on the spoke's chain.
+///         but the pausers it names from the hub can pause on the spoke's chain.
 contract SpokeOracle is ISpokeOracle {
     uint64 public immutable maxAge;
     address public immutable envoy;
@@ -23,6 +23,7 @@ contract SpokeOracle is ISpokeOracle {
     ISpokeRegistry public immutable spokeRegistry;
 
     mapping(PoolId => bool) public isPaused;
+    mapping(PoolId => mapping(address => bool)) public isPauser;
 
     constructor(ISpokeRegistry spokeRegistry_, uint64 maxAge_, uint64 maxSkew_, address envoy_) {
         spokeRegistry = spokeRegistry_;
@@ -32,25 +33,42 @@ contract SpokeOracle is ISpokeOracle {
         emit OracleConfigured(spokeRegistry_, maxAge_, maxSkew_, envoy_);
     }
 
+    modifier onlyPauser(PoolId poolId) {
+        require(isPauser[poolId][msg.sender], NotPauser());
+        _;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Administration
+    //----------------------------------------------------------------------------------------------
+
     /// @inheritdoc IManagerCallFromHub
     function fromHub(PoolId poolId, bytes calldata payload) external payable {
         require(msg.sender == envoy, NotEnvoy());
         require(msg.value == 0, UnexpectedValue());
 
-        bool paused_ = abi.decode(payload, (bool));
-        if (isPaused[poolId] == paused_) return;
-        isPaused[poolId] = paused_;
-        emit SetPaused(poolId, paused_, msg.sender);
+        ConfigKind kind = abi.decode(payload, (ConfigKind));
+        if (kind == ConfigKind.SetPaused) {
+            (, bool paused) = abi.decode(payload, (ConfigKind, bool));
+            return _setPaused(poolId, paused);
+        }
+        if (kind == ConfigKind.SetPauser) {
+            (, address pauser, bool allowed) = abi.decode(payload, (ConfigKind, address, bool));
+            isPauser[poolId][pauser] = allowed;
+            emit SetPauser(poolId, pauser, allowed);
+            return;
+        }
+        revert UnknownConfigKind();
     }
 
     /// @inheritdoc ISpokeOracle
-    function pause(PoolId poolId) external {
-        require(spokeRegistry.manager(poolId, msg.sender), NotManager());
-
-        if (isPaused[poolId]) return;
-        isPaused[poolId] = true;
-        emit SetPaused(poolId, true, msg.sender);
+    function pause(PoolId poolId) external onlyPauser(poolId) {
+        _setPaused(poolId, true);
     }
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @inheritdoc IVaultOracle
     function prices(PoolId poolId, ShareClassId scId, AssetId assetId)
@@ -74,6 +92,17 @@ contract SpokeOracle is ISpokeOracle {
         }
 
         valid = maxSkew == 0 || MathLib.absDiff(assetComputedAt, shareComputedAt) <= maxSkew;
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Internal methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev A call that leaves the flag as it was is not announced.
+    function _setPaused(PoolId poolId, bool paused) internal {
+        if (isPaused[poolId] == paused) return;
+        isPaused[poolId] = paused;
+        emit SetPaused(poolId, paused, msg.sender);
     }
 
     /// @dev Bounded on both sides, so a `computedAt` in the future is not fresh.

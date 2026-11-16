@@ -16,9 +16,8 @@ import {OpType} from "../BeforeAfter.sol";
 ///         outcomes: an answer, or a revert with one of the arithmetic errors the amount's own size explains
 ///         (`Uint128_Overflow` from the 128-bit narrowing, `Int128_Overflow` from the policy's signed fee,
 ///         `MulDiv_Overflow` from the pricing product; `SPECIFICATION.md` marks the `uint128` revert of the views as a
-///         deliberate `n`). A checked-arithmetic panic is allowed only on the two previews that add a fee to a
-///         `uint128` (`previewMint`, `previewWithdraw`), where the sum itself can pass `uint128.max`. Anything else,
-///         such as another custom error or an empty revert, is a defect in a path no integrator can predict.
+///         deliberate `n`). Anything else, such as a checked-arithmetic panic, another custom error or an empty
+///         revert, is a defect in a path no integrator can predict.
 ///         Where it answers, it follows the preview rules (the fee, and only the fee, separates a preview from the
 ///         conversion; rounding runs against the caller; larger inputs never pay less or cost less).
 abstract contract ExtremeAmountTargets is StandardsTargets {
@@ -30,7 +29,6 @@ abstract contract ExtremeAmountTargets is StandardsTargets {
         bool answered;
         uint256 value;
         bytes4 error;
-        uint256 panicCode;
     }
 
     /// @dev The same views, asked of one amount: as an asset amount (`deposit`, `withdraw`, `convertToShares`) or as
@@ -259,8 +257,7 @@ abstract contract ExtremeAmountTargets is StandardsTargets {
         if (quote.answered) return;
         bool defined = quote.error == MathLib.Uint128_Overflow.selector
             || quote.error == MathLib.MulDiv_Overflow.selector
-            || (isPreview && quote.error == MathLib.Int128_Overflow.selector)
-            || (isPreview && quote.error == PANIC && quote.panicCode == 0x11 && _mayOverflowWithFee(name));
+            || (isPreview && quote.error == MathLib.Int128_Overflow.selector);
         t(defined, string.concat(name, " reverted outside the defined arithmetic errors"));
         t(_sizeExplains(x, isPreview, inAssets), string.concat(name, " overflowed at a small amount"));
     }
@@ -274,12 +271,6 @@ abstract contract ExtremeAmountTargets is StandardsTargets {
         return x > (isPreview ? limit / BPS_FEE_FACTOR : limit / 2);
     }
 
-    /// @dev The two previews that add a fee to a `uint128` answer in `uint128`, so the sum may overflow it.
-    function _mayOverflowWithFee(string memory name) internal pure returns (bool) {
-        bytes32 h = keccak256(bytes(name));
-        return h == keccak256("previewMint") || h == keccak256("previewWithdraw");
-    }
-
     //----------------------------------------------------------------------------------------------
     // Internal
     //----------------------------------------------------------------------------------------------
@@ -290,7 +281,7 @@ abstract contract ExtremeAmountTargets is StandardsTargets {
         return _oracleValid() && address(vault.instantPolicy()) == address(reserveInstantPolicy);
     }
 
-    /// @dev One view as `caller`, with the revert's selector (and a panic's code) kept.
+    /// @dev One view as `caller`, with the revert's selector kept.
     function _view(IAsyncVault vault, address caller, bytes4 selector, uint256 amount)
         internal
         returns (Quote memory quote)
@@ -304,13 +295,6 @@ abstract contract ExtremeAmountTargets is StandardsTargets {
             return quote;
         }
         if (ret.length >= 4) quote.error = bytes4(ret);
-        if (quote.error == PANIC && ret.length >= 36) {
-            uint256 code;
-            assembly {
-                code := mload(add(ret, 36))
-            }
-            quote.panicCode = code;
-        }
     }
 
     /// @dev The ladder the property climbs, ascending: from nothing and one unit through the `int128` and `uint128`

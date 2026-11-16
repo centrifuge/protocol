@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {console} from "forge-std/console.sol";
 
 /// @dev Drives the multi-request flows with state they can act on and asserts they ran to their checks, so a setup
 ///      change that turns them into silent reverts fails here, and a src mutation can be shown to fail them.
-contract MultiRequestReachability is CryticToFoundry {
+contract MultiRequestReachability is FoundryHarness {
     uint256 internal worstGas;
 
     /// @dev Every vault, side and settlement mode: a deposit and a redemption in each of the three vaults, with and

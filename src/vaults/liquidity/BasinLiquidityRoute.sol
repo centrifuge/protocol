@@ -54,16 +54,23 @@ contract BasinLiquidityRoute is Recoverable, IBasinLiquidityRoute {
         require(msg.sender == envoy, NotEnvoy());
         require(msg.value == 0, UnexpectedValue());
 
-        (address vault, uint128 limit_) = abi.decode(payload, (address, uint128));
+        (ConfigKind kind, address vault, bytes memory args) = abi.decode(payload, (ConfigKind, address, bytes));
 
         require(_details(vault).poolId == poolId && IVault(vault).poolId() == poolId, WrongPool());
-        _lines[vault].limit = limit_;
-        emit SetLimit(poolId, vault, limit_);
+
+        if (kind == ConfigKind.Limit) {
+            uint128 limit_ = abi.decode(args, (uint128));
+            _lines[vault].limit = limit_;
+            emit SetLimit(poolId, vault, limit_);
+            return;
+        }
+        revert UnknownConfigKind();
     }
 
     /// @inheritdoc IBasinLiquidityRoute
     function setCredit(address vault, uint128 credit_) external {
         require(msg.sender == basin.liquidityProvider(), NotLiquidityProvider());
+
         _lines[vault].credit = credit_;
         emit SetCredit(_details(vault).poolId, vault, credit_);
     }
@@ -77,20 +84,20 @@ contract BasinLiquidityRoute is Recoverable, IBasinLiquidityRoute {
         require(msg.sender == vault, NotVault());
         require(assets <= _headroom(vault), ExceedsLimit());
 
-        // From the registry: a fabricated vault would otherwise name any asset.
         VaultDetails memory details = _details(vault);
-
-        // Measured at the vault, which notes `assets` once this returns, whatever the venue reports.
-        uint256 before = IERC20(details.asset).balanceOf(vault);
-        basin.withdraw(details.asset, vault, assets);
-        require(IERC20(details.asset).balanceOf(vault) >= before + assets, InsufficientLiquidity());
-
         _lines[vault].receivable += assets;
 
+        // Booked before the venue is called, as the vault books the cash before calling this: the pool's balance
+        // sheet never shows the cash without the debt while the venue runs.
         uint256 liabilityId = _liabilityId(details);
         accountingToken.mint(address(this), liabilityId, assets, details.scId);
         accountingToken.approve(address(spoke), liabilityId, assets);
         spoke.deposit(details.poolId, details.scId, address(accountingToken), liabilityId, assets);
+
+        // Measured at the vault, whatever the venue reports.
+        uint256 before = IERC20(details.asset).balanceOf(vault);
+        basin.withdraw(details.asset, vault, assets);
+        require(IERC20(details.asset).balanceOf(vault) >= before + assets, InsufficientLiquidity());
 
         emit BasinProvided(details.poolId, vault, assets);
     }

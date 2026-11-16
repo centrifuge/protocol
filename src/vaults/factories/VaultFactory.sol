@@ -48,16 +48,8 @@ contract VaultFactory is IVaultDeployFactory {
         if (deployed.code.length > 0) return deployed;
 
         // A constructor revert is passed on, so a configuration the vault refuses is named rather than a bare failure.
-        Vault vault;
-        assembly ("memory-safe") {
-            vault := create2(0, add(initcode, 0x20), mload(initcode), salt)
-            if and(iszero(vault), gt(returndatasize(), 0)) {
-                let ptr := mload(0x40)
-                returndatacopy(ptr, 0, returndatasize())
-                revert(ptr, returndatasize())
-            }
-        }
-        require(address(vault) != address(0), DeploymentFailed());
+        Vault vault = _create(poolId, scId, asset, tokenId, token, p, salt);
+        require(address(vault) == deployed, DeploymentFailed());
 
         // Root alone, for `recoverTokens`: nothing else on a vault is ward-gated.
         vault.rely(root);
@@ -117,7 +109,7 @@ contract VaultFactory is IVaultDeployFactory {
         return abi.decode(payload, (Payload));
     }
 
-    /// @dev Shared by `getVault` and `deploy`, as is `_address`, so the two cannot drift.
+    /// @dev What `getVault` and `deploy` hash for the address. `_create` writes the arguments again.
     function _initcode(
         PoolId poolId,
         ShareClassId scId,
@@ -129,16 +121,28 @@ contract VaultFactory is IVaultDeployFactory {
         return abi.encodePacked(
             type(Vault).creationCode,
             abi.encode(
-                poolId,
-                scId,
-                asset,
-                spokeRegistry.assetToId(asset, tokenId, true),
-                IShareToken(token),
-                VaultConfig({
-                    spoke: spoke, spokeRegistry: spokeRegistry, plugins: p.plugins, foldHorizon: p.foldHorizon
-                })
+                poolId, scId, asset, spokeRegistry.assetToId(asset, tokenId, true), IShareToken(token), _config(p)
             )
         );
+    }
+
+    /// @dev Must pass the arguments `_initcode` encodes, or the vault lands elsewhere and `deploy` reverts.
+    function _create(
+        PoolId poolId,
+        ShareClassId scId,
+        address asset,
+        uint256 tokenId,
+        address token,
+        Payload memory p,
+        bytes32 salt
+    ) internal returns (Vault) {
+        return new Vault{salt: salt}(
+            poolId, scId, asset, spokeRegistry.assetToId(asset, tokenId, true), IShareToken(token), _config(p)
+        );
+    }
+
+    function _config(Payload memory p) internal view returns (VaultConfig memory) {
+        return VaultConfig({spoke: spoke, spokeRegistry: spokeRegistry, plugins: p.plugins, foldHorizon: p.foldHorizon});
     }
 
     /// @dev The CREATE2 salt: the position plus the variant that lets parallel vaults coexist on it.

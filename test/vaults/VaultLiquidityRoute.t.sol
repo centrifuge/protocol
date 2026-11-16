@@ -143,6 +143,20 @@ contract UnderlyingVault {
         misdirect = to;
     }
 
+    /// @dev Sends the caller this many fresh shares on exit, on top of whatever the burn left.
+    uint256 public pushBack;
+
+    function setPushBack(uint256 amount) external {
+        pushBack = amount;
+    }
+
+    /// @dev Burns this many more of the caller's shares on exit than the withdrawal consumes.
+    uint256 public extraBurn;
+
+    function setExtraBurn(uint256 amount) external {
+        extraBurn = amount;
+    }
+
     /// @dev Makes every quote revert, as the real vault's do on an invalid price.
     bool public broken;
 
@@ -181,6 +195,8 @@ contract UnderlyingVault {
         }
 
         Token(asset).transferFrom(escrow, misdirect == address(0) ? receiver : misdirect, assets - shortfall);
+        if (pushBack > 0) shareToken.mint(msg.sender, pushBack);
+        if (extraBurn > 0) shareToken.burn(msg.sender, extraBurn);
         return shares;
     }
 }
@@ -267,6 +283,16 @@ contract MaxQuotingUnderlying {
 
     function previewRedeem(uint256) external pure returns (uint256) {
         return type(uint256).max;
+    }
+}
+
+/// @dev Answers every call with success and a single nonzero byte, less than the word the route decodes.
+contract ShortAnswerUnderlying {
+    fallback() external {
+        assembly {
+            mstore(0, shl(248, 1))
+            return(0, 1)
+        }
     }
 }
 
@@ -471,6 +497,19 @@ contract VaultLiquidityRouteTest is Test {
         route.fromHub(JTRSY_POOL, _routesPayload(_one(address(jtrsyVault))));
     }
 
+    /// @dev A vault that now names another pool than the registry has it under: `DeployAndLink` reads it once, at
+    ///      registration, and a vault that is not the pool's own can answer differently since.
+    function testConfigurationRejectsAVaultBuiltForAnotherPool() public {
+        _consent(address(jtrsyVault), true);
+        vm.mockCall(topVault, abi.encodeWithSelector(IVault.poolId.selector), abi.encode(OTHER_POOL));
+
+        vm.prank(envoy);
+        vm.expectRevert(IVaultLiquidityRoute.WrongPool.selector);
+        route.fromHub(TOP_POOL, _routesPayload(_one(address(jtrsyVault))));
+
+        assertEq(route.routes(topVault).length, 0, "no route is set");
+    }
+
     function testRoutesMustBeKnownVaults() public {
         // Never registered, so the registry reports it as nothing at all.
         address stranger = address(new IsContract());
@@ -555,6 +594,38 @@ contract VaultLiquidityRouteTest is Test {
         // 999.9 shares covered the 990 payout plus the 9.9 fee; the rest went back to the escrow.
         assertEq(jtrsy.balanceOf(address(route)), 0, "nothing left resting on the route");
         assertEq(usdc.balanceOf(topVault), 990e18, "the full advertised capacity was raised");
+    }
+
+    /// @dev The residual is re-noted to the pool's escrow, so an underlying returning more shares than it was handed
+    ///      would raise the pool's holding out of nothing. Returning all of them, burning none, is still accepted.
+    function testAnUnderlyingPushingBackExtraSharesIsRefused() public {
+        _configure(_one(address(jtrsyVault)));
+        _hold(jtrsy, 1_000e18);
+        basin.fund(1_000e18);
+
+        jtrsyVault.setPushBack(100e18 + 1);
+        vm.prank(topVault);
+        vm.expectRevert(IVaultLiquidityRoute.ExcessShares.selector);
+        route.provide(topVault, 100e18);
+
+        jtrsyVault.setPushBack(100e18);
+        vm.prank(topVault);
+        route.provide(topVault, 100e18);
+        assertEq(usdc.balanceOf(topVault), 100e18, "a draw that burned nothing still pays");
+    }
+
+    /// @dev Shares on the route that the draw did not release belong to another pool's draw in flight, so an
+    ///      underlying taking them is refused rather than read as a draw that returned nothing.
+    function testAnUnderlyingTakingMoreThanTheDrawReleasedIsRefused() public {
+        _configure(_one(address(jtrsyVault)));
+        _hold(jtrsy, 1_000e18);
+        basin.fund(1_000e18);
+        jtrsy.mint(address(route), 50e18);
+
+        jtrsyVault.setExtraBurn(1);
+        vm.prank(topVault);
+        vm.expectRevert(IVaultLiquidityRoute.ExcessSharesTaken.selector);
+        route.provide(topVault, 100e18);
     }
 
     function testCapacitySumsTheRoutes() public {
@@ -971,6 +1042,39 @@ contract VaultLiquidityRouteTest is Test {
 
         assertEq(capacity, 1, "the first word of the answer is read");
         assertLt(spent, 450_000, "the callee pays for its payload, the caller does not copy it");
+    }
+
+    function testAnUnderlyingThatAnswersLessThanAWordCountsAsNothing() public {
+        address shortAnswer = address(new ShortAnswerUnderlying());
+        _register(shortAnswer, JTRSY_POOL, JTRSY_SC, address(usdc));
+        address[] memory both = new address[](2);
+        both[0] = shortAnswer;
+        both[1] = address(otherVault);
+        _configure(both);
+        _hold(jtrsy, 300e18);
+        _hold(other, 500e18);
+
+        assertEq(route.available(topVault), 500e18, "only the route that answers counts");
+    }
+
+    function testAnUnderlyingUnlinkedAfterConfigurationCountsAsNothing() public {
+        _configure(_one(address(jtrsyVault)));
+        _hold(jtrsy, 1_000e18);
+        basin.fund(1_000e18);
+        assertEq(route.available(topVault), 1_000e18, "linked, it counts");
+
+        VaultDetails memory details = ISpokeRegistry(spokeRegistry).vaultDetails(address(jtrsyVault));
+        details.isLinked = false;
+        vm.mockCall(
+            spokeRegistry,
+            abi.encodeWithSelector(ISpokeRegistry.vaultDetails.selector, address(jtrsyVault)),
+            abi.encode(details)
+        );
+
+        assertEq(route.available(topVault), 0, "unlinked, it offers nothing");
+        vm.prank(topVault);
+        vm.expectRevert(IVaultLiquidityRoute.InsufficientLiquidity.selector);
+        route.provide(topVault, 100e18);
     }
 
     /// @dev Tokens sent to the route by mistake are not any pool's, so Root can return them.

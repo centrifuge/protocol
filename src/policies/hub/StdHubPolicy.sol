@@ -19,6 +19,7 @@ import {IShareClassManager} from "../../core/hub/interfaces/IShareClassManager.s
 import {IBridgeCircuitBreaker} from "../../hooks/bridge/interfaces/IBridgeCircuitBreaker.sol";
 import {UpdateRestrictionType} from "../../token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {ISpokeOracle} from "../../vaults/oracles/interfaces/IVaultOracle.sol";
 import {OrderBookAction, Fulfillment, Cancellation} from "../../vaults/hub/interfaces/IOrderBook.sol";
 
 /// @title  Standard Hub Policy
@@ -43,9 +44,9 @@ import {OrderBookAction, Fulfillment, Cancellation} from "../../vaults/hub/inter
 ///           the allowlist, so a pool confining a caller that must be able to veto or revoke has to list that
 ///           selector for it.
 ///         - `managerCall` is out of policy unless {_checkManagerCall} pins it by target as instant: a
-///           SetPaused to the configured bridging hook, a pause (not an unpause) of the configured
-///           SpokeOracle, or an OrderBook fulfillment or cancellation within the fee and price bounds
-///           ({_checkOrderBook}). Every other target is out of policy.
+///           SetPaused to the configured bridging hook, a pause (not an unpause, nor a change of its
+///           pausers) of the configured SpokeOracle, or an OrderBook fulfillment or cancellation within the
+///           fee and price bounds ({_checkOrderBook}). Every other target is out of policy.
 ///         - `setPolicy` and `setSpokePolicy` use `escalation` instead of `delay`.
 ///         - `updateRestriction` is out of policy except a canonical Freeze, unless `isRestrictionUpdateInstant` is set,
 ///           which makes it instant.
@@ -321,10 +322,12 @@ contract StdHubPolicy is IStdHubPolicy {
             bridgingHook != address(0) && targetAddr == bridgingHook && inner.length >= 32
                 && inner.toUint256(0) == uint256(IBridgeCircuitBreaker.ConfigKind.SetPaused)
         ) return 0;
-        // SpokeOracle decodes `abi.encode(bool paused)`: pausing only tightens, unpausing waits out `delay`.
-        if (spokeOracle != address(0) && targetAddr == spokeOracle && inner.length >= 32 && inner.toUint256(0) == 1) {
-            return 0;
-        }
+        // SpokeOracle decodes `abi.encode(SetPaused, bool paused)`: pausing only tightens, while unpausing and naming
+        // a pauser (who could then hold the lane closed) wait out `delay`.
+        if (
+            spokeOracle != address(0) && targetAddr == spokeOracle && inner.length >= 64
+                && inner.toUint256(0) == uint256(ISpokeOracle.ConfigKind.SetPaused) && inner.toUint256(32) == 1
+        ) return 0;
         return delay;
     }
 

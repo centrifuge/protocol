@@ -20,6 +20,8 @@ import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpoke
 import {ManagerKind, VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
 
 import {Fulfillment} from "../../../../src/vaults/hub/interfaces/IOrderBook.sol";
+import {ISpokeOracle} from "../../../../src/vaults/oracles/interfaces/IVaultOracle.sol";
+import {IBasinLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {IVaultLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 
 import {vm} from "@chimera/Hevm.sol";
@@ -88,6 +90,7 @@ abstract contract StrangerTargets is BaseTargetFunctions, Properties {
     bytes4 internal constant NOT_LINKED = bytes4(keccak256("NotLinked()"));
     bytes4 internal constant NOT_MANAGER = bytes4(keccak256("NotManager()"));
     bytes4 internal constant NOT_ENVOY = bytes4(keccak256("NotEnvoy()"));
+    bytes4 internal constant NOT_PAUSER = bytes4(keccak256("NotPauser()"));
     bytes4 internal constant NOT_VAULT = bytes4(keccak256("NotVault()"));
     bytes4 internal constant NOT_ENFORCER = bytes4(keccak256("NotEnforcer()"));
     bytes4 internal constant CALLER_NOT_POLICY = bytes4(keccak256("CallerNotPolicy()"));
@@ -141,7 +144,8 @@ abstract contract StrangerTargets is BaseTargetFunctions, Properties {
     ///      candidate is taken when the draw happens to hold the role).
     function stranger_call(uint256 entrySeed, uint256 callerSeed) public updateGhosts(OpType.MANAGER) {
         _prepareStrangers();
-        uint256 i = entrySeed % ENTRIES;
+        // Hashed: the fuzzers' dictionaries of small constants otherwise crowd onto a few entries
+        uint256 i = uint256(keccak256(abi.encode(entrySeed))) % ENTRIES;
         address[] memory candidates = _candidates();
         uint256 salt = callerSeed >> 16;
         for (uint256 k; k < candidates.length; k++) {
@@ -585,7 +589,15 @@ abstract contract StrangerTargets is BaseTargetFunctions, Properties {
                 address(hub),
                 abi.encodeCall(
                     hub.managerCall,
-                    (poolA, CENTRIFUGE_ID, address(spokeOracle).toBytes32(), abi.encode(false), 0, 0, REFUND)
+                    (
+                        poolA,
+                        CENTRIFUGE_ID,
+                        address(spokeOracle).toBytes32(),
+                        abi.encode(ISpokeOracle.ConfigKind.SetPaused, false),
+                        0,
+                        0,
+                        REFUND
+                    )
                 ),
                 NOT_MANAGER,
                 H
@@ -1553,7 +1565,10 @@ abstract contract StrangerTargets is BaseTargetFunctions, Properties {
             return _e(
                 "Envoy.callFromHub",
                 c.envoy,
-                abi.encodeCall(envoy.callFromHub, (poolA, address(spokeOracle), abi.encode(false))),
+                abi.encodeCall(
+                    envoy.callFromHub,
+                    (poolA, address(spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPaused, false))
+                ),
                 NOT_AUTHORIZED,
                 W
             );
@@ -2086,7 +2101,13 @@ abstract contract StrangerTargets is BaseTargetFunctions, Properties {
             return _f(
                 "BasinLiquidityRoute.fromHub",
                 address(basinRoute),
-                abi.encodeCall(basinRoute.fromHub, (poolA, abi.encode(address(vaults[3]), uint128(1)))),
+                abi.encodeCall(
+                    basinRoute.fromHub,
+                    (
+                        poolA,
+                        abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, address(vaults[3]), abi.encode(uint128(1)))
+                    )
+                ),
                 NOT_ENVOY,
                 F,
                 c.envoy
@@ -2135,21 +2156,22 @@ abstract contract StrangerTargets is BaseTargetFunctions, Properties {
             return _f(
                 "SpokeOracle.fromHub",
                 address(spokeOracle),
-                abi.encodeCall(spokeOracle.fromHub, (poolA, abi.encode(false))),
+                abi.encodeCall(spokeOracle.fromHub, (poolA, abi.encode(ISpokeOracle.ConfigKind.SetPaused, false))),
                 NOT_ENVOY,
                 F,
                 c.envoy
             );
         }
         if (i == n++) {
-            return
-                _e(
-                    "SpokeOracle.pause",
-                    address(spokeOracle),
-                    abi.encodeCall(spokeOracle.pause, (poolA)),
-                    NOT_MANAGER,
-                    S
-                );
+            // The pool's named pauser (see `Setup._createPool`): a role of the oracle's own, not the spoke manager's
+            return _f(
+                "SpokeOracle.pause",
+                address(spokeOracle),
+                abi.encodeCall(spokeOracle.pause, (poolA)),
+                NOT_PAUSER,
+                F,
+                AUX_MANAGER
+            );
         }
         if (i == n++) {
             return _f(

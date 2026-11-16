@@ -65,6 +65,7 @@ contract VaultRequestRouter is Auth, IVaultRequestRouter {
     function fromHub(PoolId poolId, bytes calldata payload) external payable {
         require(msg.sender == envoy, NotEnvoy());
         require(msg.value == 0, UnexpectedValue());
+
         uint128 extraGasLimit_ = abi.decode(payload, (uint128));
         extraGasLimit[poolId] = extraGasLimit_;
         emit SetExtraGasLimit(poolId, extraGasLimit_);
@@ -76,8 +77,8 @@ contract VaultRequestRouter is Auth, IVaultRequestRouter {
 
     /// @inheritdoc ISpokeRequestManager
     /// @dev The router is every pool's request manager, so the vault's `onlyRequestManager` does not
-    ///      bind the pool; this registry check does, and the vault's own pool has to agree: the registry records
-    ///      whatever a `DeployAndLink` factory returned, so a pool could register a vault another pool built.
+    ///      bind the pool; this registry check does. The vault's own pool has to agree as well: `DeployAndLink` read it
+    ///      once, at registration, and a vault that is not the pool's own can answer differently since.
     function callback(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external auth {
         RequestId requestId = payload.requestId();
         address vault = requestId.vaultOf();
@@ -86,8 +87,8 @@ contract VaultRequestRouter is Auth, IVaultRequestRouter {
         require(details.isLinked, NotLinked());
         require(details.poolId == poolId && IVault(vault).poolId() == poolId, WrongPool());
         require(details.scId == scId && details.assetId.raw() == assetId.raw(), WrongLane());
-        uint96 localId = requestId.localIdOf();
 
+        uint96 localId = requestId.localIdOf();
         RequestCallbackType kind = payload.requestCallbackType();
         if (kind == RequestCallbackType.SettledDeposit) {
             // One message, applied as its three legs in this call, so no intermediate state is observable.

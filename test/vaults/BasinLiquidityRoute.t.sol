@@ -184,7 +184,7 @@ contract BasinLiquidityRouteTest is Test {
 
     function _setLimit(uint128 limit) internal {
         vm.prank(envoy);
-        route.fromHub(POOL, abi.encode(vault, limit));
+        route.fromHub(POOL, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, vault, abi.encode(limit)));
     }
 
     function _setCredit(uint128 credit) internal {
@@ -213,14 +213,14 @@ contract BasinLiquidityRouteTest is Test {
 
     function testOnlyEnvoySetsTheLimit() public {
         vm.expectRevert(IBasinLiquidityRoute.NotEnvoy.selector);
-        route.fromHub(POOL, abi.encode(vault, UNLIMITED));
+        route.fromHub(POOL, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, vault, abi.encode(UNLIMITED)));
     }
 
     function testSetLimitRejectsValue() public {
         vm.deal(envoy, 1 ether);
         vm.prank(envoy);
         vm.expectRevert(IBasinLiquidityRoute.UnexpectedValue.selector);
-        route.fromHub{value: 1}(POOL, abi.encode(vault, UNLIMITED));
+        route.fromHub{value: 1}(POOL, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, vault, abi.encode(UNLIMITED)));
     }
 
     /// @dev Without the pool binding, any pool reaching the Envoy could raise the limit of another
@@ -228,7 +228,19 @@ contract BasinLiquidityRouteTest is Test {
     function testSetLimitBindsToThePoolOwningTheVault() public {
         vm.prank(envoy);
         vm.expectRevert(IBasinLiquidityRoute.WrongPool.selector);
-        route.fromHub(OTHER_POOL, abi.encode(vault, UNLIMITED));
+        route.fromHub(OTHER_POOL, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, vault, abi.encode(UNLIMITED)));
+    }
+
+    /// @dev A vault that now names another pool than the registry has it under: `DeployAndLink` reads it once, at
+    ///      registration, and a vault that is not the pool's own can answer differently since.
+    function testSetLimitRejectsAVaultBuiltForAnotherPool() public {
+        vm.mockCall(vault, abi.encodeWithSelector(IVault.poolId.selector), abi.encode(OTHER_POOL));
+
+        vm.prank(envoy);
+        vm.expectRevert(IBasinLiquidityRoute.WrongPool.selector);
+        route.fromHub(POOL, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, vault, abi.encode(uint128(1))));
+
+        assertEq(route.limit(vault), UNLIMITED, "the limit is unchanged");
     }
 
     /// @dev The venue's side of the line. Any pool can set a limit for its own vault, so without this
@@ -343,6 +355,18 @@ contract BasinLiquidityRouteTest is Test {
     /// @dev Only the vault itself may pull: `provide` moves funds and records a debt against the
     ///      vault, so a third party calling it for someone else's vault would be funding an exit
     ///      nobody asked for.
+    /// @dev The vault books the cash before it draws, so the route books the debt before it calls the venue: a sync
+    ///      from inside the venue sees the pool with both or neither.
+    function testTheDebtIsBookedBeforeTheVenueIsCalled() public {
+        // Whichever of the two runs first is the revert the draw surfaces.
+        vm.mockCallRevert(spoke, abi.encodeWithSelector(ISpoke.deposit.selector), bytes("booked"));
+        vm.mockCallRevert(address(basin), abi.encodeWithSelector(MockBasin.withdraw.selector), bytes("venue ran"));
+
+        vm.prank(vault);
+        vm.expectRevert(bytes("booked"));
+        route.provide(vault, 100e6);
+    }
+
     function testOnlyTheVaultMayDraw() public {
         vm.prank(outsider);
         vm.expectRevert(IBasinLiquidityRoute.NotVault.selector);
@@ -451,7 +475,7 @@ contract BasinLiquidityRouteTest is Test {
         vm.mockCall(spoke, abi.encodeWithSelector(ISpoke.escrow.selector, otherPool), abi.encode(otherEscrow));
         _enableBooking(otherPool, address(asset));
         vm.prank(envoy);
-        route.fromHub(otherPool, abi.encode(otherVault, UNLIMITED));
+        route.fromHub(otherPool, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, otherVault, abi.encode(UNLIMITED)));
         vm.prank(provider);
         route.setCredit(otherVault, 800e6);
         _setCredit(800e6);

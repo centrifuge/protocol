@@ -9,6 +9,8 @@ import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ISpoke} from "../../src/core/spoke/interfaces/ISpoke.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {AssetId, newAssetId} from "../../src/core/types/AssetId.sol";
+import {SpokeRegistry} from "../../src/core/spoke/SpokeRegistry.sol";
+import {IRegistrar} from "../../src/core/spoke/interfaces/IRegistrar.sol";
 import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {IVaultFactory} from "../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 
@@ -294,5 +296,23 @@ contract VaultFactoryTest is Test {
 
         vm.expectRevert(IVaultDeployFactory.PluginsRequired.selector);
         factory.getVault(POOL, SC, address(asset), 0, address(share), bytes(""));
+    }
+
+    /// @dev Against a real registry, so the asset lookup answers as the spoke's does rather than as a mock.
+    function testAVaultForAnAssetTheSpokeDoesNotKnowIsRefused() public {
+        SpokeRegistry registry = new SpokeRegistry(address(this));
+        registry.addPool(POOL);
+        registry.addShareClass(POOL, SC, address(share), IRegistrar(makeAddr("registrar")));
+        VaultFactory realFactory = new VaultFactory(root, ISpoke(spoke), registry);
+        bytes memory payload = _payload(_plugins(makeAddr("oracle"), address(0)), 0);
+
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        realFactory.getVault(POOL, SC, address(asset), 0, address(share), payload);
+        vm.expectRevert(ISpokeRegistry.UnknownAsset.selector);
+        realFactory.deploy(POOL, SC, address(asset), 0, payload);
+
+        registry.createAssetId(1, address(asset), 0);
+        address vault = realFactory.deploy(POOL, SC, address(asset), 0, payload);
+        assertEq(Vault(vault).assetId().raw(), registry.assetToId(address(asset), 0).raw(), "deploys once known");
     }
 }

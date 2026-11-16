@@ -6,12 +6,10 @@ import {MathLib} from "../../misc/libraries/MathLib.sol";
 
 import {PricingLib} from "../../core/libraries/PricingLib.sol";
 
-/// @title  Vault Pricing Lib
+/// @title  Vault Pricing Library
 /// @notice The vault's pricing arithmetic: conversions at the oracle's pool prices (`ppa`, `pps`) for the
-///         instant lane and the ERC-4626 views, the instant lane's signed fees, and the claimable ledger
-///         the async claims are paid from. The ledger keeps exact totals per side (claimable units and
-///         the counter-units they were filled for), and a claim converts pro-rata against them, so it is
-///         order-independent and a claim of the whole balance takes exactly what is left.
+///         instant lane and the ERC-4626 views, and the clamps that keep a capacity convertible. The claimable
+///         ledger the async claims are paid from lives in `BucketLib` and the vault's `_claim*`.
 library VaultPricingLib {
     using MathLib for uint256;
 
@@ -41,7 +39,8 @@ library VaultPricingLib {
 
     /// @notice The shares `assets` are worth, for a role check that has no exact figure: saturating at
     ///         `type(uint128).max`, which is also the answer while a price is unset, so an unknown figure never reads
-    ///         as small to a hook that limits it.
+    ///         as small to a hook that limits it. Reverts `MathLib.MulDiv_Overflow` instead when the value does not
+    ///         fit 256 bits: an amount near `type(uint128).max` at an extreme ratio between the two prices.
     function sharesEstimate(uint128 assets, uint8 assetDecimals, uint8 shareDecimals, D18 ppa, D18 pps)
         internal
         pure
@@ -60,7 +59,7 @@ library VaultPricingLib {
     }
 
     /// @notice Clamps an asset `capacity` to what converts to shares without overflowing uint128. Zero
-    ///         when a price is unset.
+    ///         when a price is unset. Reverts as `maxConvertibleAssetAmount` does.
     function clampToConvertible(uint128 capacity, uint8 assetDecimals, uint8 shareDecimals, D18 ppa, D18 pps)
         internal
         pure
@@ -70,7 +69,8 @@ library VaultPricingLib {
     }
 
     /// @notice As `clampToConvertible`, for a conversion that may mint at most `maxShares`: what the share supply
-    ///         has room for, since the shares are issued on top of those already in it.
+    ///         has room for, since the shares are issued on top of those already in it. Reverts as
+    ///         `maxConvertibleAssetAmount` does.
     function clampToShares(
         uint128 capacity,
         uint8 assetDecimals,
@@ -85,7 +85,9 @@ library VaultPricingLib {
     }
 
     /// @notice The largest asset amount that converts to at most `maxShares` at the given prices, so a
-    ///         capacity clamped to it cannot overflow the uint128 share conversion.
+    ///         capacity clamped to it cannot overflow the uint128 share conversion. Reverts
+    ///         `MathLib.MulDiv_Overflow` when that amount does not fit 256 bits: an asset with more decimals than the
+    ///         share at an extreme share-to-asset price ratio, or an oversized `maxShares`.
     function maxConvertibleAssetAmount(
         uint8 assetDecimals,
         uint8 shareDecimals,

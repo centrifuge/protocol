@@ -746,7 +746,7 @@ contract BucketLibTest is Test {
         assertTrue(h.contains(3, alice));
     }
 
-    /// @dev A position the controller did not submit takes a free slot and never evicts one of theirs: with the
+    /// @dev A position the controller did not submit or fund takes a free slot and never evicts one of theirs: with the
     ///      horizon full it is not tracked, and waits for `foldRequest`.
     function testAGiftTakesAFreeSlotAndNeverEvicts() public {
         h.contribute(1, alice, true, 100);
@@ -1154,6 +1154,108 @@ contract BucketLibTest is Test {
         InvestmentState memory l = h.ledger();
         assertEq(l.redeemShares - before.redeemShares, u.redeemShares, "the fold credits what the view promised");
         assertEq(l.redeemAssets - before.redeemAssets, u.redeemAssets);
+        assertEq(h.contributionOf(2, alice), 1_000, "the deferred one is still there");
+    }
+
+    function testTheViewLeavesOutADepositCreditPastMaxMint() public {
+        _twoSettledDeposits();
+        h.setLedger(0, MAX - 3_000); // room for one 2,000-share credit, not two
+        _assertTheViewOffersOnlyTheFirstDeposit();
+    }
+
+    function testTheViewLeavesOutADepositCreditPastItsAssets() public {
+        _twoSettledDeposits();
+        h.setLedger(1, MAX - 1_500); // room for one 1,000-asset credit, not two
+        _assertTheViewOffersOnlyTheFirstDeposit();
+    }
+
+    function testTheViewLeavesOutADepositRefundPastRefundAssets() public {
+        h.contribute(1, alice, true, 1_000);
+        h.contribute(2, alice, true, 1_000);
+        h.flush(1);
+        h.flush(2);
+        h.settleCancelled(1, 1_000, 900);
+        h.settleCancelled(2, 1_000, 900);
+        h.remember(1, alice);
+        h.remember(2, alice);
+        h.setLedger(5, MAX - 1_000); // room for one 900 refund, not two
+
+        UnfoldedState memory u = h.unfoldedOf(alice);
+        assertEq(u.refundAssets, 900, "only the first refund is offered");
+        InvestmentState memory before = h.ledger();
+        h.foldRecent(alice);
+        assertEq(
+            h.ledger().refundAssets - before.refundAssets, u.refundAssets, "the fold credits what the view promised"
+        );
+    }
+
+    function testARedeemCreditFillingRedeemSharesExactlyFolds() public {
+        h.contribute(2, alice, false, 1_000);
+        h.flush(2);
+        h.settleRedeem(2, 700, 1_000);
+        h.remember(2, alice);
+        h.setLedger(3, MAX - 1_000);
+
+        assertEq(h.unfoldedOf(alice).redeemShares, 1_000, "the view offers the credit");
+        (,,,, bool done) = h.fold(2, alice);
+        assertTrue(done, "a credit to exactly the limit folds");
+        assertEq(h.ledger().redeemShares, MAX);
+    }
+
+    function testARefundFillingRefundSharesExactlyFolds() public {
+        h.contribute(4, alice, false, 1_000);
+        h.flush(4);
+        h.cancelRedeem(4, 1_000, 900);
+        h.remember(4, alice);
+        h.setLedger(4, MAX - 900);
+
+        assertEq(h.unfoldedOf(alice).refundShares, 900, "the view offers the refund");
+        (,,,, bool done) = h.fold(4, alice);
+        assertTrue(done, "a refund to exactly the limit folds");
+        assertEq(h.ledger().refundShares, MAX);
+    }
+
+    /// @dev A horizon entry whose id was reused on the other side is stale: the claim's fold drops it unfolded.
+    function testTheViewSkipsAnEntryReusedOnTheOtherSide() public {
+        h.contributeUnbatched(1, alice, true, 100);
+        h.track(1, alice, 4);
+        h.flush(1);
+        h.settle(1, 100, 1_000, 0);
+        h.fold(1, alice);
+        h.contributeUnbatched(1, alice, false, 50);
+        h.flush(1);
+        h.settleRedeem(1, 25, 50);
+
+        UnfoldedState memory u = h.unfoldedOf(alice);
+        assertEq(u.redeemAssets, 0, "the redemption is not offered through the deposit side's entry");
+        assertEq(u.redeemPending, 50, "it is still pending until something folds it");
+
+        h.foldRecent(alice);
+        assertEq(h.ledger().redeemAssets, u.redeemAssets, "the fold credits what the view promised");
+    }
+
+    function _twoSettledDeposits() internal {
+        h.contribute(1, alice, true, 1_000);
+        h.contribute(2, alice, true, 1_000);
+        h.flush(1);
+        h.flush(2);
+        h.settle(1, 1_000, 2_000, 0);
+        h.settle(2, 1_000, 2_000, 0);
+        h.remember(1, alice);
+        h.remember(2, alice);
+    }
+
+    function _assertTheViewOffersOnlyTheFirstDeposit() internal {
+        UnfoldedState memory u = h.unfoldedOf(alice);
+        assertEq(u.depositShares, 2_000, "only the first is offered");
+        assertEq(u.depositAssets, 1_000);
+        assertEq(u.depositPending, 1_000, "the second stays wholly pending");
+
+        InvestmentState memory before = h.ledger();
+        h.foldRecent(alice);
+        InvestmentState memory l = h.ledger();
+        assertEq(l.depositShares - before.depositShares, u.depositShares, "the fold credits what the view promised");
+        assertEq(l.depositAssets - before.depositAssets, u.depositAssets);
         assertEq(h.contributionOf(2, alice), 1_000, "the deferred one is still there");
     }
 

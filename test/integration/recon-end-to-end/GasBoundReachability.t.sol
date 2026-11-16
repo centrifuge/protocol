@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {console} from "forge-std/console.sol";
 
 /// @dev Drives the gas bound with the longest history the horizon allows and asserts the claims, folds and flushes it
 ///      measured stayed under the ceiling, so a setup change that turns the handler into a silent skip fails here,
 ///      and a src mutation that makes a claim scale with history can be shown to fail it.
-contract GasBoundReachability is CryticToFoundry {
+contract GasBoundReachability is FoundryHarness {
     uint256 internal constant HORIZON = 8;
 
     /// @dev Every actor holds shares, so the redeem side has a history too.

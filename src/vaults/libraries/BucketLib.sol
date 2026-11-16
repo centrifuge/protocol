@@ -110,9 +110,9 @@ library BucketLib {
     /// @notice Records a hub fulfillment against the bucket. `isDeposit` must match the bucket's side
     ///         (the caller derives it from the callback type), and the bucket must have been flushed: a
     ///         settlement answers a request that was sent.
-    /// @dev Cancellation is distributed pro-rata like a fulfillment: `cancelledGross` retires what is
-    ///      outstanding, `cancelledNet` is credited, and the difference is the retained fee. A single
-    ///      contributor of a shared bucket cannot be cancelled alone.
+    /// @dev    Cancellation is distributed pro-rata like a fulfillment: `cancelledGross` retires what is
+    ///         outstanding, `cancelledNet` is credited, and the difference is the retained fee. A single
+    ///         contributor of a shared bucket cannot be cancelled alone.
     function settle(
         State storage s,
         uint96 localId,
@@ -167,7 +167,7 @@ library BucketLib {
         // Invariant (6): an unchanged count means an unchanged entitlement.
         if (c.foldedSettlements == b.settlements) return false;
         Slice memory x = _slice(b, c);
-        if (!_fitsLedger(ledger, b.isDeposit, x)) return false;
+        if (!_fits(ledger, b.isDeposit, x, 0, 0, 0)) return false;
         if (_outstanding(b) == 0) {
             _closeContribution(s, ledger, localId, controller, b, c, x);
             return true;
@@ -258,29 +258,15 @@ library BucketLib {
         bool isDeposit = b.isDeposit;
         Slice memory x = _slice(b, c);
         bool fits = isDeposit
-            ? _fits(
-                true,
-                _creditable(true, x.newAssets, x.newShares),
-                x,
-                uint256(ledger.depositShares) + u.depositShares,
-                uint256(ledger.depositAssets) + u.depositAssets,
-                uint256(ledger.refundAssets) + u.refundAssets
-            )
-            : _fits(
-                false,
-                _creditable(false, x.newAssets, x.newShares),
-                x,
-                uint256(ledger.redeemAssets) + u.redeemAssets,
-                uint256(ledger.redeemShares) + u.redeemShares,
-                uint256(ledger.refundShares) + u.refundShares
-            );
+            ? _fits(ledger, isDeposit, x, u.depositShares, u.depositAssets, u.refundAssets)
+            : _fits(ledger, isDeposit, x, u.redeemShares, u.redeemAssets, u.refundShares);
         if (!fits) return;
+        bool credited = _creditable(isDeposit, x.newAssets, x.newShares);
 
         uint128 stillPending =
             _pendingAfterSettled(b, c.amount, isDeposit ? x.settledAssets : x.settledShares, x.cancelledGross);
         uint128 settledPart = _pendingAtFold(b, c) - stillPending;
 
-        bool credited = _creditable(isDeposit, x.newAssets, x.newShares);
         if (isDeposit) {
             if (credited) {
                 u.depositShares += x.newShares;
@@ -364,28 +350,28 @@ library BucketLib {
         s.sides[controller][b.isDeposit].pending -= remainder - _pendingAtFold(b, c);
     }
 
-    /// @dev Whether crediting `x` stays inside the ledger's `uint128` counters, as the fold would apply it.
-    function _fitsLedger(InvestmentState storage ledger, bool isDeposit, Slice memory x) private view returns (bool) {
-        bool credited = _creditable(isDeposit, x.newAssets, x.newShares);
-        return isDeposit
-            ? _fits(true, credited, x, ledger.depositShares, ledger.depositAssets, ledger.refundAssets)
-            : _fits(false, credited, x, ledger.redeemAssets, ledger.redeemShares, ledger.refundShares);
-    }
-
-    /// @dev The counters a credit touches, as they stand: the two of the filled leg (deposit: shares to mint then
-    ///      assets they were bought with; redeem: assets to withdraw then shares they were paid for) and the refund
-    ///      one. The fold and the views share this one answer, so they defer the same entries.
-    function _fits(bool isDeposit, bool credited, Slice memory x, uint256 first, uint256 second, uint256 refund)
-        private
-        pure
-        returns (bool)
-    {
+    /// @dev Whether crediting `x` stays inside the ledger's `uint128` counters on top of what is already unfolded
+    ///      (`unfoldedShares`, `unfoldedAssets` and `unfoldedRefund`, of `isDeposit`'s side), as the fold would apply
+    ///      it: the side's shares and assets when the slice is creditable, and its refund counter (assets on a
+    ///      deposit, shares on a redeem) for the cancellation. The fold passes zeros, the views their running total,
+    ///      so both defer the same entries.
+    function _fits(
+        InvestmentState storage ledger,
+        bool isDeposit,
+        Slice memory x,
+        uint256 unfoldedShares,
+        uint256 unfoldedAssets,
+        uint256 unfoldedRefund
+    ) private view returns (bool) {
         uint256 max = type(uint128).max;
-        if (credited) {
-            if (first + (isDeposit ? x.newShares : x.newAssets) > max) return false;
-            if (second + (isDeposit ? x.newAssets : x.newShares) > max) return false;
+        if (_creditable(isDeposit, x.newAssets, x.newShares)) {
+            uint256 shares = (isDeposit ? ledger.depositShares : ledger.redeemShares) + unfoldedShares;
+            uint256 assets = (isDeposit ? ledger.depositAssets : ledger.redeemAssets) + unfoldedAssets;
+            if (shares + x.newShares > max || assets + x.newAssets > max) return false;
         }
-        return x.newCancelledNet == 0 || refund + x.newCancelledNet <= max;
+        if (x.newCancelledNet == 0) return true;
+        uint256 refund = (isDeposit ? ledger.refundAssets : ledger.refundShares) + unfoldedRefund;
+        return refund + x.newCancelledNet <= max;
     }
 
     /// @dev A side is gated on its ledger's unit (shares to mint, assets to withdraw): a slice that floors to

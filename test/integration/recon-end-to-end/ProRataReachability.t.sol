@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {console} from "forge-std/console.sol";
 
 /// @dev Drives the shared-window pro-rata flows with state they can act on and asserts they ran to their checks in each
 ///      of the two window vaults and on both sides, so a setup change that turns them into silent reverts fails here,
 ///      and a src mutation can be shown to fail them.
-contract ProRataReachability is CryticToFoundry {
+contract ProRataReachability is FoundryHarness {
     function testProRata_depositVault1() public {
         _reach(0, 1);
     }

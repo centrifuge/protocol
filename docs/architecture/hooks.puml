@@ -10,7 +10,7 @@ package token {
 
 package vaults {
     class Vault
-    class VaultActionLib <<library>>
+    class RoleCheckLib <<library>>
 }
 
 class ShareTokenHook
@@ -22,7 +22,7 @@ ShareTokenHook -up-|> IRoleHook
 
 
 ShareToken --> ITransferHook
-Vault ..> VaultActionLib : vault actions
-VaultActionLib ..> IRoleHook : role checks, via the share token's hook
+Vault ..> RoleCheckLib : vault actions
+RoleCheckLib ..> IRoleHook : role checks, via the share token's hook
 
 @enduml

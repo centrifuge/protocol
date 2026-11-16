@@ -4,8 +4,10 @@ pragma solidity 0.8.28;
 import {FlowTargets} from "./FlowTargets.sol";
 
 import {D18, d18} from "../../../../src/misc/types/D18.sol";
+import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
 import {IAsyncVault} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
+import {ISpokeOracle} from "../../../../src/vaults/oracles/interfaces/IVaultOracle.sol";
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -69,8 +71,8 @@ abstract contract OracleTargets is FlowTargets {
     {
         // Under the hub policy each pause waits for its authorization: wait for both now, so no time passes between
         // the views compared (a membership lapsing in that hour would move them)
-        _authorizeManagerCall(poolA, address(spokeOracle), abi.encode(true));
-        _authorizeManagerCall(poolA, address(spokeOracle), abi.encode(false));
+        _authorizeManagerCall(poolA, address(spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPaused, true));
+        _authorizeManagerCall(poolA, address(spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPaused, false));
         if (!_oracleValid()) return;
         bytes32 open = _instantViews();
         uint256 openedAt = block.timestamp;
@@ -83,13 +85,14 @@ abstract contract OracleTargets is FlowTargets {
         if (block.timestamp == openedAt) t(_instantViews() == open, "unpausing did not restore the instant lane");
 
         address actor = _unfrozen(actorSeed);
-        uint256 balance = usdc.balanceOf(actor);
-        // The cycle needs a fill the OrderBook accepts, which a zero price or a fee that takes all of a smallest fill refuses
-        bool live = balance >= _dust(true) && _healthy(vaults[ASYNC_VAULT], actor) && !hubPolicyInstalled
+        // The cycle needs a fill the OrderBook accepts, which a zero price, a fee that takes all of a smallest fill, or
+        // more shares than `uint128` holds refuses
+        uint256 most = MathLib.min(usdc.balanceOf(actor), _mostFillable());
+        bool live = most >= _dust(true) && _healthy(vaults[ASYNC_VAULT], actor) && !hubPolicyInstalled
             && _fillBuysShares(_dust(true));
         _setOraclePaused(true);
         if (live) {
-            bool completed = _depositCycle(actor, ASYNC_VAULT, between(amount, _dust(true), balance), fillSeed);
+            bool completed = _depositCycle(actor, ASYNC_VAULT, between(amount, _dust(true), most), fillSeed);
             t(completed, "an async deposit cycle failed while the oracle was paused");
             _ok("async_onInvalidPrice");
         }
@@ -98,7 +101,7 @@ abstract contract OracleTargets is FlowTargets {
     }
 
     function _setOraclePaused(bool paused) internal {
-        _managerCall(poolA, address(spokeOracle), abi.encode(paused));
+        _managerCall(poolA, address(spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPaused, paused));
     }
 
     /// @dev Every instant capacity and preview the lane answers, hashed.

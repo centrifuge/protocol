@@ -5,8 +5,7 @@
 ## FOUNDRY_PROFILE=echidna is load-bearing: the default profile drops the solc metadata (bytecode_hash none,
 ## cbor_metadata false), and Echidna then attributes no coverage to the contracts the tester deploys (Hub, Spoke,
 ## Vault, ... at 0%, "Unique codehashes" 109 instead of ~45; building-secure-contracts FAQ: do not disable metadata).
-## Run length (testLimit, workers, timeout, seed) is set on the command line, as for echidna-messaging.yaml. The
-## workflow derives the smoke (stopOnFail) and high-delay (maxTimeDelay) variants from this file with sed.
+## Run length (testLimit, workers, timeout, seed) is set on the command line, as for echidna-messaging.yaml.
 ## Every property is an assertion-mode function, so the mode must stay "assertion" (a bool `echidna_*` property
 ## would never be read), and there is no `optimize_*` test (a rounding quantity worth maximising would need its own suite), so no `prefix` is set.
 testMode: "assertion"
@@ -29,15 +28,15 @@ codeSize: 0xffffffff
 ## Delay profile A (this file, the default campaign). Every handler warps or deals for itself, and the oracle
 ## (Setup: ORACLE_MAX_AGE one day, ORACLE_MAX_SKEW 12 h) goes stale after ~24 mean-sized (30 min) jumps, so 1 h per
 ## call keeps the instant lane mostly open. 300 blocks x 12 s = 3600 s keeps block and time deltas consistent.
-## Profile B (maxTimeDelay 172800 = 2 x maxAge, maxBlockDelay 14400) is derived in CI: one jump can cross maxAge,
+## Profile B (maxTimeDelay 172800 = 2 x maxAge, maxBlockDelay 14400) is a copy of this file: one jump can cross maxAge,
 ## which exercises the stale-oracle and weekly-clock paths that profile A reaches only through the oracle_* handlers.
 maxTimeDelay: 3600
 maxBlockDelay: 300
 ## Sequence length (Echidna default 100, stated so a smoke run cannot silently shorten it): multi-step lifecycles
 ## (request, approve, issue, notify, claim) need depth, and state resets after every sequence.
 seqLen: 100
-## Discovery default: keep going after a failure so one known break does not hide the rest. The PR smoke run
-## (workflow) overrides it with stopOnFail: true. Echidna exits non-zero on any falsified test either way.
+## Discovery default: keep going after a failure so one known break does not hide the rest. Echidna exits non-zero
+## on any falsified test either way.
 stopOnFail: false
 ## Shrinking a long reproducer can stall a campaign for minutes; raise it only to minimise one locally.
 shrinkLimit: 5000

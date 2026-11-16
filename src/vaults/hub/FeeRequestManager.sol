@@ -55,10 +55,13 @@ contract FeeRequestManager is BatchedMulticall, IFeeRequestManager {
     function fromHub(PoolId poolId, bytes calldata payload) external payable {
         require(msg.sender == envoy, NotEnvoy());
         require(msg.value == 0, UnexpectedValue());
+
         (uint8 kind, AssetId assetId, uint16 feeBps_) = abi.decode(payload, (uint8, AssetId, uint16));
         require(kind == uint8(FeeManagerAction.SetFee), UnknownAction());
+
         // At 100% the net is zero: a fulfillment would consume the whole fill and credit nothing.
         require(feeBps_ < MathLib.BPS, FeeTooHigh());
+
         feeBps[poolId][assetId] = feeBps_;
         emit SetFee(poolId, assetId, feeBps_);
     }
@@ -78,13 +81,14 @@ contract FeeRequestManager is BatchedMulticall, IFeeRequestManager {
         uint128 extraGasLimit,
         address refund
     ) external payable onlyManager(poolId) {
-        // Without a holding the hub prices the asset at 1.0, which a fill must not take as a price
+        // Without a holding the hub prices the asset at 1.0, which a fill must not take as a price.
         require(hub.holdings().isInitialized(poolId, scId, assetId), HoldingNotInitialized());
 
         uint16 bps = feeBps[poolId][assetId];
         uint128 net = _applyFee(fillAmount, bps);
         D18 pricePoolPerAsset = hub.pricePoolPerAsset(poolId, scId, assetId);
         (D18 pricePoolPerShare,) = hub.shareClassManager().pricePoolPerShare(poolId, scId);
+
         Fulfillment memory f = Fulfillment({
             isDeposit: isDeposit,
             scId: scId,
@@ -98,6 +102,7 @@ contract FeeRequestManager is BatchedMulticall, IFeeRequestManager {
             refund: refund
         });
         _callOrderBook(poolId, abi.encode(OrderBookAction.Fulfill, f), refund);
+
         emit FeeCharged(poolId, requestId, msgSender(), isDeposit, fillAmount, net, bps);
     }
 
@@ -112,7 +117,7 @@ contract FeeRequestManager is BatchedMulticall, IFeeRequestManager {
         uint128 extraGasLimit,
         address refund
     ) external payable onlyManager(poolId) {
-        // No cancellation fee: the net is the whole amount
+        // No cancellation fee: the net is the whole amount.
         Cancellation memory c = Cancellation({
             isDeposit: isDeposit,
             scId: scId,

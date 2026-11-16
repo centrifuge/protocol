@@ -96,6 +96,9 @@ interface IReserveInstantPolicy is IInstantPolicy, IManagerCallFromHub {
     /// @notice Configuration takes no native value.
     error UnexpectedValue();
 
+    /// @notice A `fromHub` payload names a configuration kind this contract does not handle.
+    error UnknownConfigKind();
+
     /// @notice Which facet of a vault's instant terms a `fromHub` payload carries. The payload is
     ///         `abi.encode(ConfigKind, address vault, bytes args)`, with `args` a {Config} for `Terms`
     ///         and `(address who, bool allowed)` for the allowlists.
@@ -224,13 +227,17 @@ interface ILiquidityRoute {
     /// @notice Transfer `assets` to the vault, which forwards them into its escrow and accounts
     ///         them. All-or-nothing: reverts when the full amount cannot be provided.
     /// @dev    Paid to the vault, not the shared escrow, so delivery is measured on a balance only the
-    ///         vault moves.
+    ///         vault moves. The vault books `assets` in the escrow before calling this, so the pool's balance
+    ///         sheet already shows the cash while the route runs; a route that books a debt for the draw should
+    ///         book it before it calls code it does not control, so a sync from there sees both or neither.
     function provide(address vault, uint128 assets) external;
 
     /// @notice Offer `assets` that have just entered the escrow to be routed into the venue.
     /// @dev    Called on instant issuance and async approval. Optional: a no-op leaves the assets
     ///         idle. A revert blocks the issuance or the settlement. A route that moves assets must
-    ///         guard `msg.sender == vault`, as `provide` does.
+    ///         guard `msg.sender == vault`, as `provide` does. On approval it runs inside `approveDeposits`,
+    ///         after the assets enter the holding and before the share leg is queued, so a sync from there
+    ///         sees the assets without the shares issued for them.
     function forward(address vault, uint128 assets) external;
 
     /// @notice Assets the route can currently provide for this vault.

@@ -15,6 +15,7 @@ import {IMessageHandler} from "../../../../src/core/messaging/interfaces/IMessag
 
 import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {IVaultRouter} from "../../../../src/vaults/interfaces/IVaultRouter.sol";
 import {OrderBookAction} from "../../../../src/vaults/hub/interfaces/IOrderBook.sol";
 import {VaultRequestIdLib} from "../../../../src/vaults/libraries/VaultRequestIdLib.sol";
 import {IAsyncVault, IVaultErrors} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
@@ -176,6 +177,141 @@ abstract contract GapTargets is FlowTargets {
         _ok("bridge_transferShares");
     }
 
+    /// @dev A holder bridges through the investor router, directly or inside its multicall. `Spoke` checks the bridger
+    ///      role and the hook against the router, the share owner it sees, so the pool grants the router the role for
+    ///      this call. The shares leave the holder, the supply and this network's issuance, and none stay on the
+    ///      router, where anyone could bridge them away as the router's own.
+    function router_bridgeShares(uint256 actorSeed, uint128 amount, bool batched) public updateGhosts(OpType.USER) {
+        address actor = _liquidHolder(actorSeed);
+        uint256 balance = shareA.balanceOf(actor);
+        (bool member,) = fullRestrictions.isMember(address(shareA), actor);
+        if (balance == 0 || frozen[actor] || !member) return;
+        amount = uint128(between(amount, 1, balance));
+        _openRemoteNetwork();
+        _updateRestriction(
+            poolA,
+            scA,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: address(uint160(REMOTE_ID)).toBytes32(), validUntil: type(uint64).max
+            }).serialize()
+        );
+        _flushShareQueue();
+
+        uint256[4] memory before = [
+            balance,
+            shareA.totalSupply(),
+            shareClassManager.issuance(poolA, scA, CENTRIFUGE_ID),
+            shareClassManager.issuance(poolA, scA, REMOTE_ID)
+        ];
+        bytes memory data = abi.encodeCall(
+            investorRouter.crosschainTransferShares,
+            (vaults[0], amount, REMOTE_ID, actor.toBytes32(), actor, uint128(0), uint128(0), actor)
+        );
+        if (batched) {
+            bytes[] memory calls = new bytes[](1);
+            calls[0] = data;
+            data = abi.encodeCall(investorRouter.multicall, (calls));
+        }
+        spokeRegistry.updateBridger(poolA, address(investorRouter), true);
+        vm.deal(actor, 1 ether);
+        vm.prank(actor);
+        shareA.approve(address(investorRouter), amount);
+        vm.prank(actor);
+        (bool success,) = address(investorRouter).call{value: 0.1 ether}(data);
+        spokeRegistry.updateBridger(poolA, address(investorRouter), false);
+        vm.prank(actor);
+        shareA.approve(address(investorRouter), 0);
+
+        t(success, "a member could not bridge through a router that holds the bridger role");
+        if (!success) return _reverted("router_bridgeShares");
+        eq(shareA.balanceOf(actor), before[0] - amount, "the routed shares did not leave the holder");
+        eq(shareA.totalSupply(), before[1] - amount, "the routed shares were not burnt");
+        eq(
+            uint256(shareClassManager.issuance(poolA, scA, CENTRIFUGE_ID)),
+            before[2] - amount,
+            "the hub kept the routed issuance on this network"
+        );
+        eq(
+            uint256(shareClassManager.issuance(poolA, scA, REMOTE_ID)),
+            before[3] + amount,
+            "the hub did not move the routed issuance to the target"
+        );
+        eq(shareA.balanceOf(address(investorRouter)), 0, "the router kept shares after a bridge");
+        _ok("router_bridgeShares");
+    }
+
+    /// @dev What makes a bridging router safe: a non-member who deposits with the router as receiver and bridges the
+    ///      shares as the router's own, in one multicall while the router holds the bridger role, is refused at the
+    ///      deposit by the router's payer check, and nothing moves.
+    function router_nonMemberBridgeRefused(uint256 actorSeed, uint256 amount, bool basinVault)
+        public
+        updateGhosts(OpType.USER)
+    {
+        address actor = _lapsedPayer(actorSeed);
+        IAsyncVault vault = vaults[basinVault ? 3 : 2];
+        if (actor == address(0) || !_oracleValid()) return;
+        amount = between(amount, _dust(true), usdc.balanceOf(actor));
+        (bool quoted, uint256 shares) = _staticQuote(address(vault), vault.previewDeposit.selector, amount);
+        if (!quoted || shares < 2) return;
+        // The target network accepts the shares, so only the payer check stands between a non-member and a bridge
+        _openRemoteNetwork();
+        _updateRestriction(
+            poolA,
+            scA,
+            UpdateRestrictionMessageLib.UpdateRestrictionMember({
+                user: address(uint160(REMOTE_ID)).toBytes32(), validUntil: type(uint64).max
+            }).serialize()
+        );
+
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(investorRouter.deposit, (vault, amount, address(investorRouter), actor));
+        calls[1] = abi.encodeCall(
+            investorRouter.crosschainTransferShares,
+            (
+                vault,
+                uint128(shares / 2),
+                REMOTE_ID,
+                actor.toBytes32(),
+                address(investorRouter),
+                uint128(0),
+                uint128(0),
+                actor
+            )
+        );
+        uint256[3] memory before =
+            [usdc.balanceOf(actor), shareA.totalSupply(), shareA.balanceOf(address(investorRouter))];
+        spokeRegistry.updateBridger(poolA, address(investorRouter), true);
+        vm.deal(actor, 1 ether);
+        vm.prank(actor);
+        usdc.approve(address(investorRouter), amount);
+        vm.prank(actor);
+        (bool success, bytes memory ret) =
+            address(investorRouter).call{value: 0.1 ether}(abi.encodeCall(investorRouter.multicall, (calls)));
+        spokeRegistry.updateBridger(poolA, address(investorRouter), false);
+        vm.prank(actor);
+        usdc.approve(address(investorRouter), 0);
+
+        t(!success, "a non-member deposited and bridged through the router");
+        if (success) return;
+        t(
+            bytes4(ret) == IVaultRouter.InvalidSender.selector,
+            "the router refused a non-member payer for another reason"
+        );
+        eq(usdc.balanceOf(actor), before[0], "a refused router deposit moved the payer's assets");
+        eq(shareA.totalSupply(), before[1], "a refused router deposit issued shares");
+        eq(shareA.balanceOf(address(investorRouter)), before[2], "a refused router deposit left shares on the router");
+        _ok("router_nonMemberBridgeRefused");
+    }
+
+    /// @dev The first unfrozen actor from `seed` whose membership lapsed and who holds at least a dust deposit.
+    function _lapsedPayer(uint256 seed) internal view returns (address) {
+        for (uint256 i; i < actors.length; i++) {
+            address a = _actor(seed + i);
+            if (!frozen[a] && !_isMember(a) && usdc.balanceOf(a) >= _dust(true)) return a;
+        }
+        return address(0);
+    }
+
     /// @dev The balance-sheet manager flushes pool A's share queue, counted like the handler that does it.
     function _flushShareQueue() internal {
         (bool flushed,) =
@@ -197,6 +333,9 @@ abstract contract GapTargets is FlowTargets {
     // Long horizon
     //----------------------------------------------------------------------------------------------
 
+    /// @dev The windows a deep `flow_manyWindows` settles, counted from the newest: the two the overflow slot holds.
+    uint256 internal constant DEEP_SETTLED = 2;
+
     /// @dev The requests of the last `flow_manyWindows`, for a test to look at what became of them.
     uint96[] internal lastWindowIds;
 
@@ -209,44 +348,176 @@ abstract contract GapTargets is FlowTargets {
         updateGhosts(OpType.MANAGER)
     {
         IAsyncVault vault = vaults[LONG_VAULT];
-        // Each window costs a settlement, a fold and a claim, so most runs stay shallow and one in sixteen goes on
-        // to the overflow slots
-        windows = windows % 16 == 0 ? uint8(between(windows, 8, 10)) : uint8(between(windows, 2, 3));
-        bool completed = true;
-        uint96[] memory ids = new uint96[](windows);
+        // Most runs stay shallow and settle each window; one in sixteen fills the horizon to its overflow slot and
+        // settles only the last windows, which that slot holds, since a settlement per window would take the call
+        // past a fuzzer's gas limit. Filling exactly the horizon evicts none of them.
+        bool deep = windows % 16 == 0;
+        windows = deep ? uint8(vault.foldHorizon()) : uint8(between(windows, 2, 3));
         address actor = _shareHolder(amountSeed);
         if (frozen[actor]) return;
-        for (uint256 w; w < windows; w++) {
-            uint256 balance = usdc.balanceOf(actor);
-            if (balance < _dust(true)) break;
-            uint256 amount = between(uint256(keccak256(abi.encode(amountSeed, w))), _dust(true), balance);
-            (bool requested, uint256 requestId) = _requestDeposit(actor, actor, LONG_VAULT, amount);
-            if (!requested) continue;
-            ids[w] = uint96(requestId);
-            completed = _settle(Req(LONG_VAULT, requestId, true), fillSeed + w) && completed;
-        }
+        (uint96[] memory ids, bool completed) = _requestWindows(actor, amountSeed, fillSeed, windows, deep);
         uint256 open;
         for (uint256 w; w < windows; w++) {
             if (ids[w] != 0 && vault.contribution(ids[w], actor).amount != 0) open++;
         }
         if (open > ghost_deepestHorizon) ghost_deepestHorizon = open;
         lastWindowIds = ids;
+        _foldWindows(ids, actor, leaveAtRest, fillSeed);
+        if (!leaveAtRest) completed = _claimAll(vault, actor, fillSeed) && completed;
+        _flowEnd("flow_manyWindows", completed);
+    }
+
+    /// @dev One deposit per window of the long-horizon vault, each settled unless `deep` leaves it for an older window
+    ///      than the last `DEEP_SETTLED`. A deep run shares the balance out so its last window can still be funded.
+    function _requestWindows(address actor, uint256 amountSeed, uint256 fillSeed, uint256 windows, bool deep)
+        internal
+        returns (uint96[] memory ids, bool completed)
+    {
+        completed = true;
+        ids = new uint96[](windows);
         for (uint256 w; w < windows; w++) {
+            uint256 share = deep ? usdc.balanceOf(actor) / (windows - w) : usdc.balanceOf(actor);
+            if (share < _dust(true)) break;
+            uint256 amount = between(uint256(keccak256(abi.encode(amountSeed, w))), _dust(true), share);
+            (bool requested, uint256 requestId) = _requestDeposit(actor, actor, LONG_VAULT, amount);
+            if (!requested) continue;
+            ids[w] = uint96(requestId);
+            if (deep && w + DEEP_SETTLED < windows) {
+                // A settlement is what closes the window; an unsettled one is closed by moving to the next period
+                vm.warp((block.timestamp / PERIOD + 1) * PERIOD);
+                continue;
+            }
+            completed = _settle(Req(LONG_VAULT, requestId, true), fillSeed + w) && completed;
+        }
+    }
+
+    /// @dev The two-argument `deposit` and `redeem` serve the instant lane only for a controller with nothing pending
+    ///      and nothing claimable on that side. Anything pending, its own or funded by someone else, keeps it in the
+    ///      async lane, so the call is a claim, which with nothing claimable is refused, and no balance moves.
+    function vault_instantWhilePending(uint256 actorSeed, bool basinVault, uint256 amount, bool isDeposit)
+        public
+        updateGhosts(OpType.USER)
+    {
+        uint8 v = basinVault ? 3 : 2;
+        IAsyncVault vault = vaults[v];
+        address actor = isDeposit ? _actor(actorSeed) : _liquidHolder(actorSeed);
+        if (frozen[actor] || !_healthy(vault, actor)) return;
+        if ((isDeposit ? vault.claimableMint(actor) : vault.claimableWithdraw(actor)) != 0) return;
+        if ((isDeposit ? vault.pendingDepositRequest(0, actor) : vault.pendingRedeemRequest(0, actor)) == 0) {
+            uint256 held = isDeposit ? usdc.balanceOf(actor) : shareA.balanceOf(actor);
+            if (held < 2 * _dust(isDeposit)) return;
+            (bool requested,) = isDeposit
+                ? _requestDeposit(actor, actor, v, between(amount, _dust(true), held / 2))
+                : _requestRedeem(actor, actor, v, between(amount, _dust(false), held / 2));
+            if (!requested) return;
+        }
+
+        uint256 balance = isDeposit ? usdc.balanceOf(actor) : shareA.balanceOf(actor);
+        if (balance < _dust(isDeposit)) return;
+        uint256 trade = between(amount >> 8, _dust(isDeposit), balance);
+        if (isDeposit) {
+            vm.prank(actor);
+            usdc.approve(address(vault), trade);
+        }
+        uint256[3] memory before =
+            [usdc.balanceOf(actor), shareA.balanceOf(actor), usdc.balanceOf(address(_escrow(poolA)))];
+        (bool success,) = _callAs(
+            actor,
+            address(vault),
+            isDeposit
+                ? abi.encodeWithSignature("deposit(uint256,address)", trade, actor)
+                : abi.encodeWithSignature("redeem(uint256,address,address)", trade, actor, actor)
+        );
+        if (isDeposit) {
+            vm.prank(actor);
+            usdc.approve(address(vault), 0);
+        }
+        t(!success, "a controller with a request pending was served by the instant lane");
+        eq(usdc.balanceOf(actor), before[0], "a refused instant call moved the caller's assets");
+        eq(shareA.balanceOf(actor), before[1], "a refused instant call moved the caller's shares");
+        eq(usdc.balanceOf(address(_escrow(poolA))), before[2], "a refused instant call moved the escrow's assets");
+        _ok("vault_instantWhilePending");
+    }
+
+    /// @dev A position someone else funds for a controller takes a free slot of its horizon only, never one of the
+    ///      controller's own: with the horizon full of the controller's requests, the gift stays out of it, so its
+    ///      settled slice reaches the views only through `foldRequest`. On an async-only vault anyone may fund a
+    ///      position for anyone, so a gift that evicted would let a stranger push out a controller's own positions.
+    ///      Only the gift is settled, on the shorter-horizon vault, to keep the call within a fuzzer's gas limit.
+    function flow_giftIntoFullHorizon(uint256 actorSeed, uint256 amountSeed, uint256 fillSeed)
+        public
+        updateGhosts(OpType.MANAGER)
+    {
+        IAsyncVault vault = vaults[PER_PERIOD_VAULT];
+        (address controller, address gifter) = _giftPair(vault, actorSeed);
+        if (controller == address(0)) return;
+        uint256 horizon = vault.foldHorizon();
+        for (uint256 w; w < horizon; w++) {
+            if (usdc.balanceOf(controller) < _dust(true)) return;
+            vm.warp(block.timestamp + PERIOD);
+            (bool requested,) = _requestDeposit(controller, controller, PER_PERIOD_VAULT, _dust(true));
+            if (!requested) return;
+        }
+        uint256 balance = usdc.balanceOf(gifter);
+        if (balance < _dust(true)) return;
+        vm.warp(block.timestamp + PERIOD);
+        (bool gifted, uint256 giftId) =
+            _requestDeposit(gifter, controller, PER_PERIOD_VAULT, between(amountSeed, _dust(true), balance));
+        if (!gifted || !_settle(Req(PER_PERIOD_VAULT, giftId, true), fillSeed)) return;
+
+        uint256 shares = vault.claimableMint(controller);
+        uint256 assets = vault.claimableWithdraw(controller);
+        _foldOne(PER_PERIOD_VAULT, uint96(giftId), controller);
+        t(
+            vault.claimableMint(controller) > shares || vault.claimableWithdraw(controller) > assets,
+            "a gift took a slot of a full horizon"
+        );
+        _flowEnd("flow_giftIntoFullHorizon", _claimAll(vault, controller, fillSeed));
+    }
+
+    /// @dev The first controller from `seed` that is an unfrozen member with assets, and a different unfrozen account
+    ///      with assets that is not its operator (an operator's request counts as the controller's own and may evict).
+    function _giftPair(IAsyncVault vault, uint256 seed) internal view returns (address controller, address gifter) {
+        for (uint256 i; i < actors.length; i++) {
+            address c = _actor(seed + i);
+            if (frozen[c] || !_isMember(c) || usdc.balanceOf(c) < 5 * _dust(true)) continue;
+            for (uint256 j = 1; j < actors.length; j++) {
+                address g = _actor(seed + i + j);
+                if (frozen[g] || usdc.balanceOf(g) < _dust(true) || vault.isOperator(c, g)) continue;
+                return (c, g);
+            }
+        }
+    }
+
+    /// @dev Keeper-folds the windows `fillSeed` picks (all of them unless `leaveAtRest`). Each window was settled before
+    ///      the next request, and an own request that evicts a window folds it on the way out, so every window is in
+    ///      the stored horizon or already folded: the claimable views count it either way, and a fold moves neither.
+    ///      A window the stored horizon lost, through a misplaced overflow slot, surfaces here as a fold that adds.
+    function _foldWindows(uint96[] memory ids, address actor, bool leaveAtRest, uint256 fillSeed) internal {
+        IAsyncVault vault = vaults[LONG_VAULT];
+        uint256 sharesBefore = vault.claimableMint(actor);
+        uint256 assetsBefore = vault.claimableWithdraw(actor);
+        for (uint256 w; w < ids.length; w++) {
             if (ids[w] == 0 || vault.contribution(ids[w], actor).amount == 0) continue;
             if (leaveAtRest && (fillSeed >> w) & 1 == 0) continue;
             _foldOne(LONG_VAULT, ids[w], actor);
         }
-        if (!leaveAtRest) completed = _claimAll(vault, actor, fillSeed) && completed;
-        _flowEnd("flow_manyWindows", completed);
+        eq(vault.claimableMint(actor), sharesBefore, "folding a window the horizon holds changed the claimable shares");
+        eq(
+            vault.claimableWithdraw(actor),
+            assetsBefore,
+            "folding a window the horizon holds changed the claimable assets"
+        );
     }
 
     /// @dev On an async-only vault nothing routes on a pending position, so eviction from the horizon is only a
     ///      view-visibility gap, not a loss: a position evicted while still unsettled, once it settles, needs a
     ///      `foldRequest` before a claim sees it, exactly as an un-evicted position needs none. Opens one more
-    ///      window than the long horizon holds, settles only the evicted (oldest) one, and checks it is invisible
-    ///      to the claimable views until folded, then visible after.
+    ///      window than the per-period vault's horizon holds (the shorter one, to stay within a fuzzer's gas limit),
+    ///      settles only the evicted (oldest) one, and checks it is invisible to the claimable views until folded, then
+    ///      visible after.
     function flow_evictedNeedsFoldRequest(uint256 amountSeed, uint256 fillSeed) public updateGhosts(OpType.MANAGER) {
-        IAsyncVault vault = vaults[LONG_VAULT];
+        IAsyncVault vault = vaults[PER_PERIOD_VAULT];
         uint256 horizon = vault.foldHorizon();
         address actor = _shareHolder(amountSeed);
         if (frozen[actor]) return;
@@ -258,7 +529,7 @@ abstract contract GapTargets is FlowTargets {
             if (balance < _dust(true)) return;
             vm.warp(block.timestamp + PERIOD);
             uint256 amount = between(uint256(keccak256(abi.encode(amountSeed, w))), _dust(true), balance);
-            (bool requested, uint256 requestId) = _requestDeposit(actor, actor, LONG_VAULT, amount);
+            (bool requested, uint256 requestId) = _requestDeposit(actor, actor, PER_PERIOD_VAULT, amount);
             if (!requested) return;
             requestIds[w] = requestId;
         }
@@ -271,13 +542,13 @@ abstract contract GapTargets is FlowTargets {
         // What the actor can already claim from earlier positions is not the evicted one's
         uint256 claimableBefore = vault.claimableMint(actor);
         uint256 maxBefore = vault.maxMint(actor);
-        if (!_settle(Req(LONG_VAULT, requestIds[0], true), fillSeed)) return;
+        if (!_settle(Req(PER_PERIOD_VAULT, requestIds[0], true), fillSeed)) return;
         t(
             vault.claimableMint(actor) == claimableBefore && vault.maxMint(actor) == maxBefore,
             "a settled evicted position was claimable before foldRequest"
         );
 
-        _foldOne(LONG_VAULT, evictedId, actor);
+        _foldOne(PER_PERIOD_VAULT, evictedId, actor);
         t(vault.claimableMint(actor) > claimableBefore, "a settled evicted position stayed hidden after foldRequest");
         _flowEnd("flow_evictedNeedsFoldRequest", _claimAll(vault, actor, fillSeed));
     }
@@ -727,17 +998,23 @@ abstract contract GapTargets is FlowTargets {
             address(vaultC).call(abi.encodeCall(vaultC.requestRedeem, (shares, address(vaultRoute), BSM)));
         if (!requested) return _reverted("route_pushClaim");
         uint256 requestId = abi.decode(ret, (uint256));
+        uint256 claimable = vaultC.claimableWithdraw(address(vaultRoute));
         _fm();
         try feeRequestManager.fulfill(poolC, scC, usdcId, RequestId.wrap(requestId), false, shares, 0, REFUND) {
+            t(
+                vaultC.claimableWithdraw(address(vaultRoute)) > claimable,
+                "a fill pushed to the route left it nothing to claim"
+            );
             _ok("route_pushClaim");
         } catch {
             _reverted("route_pushClaim");
         }
     }
 
-    /// @dev ERC-7540: what `maxMint` or `maxRedeem` offers a controller is claimable now. A controller whose membership
-    ///      lapsed, but who is not frozen, is offered the refund alone, and claiming exactly that must go through
-    ///      and pay what the ledger keeps. The first vault and lapsed controller from the seeds with such an offer.
+    /// @dev ERC-7540: what `maxMint` or `maxWithdraw` offers a lapsed controller (unfrozen, no longer a member, on a
+    ///      vault that keeps its manager role) is exactly what it can claim: the refund, which asks no membership, and
+    ///      not the fill, which does. Claiming the offer must go through, and claiming one unit past it must not, so an
+    ///      offer of zero beside a claimable refund fails as surely as an offer that includes the fill.
     function vault_lapsedClaimsWhatMaxOffers(uint256 actorSeed, uint256 vaultSeed, bool isDeposit)
         public
         updateGhosts(OpType.USER)
@@ -745,35 +1022,50 @@ abstract contract GapTargets is FlowTargets {
         if (_overReserved()) return;
         for (uint256 v; v < vaults.length; v++) {
             IAsyncVault vault = vaults[_vaultIndex(vaultSeed + v)];
+            // A vault without its manager role cannot pay a claim, whatever its views offer
+            if (vaultRevoked[address(vault)]) continue;
             for (uint256 a; a < actors.length; a++) {
                 address actor = _actor(actorSeed + a);
-                if (frozen[actor] || _claimOpen(vault, actor)) continue;
-                uint256 max = isDeposit ? vault.maxMint(actor) : vault.maxRedeem(actor);
-                if (max == 0 || (isDeposit ? vault.claimableMint(actor) : vault.claimableWithdraw(actor)) == 0) {
-                    continue;
-                }
-                uint256 before = isDeposit ? shareA.balanceOf(actor) : usdc.balanceOf(actor);
-                _feeNoInstantInCall = true;
-                (bool success,) = _boundedCall(
-                    actor,
-                    address(vault),
-                    isDeposit
-                        ? abi.encodeWithSignature("mint(uint256,address,address)", max, actor, actor)
-                        : abi.encodeWithSignature("redeem(uint256,address,address)", max, actor, actor),
-                    "a refund-only claim cost more gas than the ceiling"
+                if (frozen[actor] || _isMember(actor)) continue;
+                uint256 claimable = isDeposit ? vault.claimableMint(actor) : vault.claimableWithdraw(actor);
+                if (claimable == 0) continue;
+                _lapsedClaim(
+                    vault, actor, isDeposit, isDeposit ? vault.maxMint(actor) : vault.maxWithdraw(actor), claimable
                 );
-                t(success, "a lapsed controller could not claim what max offered");
-                if (success) {
-                    uint256 afterBal = isDeposit ? shareA.balanceOf(actor) : usdc.balanceOf(actor);
-                    t(afterBal >= before, "a refund-only claim lowered the balance");
-                    _addClaimed(
-                        address(vault), actor, isDeposit ? afterBal - before : 0, isDeposit ? 0 : afterBal - before
-                    );
-                    _ok("vault_lapsedClaimsWhatMaxOffers");
-                }
                 return;
             }
         }
+    }
+
+    function _lapsedClaim(IAsyncVault vault, address actor, bool isDeposit, uint256 max, uint256 claimable) internal {
+        _feeNoInstantInCall = true;
+        if (max < claimable) {
+            (bool past,) = _callAs(actor, address(vault), _lapsedClaimCall(isDeposit, max + 1, actor));
+            t(!past, "a lapsed controller claimed past what max offered");
+            if (past) return;
+        }
+        if (max == 0) return _ok("vault_lapsedClaimsWhatMaxOffers");
+
+        uint256 before = isDeposit ? shareA.balanceOf(actor) : usdc.balanceOf(actor);
+        (bool success,) = _boundedCall(
+            actor,
+            address(vault),
+            _lapsedClaimCall(isDeposit, max, actor),
+            "a refund-only claim cost more gas than the ceiling"
+        );
+        t(success, "a lapsed controller could not claim what max offered");
+        if (!success) return;
+        uint256 afterBal = isDeposit ? shareA.balanceOf(actor) : usdc.balanceOf(actor);
+        eq(afterBal - before, max, "a refund-only claim did not pay what max offered");
+        _addClaimed(address(vault), actor, isDeposit ? max : 0, isDeposit ? 0 : max);
+        _ok("vault_lapsedClaimsWhatMaxOffers");
+    }
+
+    /// @dev `mint` or `withdraw`: both are in the unit the refund is kept in, so the refund is claimed exactly.
+    function _lapsedClaimCall(bool isDeposit, uint256 amount, address actor) internal pure returns (bytes memory) {
+        return isDeposit
+            ? abi.encodeWithSignature("mint(uint256,address,address)", amount, actor, actor)
+            : abi.encodeWithSignature("withdraw(uint256,address,address)", amount, actor, actor);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -791,12 +1083,13 @@ abstract contract GapTargets is FlowTargets {
         _ok("hub_setObserver");
     }
 
-    /// @dev A spoke manager can pause the oracle at once, without the hub; anyone else is refused.
+    /// @dev A pauser the pool named can pause the oracle at once, without the hub; anyone else is refused, a spoke
+    ///      manager it did not name (the BSM) included.
     function oracle_pauseDirect(uint256 callerSeed) public updateGhosts(OpType.MANAGER) {
         address caller = callerSeed % 3 == 0 ? OUTSIDER : callerSeed % 3 == 1 ? BSM : AUX_MANAGER;
-        bool manager = spokeRegistry.manager(poolA, caller);
+        bool pauser = spokeOracle.isPauser(poolA, caller);
         (bool success,) = _callAs(caller, address(spokeOracle), abi.encodeCall(spokeOracle.pause, (poolA)));
-        t(success == manager, "the oracle was paused by a non-manager or refused its manager");
+        t(success == pauser, "the oracle was paused by a non-pauser or refused its pauser");
         if (success) _ok("oracle_pauseDirect");
     }
 

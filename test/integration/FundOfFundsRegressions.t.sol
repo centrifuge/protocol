@@ -13,6 +13,8 @@ import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IVaultErrors} from "../../src/vaults/interfaces/IAsyncVault.sol";
+import {ISpokeOracle} from "../../src/vaults/oracles/interfaces/IVaultOracle.sol";
+import {IReserveInstantPolicy} from "../../src/vaults/policies/interfaces/IVaultPlugins.sol";
 import {IVaultLiquidityRoute} from "../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 
 import {ITransferHook} from "../../src/token/interfaces/ITransferHook.sol";
@@ -113,6 +115,41 @@ contract FundOfFundsRegressionTest is FundOfFundsBasinTest {
         _memberOfJtrsy(address(vaultRoute));
         assertEq(vaultRoute.available(address(topVault)), LINE, "a member route reads the line again");
         assertEq(topVault.maxWithdraw(INVESTOR_A), LINE);
+    }
+
+    /// @dev A sponsor of jTRSY's pool can credit the route a deposit request, and the pool can cancel it. The refund
+    ///      puts the route in claim mode with no claimable shares, which `previewRedeem` refuses, so the route used to
+    ///      read no capacity there and no draw reached the `withdraw` that pays the refund out. The refund is now what
+    ///      the route offers until a draw spends it, as a redemption claim is, and the lane then reopens.
+    function testARefundCreditedToTheRouteIsSpentByTheNextDraw() public {
+        _setUpChain();
+        uint256 before = vaultRoute.available(address(topVault));
+        assertGt(before, 0, "the route offers jTRSY's liquidity");
+
+        address sponsor = makeAddr("sponsor");
+        _managerCall(
+            POOL_A,
+            address(s.reserveInstantPolicy),
+            abi.encode(IReserveInstantPolicy.ConfigKind.Sponsor, address(jtrsyVault), abi.encode(sponsor, true))
+        );
+        uint128 refund = 10e6;
+        vm.prank(ERC20_DEPLOYER);
+        s.usdc.mint(sponsor, refund);
+        vm.startPrank(sponsor);
+        s.usdc.approve(address(jtrsyVault), refund);
+        RequestId requestId = RequestId.wrap(jtrsyVault.requestDeposit(refund, address(vaultRoute), sponsor));
+        vm.stopPrank();
+        _cancel(true, requestId, refund);
+        assertEq(jtrsyVault.maxWithdraw(address(vaultRoute)), refund, "the route holds the refund");
+
+        assertEq(vaultRoute.available(address(topVault)), refund, "the refund is what the route offers");
+
+        uint256 paid = s.usdc.balanceOf(INVESTOR_A);
+        vm.prank(INVESTOR_A);
+        topVault.withdraw(refund, INVESTOR_A);
+        assertEq(s.usdc.balanceOf(INVESTOR_A) - paid, refund, "the exit was paid from the refund");
+        assertEq(jtrsyVault.maxWithdraw(address(vaultRoute)), 0, "which is spent");
+        assertEq(vaultRoute.available(address(topVault)), before, "and the instant lane reopens");
     }
 
     //----------------------------------------------------------------------------------------------
@@ -283,7 +320,7 @@ contract FundOfFundsRegressionTest is FundOfFundsBasinTest {
         _setUpChain();
         _fundTopEscrow();
 
-        _managerCall(POOL_A, address(s.spokeOracle), abi.encode(true));
+        _managerCall(POOL_A, address(s.spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPaused, true));
         vm.expectRevert(IVaultErrors.InvalidPrice.selector);
         jtrsyVault.previewRedeem(1e18);
 

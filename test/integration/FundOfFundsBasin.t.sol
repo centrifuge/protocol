@@ -11,6 +11,7 @@ import {PoolId} from "../../src/core/types/PoolId.sol";
 import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
 import {ManagerKind, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
+import {ISpokeOracle} from "../../src/vaults/oracles/interfaces/IVaultOracle.sol";
 import {BasinLiquidityRoute} from "../../src/vaults/liquidity/BasinLiquidityRoute.sol";
 import {VaultLiquidityRoute} from "../../src/vaults/liquidity/VaultLiquidityRoute.sol";
 import {IVaultLiquidityRoute} from "../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
@@ -248,7 +249,11 @@ contract FundOfFundsBasinTest is EndToEndFlows {
     /// @dev Both sides of a vault's credit line: the pool's limit through the Envoy, the venue's
     ///      credit from its liquidity provider.
     function _setLine(PoolId poolId, IAsyncVault vault, uint128 line) internal {
-        _managerCall(poolId, address(basinRoute), abi.encode(address(vault), line));
+        _managerCall(
+            poolId,
+            address(basinRoute),
+            abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, address(vault), abi.encode(line))
+        );
         vm.prank(LP);
         basinRoute.setCredit(address(vault), line);
     }
@@ -480,7 +485,7 @@ contract FundOfFundsBasinTest is EndToEndFlows {
         s.spoke.deposit(topPool, topSc, address(s.usdc), 0, 500e6);
         vm.stopPrank();
 
-        _managerCall(POOL_A, address(s.spokeOracle), abi.encode(true));
+        _managerCall(POOL_A, address(s.spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPaused, true));
 
         assertEq(vaultRoute.available(address(topVault)), 0, "the route has nothing it can quote");
         assertEq(topVault.maxWithdraw(INVESTOR_A), 500e6, "the top vault still offers its own escrow");

@@ -323,8 +323,11 @@ abstract contract BeforeAfter is Setup {
     /// @dev Whether a claim must go through: a claim needs no link, so a vault unlinked to wind it down still pays
     ///      what was settled; only a member, and the role the vault pays through, are needed.
     function _claimOpen(IAsyncVault vault, address actor) internal view returns (bool) {
-        (bool member,) = fullRestrictions.isMember(address(shareA), actor);
-        return member && !vaultRevoked[address(vault)];
+        return _isMember(actor) && !vaultRevoked[address(vault)];
+    }
+
+    function _isMember(address who) internal view returns (bool member) {
+        (member,) = fullRestrictions.isMember(address(shareA), who);
     }
 
     function _actor(uint256 seed) internal view returns (address) {

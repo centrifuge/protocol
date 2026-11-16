@@ -2,7 +2,7 @@ testMode: "assertion"
 ## Slither is off, as in echidna.yaml (it crashes on the protocol sources; not separately measured for this suite).
 disableSlither: true
 coverage: true
-## lcov for tooling (the CI coverage check reads it) and txt for the reverted lines; no 7 MB html per run.
+## lcov for tooling and txt for the reverted lines; no 7 MB html per run.
 coverageFormats: ["txt", "lcov"]
 corpusDir: "echidna-messaging"
 filterFunctions: []

@@ -73,8 +73,17 @@ interface IVaultLiquidityRoute is ILiquidityRoute, IManagerCallFromHub, IRecover
     /// @notice Configuration takes no native value.
     error UnexpectedValue();
 
+    /// @notice A `fromHub` payload names a configuration kind this contract does not handle.
+    error UnknownConfigKind();
+
     /// @notice The routes could not raise the full amount asked for.
     error InsufficientLiquidity();
+
+    /// @notice An underlying returned more of its shares than the draw released to it.
+    error ExcessShares();
+
+    /// @notice An underlying took more of the route's shares than the draw released to it.
+    error ExcessSharesTaken();
 
     /// @notice The underlying vaults a top-level vault draws on, in the order they are drawn. Set
     ///         through the Envoy (`fromHub`, kind `Routes`), replacing the whole list. A vault can only route

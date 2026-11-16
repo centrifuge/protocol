@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 /// @dev Drives the instant lanes and the single-vault actions with state the checks can judge, and asserts they ran to
 ///      their checks, so a setup change that turns them into silent skips fails here, and a src mutation can be shown
 ///      to fail them.
-contract DilutionReachability is CryticToFoundry {
+contract DilutionReachability is FoundryHarness {
     /// @dev Holders, a share price off par so every conversion rounds, then both instant vaults on both sides and in
     ///      both units, each judged on a bystander's value and on the value the caller takes out.
     function testInstantLaneNonDilution() public {

@@ -818,7 +818,7 @@ contract FullDeployer is GatedDeployer {
     ///      A vault is per position, deployed through `VaultFactory.deploy` ahead of the hub's `DeployAndLink`,
     ///      never here. `BasinLiquidityRoute` is not deployed either: it is one route per Basin venue, and which venues a
     ///      chain has is deployment data, not something this branch can name. Its only ward is the
-    ///      chain's Root, which whoever deploys it passes in (the constructor refuses only the zero address), and it
+    ///      chain's Root, which whoever deploys it passes in, and it
     ///      needs no other protocol wiring, only the pools that draw on it enabling it, so deploying it after the
     ///      launch, against a venue and the deployed `AccountingToken`, loses nothing.
     function _deployVaultSpoke(address batcher) internal {

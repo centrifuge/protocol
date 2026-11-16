@@ -13,7 +13,10 @@ import {IPolicy} from "../../../../src/core/utils/interfaces/IPolicy.sol";
 import {AssetId, newAssetId} from "../../../../src/core/types/AssetId.sol";
 import {IRegistrar} from "../../../../src/core/spoke/interfaces/IRegistrar.sol";
 import {ISpokeRegistry} from "../../../../src/core/spoke/interfaces/ISpokeRegistry.sol";
+import {IVaultPosition} from "../../../../src/core/spoke/interfaces/IVaultPosition.sol";
 import {SpokeHandler, ISpokeHandler} from "../../../../src/core/spoke/SpokeHandler.sol";
+import {VaultUpdateKind} from "../../../../src/core/messaging/libraries/MessageLib.sol";
+import {IVaultFactory} from "../../../../src/core/spoke/factories/interfaces/IVaultFactory.sol";
 import {IEscrowFactory} from "../../../../src/core/spoke/factories/interfaces/IEscrowFactory.sol";
 import {ISpokeRequestManager} from "../../../../src/core/spoke/interfaces/ISpokeRequestManager.sol";
 
@@ -171,6 +174,89 @@ contract SpokeHandlerTestAddShareClass is SpokeHandlerTest {
 
         vm.prank(AUTH);
         handler.addShareClass(POOL_A, SC_1, NAME, SYMBOL, 0, SALT, registrar, PAYLOAD);
+    }
+}
+
+contract SpokeHandlerTestUpdateVault is SpokeHandlerTest {
+    PoolId constant POOL_B = PoolId.wrap(2);
+    ShareClassId constant SC_2 = ShareClassId.wrap(bytes16("sc2"));
+
+    address asset = makeAddr("asset");
+    IVaultFactory factory = IVaultFactory(address(new IsContract()));
+    address vault = address(new IsContract());
+
+    function _mockDeployAndLink() internal {
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSignature("idToAsset(uint128,bool)", ASSET_ID, true),
+            abi.encode(asset, uint256(0))
+        );
+        vm.mockCall(
+            address(spokeRegistry),
+            abi.encodeWithSelector(ISpokeRegistry.shareToken.selector, POOL_A, SC_1),
+            abi.encode(share)
+        );
+        vm.mockCall(
+            address(factory),
+            abi.encodeWithSelector(IVaultFactory.newVault.selector, POOL_A, SC_1, asset, 0, share, PAYLOAD),
+            abi.encode(vault)
+        );
+    }
+
+    function _mockBuiltFor(PoolId poolId, ShareClassId scId) internal {
+        vm.mockCall(vault, abi.encodeWithSelector(IVaultPosition.poolId.selector), abi.encode(poolId));
+        vm.mockCall(vault, abi.encodeWithSelector(IVaultPosition.scId.selector), abi.encode(scId));
+    }
+
+    function testErrNotAuthorized() public {
+        vm.prank(ANY);
+        vm.expectRevert(IAuth.NotAuthorized.selector);
+        handler.updateVault(POOL_A, SC_1, ASSET_ID, address(factory), VaultUpdateKind.DeployAndLink, PAYLOAD);
+    }
+
+    /// @dev The factory a message names is any address, so it can hand back a vault another pool built. What the
+    ///      handler trusts is the vault's own position, which no factory returning it can change.
+    function testErrDeployAndLinkVaultBuiltForAnotherPool() public {
+        _mockDeployAndLink();
+        _mockBuiltFor(POOL_B, SC_1);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        handler.updateVault(POOL_A, SC_1, ASSET_ID, address(factory), VaultUpdateKind.DeployAndLink, PAYLOAD);
+    }
+
+    function testErrDeployAndLinkVaultBuiltForAnotherShareClass() public {
+        _mockDeployAndLink();
+        _mockBuiltFor(POOL_A, SC_2);
+
+        vm.prank(AUTH);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        handler.updateVault(POOL_A, SC_1, ASSET_ID, address(factory), VaultUpdateKind.DeployAndLink, PAYLOAD);
+    }
+
+    /// @dev A contract that does not say which position it was built for cannot be registered.
+    function testErrDeployAndLinkVaultWithoutPosition() public {
+        _mockDeployAndLink();
+
+        vm.prank(AUTH);
+        vm.expectRevert();
+        handler.updateVault(POOL_A, SC_1, ASSET_ID, address(factory), VaultUpdateKind.DeployAndLink, PAYLOAD);
+    }
+
+    function testDeployAndLink() public {
+        _mockDeployAndLink();
+        _mockBuiltFor(POOL_A, SC_1);
+        vm.mockCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.registerVault.selector), abi.encode());
+        vm.mockCall(address(spokeRegistry), abi.encodeWithSelector(ISpokeRegistry.linkVault.selector), abi.encode());
+
+        vm.expectCall(
+            address(spokeRegistry),
+            abi.encodeCall(ISpokeRegistry.registerVault, (POOL_A, SC_1, ASSET_ID, asset, 0, factory, vault, PAYLOAD))
+        );
+        vm.expectCall(address(spokeRegistry), abi.encodeCall(ISpokeRegistry.linkVault, (POOL_A, SC_1, ASSET_ID, vault)));
+
+        vm.prank(AUTH);
+        handler.updateVault(POOL_A, SC_1, ASSET_ID, address(factory), VaultUpdateKind.DeployAndLink, PAYLOAD);
     }
 }
 

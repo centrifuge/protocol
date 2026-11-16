@@ -42,7 +42,8 @@ interface IVaultDeployFactory is IVaultFactory {
     /// @notice The payload is empty, so it names no plugins.
     error PluginsRequired();
 
-    /// @notice The vault could not be created and gave no reason.
+    /// @notice The vault was created at an address other than the one `getVault` predicts. A creation that fails
+    ///         reverts as it failed instead, with the constructor's revert data, or bare when it gave none.
     error DeploymentFailed();
 
     /// @notice No vault is deployed yet at the address the hub asked to link.

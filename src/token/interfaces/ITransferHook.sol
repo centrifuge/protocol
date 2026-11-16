@@ -15,12 +15,11 @@ uint8 constant ERROR_CODE_ID = 1;
 string constant ERROR_MESSAGE = "transfer-blocked";
 
 /// @notice Hook interface to customize share token behaviour
-/// @dev    To detect specific system actions:
-///           Issuance:                         address(0)       -> address(user)
-///           Deposit fulfillment:              address(0)       -> escrow
-///           Deposit claim:                    escrow       -> address(user)
-///           Redeem fulfillment:               spoke            -> address(0)
-///           Direct burn of a holder:          address(user)    -> address(0)
+/// @dev    The hook sees share movements, not the protocol action behind them:
+///           Issuance:                         address(0)       -> receiver (the escrow, or a user)
+///           Pull into the spoke:              holder           -> spoke (before a burn)
+///           Burn:                             spoke            -> address(0)
+///           Escrow payout:                    escrow           -> address(user)
 ///           Cross-chain transfer:             address(user)    -> address(uint160(chainId))
 ///           Cross-chain execution:            crosschainSource -> address(user)
 ///
@@ -29,7 +28,7 @@ string constant ERROR_MESSAGE = "transfer-blocked";
 ///
 ///         Endorsed refers to core protocol contracts, which can be retrieved using root.endorsed(addr)
 ///         escrow: Pool-specific escrow contract identified via escrowFactory.poolId(addr)
-///         spoke: Contract that fulfills redemptions
+///         spoke: Contract that issues and burns shares
 ///         crosschainSource: Contract handling cross-chain message execution (SpokeHandler)
 interface ITransferHook is IERC165 {
     //----------------------------------------------------------------------------------------------

@@ -21,6 +21,7 @@ import {AccountingToken} from "../../src/managers/spoke/AccountingToken.sol";
 
 import {IAsyncVault, VaultPlugins} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {BasinLiquidityRoute} from "../../src/vaults/liquidity/BasinLiquidityRoute.sol";
+import {IBasinLiquidityRoute} from "../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {
     IInstantPolicy,
     ILiquidityRoute,
@@ -110,7 +111,9 @@ contract BasinLiabilityTest is EndToEndFlows {
         _notifyPrices();
 
         _deployBasinVault();
-        _managerCall(address(route), abi.encode(address(vault), LINE));
+        _managerCall(
+            address(route), abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, address(vault), abi.encode(LINE))
+        );
         vm.prank(LP);
         route.setCredit(address(vault), LINE);
         vm.prank(ERC20_DEPLOYER);

@@ -669,6 +669,28 @@ contract ShareTokenHookTestTrustedCall is ShareTokenHookTestBase {
         vm.prank(user1); // Not the envoy
         hook.fromHub(POOL_A, payload);
     }
+
+    /// @dev The manager-call transport is payable, and value sent here would be stuck in a hook with no way out.
+    function testFromHubRejectsValue() public {
+        vm.mockCall(
+            address(mockSpoke),
+            abi.encodeWithSelector(bytes4(keccak256("shareToken(uint64,bytes16)")), POOL_A.raw(), SC_1.raw()),
+            abi.encode(address(mockShareToken))
+        );
+        address managerAddress = makeAddr("manager");
+        bytes memory payload = abi.encode(
+            SC_1.raw(), uint8(IShareTokenHook.TrustedCall.UpdateHookManager), bytes32(bytes20(managerAddress)), true
+        );
+
+        vm.deal(envoy, 1);
+        vm.prank(envoy);
+        vm.expectRevert(IShareTokenHook.UnexpectedValue.selector);
+        hook.fromHub{value: 1}(POOL_A, payload);
+
+        vm.prank(envoy);
+        hook.fromHub(POOL_A, payload);
+        assertTrue(hook.manager(address(mockShareToken), managerAddress), "the same call without value goes through");
+    }
 }
 
 contract ShareTokenHookTestFuzz is ShareTokenHookTestBase {

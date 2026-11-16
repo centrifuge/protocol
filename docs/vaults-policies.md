@@ -109,7 +109,9 @@ rather than by controller, so a transfer needs no policy state and the bucket's 
 `PerInvestorPolicy` declines transfers, because it resolves every later request from a controller to
 that controller's one recorded bucket, and so does `PerRequestPolicy` when deployed with transfers off. Whatever the
 policy allows, a vault with an instant lane requires the caller to act for the transferee too, or the sender to be a
-sponsor; without one a transfer is a plain ERC-8161 push. The position then enters the transferee's horizon.
+sponsor; without one a transfer is a plain ERC-8161 push. The position then enters the transferee's horizon if a slot left for
+positions it did not request is free; otherwise the vault emits `OutsideHorizon`, and a batch waits for `foldRequest` while an
+unbatched one still folds as it settles.
 
 ## Instant policies (`IInstantPolicy`)
 
@@ -271,9 +273,9 @@ Supported:
 | Chainlink / Pyth-fed NAV | push feeds read directly; pull oracles via keeper- or frontend-bundled updates |
 | Secondary-market TWAPs | Uniswap `observe()` over a configured window; best as one leg of a medianizer |
 | Multi-source medianizers with deviation breakers | composes over other `IVaultOracle`s; latched trip state via keeper poke |
-| Market-hours gating | an out-of-hours `valid = false` blocks instant flows while `convertTo*` and `totalAssets` keep serving the last price (the previews revert on an invalid price) |
+| Market-hours gating | an out-of-hours `valid = false` blocks instant flows while `convertTo*` and `totalAssets` keep serving the last price (an instant-mode caller's previews revert on an invalid price; a claimant's are quoted from its claim) |
 | Staleness bounding | `SpokeOracle` takes an immutable `maxAge` and reports the pair invalid once either hub price is older. Registry validity only means a price was notified at least once, so this is the only age bound in the stack; `maxAge == 0` disables it. `maxSkew` bounds the gap between the asset and share notification times, and a paused pool reads invalid |
-| Emergency stop | `SpokeOracle.pause(poolId)` by the pool's spoke managers, at once, on the spoke's chain; unpausing is only through `fromHub` under the pool policy (an out-of-policy, delayed call) |
+| Emergency stop | `SpokeOracle.pause(poolId)` by a pauser the pool named from the hub (`ConfigKind.SetPauser`, its own role, not the spoke manager's), at once, on the spoke's chain; unpausing is only through `fromHub` under the pool policy (an out-of-policy, delayed call) |
 | FX composition for cross-currency assets | hub NAV for the share leg × live FX feed for the asset leg |
 | Floor / cap bands | clamp or reject any inner oracle's price against a hub-anchored band |
 | Tranche waterfall pricing | per-scId senior accretion / junior residual computed hub-side from one pool NAV and delivered as per-share-class prices, which `SpokeOracle` only reads |
@@ -290,10 +292,11 @@ Not supported, by design:
 ## Share token restrictions (`IRoleHook`)
 
 The share token's hook decides who may hold, leave or be paid; the vault decides what each of its actions
-asks of whom. `VaultActionLib` turns every vault action (requests, claims, refunds, instant trades and request
+asks of whom. `RoleCheckLib` turns every vault action (requests, claims, refunds, instant trades and request
 transfers) into role checks, each naming the account that answers to the role (`Entry`, `Exit`, `Payout`,
-`Refund`) and the one the value comes from, and asks the share token's current hook, once for the whole action: `onRoles` enforces and must
-revert to block, `checkRoles` is its view twin behind the `max*` views. The mapping is in `src/vaults/ARCHITECTURE.md`
+`Refund`), the one the value comes from, the value in assets and shares and its `effect` on positions, and asks the share token's current
+hook, once for the whole action: `onRoles` enforces and must revert to block, `checkRoles` is its view twin behind the `max*` views,
+and `maxAllowed` beside it reports the largest figures the checks would pass, which the `max*` views scale to. The mapping is in `src/vaults/ARCHITECTURE.md`
 ("Share token restrictions"). There is no vault slot for it, so the gate cannot be left off a vault and follows the
 token when the pool swaps its hook. A token with no hook is unrestricted; a hook without the `IRoleHook` surface
 makes every vault action revert.
@@ -313,7 +316,7 @@ Not supported, by design:
 - **Seeing the caller**: `onRoles` is invoked by the vault, so `msg.sender` is the vault, not the
   originating account. The two parties of a check are the identity surface; a hook cannot distinguish an
   operator from the controller acting directly.
-- **Seeing the operation**: the hook sees a role and two accounts, not which vault action asked. A rule that
+- **Seeing the operation**: the hook sees a role, two accounts, the value and its effect, not which vault action asked. A rule that
   depends on the operation (instant but not async exits, request counters, per-window caps) belongs in the
   vault's plugins, which see it: the instant policy's allowlists, the request policy's gating.
 - **Who may credit a position to someone else**: a vault question, not a hook one. A vault with an instant

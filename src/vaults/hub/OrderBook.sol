@@ -71,7 +71,8 @@ contract OrderBook is Auth, BatchedMulticall, IOrderBook {
     /// @inheritdoc IManagerCallFromHub
     function fromHub(PoolId poolId, bytes calldata payload) external payable protected {
         require(msg.sender == envoy, NotEnvoy());
-        // Decoded as a uint8, which reverts on a word that is not one rather than truncating it into a valid action
+
+        // Decoded as a uint8, which reverts on a word that is not one rather than truncating it into a valid action.
         OrderBookAction action = OrderBookAction(abi.decode(payload, (uint8)));
 
         if (action == OrderBookAction.Fulfill) return _fulfill(poolId, payload);
@@ -88,8 +89,8 @@ contract OrderBook is Auth, BatchedMulticall, IOrderBook {
         require(f.fill > 0, ZeroAmount());
         _close(poolId, f.scId, f.assetId, f.requestId, f.isDeposit, f.fill);
 
-        uint128 output = _convert(poolId, f);
         // A fill converting to nothing would be a callback the vault rejects and no retry can apply.
+        uint128 output = _convert(poolId, f);
         require(output > 0, ZeroAmount());
 
         emit Fulfill(
@@ -114,7 +115,7 @@ contract OrderBook is Auth, BatchedMulticall, IOrderBook {
     // Internal methods
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Auto-approves an order and notifies the observer.
+    /// @dev Opens a batch around `fulfillCallback`, so its settlement callbacks leave as one message.
     function _fulfill(PoolId poolId, bytes calldata payload) internal {
         (, Fulfillment memory f) = abi.decode(payload, (uint8, Fulfillment));
         gateway.withBatch{value: msgValue()}(abi.encodeCall(IOrderBook.fulfillCallback, (poolId, f)), f.refund);
@@ -137,6 +138,7 @@ contract OrderBook is Auth, BatchedMulticall, IOrderBook {
 
     function _setObserver(PoolId poolId, bytes calldata payload) internal {
         require(msgValue() == 0, UnexpectedValue());
+
         (, address obs) = abi.decode(payload, (uint8, address));
         observer[poolId] = IRequestObserver(obs);
         emit SetObserver(poolId, obs);

@@ -16,6 +16,7 @@ import {UpdateRestrictionMessageLib} from "../../../../src/token/hooks/libraries
 
 import {VaultRequestIdLib} from "../../../../src/vaults/libraries/VaultRequestIdLib.sol";
 import {IReserveInstantPolicy} from "../../../../src/vaults/policies/interfaces/IVaultPlugins.sol";
+import {IBasinLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {IVaultLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 
 import {vm} from "@chimera/Hevm.sol";
@@ -215,7 +216,12 @@ abstract contract PoolIsolationTargets is BaseTargetFunctions, Properties {
         // pool's share class is, for the operations that cannot succeed on a share class the pool does not have
         bool foreign = pool.raw() == poolD.raw() && sc.raw() != scD.raw();
         bool refused = op == 2 || op == 3 || (op >= 7 && op <= 9) || op == 11;
-        if (spokeRegistry.manager(pool, caller) && !(foreign && refused)) return;
+        // The oracle's pause is gated by its own pauser role, not the manager role
+        if (op == 12
+                ? spokeOracle.isPauser(pool, caller)
+                : spokeRegistry.manager(pool, caller) && !(foreign && refused)) {
+            return;
+        }
         if (op == 14 && oracleValuation.feeder(pool, CENTRIFUGE_ID, caller.toBytes32())) return;
 
         (address target, bytes memory data) = _spokeCall(op, caller, pool, sc, amount);
@@ -284,7 +290,12 @@ abstract contract PoolIsolationTargets is BaseTargetFunctions, Properties {
             return
                 (address(vaultRoute), abi.encode(IVaultLiquidityRoute.ConfigKind.Routes, own, abi.encode(victimRoute)));
         }
-        if (variant == 6) return (address(basinRoute), abi.encode(victim, type(uint128).max));
+        if (variant == 6) {
+            return (
+                address(basinRoute),
+                abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, victim, abi.encode(type(uint128).max))
+            );
+        }
         if (variant == 7) {
             return (
                 address(fullRestrictions),

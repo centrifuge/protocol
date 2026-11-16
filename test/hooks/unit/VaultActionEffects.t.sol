@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {VaultActionLib, VaultActionKind, VaultAction} from "../../../src/vaults/libraries/VaultActionLib.sol";
+import {RoleCheckLib} from "../../../src/vaults/libraries/RoleCheckLib.sol";
+import {VaultActionKind, VaultAction} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import "forge-std/Test.sol";
 
@@ -17,7 +18,7 @@ contract VaultActionEffectsTest is Test {
     uint128 constant SHARES = 2_000e18;
 
     function _checks(VaultActionKind kind, address c, address o, address r) internal pure returns (RoleCheck[] memory) {
-        return VaultActionLib.roleChecks(VaultAction(kind, c, o, r, ASSETS, SHARES));
+        return RoleCheckLib.roleChecks(VaultAction(kind, c, o, r, ASSETS, SHARES));
     }
 
     function _assertCheck(RoleCheck memory c, Role role, address from, address to, Effect effect) internal pure {

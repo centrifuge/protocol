@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {LegacyShareTokenHook} from "./LegacyShareTokenHook.sol";
 
-import {VaultActionKind} from "../../../src/vaults/libraries/VaultActionLib.sol";
+import {VaultActionKind} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {VaultAction} from "../mocks/VaultActionCheck.sol";
 

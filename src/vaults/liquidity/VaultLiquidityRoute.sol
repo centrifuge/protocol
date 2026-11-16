@@ -63,7 +63,8 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
         require(details.poolId == poolId && IVault(vault).poolId() == poolId, WrongPool());
 
         if (kind == ConfigKind.Routes) return _setRoutes(vault, details, args);
-        _setConsent(poolId, vault, args);
+        if (kind == ConfigKind.Consent) return _setConsent(poolId, vault, args);
+        revert UnknownConfigKind();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -109,6 +110,7 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
 
         // Releasing the pool's holdings takes the manager role, so without it nothing is drawable.
         if (!spokeRegistry.manager(details.poolId, address(this))) return 0;
+
         address escrow = address(spoke.escrow(details.poolId));
         address[] memory underlying = _routes[vault];
 
@@ -136,10 +138,10 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
             for (uint256 j; j < i; j++) {
                 require(!(listed[j].poolId == route.poolId && listed[j].scId == route.scId), DuplicateRoute());
             }
-            listed[i] = route;
             require(route.isLinked, UnknownVault());
             require(route.asset == details.asset, AssetMismatch());
             require(isConsented[underlying[i]][vault], NotConsented());
+            listed[i] = route;
         }
 
         _routes[vault] = underlying;
@@ -166,11 +168,11 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
         uint256 shares = IAsyncVault(underlying).previewWithdraw(assets);
         require(shares <= held, InsufficientLiquidity());
 
+        // Measured here, not at the escrow a reentrant deposit into a sibling vault can fill.
         uint256 sharesBefore = IERC20(shareToken).balanceOf(address(this));
         uint256 assetsBefore = IERC20(details.asset).balanceOf(address(this));
         spoke.withdraw(details.poolId, details.scId, shareToken, 0, address(this), shares.toUint128());
 
-        // Measured here, not at the escrow a reentrant deposit into a sibling vault can fill.
         SafeTransferLib.safeApprove(shareToken, underlying, shares);
         IAsyncVault(underlying).withdraw(assets, address(this));
         SafeTransferLib.safeApprove(shareToken, underlying, 0);
@@ -179,16 +181,20 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
         require(received >= assets, InsufficientLiquidity());
         SafeTransferLib.safeTransfer(details.asset, vault, received);
 
-        // Only what this draw released goes back: the route serves every pool, so any other balance
-        // it holds is not this pool's to re-note.
+        // Only what this draw released is taken or goes back: the route serves every pool, so any other
+        // balance it holds is not this pool's to spend or re-note.
         uint256 sharesAfter = IERC20(shareToken).balanceOf(address(this));
-        uint256 residual = sharesAfter > sharesBefore ? sharesAfter - sharesBefore : 0;
+        require(sharesAfter >= sharesBefore, ExcessSharesTaken());
+        uint256 residual = sharesAfter - sharesBefore;
+
+        // More back than went out is shares the underlying pushed in, which noting would inflate the pool's holding.
+        require(residual <= shares, ExcessShares());
         if (residual > 0) {
             SafeTransferLib.safeTransfer(shareToken, address(spoke.escrow(details.poolId)), residual);
             spoke.noteDeposit(details.poolId, details.scId, shareToken, 0, residual.toUint128());
         }
 
-        // Read through `_read`: what an untrusted underlying answers only colours the event
+        // Read through `_read`: what an untrusted underlying answers only colours the event.
         (, uint256 value) = _read(underlying, abi.encodeCall(IERC7575.convertToAssets, (shares - residual)));
         emit VaultRouteProvided(details.poolId, vault, underlying, assets, received, shares, residual, value);
     }
@@ -204,6 +210,7 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
         // The registry's token, never the underlying's own `share()`, which could name any token.
         VaultDetails memory route = _details(underlying);
         if (!route.isLinked || !isConsented[underlying][vault]) return (0, 0, address(0));
+
         shareToken = address(spokeRegistry.shareToken(route.poolId, route.scId));
 
         held = spoke.availableBalanceOf(details.poolId, details.scId, shareToken, 0);
@@ -217,7 +224,14 @@ contract VaultLiquidityRoute is Recoverable, IVaultLiquidityRoute {
         (bool quoted, uint256 instant) =
             _read(underlying, abi.encodeCall(IAsyncVault.withdrawCapacity, (address(this))));
         if (!quoted || instant == 0) return (0, held, shareToken);
+
         (bool valued, uint256 backing) = _read(underlying, abi.encodeCall(IERC7575.previewRedeem, (held)));
+
+        // A refund credited to the route (a cancelled request a sponsor named it in) puts it in claim mode with no
+        // claimable shares, which `previewRedeem` refuses. The route's own claim is then what a draw takes, as with a
+        // redemption claim; in instant mode `maxWithdraw` is capped at the route's balance, which is zero between draws.
+        if (!valued) (valued, backing) = _read(underlying, abi.encodeCall(IERC7575.maxWithdraw, (address(this))));
+
         // Bounded to what `available` and a draw hold, so a neighbour quoting the maximum cannot overflow their sum.
         capacity = valued ? MathLib.min(MathLib.min(instant, backing), type(uint128).max) : 0;
     }

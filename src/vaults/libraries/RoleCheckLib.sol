@@ -2,55 +2,13 @@
 pragma solidity 0.8.28;
 
 import {IShareToken} from "../../token/interfaces/IShareToken.sol";
+import {VaultAction, VaultActionKind} from "../interfaces/IAsyncVault.sol";
 import {IRoleHook, Role, RoleCheck, Effect} from "../../token/interfaces/IRoleHook.sol";
 
-/// @notice The vault operations the share token's hook gates: those without an enforced share leg, and the two whose
-///         leg the transfer hook sees without the parties the vault knows (an instant deposit's issuance, a deposit
-///         claim's delivery). Every other share movement reaches the hook as an ERC20 transfer.
-enum VaultActionKind {
-    /// @dev `controller` requests a deposit with assets from `owner`.
-    DepositRequest,
-    /// @dev `controller` claims the shares of a settled deposit, delivered to `receiver`. The delivery is an escrow to
-    ///      receiver transfer, which the transfer hook sees without the controller, so the controller is checked here:
-    ///      it must be able to hold the shares itself, so a restricted controller cannot move its position away.
-    DepositClaim,
-    /// @dev `owner`, the caller and `controller`, deposits at once, issued to `receiver`.
-    InstantDeposit,
-    /// @dev `owner` hands its pending deposit position to `receiver` (ERC-8161).
-    DepositRequestTransfer,
-    /// @dev `controller` requests the redemption of shares owned by `owner`.
-    RedeemRequest,
-    /// @dev `controller` claims redemption proceeds, paid out to `receiver`.
-    RedeemClaim,
-    /// @dev `owner`, the caller and `controller`, redeems at once, paid out to `receiver`.
-    InstantRedeem,
-    /// @dev `owner` hands its pending redeem position to `receiver` (ERC-8161).
-    RedeemRequestTransfer,
-    /// @dev `controller` takes back to itself, through `withdraw`, the assets of a cancelled deposit. A refund to
-    ///      another receiver is a claim.
-    DepositRefundClaim,
-    /// @dev `controller` takes back to itself, through `mint`, the shares of a cancelled redemption. A request's owner
-    ///      and controller may differ, and the refund goes to the controller, so a hook whose `Refund` is looser than
-    ///      its `Transfer` lets the controller receive shares it could not have been sent. A refund to another
-    ///      receiver is a claim.
-    RedeemRefundClaim
-}
-
-/// @notice A vault action and the parties and value it involves. Which party each field names, and which are unused, is
-///         the kind's (see `VaultActionKind`). `assets` and `shares` are the value the action moves (see `RoleCheck`).
-struct VaultAction {
-    VaultActionKind kind;
-    address controller;
-    address owner;
-    address receiver;
-    uint128 assets;
-    uint128 shares;
-}
-
-/// @title  Vault Action Library
+/// @title  Role Check Library
 /// @notice Turns a vault action into the role checks the share token's hook answers, so the hook knows roles and
 ///         accounts, and only the vault knows what its actions are.
-library VaultActionLib {
+library RoleCheckLib {
     /// @notice A kind this library maps to no role checks, which fails closed.
     error UnknownActionKind();
 
@@ -95,13 +53,16 @@ library VaultActionLib {
         }
     }
 
+    // forgefmt: disable-next-item
     function _parties(VaultActionKind kind, address controller, address owner, address receiver)
         private
         pure
         returns (RoleCheck[] memory)
     {
         if (kind == VaultActionKind.DepositRequest) {
-            return _one(_check(Role.Entry, owner, controller, Effect.Grows));
+            return _one(
+                _check(Role.Entry, owner, controller, Effect.Grows)
+            );
         }
         if (kind == VaultActionKind.DepositClaim) {
             return _two(
@@ -111,22 +72,27 @@ library VaultActionLib {
         }
         if (kind == VaultActionKind.InstantDeposit) {
             return _two(
-                _check(Role.Entry, address(0), owner, Effect.Neutral), _check(Role.Entry, owner, receiver, Effect.Grows)
+                _check(Role.Entry, address(0), owner, Effect.Neutral),
+                _check(Role.Entry, owner, receiver, Effect.Grows)
             );
         }
         if (kind == VaultActionKind.DepositRequestTransfer) {
-            return _one(_check(Role.Entry, owner, receiver, Effect.Moves));
+            return _one(
+                _check(Role.Entry, owner, receiver, Effect.Moves)
+            );
         }
-
-        // Both the owner and a distinct controller of a redemption leave the pool. The shares stay in the position
-        // while pending: the owner's own, or moved to the controller's.
         if (kind == VaultActionKind.RedeemRequest) {
             RoleCheck memory exit = _check(Role.Exit, address(0), owner, Effect.Neutral);
             if (controller == owner) return _one(exit);
-            return _two(exit, _check(Role.Exit, owner, controller, Effect.Moves));
+            return _two(
+                exit,
+                _check(Role.Exit, owner, controller, Effect.Moves)
+            );
         }
         if (kind == VaultActionKind.RedeemClaim) {
-            return _one(_check(Role.Payout, controller, receiver, Effect.Neutral));
+            return _one(
+                _check(Role.Payout, controller, receiver, Effect.Neutral)
+            );
         }
         if (kind == VaultActionKind.InstantRedeem) {
             return _two(
@@ -135,10 +101,14 @@ library VaultActionLib {
             );
         }
         if (kind == VaultActionKind.RedeemRequestTransfer) {
-            return _one(_check(Role.Exit, owner, receiver, Effect.Moves));
+            return _one(
+                _check(Role.Exit, owner, receiver, Effect.Moves)
+            );
         }
         if (kind == VaultActionKind.DepositRefundClaim || kind == VaultActionKind.RedeemRefundClaim) {
-            return _one(_check(Role.Refund, address(0), controller, Effect.Neutral));
+            return _one(
+                _check(Role.Refund, address(0), controller, Effect.Neutral)
+            );
         }
         revert UnknownActionKind();
     }

@@ -45,6 +45,10 @@ contract ReserveInstantPolicy is IReserveInstantPolicy {
         require(_details(vault).poolId == poolId && IVault(vault).poolId() == poolId, WrongPool());
 
         if (kind == ConfigKind.Terms) return _setTerms(poolId, vault, args);
+        require(
+            kind == ConfigKind.Depositor || kind == ConfigKind.Redeemer || kind == ConfigKind.Sponsor,
+            UnknownConfigKind()
+        );
 
         (address who, bool allowed) = abi.decode(args, (address, bool));
         isAllowed[vault][kind][who] = allowed;

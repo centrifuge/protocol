@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {d18} from "../../../src/misc/types/D18.sol";
 
 /// @dev Drives every refused case of the callback atomicity handler with orders open on both sides, and asserts each
 ///      was attempted, refused and left no trace, so a setup change that turns a case into a silent skip fails here,
 ///      and a src mutation that lets a refused callback half apply can be shown to fail it.
-contract AtomicityReachability is CryticToFoundry {
+contract AtomicityReachability is FoundryHarness {
     function _open() internal {
         for (uint256 a; a < 3; a++) {
             flow_deposit(a, 0, 2_000 * ONE_ASSET, a);

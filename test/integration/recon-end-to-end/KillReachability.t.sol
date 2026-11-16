@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 /// @dev Drives the refusal and rounding checks of the vault with state they can act on and asserts they ran to their
 ///      assertions, so a setup change that turns them into silent returns fails here, and a src mutation can be shown
 ///      to fail them.
-contract KillReachability is CryticToFoundry {
+contract KillReachability is FoundryHarness {
     /// @dev A withdraw claim at an amount the ledger does not divide evenly, after a fill at a price that makes the
     ///      pro-rata inexact.
     function testKill_withdrawClaimRoundsUp() public {

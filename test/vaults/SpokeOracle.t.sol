@@ -20,7 +20,7 @@ import "forge-std/Test.sol";
 contract SpokeOracleTest is Test {
     address spokeRegistry = makeAddr("spokeRegistry");
     address envoy = makeAddr("envoy");
-    address manager = makeAddr("manager");
+    address pauser = makeAddr("pauser");
 
     PoolId constant POOL = PoolId.wrap(1);
     ShareClassId constant SC = ShareClassId.wrap(bytes16(uint128(2)));
@@ -31,10 +31,20 @@ contract SpokeOracleTest is Test {
     function setUp() public {
         vm.warp(1_000_000);
         _mockPrices(d18(1e18), d18(2e18));
-        vm.mockCall(spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.manager.selector), abi.encode(false));
-        vm.mockCall(
-            spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.manager.selector, POOL, manager), abi.encode(true)
-        );
+    }
+
+    function _paused(bool paused) internal pure returns (bytes memory) {
+        return abi.encode(ISpokeOracle.ConfigKind.SetPaused, paused);
+    }
+
+    function _pauser(address who, bool allowed) internal pure returns (bytes memory) {
+        return abi.encode(ISpokeOracle.ConfigKind.SetPauser, who, allowed);
+    }
+
+    function _withPauser(uint64 maxAge) internal returns (SpokeOracle oracle) {
+        oracle = _oracle(maxAge);
+        vm.prank(envoy);
+        oracle.fromHub(POOL, _pauser(pauser, true));
     }
 
     function _mockPrices(D18 ppa, D18 pps) internal {
@@ -197,14 +207,14 @@ contract SpokeOracleTest is Test {
         SpokeOracle oracle = _oracle(MAX_AGE);
 
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(true));
+        oracle.fromHub(POOL, _paused(true));
 
         (D18 ppa,, bool valid) = oracle.prices(POOL, SC, ASSET_ID);
         assertFalse(valid, "paused");
         assertEq(ppa.raw(), 1e18, "the price is still readable while paused");
 
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(false));
+        oracle.fromHub(POOL, _paused(false));
         assertTrue(_valid(oracle), "unpausing restores it");
     }
 
@@ -214,26 +224,26 @@ contract SpokeOracleTest is Test {
         vm.expectEmit(address(oracle));
         emit ISpokeOracle.SetPaused(POOL, true, envoy);
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(true));
+        oracle.fromHub(POOL, _paused(true));
     }
 
     /// @dev A call that leaves the flag as it was is not a change, so it is not announced.
     function testSetPausedOnlyEmitsOnAChange() public {
-        SpokeOracle oracle = _oracle(MAX_AGE);
+        SpokeOracle oracle = _withPauser(MAX_AGE);
 
         vm.recordLogs();
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(false));
+        oracle.fromHub(POOL, _paused(false));
         assertEq(vm.getRecordedLogs().length, 0, "unpausing an unpaused pool emits nothing");
 
-        vm.prank(manager);
+        vm.prank(pauser);
         oracle.pause(POOL);
 
         vm.recordLogs();
-        vm.prank(manager);
+        vm.prank(pauser);
         oracle.pause(POOL);
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(true));
+        oracle.fromHub(POOL, _paused(true));
         assertEq(vm.getRecordedLogs().length, 0, "pausing a paused pool emits nothing");
     }
 
@@ -241,7 +251,7 @@ contract SpokeOracleTest is Test {
         SpokeOracle oracle = _oracle(MAX_AGE);
         vm.prank(makeAddr("notEnvoy"));
         vm.expectRevert(ISpokeOracle.NotEnvoy.selector);
-        oracle.fromHub(POOL, abi.encode(true));
+        oracle.fromHub(POOL, _paused(true));
     }
 
     function testPauseRejectsValue() public {
@@ -249,7 +259,7 @@ contract SpokeOracleTest is Test {
         vm.deal(envoy, 1 ether);
         vm.prank(envoy);
         vm.expectRevert(ISpokeOracle.UnexpectedValue.selector);
-        oracle.fromHub{value: 1}(POOL, abi.encode(true));
+        oracle.fromHub{value: 1}(POOL, _paused(true));
     }
 
     /// @dev One oracle serves many pools, so a pool can only close its own lane.
@@ -257,7 +267,7 @@ contract SpokeOracleTest is Test {
         _mockComputedAt(uint64(block.timestamp), uint64(block.timestamp));
         SpokeOracle oracle = _oracle(MAX_AGE);
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(true));
+        oracle.fromHub(POOL, _paused(true));
 
         (,, bool valid) = oracle.prices(PoolId.wrap(PoolId.unwrap(POOL) + 1), SC, ASSET_ID);
         assertTrue(valid, "another pool's lane stays open");
@@ -267,68 +277,102 @@ contract SpokeOracleTest is Test {
     // Local pause
     //----------------------------------------------------------------------------------------------
 
-    function testPoolManagerCanPause() public {
-        SpokeOracle oracle = _oracle(MAX_AGE);
-        vm.prank(manager);
+    function testAPauserCanPause() public {
+        SpokeOracle oracle = _withPauser(MAX_AGE);
+        vm.prank(pauser);
         oracle.pause(POOL);
         assertTrue(oracle.isPaused(POOL));
     }
 
-    /// @dev A local pause names the manager, so it reads apart from the hub's.
-    function testALocalPauseNamesItsManager() public {
-        SpokeOracle oracle = _oracle(MAX_AGE);
+    /// @dev A local pause names its pauser, so it reads apart from the hub's.
+    function testALocalPauseNamesItsPauser() public {
+        SpokeOracle oracle = _withPauser(MAX_AGE);
 
         vm.expectEmit(address(oracle));
-        emit ISpokeOracle.SetPaused(POOL, true, manager);
-        vm.prank(manager);
+        emit ISpokeOracle.SetPaused(POOL, true, pauser);
+        vm.prank(pauser);
         oracle.pause(POOL);
     }
 
-    /// @dev A manager of one pool cannot close another pool's lane.
-    function testPoolManagerCannotPauseAnotherPool() public {
+    function testTheHubNamesAndRemovesPausers() public {
+        SpokeOracle oracle = _oracle(MAX_AGE);
+
+        vm.expectEmit(address(oracle));
+        emit ISpokeOracle.SetPauser(POOL, pauser, true);
+        vm.prank(envoy);
+        oracle.fromHub(POOL, _pauser(pauser, true));
+        assertTrue(oracle.isPauser(POOL, pauser));
+
+        vm.prank(envoy);
+        oracle.fromHub(POOL, _pauser(pauser, false));
+        assertFalse(oracle.isPauser(POOL, pauser));
+
+        vm.prank(pauser);
+        vm.expectRevert(ISpokeOracle.NotPauser.selector);
+        oracle.pause(POOL);
+    }
+
+    function testOnlyTheEnvoyNamesPausers() public {
+        SpokeOracle oracle = _withPauser(MAX_AGE);
+        vm.prank(pauser);
+        vm.expectRevert(ISpokeOracle.NotEnvoy.selector);
+        oracle.fromHub(POOL, _pauser(makeAddr("other"), true));
+    }
+
+    /// @dev The pauser role is the oracle's own: a spoke manager of the pool, which can move the escrow, is not a
+    ///      pauser unless the pool names it.
+    function testASpokeManagerIsNotAPauser() public {
+        address manager = makeAddr("manager");
+        vm.mockCall(
+            spokeRegistry, abi.encodeWithSelector(ISpokeRegistry.manager.selector, POOL, manager), abi.encode(true)
+        );
         SpokeOracle oracle = _oracle(MAX_AGE);
         vm.prank(manager);
-        vm.expectRevert(ISpokeOracle.NotManager.selector);
+        vm.expectRevert(ISpokeOracle.NotPauser.selector);
+        oracle.pause(POOL);
+    }
+
+    /// @dev A pauser of one pool cannot close another pool's lane.
+    function testAPauserCannotPauseAnotherPool() public {
+        SpokeOracle oracle = _withPauser(MAX_AGE);
+        vm.prank(pauser);
+        vm.expectRevert(ISpokeOracle.NotPauser.selector);
         oracle.pause(PoolId.wrap(PoolId.unwrap(POOL) + 1));
     }
 
     function testOthersCannotPause() public {
-        SpokeOracle oracle = _oracle(MAX_AGE);
+        SpokeOracle oracle = _withPauser(MAX_AGE);
         vm.prank(makeAddr("stranger"));
-        vm.expectRevert(ISpokeOracle.NotManager.selector);
+        vm.expectRevert(ISpokeOracle.NotPauser.selector);
         oracle.pause(POOL);
     }
 
     /// @dev The local pausers can only tighten: there is no local unpause, and `fromHub` stays the
     ///      Envoy's alone, so reopening the lane waits on the pool's hub policy.
     function testLocalPausersCannotUnpause() public {
-        SpokeOracle oracle = _oracle(MAX_AGE);
-        vm.prank(manager);
+        SpokeOracle oracle = _withPauser(MAX_AGE);
+        vm.prank(pauser);
         oracle.pause(POOL);
 
-        vm.prank(manager);
+        vm.prank(pauser);
         vm.expectRevert(ISpokeOracle.NotEnvoy.selector);
-        oracle.fromHub(POOL, abi.encode(false));
+        oracle.fromHub(POOL, _paused(false));
 
-        vm.prank(manager);
-        vm.expectRevert(ISpokeOracle.NotEnvoy.selector);
-        oracle.fromHub(POOL, abi.encode(false));
-
-        vm.prank(manager);
+        vm.prank(pauser);
         oracle.pause(POOL);
         assertTrue(oracle.isPaused(POOL), "pausing twice still pauses");
     }
 
     function testHubUnpausesALocalPause() public {
         _mockComputedAt(uint64(block.timestamp), uint64(block.timestamp));
-        SpokeOracle oracle = _oracle(MAX_AGE);
-        vm.prank(manager);
+        SpokeOracle oracle = _withPauser(MAX_AGE);
+        vm.prank(pauser);
         oracle.pause(POOL);
 
         vm.expectEmit(address(oracle));
         emit ISpokeOracle.SetPaused(POOL, false, envoy);
         vm.prank(envoy);
-        oracle.fromHub(POOL, abi.encode(false));
+        oracle.fromHub(POOL, _paused(false));
 
         assertFalse(oracle.isPaused(POOL));
         assertTrue(_valid(oracle));

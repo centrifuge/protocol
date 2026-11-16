@@ -7,9 +7,13 @@ pragma solidity 0.8.28;
 contract HostileUnderlying {
     uint8 public mode;
     uint64 public immutable poolId;
+    bytes16 public immutable scId;
 
-    constructor(uint64 poolId_) {
+    /// @dev The position it is registered under, which the registry reads from a vault before it records it. The
+    ///      rest of what it says is hostile.
+    constructor(uint64 poolId_, bytes16 scId_) {
         poolId = poolId_;
+        scId = scId_;
     }
 
     function setMode(uint8 mode_) external {

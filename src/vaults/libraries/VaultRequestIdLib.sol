@@ -5,9 +5,9 @@ import {RequestId} from "../../core/types/RequestId.sol";
 
 /// @title  Vault Request Id Library
 /// @notice Vault-namespaced request ids: the high 160 bits carry the owning vault address and the
-///         low 96 bits a local id assigned by the request policy. Ids are therefore self-routing:
-///         callbacks and sibling forwarding resolve the target vault from the id alone, so several
-///         vaults run in parallel on one pool position without request collisions.
+///         low 96 bits a local id the vault assigns. Ids are therefore self-routing: callbacks resolve
+///         the target vault from the id alone, so several vaults run in parallel on one pool position
+///         without request collisions.
 library VaultRequestIdLib {
     /// @notice Composes the namespaced request id for a vault and its local id.
     function from(address vault, uint96 localId) internal pure returns (RequestId) {

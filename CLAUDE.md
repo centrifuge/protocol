@@ -73,7 +73,7 @@ src/
 │   │   └── VaultRequestRouter.sol # the only contract that speaks the request wire, one per network
 │   ├── factories/
 │   │   └── VaultFactory.sol    # deploys a vault ahead of the hub's DeployAndLink; payload abi.encode(VaultPlugins, uint64 variant, uint256 foldHorizon)
-│   ├── libraries/              # BucketLib (buckets and folding), HorizonLib (the fold horizon), VaultActionLib (actions as hook role checks), VaultPricingLib, VaultRequestIdLib
+│   ├── libraries/              # BucketLib (buckets and folding), HorizonLib (the fold horizon), RoleCheckLib (vault actions as hook role checks), VaultPricingLib, VaultRequestIdLib
 │   ├── policies/               # RequestPolicies.sol (per-investor, per-request, per-period) and ReserveInstantPolicy.sol
 │   ├── oracles/
 │   │   └── SpokeOracle.sol     # hub-notified prices with age and skew bounds and a per-pool pause
@@ -102,7 +102,7 @@ A deposit, step by step (detail in `src/vaults/ARCHITECTURE.md`):
 1. **Request** (`vault.requestDeposit`): the vault moves the assets into the pool's `Escrow` and calls `spoke.noteDeposit` then `spoke.reserve`, whose queued updates cancel, so the pending deposit is not hub-accounted yet. The request policy picks the bucket the request contributes to; `VaultRequestRouter` serializes it and calls `spoke.request`.
 2. **Auto-approve**: `OrderBook` books the request into the order's `outstanding` bucket on receipt. There is no manager approve step and the request carries no price.
 3. **Fulfil**: the manager calls `OrderBook` with the committed prices, and it sends one `SettledDeposit` callback.
-4. **Apply** (`VaultRequestRouter.callback`): applied to the vault the request id names as three calls in order, inside the one callback: `approveDeposits` (`spoke.unreserve`, so the assets enter the hub-accounted holding), `issueShares` (`spoke.issue` mints to the `Escrow`), then `fulfillDepositRequest` (settles the bucket through `BucketLib`). The settlement observer is told after each leg.
+4. **Apply** (`VaultRequestRouter.callback`): applied to the vault the request id names as three calls in order, inside the one callback: `approveDeposits` (`spoke.unreserve`, so the assets enter the hub-accounted holding), `issueShares` (`spoke.issue` mints to the `Escrow`), then `fulfillDepositRequest` (settles the bucket through `BucketLib`). The settlement observer is told once, as `fulfillDepositRequest` settles the bucket.
 5. **Claim** (`vault.deposit`/`mint`): the contributor's pro-rata slice folds into their claimable ledger and `spoke.withdrawShares` moves the shares from the `Escrow` to the receiver.
 
 A redeem mirrors it (`SettledRedeem` becomes `revokeShares`, then `fulfillRedeemRequest`, then `redeem`/`withdraw`). With an `IInstantPolicy` set, the instant lane runs the whole thing in one call. The `Escrow` holds both the assets and the shares.

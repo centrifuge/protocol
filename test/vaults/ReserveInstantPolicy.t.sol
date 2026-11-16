@@ -156,7 +156,8 @@ contract ReserveInstantPolicyTest is Test {
         policy.fromHub(OTHER_POOL, _terms(1, true, 0, 0));
     }
 
-    /// @dev A vault another pool built, registered under this pool through a factory of its own
+    /// @dev A vault that now names another pool than the registry has it under: `DeployAndLink` reads it once, at
+    ///      registration, and a vault that is not the pool's own can answer differently since.
     function testConfigureRejectsAVaultBuiltForAnotherPool() public {
         vm.mockCall(vault, abi.encodeWithSelector(IVault.poolId.selector), abi.encode(OTHER_POOL));
 

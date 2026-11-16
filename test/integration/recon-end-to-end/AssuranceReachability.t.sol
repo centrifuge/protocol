@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 /// @dev Drives each assurance handler once with state it can act on and asserts it went through, so a setup change
 ///      that turns one into a silent revert fails here, and a src mutation can be shown to fail the check.
-contract AssuranceReachability is CryticToFoundry {
+contract AssuranceReachability is FoundryHarness {
     function _fund() internal {
         vault_instantDeposit(0, false, 300e6, false);
         vault_instantDeposit(1, false, 300e6, false);

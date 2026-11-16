@@ -20,6 +20,7 @@ import {AccountingToken} from "../../src/managers/spoke/AccountingToken.sol";
 import {IVaultOracle} from "../../src/vaults/oracles/interfaces/IVaultOracle.sol";
 import {IAsyncVault, VaultPlugins} from "../../src/vaults/interfaces/IAsyncVault.sol";
 import {BasinLiquidityRoute} from "../../src/vaults/liquidity/BasinLiquidityRoute.sol";
+import {IBasinLiquidityRoute} from "../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {
     IInstantPolicy,
     ILiquidityRoute,
@@ -185,7 +186,9 @@ contract BasinDebtAcrossNetworksTest is EndToEndFlows {
         _managerCallA(address(accountingToken), abi.encode(address(route).toBytes32(), true));
 
         _deployBasinVault();
-        _managerCallA(address(route), abi.encode(address(vault), LINE));
+        _managerCallA(
+            address(route), abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, address(vault), abi.encode(LINE))
+        );
         vm.prank(LP);
         route.setCredit(address(vault), LINE);
         vm.prank(ERC20_DEPLOYER);

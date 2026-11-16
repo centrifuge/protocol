@@ -82,10 +82,11 @@ struct RoleCheck {
 /// @dev    A check names `to`, the account that answers to `role`, and `from`, the account the value comes from, or
 ///         zero when it comes from none. The hook may relate the two, as a class that only hands over to its own
 ///         class does. A hook on a token traded through vaults MUST implement it, or every vault action reverts.
-///         A caller may be an endorsed relay (the investor router, a fund-of-funds route) that stands between the
-///         parties, as `owner` or `receiver`. A hook that relates `from` and `to` MUST treat an endorsed relay like an
-///         escrow, since a relay has no class of its own and the value it carries was already checked against the
-///         investor it acts for.
+///         A caller may be an endorsed relay (the investor router) that stands between the parties, as `owner` or
+///         `receiver`. A hook that relates `from` and `to` MUST treat an endorsed relay like an escrow, since a relay
+///         has no class of its own and the value it carries was already checked against the investor it acts for. A
+///         fund-of-funds route is not one: it holds the underlying's shares itself, so the hook checks it like an
+///         investor.
 interface IRoleHook is IERC165 {
     /// @notice Enforces every check on `token`; MUST revert when one is not met.
     /// @dev    The checks run before the vault changes state, so a hook that reads the vault's views for a position

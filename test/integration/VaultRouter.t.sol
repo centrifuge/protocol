@@ -8,6 +8,7 @@ import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 import {IMulticall} from "../../src/misc/interfaces/IMulticall.sol";
 
 import {RequestId} from "../../src/core/types/RequestId.sol";
+import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 
 import {IVaultRouter} from "../../src/vaults/interfaces/IVaultRouter.sol";
 import {IReserveInstantPolicy} from "../../src/vaults/policies/interfaces/IVaultPlugins.sol";
@@ -393,6 +394,35 @@ contract VaultRouterTest is EndToEndFlows {
             0,
             REFUND
         );
+    }
+
+    function testRequestDepositRefusesAVaultTheRegistryDoesNotKnow() public {
+        IAsyncVault vault = _unknownVault();
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(vault), USDC_AMOUNT_1);
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        s.vaultRouter.requestDeposit(vault, USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+        vm.stopPrank();
+    }
+
+    function testDepositRefusesAVaultTheRegistryDoesNotKnow() public {
+        IAsyncVault vault = _unknownVault();
+
+        vm.startPrank(INVESTOR_A);
+        s.usdc.approve(address(s.vaultRouter), USDC_AMOUNT_1);
+        vm.expectRevert(ISpokeRegistry.UnknownVault.selector);
+        s.vaultRouter.deposit(vault, USDC_AMOUNT_1, INVESTOR_A, INVESTOR_A);
+        vm.stopPrank();
+    }
+
+    /// @dev Deployed by the factory but never linked by the hub, so the registry has no record of it.
+    function _unknownVault() internal returns (IAsyncVault vault) {
+        vault = IAsyncVault(
+            payable(s.vaultFactory
+                .deploy(POOL_A, SC_1, address(s.usdc), 0, abi.encode(_defaultPlugins(), uint64(9), uint256(0))))
+        );
+        assertEq(s.spokeRegistry.vaultDetails(address(vault)).asset, address(0), "the registry does not know it");
     }
 
     function _instantVault() internal returns (IAsyncVault vault) {

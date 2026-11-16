@@ -120,33 +120,37 @@ abstract contract ConservationProperties is BeforeAfter, Asserts {
 
     /// @dev ERC-7540 on a controller with a position to claim: `maxDeposit` and `maxMint` report exactly what
     ///      `claimableDepositRequest` and the ledger's shares hold, and `maxWithdraw` and `maxRedeem` the redeem
-    ///      side's. Where the share hook refuses the fill, the figure is what is still claimable, the refund alone or
-    ///      nothing, so at most the total. A healthy, unfrozen controller is never refused, so
-    ///      for it the figures are equal. Not asserted for a controller with nothing claimable: its figures are then
+    ///      side's, for a healthy, unfrozen controller. A frozen one is refused the refund and the fill, so every
+    ///      figure is zero. A lapsed one is refused the fill only, so `maxDeposit` and `maxRedeem`, which count only
+    ///      the fill, are zero, while `maxMint` and `maxWithdraw` are the refund, at most the total here and exact in
+    ///      `vault_lapsedClaimsWhatMaxOffers`. On a vault without its manager role the figures are only bounded: the
+    ///      views do not read the role. Not asserted for a controller with nothing claimable: its figures are then
     ///      the instant lane's capacity.
     function property_maxMatchesClaimable() public {
         for (uint8 v; v < vaults.length; v++) {
             IAsyncVault vault = vaults[v];
             for (uint256 a; a < actors.length; a++) {
                 address actor = actors[a];
-                bool open = !frozen[actor] && _claimOpen(vault, actor);
+                Gate gate = _gate(vault, actor);
                 uint256 shares = vault.claimableMint(actor);
                 if (shares != 0) {
-                    _matches(vault.maxMint(actor), shares, open, "maxMint != the claimable shares");
+                    _matches(vault.maxMint(actor), shares, gate, true, "maxMint != the claimable shares");
                     _matches(
                         vault.maxDeposit(actor),
                         vault.claimableDepositRequest(0, actor),
-                        open,
+                        gate,
+                        false,
                         "maxDeposit != claimableDepositRequest"
                     );
                 }
                 uint256 assets = vault.claimableWithdraw(actor);
                 if (assets != 0) {
-                    _matches(vault.maxWithdraw(actor), assets, open, "maxWithdraw != the claimable assets");
+                    _matches(vault.maxWithdraw(actor), assets, gate, true, "maxWithdraw != the claimable assets");
                     _matches(
                         vault.maxRedeem(actor),
                         vault.claimableRedeemRequest(0, actor),
-                        open,
+                        gate,
+                        false,
                         "maxRedeem != claimableRedeemRequest"
                     );
                 }
@@ -154,8 +158,23 @@ abstract contract ConservationProperties is BeforeAfter, Asserts {
         }
     }
 
-    function _matches(uint256 max, uint256 claimable, bool open, string memory reason) internal {
-        if (open) eq(max, claimable, reason);
+    enum Gate {
+        Open,
+        Frozen,
+        Lapsed,
+        Retired
+    }
+
+    function _gate(IAsyncVault vault, address actor) internal view returns (Gate) {
+        if (frozen[actor]) return Gate.Frozen;
+        if (vaultRevoked[address(vault)]) return Gate.Retired;
+        return _isMember(actor) ? Gate.Open : Gate.Lapsed;
+    }
+
+    /// @dev `takesRefund`: the figure counts the refund as well as the fill (`maxMint`, `maxWithdraw`).
+    function _matches(uint256 max, uint256 claimable, Gate gate, bool takesRefund, string memory reason) internal {
+        if (gate == Gate.Open) eq(max, claimable, reason);
+        else if (gate == Gate.Frozen || (gate == Gate.Lapsed && !takesRefund)) eq(max, 0, reason);
         else t(max <= claimable, reason);
     }
 

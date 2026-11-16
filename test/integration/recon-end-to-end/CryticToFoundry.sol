@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {TargetFunctions} from "./TargetFunctions.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {d18} from "../../../src/misc/types/D18.sol";
 import {IAuth} from "../../../src/misc/interfaces/IAuth.sol";
@@ -12,96 +12,13 @@ import {IReserveInstantPolicy} from "../../../src/vaults/policies/interfaces/IVa
 import {IBasinLiquidityRoute} from "../../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {IVaultLiquidityRoute} from "../../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 
-import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/console.sol";
 
 import {IShareTokenRegistrar} from "../../../src/token/interfaces/IShareTokenRegistrar.sol";
 
-/// @notice The Foundry entrypoint of the suite: every handler, the property check and the reproducers.
-/// @dev    A failed check inside a handler is recorded rather than reverted, because Foundry discards a
-///         reverting handler call (`fail_on_revert = false`) together with whatever it found; `assertProperties`
-///         then asserts nothing was recorded. Echidna and Medusa run the same handlers through
-///         `CryticE2ETester`, where a failed check is an `assert(false)`. The stateful invariant itself lives in
-///         `StatefulInvariant`, so the reachability contracts that inherit this one do not each rerun it.
-contract CryticToFoundry is Test, TargetFunctions {
-    string[] internal failures;
-
-    function setUp() public {
-        setup();
-        vm.deal(address(this), 100 ether);
-
-        targetContract(address(this));
-        targetSelector(FuzzSelector({addr: address(this), selectors: _handlers()}));
-    }
-
-    /// @dev Every property; the stateful invariant checks it after every call the profile checks.
-    function assertProperties() public {
-        property_sum_of_balances();
-        property_shareTokenSupplyConsistency();
-        property_shareTokenCountedInSupply();
-        property_system_addresses_never_receive_share_tokens();
-        property_everyAssetIsAccountedFor();
-        property_escrowBalanceMatchesHoldingTotal();
-        property_basinDebtIsBooked();
-        property_hubHoldingMatchesEscrowAccounted();
-        property_escrowReservedSumConsistency();
-        property_accounting_books_balance();
-        property_accountTotalsFitInt128();
-        property_accounting_and_holdings_soundness();
-        property_holdingZeroAmountHasZeroValue();
-        property_deficitCountMatchesHoldings();
-        property_shareQueueCommutativity();
-        property_deltaCheck();
-        property_nonceMonotonicity();
-        property_assetQueueCounterConsistency();
-        property_assetCounterBounds();
-        property_authorizationBypass();
-        property_authorizationLevel();
-        property_authorizationChange();
-        property_sum_of_shares_received();
-        property_sum_of_assets_received();
-        property_cancelled_and_processed_deposits_soundness();
-        property_cancelled_and_processed_redemptions_soundness();
-        property_actor_pending_and_queued_deposits();
-        property_actor_pending_and_queued_redemptions();
-        property_orderBookMatchesBuckets();
-        property_pendingDepositsStayReservedPerRequest();
-        property_pendingTotalsMatchTheRequests();
-        property_navPoolSumsTheNetworks();
-        property_poolBIsUntouched();
-        property_poolDIsUntouched();
-        property_poolDIsConsistent();
-        property_viewsNeverRevert();
-        property_sum_of_possible_account_balances_leq_escrow();
-        property_oracleVerdict();
-        property_invalidPriceClosesInstantLane();
-        property_vaultIdentityAndInterfaces();
-        property_conversionsAreConsistent();
-        property_previewsRoundAgainstTheCaller();
-        property_noDrawWithoutConsent();
-        property_maxViewsAnswerEveryone();
-        property_maxRedeemIsRedeemable();
-        property_noValueStrandedInEscrow();
-        property_foldedNeverExceedsSettled();
-        property_maxMatchesClaimable();
-        property_hubNonceMatchesSpoke();
-        property_maxViewsAreExecutable();
-        property_maxIsZeroWhenTheLaneIsShut();
-        property_previewsFollowTheLane();
-        property_extremeAmountsAreDefined();
-        property_shareTokenIdentity();
-        property_claimableMatchesOwedLessClaimed();
-        property_actorClaimableMatchesOwedLessClaimed();
-        property_actorGhostsSumToVaultGhosts();
-        property_shareCustodyEquality();
-        property_feeRecipientReceivedTheQuotedFees();
-        _assertNoFailures();
-    }
-
-    function afterInvariant() external view {
-        _logStats();
-    }
-
+/// @notice The suite's reproducers and non-vacuity checks: each pins a sequence a campaign found, or drives a flow once
+///         and asserts it went through.
+contract CryticToFoundry is FoundryHarness {
     //----------------------------------------------------------------------------------------------
     // Non-vacuity
     //----------------------------------------------------------------------------------------------
@@ -137,6 +54,8 @@ contract CryticToFoundry is Test, TargetFunctions {
         // An evicted-but-unsettled per-period position on an async-only vault still needs a fold once it settles
         flow_evictedNeedsFoldRequest(2, 3);
         assertGt(ok["flow_evictedNeedsFoldRequest"], 0, "unreachable: flow_evictedNeedsFoldRequest");
+        flow_giftIntoFullHorizon(0, 2_000 * ONE_ASSET, 1);
+        assertGt(ok["flow_giftIntoFullHorizon"], 0, "unreachable: flow_giftIntoFullHorizon");
         _assertNoFailures();
         // flow_evictedNeedsFoldRequest warps past several windows; re-notify so later handlers see a fresh price
         oracle_refresh();
@@ -177,8 +96,8 @@ contract CryticToFoundry is Test, TargetFunctions {
         assertGt(ok["hub_installPolicy"], 0, "unreachable: hub_installPolicy");
         assertGt(ok["hub_lapseMember"], 0, "unreachable: hub_lapseMember");
         assertGt(ok["hub_setSponsors"], 0, "unreachable: hub_setSponsors");
-        oracle_pauseDirect(0);
         oracle_pauseDirect(1);
+        oracle_pauseDirect(2);
 
         string[8] memory composed = [
             "flow_routeExit",
@@ -193,6 +112,10 @@ contract CryticToFoundry is Test, TargetFunctions {
         for (uint256 i; i < composed.length; i++) {
             assertGt(ok[bytes32(bytes(composed[i]))], 0, string.concat("unreachable: ", composed[i]));
         }
+        // Last: each leaves a request pending, which the instant flows above need absent
+        vault_instantWhilePending(1, false, 50 * ONE_ASSET, true);
+        vault_instantWhilePending(1, false, 50 * ONE_SHARE, false);
+        assertGt(ok["vault_instantWhilePending"], 1, "unreachable: vault_instantWhilePending");
     }
 
     /// @dev The four vault paths no other handler reached, each driven once with its check: a duplicated route refused
@@ -224,6 +147,13 @@ contract CryticToFoundry is Test, TargetFunctions {
         request_paidFromSubsidy(1, 100 * ONE_ASSET, 0, false);
         assertEq(ok["request_paidFromSubsidy"], 2, "unreachable: request_paidFromSubsidy");
         assertEq(address(refundEscrowFactory.get(poolE)).balance, 1e15, "the subsidy was not kept whole");
+        subsidy_withdraw(4e14, false, false);
+        subsidy_withdraw(1e14, false, true);
+        subsidy_withdraw(0, true, false);
+        subsidy_withdraw(0, true, true);
+        assertEq(ok["subsidy_withdraw"], 2, "unreachable: subsidy_withdraw");
+        assertEq(reverted["subsidy_withdraw"], 2, "a withdrawal past the subsidy went through");
+        assertEq(address(refundEscrowFactory.get(poolE)).balance, 5e14, "the subsidy did not fall by the withdrawals");
 
         vault_requestDeposit(0, 0, 0, 1_000 * ONE_ASSET);
         hub_fulfill(0, 0, true);
@@ -325,7 +255,7 @@ contract CryticToFoundry is Test, TargetFunctions {
                 abi.encode(MALLORY, 9000, 9000, true, false, false, type(uint128).max)
             ),
             abi.encode(IVaultLiquidityRoute.ConfigKind.Consent, victim, abi.encode(address(vaultD), true)),
-            abi.encode(victim, type(uint128).max)
+            abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, victim, abi.encode(type(uint128).max))
         ];
         address[3] memory targets = [address(reserveInstantPolicy), address(vaultRoute), address(basinRoute)];
         bytes4[3] memory errors = [
@@ -942,6 +872,128 @@ contract CryticToFoundry is Test, TargetFunctions {
         _assertNoFailures();
     }
 
+    /// @dev The Recon fuzzer's falsification of `vault_lapsedClaimsWhatMaxOffers`: a member of a vault whose manager role
+    ///      was withdrawn is not a lapsed controller, and its claim reverts `NotManager` whatever `maxMint` offers.
+    function testReconRevokedVaultMemberIsNotLapsedRepro() public {
+        router_batch(7675546344561640852847771867763, 13787);
+        oracle_stale(5476);
+        vault_unlinkedRefusesRequests(16139, 16596, 2501);
+        vault_operatorRequests(
+            730520620580653610550,
+            23843373045829516110217201813215534472963448911466581952090,
+            1700044479146335800870493563879384992160740370615,
+            2782320363330835733167814099421002378130954992,
+            1285,
+            true
+        );
+        vault_requestDeposit(
+            12470874997086982711253725892772904235171884151175896618842673864865,
+            73118131097852653027027798670065451356880398734,
+            3767890086231611,
+            94176783847203064828567135564184024
+        );
+        flow_deposit(17182, 139680, 211240, 2565);
+        flow_conserved(
+            9464407584826,
+            6731762805946312560202102803262227024189908182580320908608611368,
+            1189524127463560153620921438,
+            59,
+            true
+        );
+        flow_sharedProRataAcrossPrice(
+            547336268553904624305639317421848584615279956104209362037,
+            3772841899782892544379227796538703334191614,
+            368514164880572866310,
+            32836510269571417302927355685851223042352542643430605603521010128491,
+            true
+        );
+        flow_deposit(
+            138438683133907019017928525318314166381100889952390559587061,
+            1630962278440163793472683182063829732,
+            21829874293225902350839297754950621067967434329206109390899,
+            115792089237316195423570985008687907853269984665640564039457584007913129639933
+        );
+        hub_fulfill(199244, 296396, true);
+        flow_redeem(
+            1509, 1132476918124461157595093689020939560320274, 262844, 276432912539629852785243695152360641070238830328
+        );
+        hub_freeze(37578519713524958154399071225834033844117940579176114);
+        flow_conservedAcrossPrice(
+            587362510730829,
+            181112428555040415307757996342690530588440898833292777671841781158812,
+            30515295599458818248251844070640070017849568845757631772660679696627882704673,
+            37919869176896688326586133817764207771587,
+            false,
+            1899383349171418144310
+        );
+        oracle_skew(5082188539431943541740384684301297743013756537089887, true);
+        flow_redeem(393, 86471693836, 79652870866114054170221, 5580158247735972302353417825515375716598228442);
+        flow_redeem(
+            2125461701165357667463819823,
+            115792089237316195423570985008687907853269984665640564039457584007913129639932,
+            29755260674960306557203194457194054598762001770752002357,
+            182499883599352858242346908563920978350539003529
+        );
+        flow_sharedWindow(116672210857147489, 291878140595962170276764070861276144670054128996253243263, false);
+        flow_cancel(
+            2724373480547208775463403621510402811911105318231649409438915250342,
+            346458201504052750643515955058853583876071935668344616344037666,
+            20789143090841,
+            23369028095414123106832765455007421561305719628564127745295685932267456,
+            true
+        );
+        flow_deposit(
+            3,
+            569086393216227237607220,
+            1674878857546267063128902574292183058320875113718269252294888611446415239699,
+            476495008140155007818574708886987740276004602598516
+        );
+        flow_sharedWindow(601732411718105912, 1396964790737195931742003849104638427905105898827, true);
+        flow_redeem(
+            2646306415979872563513759154473530179154248335,
+            663143119543511349122865306055181889377508509,
+            947880899221,
+            296581266054504548
+        );
+        flow_redeem(
+            6005615716300798174864755499482530854699844504999751658497710781,
+            70476349106082632078451194,
+            406430306340647856600163282057011667388317737446,
+            2458987918505401935550255332283875131132
+        );
+        hub_setVaultManager(1680963136941, false);
+        hub_updateSharePrice(354552337101877828301095331829357, 0);
+        vault_lapsedClaimsWhatMaxOffers(
+            168063330491280005200352793426045916395996798426050027322046904937863698, 0, true
+        );
+        _assertNoFailures();
+        assertProperties();
+    }
+
+    /// @dev An instant redemption to a receiver whose membership lapsed is refused: the batch carries the receiver's
+    ///      `Payout` check as well as the owner's `Exit`.
+    function testAnInstantRedeemRefusesALapsedReceiver() public {
+        hub_lapseMember(158648334697, 68074283177600337982384256, false);
+        flow_deposit(
+            16169602534758250109463841266464795752215887107287390,
+            64195,
+            6759902001068394777374613401933665290608954249909953226,
+            4376629613589945583004392452263997751334905026717704126
+        );
+        flow_manyWindows(
+            1500488416081185163245933155638843906653594877506656196599, 15658746834799354469321714771471, 0, false
+        );
+        vault_instantTradeFor(
+            494295925761190076814959879,
+            316690043697236827016440211843184252650381545148967205261,
+            true,
+            115792089237316195423570985008687907853269984665640564039457584007913129639933,
+            13
+        );
+        _assertNoFailures();
+        assertProperties();
+    }
+
     /// @dev The first reproducer's controller, lapsed with a refund: claiming exactly what `maxMint` offers goes
     ///      through, and every property still holds after it.
     function testALapsedControllerClaimsWhatMaxOffers() public {
@@ -956,6 +1008,32 @@ contract CryticToFoundry is Test, TargetFunctions {
         _assertNoFailures();
         assertProperties();
         assertTrue(ok["vault_lapsedClaimsWhatMaxOffers"] != 0, "the claim never ran");
+    }
+
+    /// @dev A lapsed controller holding a filled redemption and a cancelled deposit's refund is offered the refund alone
+    ///      by `maxWithdraw`, and claims exactly that: an offer of zero, or of the fill as well, fails the claim.
+    function testALapsedControllerWithdrawsTheRefundAlone() public {
+        address actor = actors[0];
+        assertTrue(_depositCycle(actor, 0, 2_000 * ONE_ASSET, 1), "the actor holds no shares");
+        (, uint256 depositId) = _requestDeposit(actor, actor, 0, 500 * ONE_ASSET);
+        (, uint256 redeemId) = _requestRedeem(actor, actor, 0, shareA.balanceOf(actor) / 2);
+        Req memory deposit = Req(0, depositId, true);
+        assertTrue(_flushQueued(deposit), "the deposit was not flushed");
+        assertTrue(_cancel(deposit, _outstanding(deposit)), "the deposit was not cancelled");
+        assertTrue(_settle(Req(0, redeemId, false), 1), "the redemption was not filled");
+
+        hub_lapseMember(0, 0, false);
+        vm.warp(block.timestamp + 1);
+        uint256 claimable = vaults[0].claimableWithdraw(actor);
+        uint256 max = vaults[0].maxWithdraw(actor);
+        assertGt(max, 0, "no refund was offered");
+        assertLt(max, claimable, "the refused fill was offered");
+
+        vault_lapsedClaimsWhatMaxOffers(0, 0, false);
+        assertEq(vaults[0].claimableWithdraw(actor), claimable - max, "the claim did not take exactly the refund");
+        assertGt(ok["vault_lapsedClaimsWhatMaxOffers"], 0, "the claim never ran");
+        _assertNoFailures();
+        assertProperties();
     }
 
     /// @dev The Recon fuzzer's falsification of `property_maxMatchesClaimable`: a lapsed controller with a fill and a refund has `maxMint` of the refund alone.
@@ -993,6 +1071,29 @@ contract CryticToFoundry is Test, TargetFunctions {
         vm.roll(block.number + 0);
         property_maxMatchesClaimable();
         _assertNoFailures();
+    }
+
+    /// @dev A deposit request pending on the basin vault keeps the two-argument `deposit` off the instant lane.
+    function testAPendingRequestKeepsTheBasinInstantLaneShut() public {
+        vault_instantWhilePending(1733629487047935039119802682805766485294334, true, 501267205352245761454, true);
+        assertEq(ok["vault_instantWhilePending"], 1, "the instant call never ran");
+        _assertNoFailures();
+    }
+
+    /// @dev The Foundry campaign's sequence for `vault_spenderRequestRedeem`: a spender of the owner's allowance, not
+    ///      its operator, is refused a redemption for the owner on a vault with both lanes.
+    function testReconSpenderCannotRequestForTheOwnerRepro() public {
+        hub_lapseMember(100957, 1486846619345030382211599967113087562319513596855942321, false);
+        oracle_stale(616852763459594341424692153359936921199574846059115840237170536);
+        oracle_refresh();
+        hub_setFee(56792, true);
+        vault_instantDeposit(84872, true, 247496, true);
+        hub_installPolicy();
+        hub_setSponsors(840411394288649234725666, 47, true);
+        oracle_setPaused(117656);
+        vault_spenderRequestRedeem(1458995173, 332472, 206332, 522186);
+        _assertNoFailures();
+        assertEq(reverted["vault_spenderRequestRedeem"], 1, "the spender's request never ran");
     }
 
     /// @dev The Recon campaign's falsification of `vault_maxExecutes` (a reserve, then two calls at the maximum).
@@ -1070,62 +1171,6 @@ contract CryticToFoundry is Test, TargetFunctions {
         assertEq(ok["vault_requestRedeem"], 2, "both redemptions joined the window");
         assertEq(ok["hub_fulfill"], 1, "the window was part-filled");
         assertProperties();
-    }
-
-    //----------------------------------------------------------------------------------------------
-    // Assertions
-    //----------------------------------------------------------------------------------------------
-
-    function gt(uint256 a, uint256 b, string memory reason) internal override {
-        if (!(a > b)) _fail(reason, a, b);
-    }
-
-    function gte(uint256 a, uint256 b, string memory reason) internal override {
-        if (!(a >= b)) _fail(reason, a, b);
-    }
-
-    function lt(uint256 a, uint256 b, string memory reason) internal override {
-        if (!(a < b)) _fail(reason, a, b);
-    }
-
-    function lte(uint256 a, uint256 b, string memory reason) internal override {
-        if (!(a <= b)) _fail(reason, a, b);
-    }
-
-    function eq(uint256 a, uint256 b, string memory reason) internal override {
-        if (a != b) _fail(reason, a, b);
-    }
-
-    function t(bool b, string memory reason) internal override {
-        if (!b) _fail(reason, 0, 0);
-    }
-
-    function between(uint256 value, uint256 low, uint256 high) internal pure override returns (uint256) {
-        if (value >= low && value <= high) return value;
-        return low + (value % (high - low + 1));
-    }
-
-    function between(int256 value, int256 low, int256 high) internal pure override returns (int256) {
-        if (value >= low && value <= high) return value;
-        int256 range = high - low + 1;
-        int256 clamped = (value - low) % range;
-        return low + (clamped < 0 ? clamped + range : clamped);
-    }
-
-    function precondition(bool p) internal pure override {
-        vm.assume(p);
-    }
-
-    function _fail(string memory reason, uint256 a, uint256 b) internal {
-        failures.push(string(abi.encodePacked(reason, " (", vm.toString(a), ", ", vm.toString(b), ")")));
-    }
-
-    function _failureCount() internal view override returns (uint256) {
-        return failures.length;
-    }
-
-    function _assertNoFailures() internal view {
-        if (failures.length != 0) revert(failures[0]);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -1249,9 +1294,6 @@ contract CryticToFoundry is Test, TargetFunctions {
     // Internal
     //----------------------------------------------------------------------------------------------
 
-    /// @dev Every handler once, then the lifecycle and claim handlers again: Foundry picks uniformly among
-    ///      the listed selectors, so a repeat weights the pick. A claim needs a request, a settlement and
-    ///      a claim by the same controller to line up, which a uniform pick over 48 handlers rarely does.
     /// @dev Under the hub policy a pause waits for its authorization to age. That wait must not sit between the views
     ///      the round trip compares: a membership lapsing within the hour moves them. Found by the Recon campaign.
     function testPauseRoundTripSurvivesAMembershipLapsingDuringTheWait() public {
@@ -1301,10 +1343,6 @@ contract CryticToFoundry is Test, TargetFunctions {
     /// @dev Random sequences of the handlers that change what a conserved cycle depends on (memberships, prices, fees,
     ///      time, freezes, the hub policy, other flows), then conserved cycles on every vault: a failed check anywhere in
     ///      a sequence fails the run. Found the lapsed-membership failure of the campaign in 42 runs without its guard.
-    function _fuzzW(uint256 seed, uint256 j) internal pure returns (uint256) {
-        return uint256(keccak256(abi.encode(seed, j)));
-    }
-
     function _fuzzStep(uint256 seed) internal {
         uint256 k = seed % 28;
         uint256 a = _fuzzW(seed, 1);
@@ -1383,206 +1421,6 @@ contract CryticToFoundry is Test, TargetFunctions {
         assertEq(failures.length, 0);
     }
 
-    function _handlers() internal pure returns (bytes4[] memory selectors) {
-        bytes4[84] memory once = [
-            this.hub_lapseMember.selector,
-            this.hub_setSponsors.selector,
-            this.flow_manyWindows.selector,
-            this.hub_installPolicy.selector,
-            this.router_cycle.selector,
-            this.hub_setVaultLink.selector,
-            this.hub_setVaultManager.selector,
-            this.escrow_coverAndClaim.selector,
-            this.flow_routeExit.selector,
-            this.flow_basinDrawAndRepay.selector,
-            this.route_pushClaim.selector,
-            this.hub_setObserver.selector,
-            this.oracle_pauseDirect.selector,
-            this.hub_setExtraGas.selector,
-            this.router_deposit.selector,
-            this.router_batch.selector,
-            this.vault_requestDeposit.selector,
-            this.vault_requestRedeem.selector,
-            this.vault_transferRequest.selector,
-            this.vault_flush.selector,
-            this.vault_fold.selector,
-            this.vault_claimDeposit.selector,
-            this.vault_claimRedeem.selector,
-            this.vault_claimMax.selector,
-            this.vault_instantDeposit.selector,
-            this.vault_instantRedeem.selector,
-            this.vault_instantRoundTrip.selector,
-            this.vault_previewIsTheClaim.selector,
-            this.policy_configure.selector,
-            this.policy_allow.selector,
-            this.route_consent.selector,
-            this.route_setRoutes.selector,
-            this.vault_conversionsIgnoreTheCaller.selector,
-            this.vault_maxExecutes.selector,
-            this.vault_maxIgnoresBalance.selector,
-            this.vault_requestIdsAreTheirs.selector,
-            this.vault_requestRedeemBeyondBalance.selector,
-            this.vault_strangerCannotClaimFor.selector,
-            this.vault_strangerCannotRequestFor.selector,
-            this.vault_setOperator.selector,
-            this.vault_operatorClaim.selector,
-            this.flow_deposit.selector,
-            this.flow_redeem.selector,
-            this.flow_cancel.selector,
-            this.flow_sharedWindow.selector,
-            this.hub_fulfill.selector,
-            this.hub_cancel.selector,
-            this.hub_setFee.selector,
-            this.poolC_updateSharePrice.selector,
-            this.poolC_configure.selector,
-            this.vault_foldRequest.selector,
-            this.hub_updateSharePrice.selector,
-            this.hub_updateHoldingValue.selector,
-            this.hub_warp.selector,
-            this.hub_updateJournal.selector,
-            this.hub_freeze.selector,
-            this.hub_unfreeze.selector,
-            this.hub_updateMember.selector,
-            this.hub_updateSpokeManager.selector,
-            this.oracle_setPaused.selector,
-            this.oracle_stale.selector,
-            this.oracle_skew.selector,
-            this.oracle_refresh.selector,
-            this.oracle_pauseRoundTrip.selector,
-            this.balanceSheet_deposit.selector,
-            this.balanceSheet_noteDeposit.selector,
-            this.balanceSheet_withdraw.selector,
-            this.balanceSheet_reserve.selector,
-            this.balanceSheet_unreserve.selector,
-            this.balanceSheet_withdrawReserved.selector,
-            this.bs_withdrawVaultReserved.selector,
-            this.balanceSheet_issue.selector,
-            this.balanceSheet_revoke.selector,
-            this.balanceSheet_withdrawShares.selector,
-            this.balanceSheet_submitQueuedAssets.selector,
-            this.balanceSheet_submitQueuedShares.selector,
-            this.bsm_investInUnderlying.selector,
-            this.token_transfer.selector,
-            this.isolation_dManagerCall.selector,
-            this.isolation_aManagerCall.selector,
-            this.isolation_hubCross.selector,
-            this.isolation_settleCross.selector,
-            this.isolation_linkCross.selector,
-            this.isolation_spokeCross.selector
-        ];
-        bytes4[10] memory rest = [
-            this.token_transferFrom.selector,
-            this.balanceSheet_submitLiability.selector,
-            this.bsm_repayBasin.selector,
-            this.basin_advertise.selector,
-            this.doomsday_accountValue.selector,
-            this.exit_everyoneCanLeave.selector,
-            this.exit_afterPolicySwap.selector,
-            this.flow_foldClaimOrder.selector,
-            this.flow_flushTimingIndependence.selector,
-            this.stranger_call.selector
-        ];
-        bytes4[16] memory weighted = [
-            this.oracle_refresh.selector,
-            this.flow_deposit.selector,
-            this.flow_deposit.selector,
-            this.flow_redeem.selector,
-            this.flow_redeem.selector,
-            this.flow_redeem.selector,
-            this.flow_cancel.selector,
-            this.flow_sharedWindow.selector,
-            this.flow_sharedWindow.selector,
-            this.vault_claimRedeem.selector,
-            this.vault_claimMax.selector,
-            this.vault_fold.selector,
-            this.vault_instantRedeem.selector,
-            this.vault_instantRedeem.selector,
-            this.vault_instantRedeem.selector,
-            this.vault_instantDeposit.selector
-        ];
-        bytes4[5] memory conserved = [
-            this.flow_conserved.selector,
-            this.flow_conserved.selector,
-            this.flow_conservedAcrossPrice.selector,
-            this.flow_conservedAcrossPrice.selector,
-            this.vault_splitClaim.selector
-        ];
-        bytes4[9] memory assurance = [
-            this.vault_overMaxRefused.selector,
-            this.vault_instantTradeFor.selector,
-            this.vault_claimMaxConverted.selector,
-            this.vault_operatorRequests.selector,
-            this.vault_allowanceRequestRedeem.selector,
-            this.vault_operatorClaimsForOthers.selector,
-            this.vault_operatorCannotTrade.selector,
-            this.vault_donate.selector,
-            this.vault_extremeAmounts.selector
-        ];
-        bytes4[20] memory gaps = [
-            this.nav_updateAssets.selector,
-            this.nav_updateShares.selector,
-            this.vault_spenderRequestRedeem.selector,
-            this.vault_misfiledRefusesRequests.selector,
-            this.vault_rebatedTrade.selector,
-            this.donate_andRecover.selector,
-            this.route_hostileUnderlying.selector,
-            this.bridge_transferShares.selector,
-            this.hub_setShareTokenVault.selector,
-            this.gas_worstCaseClaim.selector,
-            this.atomic_refusedCallback.selector,
-            this.atomic_refusedCallback.selector,
-            this.route_setDuplicateRoute.selector,
-            this.vault_flushAnyKind.selector,
-            this.request_paidFromSubsidy.selector,
-            this.basin_repayUnbooked.selector,
-            this.vault_strangerCannotMoveRequest.selector,
-            this.vault_unlinkedRefusesRequests.selector,
-            this.flow_claimFoldsTheHorizon.selector,
-            this.vault_lapsedClaimsWhatMaxOffers.selector
-        ];
-        bytes4[4] memory multi = [
-            this.flow_manyRequests.selector,
-            this.flow_manyRequests.selector,
-            this.flow_manyRequestsAcrossPrice.selector,
-            this.flow_manyRequestsAcrossPrice.selector
-        ];
-        bytes4[4] memory prorata = [
-            this.flow_sharedProRata.selector,
-            this.flow_sharedProRata.selector,
-            this.flow_sharedProRataAcrossPrice.selector,
-            this.flow_sharedProRataAcrossPrice.selector
-        ];
-        selectors = new bytes4[](
-            once.length + rest.length + weighted.length + conserved.length + assurance.length + gaps.length
-                + multi.length + prorata.length
-        );
-        uint256 n;
-        for (uint256 i; i < gaps.length; i++) {
-            selectors[n++] = gaps[i];
-        }
-        for (uint256 i; i < multi.length; i++) {
-            selectors[n++] = multi[i];
-        }
-        for (uint256 i; i < prorata.length; i++) {
-            selectors[n++] = prorata[i];
-        }
-        for (uint256 i; i < assurance.length; i++) {
-            selectors[n++] = assurance[i];
-        }
-        for (uint256 i; i < once.length; i++) {
-            selectors[n++] = once[i];
-        }
-        for (uint256 i; i < rest.length; i++) {
-            selectors[n++] = rest[i];
-        }
-        for (uint256 i; i < weighted.length; i++) {
-            selectors[n++] = weighted[i];
-        }
-        for (uint256 i; i < conserved.length; i++) {
-            selectors[n++] = conserved[i];
-        }
-    }
-
     /// @dev A price of almost zero let `_hugeAssets` credit `uint128.max / 4` assets, which come back as pool C shares
     ///      at par and carried pool A's asset account past `int128.max`.
     function testHugeCreditsAtAPriceOfAlmostZeroKeepTheAccountsInRange() public {
@@ -1602,13 +1440,15 @@ contract CryticToFoundry is Test, TargetFunctions {
         flow_manyWindows(0, 0x55, 16, true);
         assertGe(ghost_deepestHorizon, 7, "the horizon never reached its overflow slot");
         assertGt(ok["flow_manyWindows"], 0, "unreachable: flow_manyWindows");
-        // A keeper folds what is left, each fold finding its window in the stored horizon
+        // A keeper folds what is left, each fold finding its window in the stored horizon, so the views stay put
+        uint256 claimable = vaults[LONG_VAULT].claimableMint(holder);
         for (uint256 w; w < lastWindowIds.length; w++) {
             if (lastWindowIds[w] == 0 || vaults[LONG_VAULT].contribution(lastWindowIds[w], holder).amount == 0) {
                 continue;
             }
             _foldOne(LONG_VAULT, lastWindowIds[w], holder);
         }
+        assertEq(vaults[LONG_VAULT].claimableMint(holder), claimable, "the stored horizon lost a window");
         uint256 held = shareA.balanceOf(holder);
         assertTrue(_claimAll(vaults[LONG_VAULT], holder, 0), "a horizon at rest was not claimable");
         assertGt(shareA.balanceOf(holder), held, "no shares reached the holder");
@@ -1692,10 +1532,69 @@ contract CryticToFoundry is Test, TargetFunctions {
         assertProperties();
     }
 
-    function _logStats() internal view {
-        console.log("action                           ok  reverted");
-        for (uint256 i; i < actionNames.length; i++) {
-            console.log(string(abi.encodePacked(actionNames[i])), ok[actionNames[i]], reverted[actionNames[i]]);
-        }
+    /// @dev At a billionth-of-par share price a whole balance buys more shares than `uint128` holds: the paused-oracle
+    ///      cycle deposits only what the OrderBook can fill, and completes.
+    function testAPausedCycleAtAnExtremeSharePrice() public {
+        hub_updateHoldingValue(0x12b32644fef4f51517, 1);
+        hub_updateSharePrice(0, 1);
+        oracle_pauseRoundTrip(0x1473f11b72f8aae4a50773ed2afd24, 0x065aae74318b37897b1b508d4042d2086a8a80fad3, 1);
+        assertEq(ok["async_onInvalidPrice"], 1, "unreachable: a paused-oracle cycle");
+        _assertNoFailures();
+    }
+
+    /// @dev The basin's line moved both ways, below what the vault owes included: the route never offers past it.
+    function testTheBasinLineMoves() public {
+        vault_instantDeposit(1, true, 1_000 * ONE_ASSET, false);
+        oracle_refresh();
+        assertTrue(_drawBasin(0, ONE_ASSET), "no basin draw");
+        basin_setLine(0, true);
+        basin_setLine(VENUE_FUNDS / 20, false);
+        basin_setLine(VENUE_FUNDS / 5, true);
+        assertEq(ok["basin_setLine"], 3, "unreachable: basin_setLine");
+        _assertNoFailures();
+        assertProperties();
+    }
+
+    /// @dev Under a hook that caps holdings and reports the room, an instant deposit of `maxDeposit` stays within it.
+    function testACappedHookScalesTheInstantDeposit() public {
+        hook_cappedInstantDeposit(0, false, 1);
+        hook_cappedInstantDeposit(1, true, 500 ether);
+        assertEq(ok["hook_cappedInstantDeposit"], 2, "unreachable: hook_cappedInstantDeposit");
+        _assertNoFailures();
+        assertProperties();
+    }
+
+    /// @dev The Recon campaign's falsification of `oracle_pauseRoundTrip`: an instant deposit at an extreme share price
+    ///      queues shares close to `uint128`, and the paused cycle's fill would issue past it.
+    function testReconPauseRoundTripRepro() public {
+        hub_updateHoldingValue(0xa4d62e081541325c4, 1);
+        hub_updateSharePrice(0x0, 1);
+        vault_instantDeposit(0xa511e37a465166cc, false, 0x264e73dbc28de53bf9cec6, false);
+        oracle_pauseRoundTrip(
+            0x199bf558849d0b0ca9be1424db10, 0x171aa205c9e2e8fd6dadded0cd31e2238c, 0x190b065323eb9276d5a5b12fc30b6a5a
+        );
+        _assertNoFailures();
+        assertEq(ok["async_onInvalidPrice"], 1, "the paused cycle did not run within the room left");
+    }
+
+    /// @dev A holder bridges through the router, alone and inside its multicall, and nothing stays on the router.
+    function testAHolderBridgesThroughTheRouter() public {
+        vault_instantDeposit(1, true, 1_000 * ONE_ASSET, false);
+        router_bridgeShares(1, 100 * ONE_SHARE, false);
+        router_bridgeShares(1, 100 * ONE_SHARE, true);
+        assertEq(ok["router_bridgeShares"], 2, "unreachable: router_bridgeShares");
+        _assertNoFailures();
+        assertProperties();
+    }
+
+    /// @dev A lapsed member cannot deposit to the router and bridge the shares as the router's own, on either lane.
+    function testANonMemberCannotBridgeThroughTheRouter() public {
+        hub_lapseMember(0, 0, false);
+        vm.warp(block.timestamp + 1);
+        router_nonMemberBridgeRefused(0, 100 * ONE_ASSET, false);
+        router_nonMemberBridgeRefused(0, 100 * ONE_ASSET, true);
+        _assertNoFailures();
+        assertEq(ok["router_nonMemberBridgeRefused"], 2, "unreachable: router_nonMemberBridgeRefused");
+        assertProperties();
     }
 }

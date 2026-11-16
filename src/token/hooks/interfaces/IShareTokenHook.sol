@@ -77,7 +77,7 @@ interface IShareTokenHook is ITransferHook, IRoleHook {
     /// @notice Manages share token and asset balances, including minting, burning, and escrow transfers
     function spoke() external view returns (ISpoke);
 
-    /// @notice Factory that maps pool IDs to escrow addresses
+    /// @notice Resolves an address to the pool whose escrow it is, the source of `isEscrow`
     function escrowProvider() external view returns (IEscrowProvider);
 
     /// @notice Whether an address has manager permissions for a specific share token

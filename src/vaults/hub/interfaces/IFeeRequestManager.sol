@@ -20,6 +20,10 @@ enum FeeManagerAction {
 ///         asked about the original caller too, so only calls it would let that caller make instantly
 ///         pass. Out-of-policy calls go to the OrderBook directly, through the timelock.
 interface IFeeRequestManager is IManagerCallFromHub, IBatchedMulticall {
+    //----------------------------------------------------------------------------------------------
+    // Events
+    //----------------------------------------------------------------------------------------------
+
     event SetFee(PoolId indexed poolId, AssetId indexed assetId, uint16 feeBps);
 
     /// @notice `caller`, a manager of the pool, fulfilled a request taking `feeBps` of `fillAmount`, which leaves
@@ -35,16 +39,34 @@ interface IFeeRequestManager is IManagerCallFromHub, IBatchedMulticall {
         uint16 feeBps
     );
 
+    //----------------------------------------------------------------------------------------------
+    // Errors
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Only the Envoy may set a fee.
     error NotEnvoy();
+
+    /// @notice The caller is not a hub manager of the pool.
     error NotManager();
+
+    /// @notice A fee of 100% or more would leave nothing to convert.
     error FeeTooHigh();
+
+    /// @notice The pool's policy would not let the caller make this call instantly.
     error NotInPolicy();
+
+    /// @notice A `fromHub` payload names an action this contract does not handle.
     error UnknownAction();
+
+    /// @notice Setting a fee takes no native value.
     error UnexpectedValue();
+
+    /// @notice The pool has no holding for the asset, so the hub has no price to fill at.
     error HoldingNotInitialized();
 
-    /// @notice Percentage fee, in basis points, taken at fulfillment for a pool's asset lane.
-    function feeBps(PoolId poolId, AssetId assetId) external view returns (uint16);
+    //----------------------------------------------------------------------------------------------
+    // Manager actions
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Fulfill an order net of the per-asset fee, at the committed prices: issue shares on a
     ///         deposit (`isDeposit`), revoke shares on a redeem.
@@ -77,4 +99,11 @@ interface IFeeRequestManager is IManagerCallFromHub, IBatchedMulticall {
         uint128 extraGasLimit,
         address refund
     ) external payable;
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Percentage fee, in basis points, taken at fulfillment for a pool's asset lane.
+    function feeBps(PoolId poolId, AssetId assetId) external view returns (uint16);
 }

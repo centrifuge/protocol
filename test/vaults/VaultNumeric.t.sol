@@ -244,6 +244,39 @@ contract VaultNumericTest is Test {
         vm.mockCall(instantPolicy, abi.encodeWithSelector(IInstantPolicy.onInstantRedeem.selector), "");
     }
 
+    /// @dev The fuzzer's counterexample: an amount near `uint128.max` plus a coherent charge passes `uint128` in
+    ///      `previewMint`'s and `previewWithdraw`'s sums.
+    function testNoArithmeticPanicWhenTheChargeTakesAPreviewPastUint128() public {
+        testFuzzNoInstantEntryPointFailsWithAnArithmeticPanic(
+            3,
+            34,
+            type(uint128).max - 2,
+            type(uint128).max - 1,
+            type(uint128).max - 3,
+            0,
+            7155716128995413460872246058622197
+        );
+    }
+
+    function testNoArithmeticPanicWhenARebateTakesTheEscrowLegPastUint128() public {
+        testFuzzNoInstantEntryPointFailsWithAnArithmeticPanic(
+            18, 18, 1e18, 1e18, type(uint128).max - 1, type(uint128).max, -2
+        );
+    }
+
+    /// @dev A rebate of `int128.min` has no `int128` negation.
+    function testNoArithmeticPanicOnTheLargestRebate() public {
+        testFuzzNoInstantEntryPointFailsWithAnArithmeticPanic(
+            41,
+            7,
+            17318995302373300407,
+            18478195937953785,
+            251860514589204680341663370273316442161,
+            2011083753051,
+            type(int128).min
+        );
+    }
+
     /// @dev Every instant entry point, view and preview, over the whole range of the inputs that feed their
     ///      arithmetic: any pair of decimals, a price anywhere in the `uint128` range, any amount and capacity, and a
     ///      fee that is a charge or a rebate of any size. None may fail with an arithmetic panic.
@@ -310,6 +343,18 @@ contract VaultNumericTest is Test {
         vm.store(address(v), bytes32(uint256(base) + 2), bytes32(uint256(refundShares) | uint256(refundAssets) << 128));
     }
 
+    function testTheTwoArgumentRoutingSaturatesTheClaimableSum() public {
+        _deploy(6, 18);
+        _prices(d18(1e18), d18(1e18));
+        _setLedger(controller, type(uint128).max, type(uint128).max, 0, 0, 1, 0);
+
+        vm.prank(controller);
+        (bool success, bytes memory ret) =
+            address(v).call(abi.encodeWithSignature("deposit(uint256,address)", uint256(1), receiver));
+        assertFalse(!success && _isArithmeticPanic(ret), "the 2-argument deposit failed with an arithmetic panic");
+        assertTrue(success, "routed to the claim");
+    }
+
     /// @dev A controller whose ledger sits anywhere in its range, up to the top of every counter at once: the views
     ///      answer, and each claim either pays or is refused by name, with no overflow or underflow in the pro-rata
     ///      arithmetic, the refund-first split or the counters it takes down. A claim that goes through takes exactly
@@ -357,6 +402,136 @@ contract VaultNumericTest is Test {
         vm.prank(controller);
         (bool success, bytes memory ret) = address(v).call(claims[which % 4]);
         assertFalse(!success && _isArithmeticPanic(ret), "a claim failed with an arithmetic panic");
+    }
+
+    uint128 constant REQUESTED = 1e12;
+
+    struct DeferredFold {
+        uint64[6] headroom;
+        uint64 depositFill;
+        uint64 depositShares;
+        uint64 depositCancel;
+        uint64 redeemFill;
+        uint64 redeemAssets;
+        uint64 redeemCancel;
+        uint128 amount;
+        uint8 which;
+    }
+
+    function _room(uint64 headroom) internal pure returns (uint128) {
+        return type(uint128).max - uint128(bound(headroom, 0, 2 * REQUESTED));
+    }
+
+    /// @dev Answers one deposit and one redeem request with a partial fill and a partial cancellation each.
+    function _settleBoth(DeferredFold memory p, uint96 depositId, uint96 redeemId) internal {
+        uint128 fill = uint128(bound(p.depositFill, 0, REQUESTED));
+        uint128 cancelled = uint128(bound(p.depositCancel, 0, REQUESTED - fill));
+        uint128 credit = uint128(bound(p.depositShares, 1, 2 * REQUESTED));
+
+        vm.startPrank(router);
+        if (fill != 0) {
+            IVaultDepositCallbacks(address(v)).approveDeposits(depositId, fill);
+            IVaultDepositCallbacks(address(v)).issueShares(depositId, credit);
+            IVaultDepositCallbacks(address(v)).fulfillDepositRequest(depositId, fill, credit);
+        }
+        if (cancelled != 0) IVaultDepositCallbacks(address(v)).cancelDeposit(depositId, cancelled, cancelled);
+
+        fill = uint128(bound(p.redeemFill, 0, REQUESTED));
+        cancelled = uint128(bound(p.redeemCancel, 0, REQUESTED - fill));
+        credit = uint128(bound(p.redeemAssets, 1, 2 * REQUESTED));
+        if (fill != 0) {
+            IVaultRedeemCallbacks(address(v)).revokeShares(redeemId, credit, fill);
+            IVaultRedeemCallbacks(address(v)).fulfillRedeemRequest(redeemId, credit, fill);
+        }
+        if (cancelled != 0) IVaultRedeemCallbacks(address(v)).cancelRedeem(redeemId, cancelled, cancelled);
+        vm.stopPrank();
+    }
+
+    function _assertNoViewPanics(uint128 amount) internal {
+        bytes[14] memory views = [
+            abi.encodeCall(v.maxDeposit, (controller)),
+            abi.encodeCall(v.maxMint, (controller)),
+            abi.encodeCall(v.maxWithdraw, (controller)),
+            abi.encodeCall(v.maxRedeem, (controller)),
+            abi.encodeCall(v.claimableMint, (controller)),
+            abi.encodeCall(v.claimableWithdraw, (controller)),
+            abi.encodeCall(v.claimableDepositRequest, (0, controller)),
+            abi.encodeCall(v.claimableRedeemRequest, (0, controller)),
+            abi.encodeCall(v.pendingDepositRequest, (0, controller)),
+            abi.encodeCall(v.pendingRedeemRequest, (0, controller)),
+            abi.encodeCall(v.previewDeposit, (amount)),
+            abi.encodeCall(v.previewMint, (amount)),
+            abi.encodeCall(v.previewWithdraw, (amount)),
+            abi.encodeCall(v.previewRedeem, (amount))
+        ];
+        for (uint256 i; i < views.length; i++) {
+            vm.prank(controller);
+            (bool success, bytes memory ret) = address(v).staticcall(views[i]);
+            assertFalse(!success && _isArithmeticPanic(ret), "a view failed with an arithmetic panic");
+        }
+    }
+
+    /// @dev The views add the horizon's unfolded slices to the ledger. With every counter near the top of its range
+    ///      and settled positions on both sides, a slice that does not fit is deferred by the settlement's fold and
+    ///      left out by the views alike, so neither the callbacks, the views nor a claim overflow.
+    function testFuzzNoEntryPointFailsWithAnArithmeticPanicBesideADeferredFold(DeferredFold memory p) public {
+        _deploy(6, 18);
+        _prices(d18(1e18), d18(1e18));
+
+        vm.startPrank(controller);
+        uint96 depositId = uint96(v.requestDeposit(REQUESTED, controller, controller));
+        uint96 redeemId = uint96(v.requestRedeem(REQUESTED, controller, controller));
+        vm.stopPrank();
+
+        _setLedger(
+            controller,
+            _room(p.headroom[0]),
+            _room(p.headroom[1]),
+            _room(p.headroom[2]),
+            _room(p.headroom[3]),
+            _room(p.headroom[4]),
+            _room(p.headroom[5])
+        );
+        _settleBoth(p, depositId, redeemId);
+        _assertNoViewPanics(p.amount);
+
+        bytes[4] memory claims = [
+            abi.encodeWithSignature("deposit(uint256,address,address)", p.amount, receiver, controller),
+            abi.encodeWithSignature("mint(uint256,address,address)", p.amount, receiver, controller),
+            abi.encodeWithSignature("withdraw(uint256,address,address)", p.amount, receiver, controller),
+            abi.encodeWithSignature("redeem(uint256,address,address)", p.amount, receiver, controller)
+        ];
+        vm.prank(controller);
+        (bool success, bytes memory ret) = address(v).call(claims[p.which % 4]);
+        assertFalse(!success && _isArithmeticPanic(ret), "a claim failed with an arithmetic panic");
+        _assertNoViewPanics(p.amount);
+    }
+
+    /// @dev A fill the ledger has no room for is not offered and stays pending; once a claim makes the room, it is.
+    function testADeferredFillIsLeftOutOfTheViewsUntilAClaimMakesRoom() public {
+        _deploy(6, 18);
+        _prices(d18(1e18), d18(1e18));
+        uint128 max = type(uint128).max;
+
+        vm.prank(controller);
+        uint96 localId = uint96(v.requestDeposit(1_000, controller, controller));
+        _setLedger(controller, max - 500, 1e30, 0, 0, 0, 0);
+
+        vm.startPrank(router);
+        IVaultDepositCallbacks(address(v)).approveDeposits(localId, 1_000);
+        IVaultDepositCallbacks(address(v)).issueShares(localId, 600);
+        IVaultDepositCallbacks(address(v)).fulfillDepositRequest(localId, 1_000, 600);
+        vm.stopPrank();
+
+        assertEq(v.claimableMint(controller), max - 500, "the fill does not fit, so it is not offered");
+        assertEq(v.maxMint(controller), max - 500);
+        assertEq(v.pendingDepositRequest(0, controller), 1_000, "and all of it still counts as pending");
+
+        vm.prank(controller);
+        v.mint(100, receiver, controller);
+
+        assertEq(v.claimableMint(controller), max, "the claim made room for the 600 shares");
+        assertEq(v.pendingDepositRequest(0, controller), 0);
     }
 
     /// @dev The conversions and the totals too: they take any amount and answer or refuse by name.

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {console} from "forge-std/console.sol";
 
 /// @dev Drives the order independence flows and the policy swap rescue with state they can act on and asserts they ran
 ///      to their checks, so a setup change that turns them into silent skips fails here, and a src mutation can be
 ///      shown to fail them.
-contract OrderIndependenceReachability is CryticToFoundry {
+contract OrderIndependenceReachability is FoundryHarness {
     function testOrder_foldClaimDeposit() public {
         _reachFoldClaim(true);
     }

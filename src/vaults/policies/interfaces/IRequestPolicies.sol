@@ -10,6 +10,7 @@ interface IPerInvestorPolicy is IRequestPolicy {}
 /// @notice A fresh bucket per request, unbatched, so the vault folds it as it settles and claimable events fire at
 ///         fulfillment.
 interface IPerRequestPolicy is IRequestPolicy {
+    /// @notice The policy was deployed, with whether its pending requests may change hands.
     event PerRequestConfigured(bool transfersEnabled);
 }
 
@@ -18,6 +19,7 @@ interface IPerRequestPolicy is IRequestPolicy {
 ///         on a vault with an instant lane the vault still requires the caller to act for the recipient or the
 ///         sender to be a sponsor.
 interface IPerPeriodPolicy is IRequestPolicy {
+    /// @notice The policy was deployed with its window, offset and per-side notices, in seconds.
     event PerPeriodConfigured(uint64 window, uint64 offset, uint64 depositNotice, uint64 redeemNotice);
 
     /// @notice The offset is not below the window length.

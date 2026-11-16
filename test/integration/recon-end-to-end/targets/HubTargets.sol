@@ -437,6 +437,33 @@ abstract contract HubTargets is BaseTargetFunctions, Properties {
             PricingLib.assetToShareAmount(address(shareA), address(usdc), 0, net, ppa, pps, MathLib.Rounding.Down) > 0;
     }
 
+    /// @dev The largest amount one deposit cycle can carry at the hub's prices with no `uint128` on its path overflowing:
+    ///      the fill's shares within the room the share token's supply and the share queue have left, and the amount
+    ///      within the asset queue, which the cycle books twice as a deposit and once as a withdrawal, and the escrow's
+    ///      total and reserved. The other counters on the path are bounded by these or never revert.
+    function _mostFillable() internal view returns (uint256 most) {
+        uint256 max = type(uint128).max;
+        (uint128 delta, bool isPositive,,) = snapshotQueue.queuedShares(poolA, scA);
+        uint256 shareRoom = max - shareA.totalSupply();
+        if (isPositive || delta == 0) shareRoom = MathLib.min(shareRoom, max - delta);
+
+        D18 ppa = hub.pricePoolPerAsset(poolA, scA, usdcId);
+        (D18 pps,) = shareClassManager.pricePoolPerShare(poolA, scA);
+        most = ppa.isZero()
+            ? max
+            : MathLib.mulDiv(
+                shareRoom,
+                10 ** USDC_DECIMALS * uint256(pps.raw()),
+                10 ** SHARE_DECIMALS * uint256(ppa.raw()),
+                MathLib.Rounding.Down
+            );
+
+        (uint128 deposits, uint128 withdrawals) = snapshotQueue.queuedAssets(poolA, scA, usdcId);
+        (uint128 total, uint128 reserved) = _escrow(poolA).holding(scA, address(usdc), 0);
+        most = MathLib.min(most, (max - deposits) / 2);
+        most = MathLib.min(most, max - MathLib.max(withdrawals, MathLib.max(total, reserved)));
+    }
+
     /// @dev A price in the band the pool usually trades in, one call in eight anywhere from a billionth of par up to
     ///      `wideHi`, and one in 64 zero, which the oracle passes on and the vault refuses. The USDC price tops out at a
     ///      thousand times par, so that the value of the assets, which every flow books in the accounts, cannot reach

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 import {console} from "forge-std/console.sol";
 
 /// @dev Drives the exit rescue with state it can act on and asserts it ran to its checks, so a setup change that
 ///      turns it into a silent skip fails here, and a src mutation can be shown to fail it.
-contract ExitReachability is CryticToFoundry {
+contract ExitReachability is FoundryHarness {
     uint256 internal worstGas;
     uint256 internal rescues;
     uint256 internal completedRescues;

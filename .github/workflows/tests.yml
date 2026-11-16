@@ -10,6 +10,11 @@ on:
     branches:
       - main
 
+# A push to a PR supersedes the run in progress, which would otherwise hold a runner for hours testing a stale head
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   FOUNDRY_PROFILE: ci
 
@@ -54,11 +59,16 @@ jobs:
         if: steps.inputs.outputs.changed == 'true'
         run: FOUNDRY_PROFILE=ir forge build
 
+      # Invariant suites that take over 5 minutes here are left out, since one suite runs on one thread and the
+      # slowest sets the job's length: the BucketLib ones (6 minutes to 3 hours) and StatefulInvariant (over an hour,
+      # its handlers and properties are fuzzed by the Recon campaigns). Run them locally with
+      # FOUNDRY_PROFILE=ci forge test --match-contract "$SLOW_INVARIANTS"
       - name: Run tests
         if: steps.inputs.outputs.changed == 'true'
-        run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol"
+        run: forge test --deny warnings --nmp "test/integration/{fork,spell}/**/*.sol" --nmc "$SLOW_INVARIANTS"
         env:
           FOUNDRY_PROFILE: ci
+          SLOW_INVARIANTS: "^(BucketLib|BucketHorizon|BucketLibExtreme)InvariantsTest$|^StatefulInvariant$"
 
   coverage:
     # Disabled: on the standard hosted runner every run since early July 2026 died mid-coverage with

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {D18, d18} from "../../src/misc/types/D18.sol";
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {IERC7575} from "../../src/misc/interfaces/IERC7575.sol";
+import {ReentrancyProtection} from "../../src/misc/ReentrancyProtection.sol";
 import {IERC7540Deposit, IERC7540Redeem, IERC7540Operator} from "../../src/misc/interfaces/IERC7540.sol";
 import {IERC8161DepositTransferable, IERC8161RedeemTransferable} from "../../src/misc/interfaces/IERC8161.sol";
 
@@ -1368,5 +1369,42 @@ contract VaultTest is Test {
         assertEq(v_.bucket(localId).queued, 0, "flushed on the way out");
         assertEq(v_.bucket(localId).total, 1_000e6, "but it is in the bucket");
         assertEq(v_.bucket(localId).owner, controller, "owned by its controller");
+    }
+
+    function testAHookCannotReenterARedeemRequest() public {
+        RequestReenteringHook hook = new RequestReenteringHook();
+        share.setHook(address(hook));
+        hook.arm(IAsyncVault(address(vault)));
+
+        vm.prank(controller);
+        vm.expectRevert(ReentrancyProtection.Reentrancy.selector);
+        IAsyncVault(address(vault)).requestRedeem(1_000e18, controller, controller);
+    }
+}
+
+/// @dev A share hook that re-enters the vault once, from inside the role check a redeem request makes.
+contract RequestReenteringHook {
+    IAsyncVault internal _vault;
+    bool internal _armed;
+
+    function arm(IAsyncVault vault_) external {
+        _vault = vault_;
+        _armed = true;
+    }
+
+    function onRoles(address, RoleCheck[] calldata) external returns (bytes4) {
+        if (_armed) {
+            _armed = false;
+            _vault.requestRedeem(1e18, address(this), address(this));
+        }
+        return IRoleHook.onRoles.selector;
+    }
+
+    function checkRoles(address, RoleCheck[] calldata) external pure returns (bool) {
+        return true;
+    }
+
+    function maxAllowed(address, RoleCheck[] calldata) external pure returns (uint256, uint256) {
+        return (type(uint256).max, type(uint256).max);
     }
 }

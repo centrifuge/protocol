@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 
 /// @dev Drives the share custody and instant-fee properties through states that exercise them and asserts they hold,
 ///      so a src mutation can be shown to fail each alone.
-contract CustodyReachability is CryticToFoundry {
+contract CustodyReachability is FoundryHarness {
     function _custody() internal {
         _assertNoFailures();
         property_shareCustodyEquality();

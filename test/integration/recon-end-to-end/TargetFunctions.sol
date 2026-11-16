@@ -16,6 +16,7 @@ import {ShareTokenTargets} from "./targets/ShareTokenTargets.sol";
 import {BalanceSheetTargets} from "./targets/BalanceSheetTargets.sol";
 import {ConservationTargets} from "./targets/ConservationTargets.sol";
 import {MultiRequestTargets} from "./targets/MultiRequestTargets.sol";
+import {StrictPolicyTargets} from "./targets/StrictPolicyTargets.sol";
 import {ExtremeAmountTargets} from "./targets/ExtremeAmountTargets.sol";
 import {PoolIsolationTargets} from "./targets/PoolIsolationTargets.sol";
 import {VaultAssuranceTargets} from "./targets/VaultAssuranceTargets.sol";
@@ -35,6 +36,7 @@ abstract contract TargetFunctions is
     BalanceSheetTargets,
     ShareTokenTargets,
     PoolIsolationTargets,
+    StrictPolicyTargets,
     DoomsdayTargets,
     ExitTargets,
     GasBoundTargets,

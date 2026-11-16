@@ -58,7 +58,10 @@ struct Cancellation {
 ///         (retryable) and it cannot change the order.
 /// @dev    Implements the {IHubRequestManager} (`request`) call surface without advertising ERC-165.
 interface IOrderBook is IManagerCallFromHub {
+    //----------------------------------------------------------------------------------------------
     // Events
+    //----------------------------------------------------------------------------------------------
+
     // The events index the pool, share class and asset. A request id is not indexed (three topics at most), but its
     // top 160 bits are the vault, so an indexer joins a vault's orders on the data field.
     event SetObserver(PoolId indexed poolId, address observer);
@@ -90,21 +93,47 @@ interface IOrderBook is IManagerCallFromHub {
         uint128 netAmount
     );
 
+    //----------------------------------------------------------------------------------------------
     // Errors
+    //----------------------------------------------------------------------------------------------
+
+    /// @notice Only the Envoy may call `fromHub`.
     error NotEnvoy();
+
+    /// @notice A fulfillment or cancellation of nothing, or a fill that converts to nothing.
     error ZeroAmount();
+
+    /// @notice A `fromHub` payload names an action this contract does not handle.
     error UnknownAction();
+
+    /// @notice Setting the observer takes no native value.
     error UnexpectedValue();
+
+    /// @notice A cancellation credits more than the amount it retires.
     error NetExceedsGross();
+
+    /// @notice The amount exceeds what is still outstanding on the order.
     error InsufficientOutstanding();
+
+    //----------------------------------------------------------------------------------------------
+    // Incoming requests
+    //----------------------------------------------------------------------------------------------
 
     /// @notice Handles a request forwarded from the Hub (spoke-initiated). See {IHubRequestManager}.
     /// @dev    The request id is the message's leading word, namespaced by the vault spoke-side.
     function request(PoolId poolId, ShareClassId scId, AssetId assetId, bytes calldata payload) external;
 
+    //----------------------------------------------------------------------------------------------
+    // Manager actions
+    //----------------------------------------------------------------------------------------------
+
     /// @notice Batch body of the `Fulfill` action. Only reachable as the gateway's callback into the
     ///         OrderBook, inside the batch `fromHub` opens.
     function fulfillCallback(PoolId poolId, Fulfillment calldata f) external;
+
+    //----------------------------------------------------------------------------------------------
+    // View methods
+    //----------------------------------------------------------------------------------------------
 
     /// @notice The Hub callback the manager sends outbound messages through.
     function hub() external view returns (IHubRequestManagerCallback);

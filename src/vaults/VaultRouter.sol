@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {IAsyncVault} from "./interfaces/IAsyncVault.sol";
+import {RoleCheckLib} from "./libraries/RoleCheckLib.sol";
 import {IVaultRouter} from "./interfaces/IVaultRouter.sol";
-import {VaultActionLib, VaultActionKind, VaultAction} from "./libraries/VaultActionLib.sol";
+import {IAsyncVault, VaultAction, VaultActionKind} from "./interfaces/IAsyncVault.sol";
 
 import {Auth} from "../misc/Auth.sol";
 import {Multicall} from "../misc/Multicall.sol";
@@ -227,7 +227,7 @@ contract VaultRouter is Multicall, Recoverable, IVaultRouter {
     function _requirePayer(IAsyncVault vault, address receiver, uint256 assets) internal view {
         uint128 shares = MathLib.toUint128(vault.previewDeposit(assets));
         require(
-            VaultActionLib.check(
+            RoleCheckLib.check(
                 vault.share(),
                 VaultAction(
                     VaultActionKind.InstantDeposit, msg.sender, msg.sender, receiver, MathLib.toUint128(assets), shares

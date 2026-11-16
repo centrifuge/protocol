@@ -6,7 +6,7 @@ import {VaultTargets} from "./VaultTargets.sol";
 import {IERC20} from "../../../../src/misc/interfaces/IERC20.sol";
 
 import {IAsyncVault, IVaultErrors} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
-import {IRequestPolicy, IReserveInstantPolicy} from "../../../../src/vaults/policies/interfaces/IVaultPlugins.sol";
+import {IRequestPolicy} from "../../../../src/vaults/policies/interfaces/IVaultPlugins.sol";
 
 import {vm} from "@chimera/Hevm.sol";
 import {OpType} from "../BeforeAfter.sol";
@@ -181,13 +181,6 @@ abstract contract StandardsTargets is VaultTargets {
         bool success = _instant(vault, actor, max, flag, isDeposit);
         t(success, "a call at the reported maximum reverted");
         _ok("vault_maxExecutes");
-    }
-
-    /// @dev Whether the deposit lane is gated and the account is not on its list.
-    function _gatedOut(IAsyncVault vault, address actor) internal view returns (bool) {
-        (,,,, bool gatedDeposit,,) = reserveInstantPolicy.config(address(vault));
-        return gatedDeposit
-            && !reserveInstantPolicy.isAllowed(address(vault), IReserveInstantPolicy.ConfigKind.Depositor, actor);
     }
 
     /// @dev `maxDeposit` assumes an unlimited balance, so two accounts with nothing to claim, whatever they hold,

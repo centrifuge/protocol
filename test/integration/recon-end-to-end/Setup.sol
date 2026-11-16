@@ -61,12 +61,13 @@ import {VaultRouter} from "../../../src/vaults/VaultRouter.sol";
 import {SpokeOracle} from "../../../src/vaults/oracles/SpokeOracle.sol";
 import {VaultFactory} from "../../../src/vaults/factories/VaultFactory.sol";
 import {FeeRequestManager} from "../../../src/vaults/hub/FeeRequestManager.sol";
-import {IVaultOracle} from "../../../src/vaults/oracles/interfaces/IVaultOracle.sol";
 import {VaultRequestIdLib} from "../../../src/vaults/libraries/VaultRequestIdLib.sol";
 import {IAsyncVault, VaultPlugins} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 import {BasinLiquidityRoute} from "../../../src/vaults/liquidity/BasinLiquidityRoute.sol";
 import {VaultLiquidityRoute} from "../../../src/vaults/liquidity/VaultLiquidityRoute.sol";
 import {ReserveInstantPolicy} from "../../../src/vaults/policies/ReserveInstantPolicy.sol";
+import {ISpokeOracle, IVaultOracle} from "../../../src/vaults/oracles/interfaces/IVaultOracle.sol";
+import {IBasinLiquidityRoute} from "../../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {IVaultLiquidityRoute} from "../../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 import {PerRequestPolicy, PerPeriodPolicy, PerInvestorPolicy} from "../../../src/vaults/policies/RequestPolicies.sol";
 import {
@@ -262,6 +263,17 @@ abstract contract Setup is BaseSetup {
     /// @dev A vault of share class A that the registry holds under a second share class of the same pool
     IAsyncVault internal misfiledVault;
 
+    /// @dev Pool P runs under a second standard policy, set the way pool A's is not: restriction updates wait unless
+    ///      they freeze, accounting belongs to the NAV manager and the price to the price manager, and a price move
+    ///      is in policy only within an absolute and a per-second bound.
+    StdHubPolicy internal strictPolicy;
+    PoolId internal poolP;
+    ShareClassId internal scP;
+    uint128 internal constant STRICT_MAX_PRICE_DELTA = 1e17;
+    uint128 internal constant STRICT_PRICE_RATE = 1e13;
+    /// @dev When the strict policy last anchored its price baseline, as the handler's own rule has it
+    uint64 internal ghostStrictPriceAnchor;
+
     function setup() internal virtual override {
         actors.push(address(0x10000));
         actors.push(address(0x20000));
@@ -293,6 +305,7 @@ abstract contract Setup is BaseSetup {
         footprintB = _footprintB();
         footprintD = _footprintD();
         _setupRemoteAssetPool();
+        _setupStrictPool();
     }
 
     //----------------------------------------------------------------------------------------------
@@ -482,6 +495,8 @@ abstract contract Setup is BaseSetup {
         );
         _fm();
         hub.updateHubManager(poolId, address(feeRequestManager), true);
+        // The oracle's local pauser is a role of its own: the auxiliary manager, and not the BSM, may pause
+        _managerCall(poolId, address(spokeOracle), abi.encode(ISpokeOracle.ConfigKind.SetPauser, AUX_MANAGER, true));
 
         if (priced) {
             _managerCall(poolId, address(oracleValuation), abi.encode(uint16(0), FEEDER.toBytes32(), true));
@@ -556,7 +571,7 @@ abstract contract Setup is BaseSetup {
         _updateManager(poolA, address(vaultRoute), true);
         // Pool C also registers a vault of its own making that a second pool A vault is told to draw on: the route has
         // to treat what it reads from it as hostile
-        hostileUnderlying = new HostileUnderlying(poolC.raw());
+        hostileUnderlying = new HostileUnderlying(poolC.raw(), scC.raw());
         hostileTop = _deployVault(poolA, scA, _plugins(perRequestPolicy, true, address(vaultRoute)));
         _openInstantLane(poolA, hostileTop, 0, false);
         EvilVaultFactory hostileFactory = new EvilVaultFactory();
@@ -605,7 +620,11 @@ abstract contract Setup is BaseSetup {
         basinLiabilityId = newAssetId(CENTRIFUGE_ID, 3);
 
         // The basin's credit line: the pool's limit through the Envoy, the venue's credit from its LP
-        _managerCall(poolA, address(basinRoute), abi.encode(address(vaults[3]), uint128(VENUE_FUNDS / 10)));
+        _managerCall(
+            poolA,
+            address(basinRoute),
+            abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, address(vaults[3]), abi.encode(uint128(VENUE_FUNDS / 10)))
+        );
         vm.prank(LP);
         basinRoute.setCredit(address(vaults[3]), uint128(VENUE_FUNDS / 10));
         usdc.mint(address(basin), VENUE_FUNDS);
@@ -653,6 +672,30 @@ abstract contract Setup is BaseSetup {
         c.maxFulfillPriceDeviation = type(uint128).max;
         c.maxFeeBps = 500;
         return new StdHubPolicy(hub, multiAdapter, shareClassManager, c);
+    }
+
+    /// @dev Pool P and its policy, installed from the start. The NAV and price managers are hub managers of the pool,
+    ///      so the handlers can send what the policy admits only from them.
+    function _setupStrictPool() internal {
+        poolP = hubRegistry.poolId(CENTRIFUGE_ID, 60);
+        scP = _createPool(poolP, address(fullRestrictions), false);
+        _fm();
+        hub.updateHubManager(poolP, address(navManager), true);
+        _fm();
+        hub.updateHubManager(poolP, address(priceManager), true);
+
+        IStdHubPolicy.Config memory c;
+        c.delay = 1 hours;
+        c.expiry = 1 days;
+        c.escalation = 2 hours;
+        c.onchainAccounting = true;
+        c.navManager = address(navManager);
+        c.simplePriceManager = address(priceManager);
+        c.maxAbsolutePriceDelta = STRICT_MAX_PRICE_DELTA;
+        c.thresholdPerSecond = STRICT_PRICE_RATE;
+        strictPolicy = new StdHubPolicy(hub, multiAdapter, shareClassManager, c);
+        _fm();
+        hub.setPolicy(poolP, strictPolicy);
     }
 
     function _basinLiabilityTokenId() internal view returns (uint256) {

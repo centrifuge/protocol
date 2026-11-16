@@ -11,7 +11,8 @@ Sister suite: [`test/integration/recon-messaging/`](../recon-messaging/) (Gatewa
 ## Running
 
 ```bash
-# Foundry: the invariant (`StatefulInvariant`) plus the reachability test and reproducers. CI runs it under the `ci` profile.
+# Foundry: the invariant (`StatefulInvariant`) plus the reachability test and reproducers. CI runs all but the invariant,
+# which takes over an hour there; the Recon campaigns fuzz the same handlers.
 forge test --match-path 'test/integration/recon-end-to-end/*'
 FOUNDRY_PROFILE=ci forge test --match-contract 'CryticToFoundry|StatefulInvariant' -vv   # prints per-action ok/reverted counts
 
@@ -23,8 +24,7 @@ FOUNDRY_PROFILE=echidna echidna test/integration/recon-end-to-end/CryticE2ETeste
 FOUNDRY_PROFILE=medusa medusa fuzz --config medusa.json
 ```
 
-Corpora land in `echidna/` and `medusa/` at the repository root and are gitignored. The `Recon fuzzing`
-workflow runs Echidna on pull requests (smoke), on a schedule and on demand.
+Corpora land in `echidna/` and `medusa/` at the repository root and are gitignored. CI runs no fuzzer: campaigns run on the Recon cloud or locally.
 
 A failing Echidna or Medusa sequence becomes a Foundry test by pasting its calls into a test function of
 `CryticToFoundry` (the [Recon scraper](https://getrecon.xyz/tools/echidna) does the conversion) and ending
@@ -32,24 +32,15 @@ it with `assertProperties()`.
 
 ## Running a campaign
 
-Settings and why (every value is in `echidna.yaml`, `medusa.json` or the workflow; run length, workers and seed are
-command-line flags):
+Settings and why (every value is in `echidna.yaml` or `medusa.json`; run length, workers and seed are command-line flags):
 
 * **Profile.** Always `FOUNDRY_PROFILE=echidna`. The default profile drops the solc metadata and Echidna then
   attributes no coverage to the contracts the tester deploys (Hub, Spoke, Vault at 0%, "Unique codehashes" 109
-  instead of about 45). The workflow checks `forge config` and the lcov of the run for this.
+  instead of about 45).
 * **Mode.** Echidna `assertion`; Medusa `assertionTesting` only. Every property is a non-view `property_*`
   function that asserts, so Medusa's `propertyTesting` (bool-returning views) is off: it would match nothing.
-* **Delays.** Profile A (the files' default): at most 1 h and 300 blocks per call. The oracle goes stale after a
-  day (`ORACLE_MAX_AGE`), about 48 calls at the mean delay, so the instant lane stays mostly open. Profile B
-  (scheduled run only): 2 days and 14400 blocks per call, so one jump can cross `maxAge`; run it for the stale-oracle
-  and long-clock paths. Echidna has no flag for the delays, so the workflow rewrites them in a copy of the yaml.
-* **Length and stopping.** `seqLen` 100. The PR smoke is 30000 calls, 4 workers, seed 12345, `stopOnFail`, about
-  10 minutes. The scheduled run chains 3 x 500000 calls per profile over one cached corpus, each with its own seed
-  (printed in the summary, kept in `seeds.txt`). Evidence from the 12 h cloud run: line coverage saturates within
-  thousands of calls, the one failure was found at 2M calls, later yield was small, and 3 of 16 workers crashed
-  (`BadJumpDestination`) and were never replaced, so chains of at most 2M calls beat one very long run. Measure the
-  cold plateau once (empty corpus, 4 seeds) before moving these numbers.
+* **Delays.** Profile A (the files' default): at most 1 h and 300 blocks per call. The oracle goes stale after a day (`ORACLE_MAX_AGE`), about 48 calls at the mean delay, so the instant lane stays mostly open. Profile B: 2 days and 14400 blocks per call (`maxTimeDelay: 172800`, `maxBlockDelay: 14400`), so one jump can cross `maxAge`; run it for the stale-oracle and long-clock paths. Echidna has no flag for the delays, so set them in a copy of the yaml.
+* **Length and stopping.** `seqLen` 100. Evidence from the 12 h cloud run: line coverage saturates within thousands of calls, the one failure was found at 2M calls, later yield was small, and 3 of 16 workers crashed (`BadJumpDestination`) and were never replaced, so chains of at most 2M calls, each with its own seed, beat one very long run. Measure the cold plateau once (empty corpus, 4 seeds) before moving these numbers.
 * **Medusa.** `timeout` 3600 s (bounded; `--timeout` overrides), `stopOnFailedTest` false so one failure does not hide
   the rest, and `failOnArithmeticUnderflow`, `failOnDivideByZero`, `failOnOutOfBoundsArrayAccess` on: handlers swallow
   reverts with try/catch, so a panic that reaches the top frame comes from harness code (ghosts, clamps) and is a
@@ -58,15 +49,9 @@ command-line flags):
   `targetContractsBalances`.
 * **Slither.** Off (`disableSlither`): slither-analyzer 0.11.5 and 0.10.4 both crash on this repo, and Echidna then
   continues without it anyway. The cost (constants and function information for the generator) has not been measured.
-* **Corpus.** Restored from the Actions cache and saved after scheduled runs; clear it when the senders, the
-  deployer, `setup()` or a handler signature changes.
+* **Corpus.** The corpus directory seeds the next run; clear it when the senders, the deployer, `setup()` or a handler signature changes.
 
-Reading a red run: the job summary lists the seed, each falsified test with its shrunk sequence, and any worker death
-line. A test named in `KNOWN_FAILING` (workflow `env`) does not turn the job red, so a known break cannot hide a new
-one. To reproduce, download the `echidna-*` artifact: Echidna writes a Foundry test per failure to
-`<corpus>/foundry/`; move its calls into a `CryticToFoundry` test (or paste the log into the Recon scraper) and end
-with `assertProperties()`, replaying each call's time and block delay. A worker death needs the seed from
-`seeds.txt` rerun with `--workers 1`.
+Reproducing a failure: Echidna writes a Foundry test per failure to `<corpus>/foundry/`; move its calls into a `CryticToFoundry` test (or paste the log into the Recon scraper) and end with `assertProperties()`, replaying each call's time and block delay. A worker death needs its seed rerun with `--workers 1`.
 
 ## Running another decimals profile
 
@@ -92,7 +77,8 @@ in a handler or reproducer breaks the other profiles: write `n * ONE_ASSET` or `
 | `properties/Properties.sol` | Standing `property_*` checks |
 | `targets/*.sol` | Handlers, grouped by actor: vaults, hub manager, balance sheet, share token, oracle, doomsday, and whole request lifecycles (`FlowTargets`) |
 | `CryticE2ETester.sol` | Echidna and Medusa entrypoint |
-| `CryticToFoundry.sol` | Foundry entrypoint: `assertProperties`, the reachability test and reproducers |
+| `FoundryHarness.sol` | Foundry harness: the fuzz target, `assertProperties` and the assertions. Every Foundry contract here inherits it alone, so none reruns another's tests |
+| `CryticToFoundry.sol` | Foundry entrypoint: the non-vacuity tests and reproducers |
 
 **Pools.** Pool A is the one the fuzzer drives: USDC and pool C's share token as holdings, and four vaults,
 per-request (transferable), per-period (one-hour windows, folded on claim), instant backed by
@@ -100,7 +86,11 @@ per-request (transferable), per-period (one-hour windows, folded on claim), inst
 each draw as a pool A liability (`property_basinDebtIsBooked`). Pool C is
 the fund pool A invests in, through an instant vault the route redeems on demand. Pool B is configured with
 live positions in setup and never targeted, so `property_poolBIsUntouched` catches any write that crosses a
-pool boundary.
+pool boundary. Pool P has no vault and runs under a second `StdHubPolicy` from setup, configured the way pool A's is
+not: restriction updates wait unless they are a canonical freeze, accounting calls come only from the NAV manager, and
+a share price comes only from the price manager, in policy within an absolute and a per-second bound. The `strict_*`
+handlers state the policy's answer for each call apart from the contract and hold the hub to it, with and without a
+matured authorization; `property_strictPolicyAnchorsOnExecutedMoves` holds the price baseline to the last executed move.
 
 **Oracle.** Every pool A vault prices through one `SpokeOracle` (maximum age one day, maximum skew twelve
 hours). The `oracle_*` handlers pause and unpause it through the Envoy, let both prices age past `maxAge`,
@@ -130,6 +120,10 @@ only `prank`, `warp` and `deal`, so the suite needs no Foundry-only cheatcode.
   the single-step handlers, so claims, folds and refunds happen in proportion to the requests made. A full
   claim after a settlement is asserted to go through. The Foundry entrypoint lists them and the claim
   handlers more than once, since it picks uniformly among the listed selectors.
+* A handler must fit the fuzzers' per-call gas limit (Medusa's `transactionGasLimit`, 12.5M, and Echidna's
+  default): past it the call reverts out of gas and its checks never run, while Foundry, which has no such
+  limit, still passes it. The post-call checks grow with the requests a sequence tracks, so measure a heavy
+  flow late in an invariant run rather than in a fresh setup.
 * Under Foundry a failed check is recorded instead of reverted, since Foundry drops a reverting handler
   call together with what it found; `assertProperties` fails on the first recorded reason.
 * `testTheFlowsAreReachable` drives every flow once and asserts it went through, so a setup change that
@@ -144,6 +138,11 @@ only `prank`, `warp` and `deal`, so the suite needs no Foundry-only cheatcode.
 * The share-token recipient set excludes endorsed contracts, which the hook admits as recipients by design.
 * `property_availableGtQueued` is not ported: it is a known break (out-of-band `noteDeposit` can queue
   increases not backed by held tokens), recorded as `n` in the specification.
-* The `StdHubPolicy` share price guard (`_checkSharePrice`) is outside the scope of the vaults suite: the suite's
-  policy leaves both price bounds at zero, so the guard returns early. It needs a policy of its own on its own pool,
-  and is added later.
+* Pool P's price manager and NAV manager calls are sent as those contracts, not produced by a NAV report: pool N
+  covers the report path, without a policy.
+* A vault whose manager role the pool withdrew (`hub_setVaultManager`) is assumed not to happen in production.
+  Its async `maxMint` and `maxWithdraw` still offer the full claim, since the views read only the share hook, while
+  the claim reverts in `Spoke`; the suite only bounds those views for such a vault, and the claim handlers skip it.
+* A holding worth more than `type(uint128).max` of the asset is assumed not to happen in production:
+  `previewRedeem` and `convertToAssets` revert on it. Only the fuzzed extreme prices reach it, and
+  `property_maxViewsAreExecutable` accepts the refusal only when `convertToAssets` overflows too.

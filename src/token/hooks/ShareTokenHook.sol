@@ -27,10 +27,9 @@ import {IRoleHook, Role, RoleCheck} from "../interfaces/IRoleHook.sol";
 import {ITransferHook, HookData} from "../interfaces/ITransferHook.sol";
 
 /// @title  ShareTokenHook
-/// @notice Share token transfer restrictions that provide memberlist management, account freezing capabilities,
-///         and cross-chain message handling, while encoding member validity and freeze status in the hookData
-///         structure for efficient on-chain verification. Deployed with a `Policy` saying which roles ask for
-///         membership, usually one of `HookPolicies`; a hook with a rule of its own extends it.
+/// @notice A share token's restrictions: a memberlist and account freezes, answered for every transfer and every
+///         role check a vault asks. Deployed with a `Policy` saying which roles ask for membership, usually one of
+///         `HookPolicies`; a hook with a rule of its own extends it.
 /// @dev    A user's hook data is the memberlist valid-until date in its high 64 bits and the freeze flag in bit 0.
 contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, IShareTokenHook {
     using BitmapLib for *;
@@ -38,6 +37,7 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
     using UpdateRestrictionMessageLib for *;
 
     uint8 public constant FREEZE_BIT = 0;
+    uint8 internal constant VALID_UNTIL_OFFSET = 64;
 
     IRoot public immutable root;
     uint8 public immutable policy;
@@ -47,7 +47,7 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
     ISpokeRegistry public immutable spokeRegistry;
     IEscrowProvider public immutable escrowProvider;
 
-    mapping(address token => mapping(address => bool)) public manager;
+    mapping(address token => mapping(address account => bool)) public manager;
 
     constructor(
         address root_,
@@ -61,17 +61,15 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
     ) Auth(deployer) {
         require(spoke_ != crosschainSource_, InvalidInputs());
 
-        policy = policy_;
-
         root = IRoot(root_);
         envoy = envoy_;
         spokeRegistry = ISpokeRegistry(spokeRegistry_);
         spoke = ISpoke(spoke_);
         crosschainSource = crosschainSource_;
         escrowProvider = IEscrowProvider(escrowProvider_);
+        policy = policy_;
     }
 
-    /// @dev Check if the msg.sender is ward or a manager
     modifier authOrManager(address token) {
         require(wards[msg.sender] == 1 || manager[token][msg.sender], IAuth.NotAuthorized());
         _;
@@ -87,35 +85,33 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
         require(msg.sender == envoy, NotEnvoy());
         require(msg.value == 0, UnexpectedValue());
 
-        (bytes16 scId_, uint8 kindValue) = abi.decode(payload, (bytes16, uint8));
-        require(kindValue == uint8(TrustedCall.UpdateHookManager), UnknownTrustedCall());
-        ShareClassId scId = ShareClassId.wrap(scId_);
+        (, uint8 kind) = abi.decode(payload, (bytes16, uint8));
+        require(kind == uint8(TrustedCall.UpdateHookManager), UnknownTrustedCall());
+        (bytes16 scId,, bytes32 party, bool allowed) = abi.decode(payload, (bytes16, uint8, bytes32, bool));
 
-        (,, bytes32 party, bool allowed) = abi.decode(payload, (bytes16, uint8, bytes32, bool));
-        address token = address(spokeRegistry.shareToken(poolId, scId));
+        address token = address(spokeRegistry.shareToken(poolId, ShareClassId.wrap(scId)));
         require(token != address(0), ShareTokenDoesNotExist());
 
-        manager[token][party.toAddress()] = allowed;
-        emit UpdateHookManager(token, party.toAddress(), allowed);
+        address manager_ = party.toAddress();
+        manager[token][manager_] = allowed;
+        emit UpdateHookManager(token, manager_, allowed);
     }
 
     /// @inheritdoc ITransferHook
     function updateRestriction(address token, bytes memory payload) external virtual auth {
-        UpdateRestrictionType updateId = payload.updateRestrictionType();
+        UpdateRestrictionType kind = payload.updateRestrictionType();
 
-        if (updateId == UpdateRestrictionType.Member) {
+        if (kind == UpdateRestrictionType.Member) {
             UpdateRestrictionMessageLib.UpdateRestrictionMember memory m = payload.deserializeUpdateRestrictionMember();
-            updateMember(token, m.user.toAddress(), m.validUntil);
-        } else if (updateId == UpdateRestrictionType.Freeze) {
-            UpdateRestrictionMessageLib.UpdateRestrictionFreeze memory m = payload.deserializeUpdateRestrictionFreeze();
-            freeze(token, m.user.toAddress());
-        } else if (updateId == UpdateRestrictionType.Unfreeze) {
-            UpdateRestrictionMessageLib.UpdateRestrictionUnfreeze memory m =
-                payload.deserializeUpdateRestrictionUnfreeze();
-            unfreeze(token, m.user.toAddress());
-        } else {
-            revert InvalidUpdate();
+            return updateMember(token, m.user.toAddress(), m.validUntil);
         }
+        if (kind == UpdateRestrictionType.Freeze) {
+            return freeze(token, payload.deserializeUpdateRestrictionFreeze().user.toAddress());
+        }
+        if (kind == UpdateRestrictionType.Unfreeze) {
+            return unfreeze(token, payload.deserializeUpdateRestrictionUnfreeze().user.toAddress());
+        }
+        revert InvalidUpdate();
     }
 
     /// @inheritdoc IFreezable
@@ -141,10 +137,7 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
         require(block.timestamp <= validUntil, InvalidValidUntil());
         require(!root.endorsed(user), EndorsedUserCannotBeUpdated());
 
-        // Only the valid-until bits are replaced: the freeze bit and the bits a hook extension stores stay as they are.
-        uint128 current = uint128(IShareToken(token).hookDataOf(user));
-        uint128 hookData = (current & type(uint64).max) | (uint128(validUntil) << 64);
-        IShareToken(token).setHookData(user, bytes16(hookData));
+        IShareToken(token).setHookData(user, _withValidUntil(IShareToken(token).hookDataOf(user), validUntil));
 
         emit UpdateMember(token, user, validUntil);
     }
@@ -199,6 +192,38 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
         return _decide(msg.sender, leg(from, to), from, to, hookData);
     }
 
+    /// @inheritdoc IShareTokenHook
+    /// @dev The first case that matches decides, in this order: a mint, a release from an escrow, the spoke's burn,
+    ///      any other burn. What falls through to `Transfer`: a mint into an escrow or to the cross-chain source, and
+    ///      a burn from the cross-chain source.
+    function leg(address from, address to) public view virtual returns (Kind) {
+        if (from == address(0) && to != crosschainSource && !isEscrow(to)) return Kind.Mint;
+        if (to != address(0) && isEscrow(from)) return Kind.Release;
+        if (to == address(0)) {
+            if (from == address(spoke)) return Kind.Fulfill;
+            if (from != crosschainSource) return Kind.Burn;
+        }
+        return Kind.Transfer;
+    }
+
+    // forgefmt: disable-next-item
+    /// @dev The decision on a share movement, one case per kind. `Fulfill` and `Burn` have no receiving side, so
+    ///      each is decided on `from` alone; the others hand over to `to`, under the role the kind maps to. A kind
+    ///      not listed is refused. Override and call `super` to add a rule on a kind of movement.
+    function _decide(address token, Kind kind, address from, address to, HookData memory data)
+        internal
+        view
+        virtual
+        returns (bool)
+    {
+        if (kind == Kind.Fulfill)  return !_isFrozenAndNotExempt(token, data.from, from);
+        if (kind == Kind.Burn)     return _qualifies(token, Role.Burn, data.from, from);
+        if (kind == Kind.Transfer) return _canHandOver(token, Role.Transfer, data, from, to);
+        if (kind == Kind.Mint)     return _canHandOver(token, Role.Entry, data, from, to);
+        if (kind == Kind.Release)  return _canHandOver(token, Role.Entry, data, from, to);
+        return false;
+    }
+
     /// @inheritdoc IRoleHook
     function checkRoles(address token, RoleCheck[] calldata checks) public view virtual returns (bool) {
         for (uint256 i; i < checks.length; i++) {
@@ -207,32 +232,18 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
         return true;
     }
 
-    /// @inheritdoc IRoleHook
-    /// @dev The reference hook limits no amount.
-    function maxAllowed(address, RoleCheck[] calldata) external view virtual returns (uint256, uint256) {
-        return (type(uint256).max, type(uint256).max);
-    }
-
     /// @dev Whether `to` answers to `role` for value from `from` on `token`: the one check a batch is made of.
-    ///      Override to add a rule on the check's `amount` and `effect`, such as a limit on `to`'s position.
+    ///      Override to add a rule on the check's `assets`, `shares` and `effect`, such as a limit on `to`'s position.
     function checkRole(address token, RoleCheck calldata c) public view virtual returns (bool) {
+        // A zero `from` names no source (see `IRoleHook`), so it has no hook data to read
         bytes16 fromData = c.from == address(0) ? bytes16(0) : IShareToken(token).hookDataOf(c.from);
         return _canHandOver(token, c.role, HookData(fromData, IShareToken(token).hookDataOf(c.to)), c.from, c.to);
     }
 
-    /// @dev The decision on a share movement. `Fulfill` and `Burn` name no receiving side, so each checks only `from`;
-    ///      `Transfer` and the default (`Mint`/`Release`) hand over to `to`, differing in the role it must answer to.
-    ///      Override and call `super` to add a rule on a kind of movement.
-    function _decide(address token, Kind kind, address from, address to, HookData memory data)
-        internal
-        view
-        virtual
-        returns (bool)
-    {
-        if (kind == Kind.Fulfill) return !_isBlocked(token, data.from, from);
-        if (kind == Kind.Burn) return _qualifies(token, Role.Burn, data.from, from);
-        if (kind == Kind.Transfer) return _canHandOver(token, Role.Transfer, data, from, to);
-        return _canHandOver(token, Role.Entry, data, from, to);
+    /// @inheritdoc IRoleHook
+    /// @dev The reference hook limits no amount.
+    function maxAllowed(address, RoleCheck[] calldata) external view virtual returns (uint256, uint256) {
+        return (type(uint256).max, type(uint256).max);
     }
 
     /// @dev A hand-over: the source is not frozen and the destination answers to `role`. Override and call `super` to
@@ -243,45 +254,35 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
         virtual
         returns (bool)
     {
-        return !_isBlocked(token, data.from, from) && _qualifies(token, role, data.to, to);
+        return !_isFrozenAndNotExempt(token, data.from, from) && _qualifies(token, role, data.to, to);
     }
 
-    /// @dev `user` is not frozen and answers to `role`: the role asks no membership (`Refund` never does, whatever the
-    ///      policy mask holds), or `user` is a live member, an
-    ///      escrow (as in a transfer, so a fund-of-funds payout into one passes) or, where the role takes or holds
-    ///      shares, an endorsed contract. The roles that leave the pool refuse endorsed contracts: a public relay
-    ///      would let anyone exit through it.
+    /// @dev `user` is not frozen and answers to `role`, in this order: the role asks no membership (`Refund` never
+    ///      does, whatever the policy holds), `user` is a live member, `user` is an escrow (as in a transfer, so a
+    ///      fund-of-funds payout into one passes), or the role takes or holds shares and `user` is an endorsed
+    ///      contract. The roles that leave the pool refuse endorsed contracts: a public relay would let anyone exit
+    ///      through it.
     function _qualifies(address token, Role role, bytes16 data, address user) internal view returns (bool) {
-        if (_isBlocked(token, data, user)) return false;
-        if (role == Role.Refund || policy >> uint8(role) & 1 == 0) return true;
-        if (_validUntil(data) >= block.timestamp || isEscrow(user)) return true;
-        return role <= Role.Transfer && root.endorsed(user);
+        if (_isFrozenAndNotExempt(token, data, user)) return false;
+
+        bool asksMembership = role != Role.Refund && uint256(policy).getBit(uint8(role));
+        if (!asksMembership) return true;
+        if (_validUntil(data) >= block.timestamp) return true;
+        if (isEscrow(user)) return true;
+
+        bool takesOrHoldsShares = role == Role.Entry || role == Role.Transfer;
+        return takesOrHoldsShares && root.endorsed(user);
     }
 
     /// @dev Frozen, from hook data already read: the bit is ignored on an escrow and on a vault of `token`'s own
     ///      share class.
-    function _isBlocked(address token, bytes16 data, address user) internal view returns (bool) {
+    function _isFrozenAndNotExempt(address token, bytes16 data, address user) internal view returns (bool) {
         return uint128(data).getBit(FREEZE_BIT) && !(isEscrow(user) || isShareClassVault(token, user));
-    }
-
-    function _validUntil(bytes16 data) internal pure returns (uint64) {
-        return uint64(uint128(data) >> 64);
     }
 
     //----------------------------------------------------------------------------------------------
     // Views
     //----------------------------------------------------------------------------------------------
-
-    /// @inheritdoc IShareTokenHook
-    function leg(address from, address to) public view virtual returns (Kind) {
-        if (from == address(0) && to != crosschainSource && !isEscrow(to)) return Kind.Mint;
-        if (to != address(0) && isEscrow(from)) return Kind.Release;
-        if (to == address(0)) {
-            if (from == address(spoke)) return Kind.Fulfill;
-            if (from != crosschainSource) return Kind.Burn;
-        }
-        return Kind.Transfer;
-    }
 
     /// @inheritdoc IShareTokenHook
     function isEscrow(address addr) public view virtual returns (bool) {
@@ -315,11 +316,22 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
     // Hook data
     //----------------------------------------------------------------------------------------------
 
+    function _validUntil(bytes16 data) internal pure returns (uint64) {
+        return uint64(uint128(data) >> VALID_UNTIL_OFFSET);
+    }
+
+    /// @dev `data` with its valid-until date replaced: the freeze flag and the flags a hook extension keeps in the
+    ///      low bits stay as they are.
+    function _withValidUntil(bytes16 data, uint64 validUntil) internal pure returns (bytes16) {
+        uint128 flags = uint128(data) & type(uint64).max;
+        return bytes16(flags | (uint128(validUntil) << VALID_UNTIL_OFFSET));
+    }
+
     /// @dev Sets one flag of `user`'s hook data and keeps every other bit. Only bits 0 to 63 are reachable: the
     ///      valid-until bits above them belong to `updateMember`. Bit 0 is the freeze flag, so a hook extension
     ///      keeps its own flags in bits 1 to 63. The caller authorises the change and emits its own event.
     function _setHookBit(address token, address user, uint8 bit, bool value) internal {
-        require(bit < 64, InvalidHookBit());
+        require(bit < VALID_UNTIL_OFFSET, InvalidHookBit());
 
         uint128 hookData = uint128(IShareToken(token).hookDataOf(user));
         IShareToken(token).setHookData(user, bytes16(uint128(hookData.withBit(bit, value))));
@@ -327,7 +339,7 @@ contract ShareTokenHook is Auth, IMemberlist, IFreezable, IManagerCallFromHub, I
 
     /// @dev One flag of `user`'s hook data, from bit 0 (the freeze flag) to bit 63.
     function _getHookBit(address token, address user, uint8 bit) internal view returns (bool) {
-        require(bit < 64, InvalidHookBit());
+        require(bit < VALID_UNTIL_OFFSET, InvalidHookBit());
 
         return uint128(IShareToken(token).hookDataOf(user)).getBit(bit);
     }

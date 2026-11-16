@@ -11,7 +11,7 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {HookPolicies} from "../../../src/token/hooks/HookPolicies.sol";
 import {ShareTokenHook} from "../../../src/token/hooks/ShareTokenHook.sol";
 
-import {VaultActionKind} from "../../../src/vaults/libraries/VaultActionLib.sol";
+import {VaultActionKind} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {MockVaultRegistry} from "../mocks/MockVaultRegistry.sol";
 import {VaultAction, VaultActionCheck} from "../mocks/VaultActionCheck.sol";

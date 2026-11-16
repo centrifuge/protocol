@@ -19,6 +19,8 @@ import {ILocalCentrifugeId} from "../../src/core/messaging/interfaces/IGatewaySe
 
 import {UpdateRestrictionType} from "../../src/token/hooks/libraries/UpdateRestrictionMessageLib.sol";
 
+import {ISpokeOracle} from "../../src/vaults/oracles/interfaces/IVaultOracle.sol";
+
 import "forge-std/Test.sol";
 
 import {IStdHubPolicy} from "../../src/policies/hub/interfaces/IStdHubPolicy.sol";
@@ -771,18 +773,32 @@ contract StdHubPolicyTest is Test {
         hubRegistry.setPolicy(POOL_A, policy);
     }
 
+    function _oraclePaused(bool paused) internal pure returns (bytes memory) {
+        return abi.encode(ISpokeOracle.ConfigKind.SetPaused, paused);
+    }
+
     function testManagerCallSpokeOraclePauseInPolicy() public {
         // Pausing the oracle only closes the instant lane and the previews, so it cannot wait out the delay.
         vm.prank(address(hub));
-        policy.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(oracle)), abi.encode(true)));
+        policy.enforce(POOL_A, manager, _managerCall(bytes32(bytes20(oracle)), _oraclePaused(true)));
     }
 
     function testManagerCallSpokeOracleUnpauseDelayed() public {
-        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), abi.encode(false))), DELAY);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), _oraclePaused(false))), DELAY);
+    }
+
+    /// @dev A pauser can hold the lane closed against every unpause, so naming one waits out the delay, as does
+    ///      removing one.
+    function testManagerCallSpokeOracleSetPauserDelayed() public {
+        bytes memory add = abi.encode(ISpokeOracle.ConfigKind.SetPauser, makeAddr("pauser"), true);
+        bytes memory remove = abi.encode(ISpokeOracle.ConfigKind.SetPauser, makeAddr("pauser"), false);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), add)), DELAY);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), remove)), DELAY);
     }
 
     function testManagerCallSpokeOracleMalformedDelayed() public {
-        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), abi.encode(uint256(2)))), DELAY);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), abi.encode(true))), DELAY);
+        assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), abi.encode(uint256(0), uint256(2)))), DELAY);
         assertEq(_delayOf(_managerCall(bytes32(bytes20(oracle)), bytes(""))), DELAY);
     }
 
@@ -797,7 +813,7 @@ contract StdHubPolicyTest is Test {
             POOL_A,
             LOCAL_CENTRIFUGE_ID + 1,
             bytes32(bytes20(oracle)),
-            abi.encode(true),
+            _oraclePaused(true),
             uint128(0),
             uint256(0),
             address(0)

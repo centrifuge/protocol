@@ -122,7 +122,7 @@ contract GasService is IGasService {
         updateRestriction = _gasValue(225812);
         managerCallFromHub = _gasValue(384610);
         requestCallback = _gasValue(572872); // SettledDeposit + eager fold
-        updateVaultDeployAndLink = _gasValue(341623);
+        updateVaultDeployAndLink = _gasValue(341973);
         updateVaultLink = _gasValue(191174);
         updateVaultUnlink = _gasValue(171934);
         setRequestManager = _gasValue(175521);

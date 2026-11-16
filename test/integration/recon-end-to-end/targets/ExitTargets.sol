@@ -30,12 +30,13 @@ import {vm} from "@chimera/Hevm.sol";
 ///         Skips, each a rule of the protocol rather than a convenience:
 ///           - A frozen investor, or one whose membership lapsed (the share hook refuses `DepositClaim` and
 ///             `RedeemClaim` for it, so its position waits for the pool; a refund alone would still go through, but
-///             what the hook refuses is judged by `_healthy`, not guessed here). SPECIFICATION: a claim pushed to a
+///             what the hook refuses is judged by `_claimOpen`, not guessed here). SPECIFICATION: a claim pushed to a
 ///             clean address by a frozen or lapsed controller is refused.
 ///           - A vault the pool unlinked or whose manager role it withdrew (`vaultUnlinked`, `vaultRevoked`):
 ///             `VaultRequestRouter` refuses callbacks to an unlinked vault, so its settlements stall, and a vault
 ///             without its role cannot pay (SPECIFICATION: "In-flight settlements survive an unlink", "A linked vault
-///             is a manager of its pool"). Requests of such a vault are neither settled nor judged.
+///             is a manager of its pool"). Requests of such a vault are neither settled nor judged pending. Claims
+///             need no link, so an unlinked vault that keeps its role is still claimed to zero.
 ///           - An escrow over-reserved by a manager: `withdrawReserved` needs every other reservation covered, so
 ///             redeem claims and the instant lane wait for the pool to fund the escrow (`_overReserved`).
 ///           - A fill the hub refuses (a fill that converts to nothing at a zero price, a dust fill, a fee past the
@@ -50,9 +51,10 @@ abstract contract ExitTargets is FlowTargets {
     /// @dev Thrown at the end of every rescue that found nothing wrong, so none of its state changes survive.
     error ExitRehearsalEnded();
 
-    /// @dev Gas the settling and claiming loops may spend before the rescue gives up on completing. The checks after
-    ///      them, and one call past the last budget test, come on top; the whole handler stays well under 12M.
-    uint256 internal constant EXIT_GAS_BUDGET = 7_000_000;
+    /// @dev Gas the settling and claiming loops may spend before the rescue gives up on completing. The judging, the
+    ///      instant exits and the solvency checks after them, and one call past the last budget test, come on top and
+    ///      have reached 5.6M, so the whole handler stays under Echidna's 12.5M call limit (`testMaxGas`).
+    uint256 internal constant EXIT_GAS_BUDGET = 6_500_000;
 
     /// @dev What one rescue did, kept in memory to stay clear of the stack limit.
     struct Rescue {
@@ -191,10 +193,10 @@ abstract contract ExitTargets is FlowTargets {
     }
 
     /// @dev An investor the rescue can take to zero on a vault: not frozen, a member (the hook refuses the claim legs
-    ///      otherwise), on a vault that is neither unlinked nor without its role, and one whose orders the rescue
-    ///      finished.
+    ///      otherwise), on a vault that keeps its role, and one whose orders the rescue finished. An unlinked vault
+    ///      qualifies: claims need no link.
     function _exitCanClaim(Rescue memory s, uint256 v, address actor) internal view returns (bool) {
-        return !frozen[actor] && _healthy(vaults[v], actor) && s.blocked >> v & 1 == 0;
+        return !frozen[actor] && _claimOpen(vaults[v], actor) && s.blocked >> v & 1 == 0;
     }
 
     //----------------------------------------------------------------------------------------------
@@ -211,6 +213,8 @@ abstract contract ExitTargets is FlowTargets {
                 address actor = actors[a];
                 eq(vault.claimableMint(actor), 0, "an investor was left shares to claim after the exit");
                 eq(vault.claimableWithdraw(actor), 0, "an investor was left assets to claim after the exit");
+                // An unlinked vault's settlements stall, so what it still has pending is not the rescue's to clear
+                if (vaultUnlinked[address(vault)]) continue;
                 eq(vault.pendingDepositRequest(0, actor), 0, "an investor was left a deposit pending after the exit");
                 eq(vault.pendingRedeemRequest(0, actor), 0, "an investor was left a redemption pending after the exit");
             }
@@ -247,7 +251,9 @@ abstract contract ExitTargets is FlowTargets {
             IAsyncVault vault = vaults[v];
             for (uint256 a; a < actors.length; a++) {
                 address actor = actors[a];
-                if (!_exitCanClaim(s, v, actor) || _inAsync(vault, actor, false)) continue;
+                if (!_exitCanClaim(s, v, actor) || vaultUnlinked[address(vault)] || _inAsync(vault, actor, false)) {
+                    continue;
+                }
                 uint256 max = vault.maxRedeem(actor);
                 if (max == 0) continue;
                 t(_instant(vault, actor, max, false, false), "an instant redemption at the reported maximum reverted");

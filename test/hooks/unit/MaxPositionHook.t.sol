@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {VaultActionLib, VaultActionKind, VaultAction} from "../../../src/vaults/libraries/VaultActionLib.sol";
+import {RoleCheckLib} from "../../../src/vaults/libraries/RoleCheckLib.sol";
+import {VaultActionKind, VaultAction} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {MaxPositionHook} from "../mocks/MaxPositionHook.sol";
 
@@ -72,15 +73,13 @@ contract MaxPositionHookTest is Test {
     function _act(VaultActionKind kind, address c, address o, address r, uint128 shares) internal returns (bool) {
         vm.prank(address(vault));
         return
-            hook.checkRoles(
-                address(token), VaultActionLib.roleChecks(VaultAction(kind, c, o, r, shares / 1e12, shares))
-            );
+            hook.checkRoles(address(token), RoleCheckLib.roleChecks(VaultAction(kind, c, o, r, shares / 1e12, shares)));
     }
 
     function _maxShares(VaultActionKind kind, address c, address o, address r) internal returns (uint256 maxShares) {
         vm.prank(address(vault));
         (, maxShares) = hook.maxAllowed(
-            address(token), VaultActionLib.roleChecks(VaultAction(kind, c, o, r, type(uint128).max, type(uint128).max))
+            address(token), RoleCheckLib.roleChecks(VaultAction(kind, c, o, r, type(uint128).max, type(uint128).max))
         );
     }
 
@@ -163,7 +162,7 @@ contract MaxPositionHookTest is Test {
     }
 
     function testOnRolesRevertsWhatCheckRolesRefuses() public {
-        RoleCheck[] memory checks = VaultActionLib.roleChecks(
+        RoleCheck[] memory checks = RoleCheckLib.roleChecks(
             VaultAction(VaultActionKind.DepositRequest, controller, owner, controller, 1_000e6, 1_000e18 + 1)
         );
         vm.prank(address(vault));

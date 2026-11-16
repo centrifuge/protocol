@@ -4,13 +4,17 @@ pragma solidity 0.8.28;
 import {GapTargets} from "./GapTargets.sol";
 
 import {CastLib} from "../../../../src/misc/libraries/CastLib.sol";
+import {MathLib} from "../../../../src/misc/libraries/MathLib.sol";
 
 import {RequestId} from "../../../../src/core/types/RequestId.sol";
 import {IHubRegistry} from "../../../../src/core/hub/interfaces/IHubRegistry.sol";
 
+import {CappedShareTokenHook} from "../../../hooks/mocks/CappedShareTokenHook.sol";
+
 import {VaultRequestIdLib} from "../../../../src/vaults/libraries/VaultRequestIdLib.sol";
 import {IRequestPolicy} from "../../../../src/vaults/policies/interfaces/IVaultPlugins.sol";
 import {IAsyncVault, IVaultErrors, Bucket} from "../../../../src/vaults/interfaces/IAsyncVault.sol";
+import {IBasinLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IBasinLiquidityRoute.sol";
 import {IVaultLiquidityRoute} from "../../../../src/vaults/liquidity/interfaces/IVaultLiquidityRoute.sol";
 
 import {vm} from "@chimera/Hevm.sol";
@@ -185,6 +189,42 @@ abstract contract VaultGapTargets is GapTargets {
         }
     }
 
+    address internal constant SUBSIDY_TAKER = address(0x5B51D);
+
+    /// @dev Takes part of pool E's subsidy out, as its manager through the hub or as a ward: the recipient gets exactly
+    ///      the amount and the escrow gives exactly it. One unit more than the escrow holds, or a pool without an
+    ///      escrow, moves nothing.
+    function subsidy_withdraw(uint256 value, bool past, bool direct) public updateGhosts(OpType.MANAGER) {
+        address escrow = address(refundEscrowFactory.get(poolE));
+        uint256 held = escrow.balance;
+        value = past ? held + 1 : between(value, 0, held);
+        uint256 expected = past || escrow.code.length == 0 ? 0 : value;
+        uint256 takerBefore = SUBSIDY_TAKER.balance;
+
+        bool success = _withdrawSubsidy(value, direct);
+        eq(SUBSIDY_TAKER.balance - takerBefore, expected, "a subsidy withdrawal paid another amount");
+        eq(held - escrow.balance, expected, "a subsidy withdrawal took another amount from the escrow");
+        t(success == (!past && escrow.code.length != 0), "a subsidy withdrawal went through or failed against its rule");
+        success ? _ok("subsidy_withdraw") : _reverted("subsidy_withdraw");
+    }
+
+    function _withdrawSubsidy(uint256 value, bool direct) internal returns (bool success) {
+        if (direct) {
+            (success,) =
+                address(subsidyManager).call(abi.encodeCall(subsidyManager.withdraw, (poolE, SUBSIDY_TAKER, value)));
+            return success;
+        }
+        bytes memory payload = abi.encode(SUBSIDY_TAKER.toBytes32(), value);
+        vm.deal(FM, 1 ether);
+        (success,) = _callAs(
+            FM,
+            address(hub),
+            abi.encodeCall(
+                hub.managerCall, (poolE, CENTRIFUGE_ID, address(subsidyManager).toBytes32(), payload, 0, 0, REFUND)
+            )
+        );
+    }
+
     //----------------------------------------------------------------------------------------------
     // Basin repayment the route cannot book
     //----------------------------------------------------------------------------------------------
@@ -258,5 +298,71 @@ abstract contract VaultGapTargets is GapTargets {
         uint256 capacity = vault.maxWithdraw(actor);
         if (capacity == 0) return false;
         return _instant(vault, actor, between(amount, 1, capacity), true, false);
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Basin credit line
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev The pool moves the basin's limit through the Envoy, or the venue's LP its credit, anywhere from nothing to
+    ///      twice the line set up, so a line can fall below what the vault already owes. The route offers no more than
+    ///      the lower of the two less the receivable.
+    function basin_setLine(uint256 amount, bool isLimit) public updateGhosts(OpType.MANAGER) {
+        address vault = address(vaults[3]);
+        uint128 line = uint128(between(amount, 0, VENUE_FUNDS / 5));
+        if (isLimit) {
+            _managerCall(
+                poolA, address(basinRoute), abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, vault, abi.encode(line))
+            );
+        } else {
+            vm.prank(LP);
+            basinRoute.setCredit(vault, line);
+        }
+        eq(isLimit ? basinRoute.limit(vault) : basinRoute.credit(vault), line, "the line was not set");
+
+        uint256 bound = MathLib.min(basinRoute.limit(vault), basinRoute.credit(vault));
+        uint256 owed = basinRoute.receivable(address(vault));
+        lte(basinRoute.available(vault), bound > owed ? bound - owed : 0, "the route offers past its line");
+        _ok("basin_setLine");
+    }
+
+    //----------------------------------------------------------------------------------------------
+    // Hook limits
+    //----------------------------------------------------------------------------------------------
+
+    /// @dev Share A's hook swapped for one call to a hook that caps each holder's shares and reports the room, set
+    ///      between one share past the holding and the uncapped capacity's worth: `maxDeposit` is scaled to the cap, and
+    ///      depositing all of it goes through and stays within it.
+    function hook_cappedInstantDeposit(uint256 actorSeed, bool basinVault, uint256 roomSeed)
+        public
+        updateGhosts(OpType.USER)
+    {
+        IAsyncVault vault = vaults[basinVault ? 3 : 2];
+        if (!_oracleValid()) return;
+        address actor = _instantActor(actorSeed, vault, true);
+        if (frozen[actor] || !_healthy(vault, actor) || _inAsync(vault, actor, true) || _gatedOut(vault, actor)) {
+            return;
+        }
+        uint256 uncapped = MathLib.min(vault.maxDeposit(actor), usdc.balanceOf(actor));
+        uint256 most = uncapped == 0 ? 0 : vault.previewDeposit(uncapped);
+        if (most < 2) return;
+
+        uint256 cap = shareA.balanceOf(actor) + between(roomSeed, 1, most - 1);
+        address hook = shareA.hook();
+        _setShareHook(address(new CappedShareTokenHook(freezeOnly, cap, type(uint256).max, true)));
+
+        uint256 capacity = MathLib.min(vault.maxDeposit(actor), usdc.balanceOf(actor));
+        lte(vault.previewDeposit(capacity), cap - shareA.balanceOf(actor), "maxDeposit past the hook's room");
+        if (capacity != 0) {
+            t(_instant(vault, actor, capacity, false, true), "a deposit of maxDeposit under the hook's cap was refused");
+            lte(shareA.balanceOf(actor), cap, "an instant deposit went past the hook's cap");
+        }
+        _setShareHook(hook);
+        _ok("hook_cappedInstantDeposit");
+    }
+
+    function _setShareHook(address hook) internal {
+        vm.prank(address(shareTokenRegistrar));
+        shareA.file("hook", hook);
     }
 }

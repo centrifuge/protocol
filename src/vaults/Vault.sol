@@ -6,10 +6,10 @@ import "./policies/interfaces/IVaultPlugins.sol";
 import {BucketLib} from "./libraries/BucketLib.sol";
 import {HorizonLib} from "./libraries/HorizonLib.sol";
 import "./messaging/interfaces/IVaultRequestManager.sol";
+import {RoleCheckLib} from "./libraries/RoleCheckLib.sol";
 import {VaultPricingLib} from "./libraries/VaultPricingLib.sol";
 import {IVaultOracle} from "./oracles/interfaces/IVaultOracle.sol";
 import {VaultRequestIdLib} from "./libraries/VaultRequestIdLib.sol";
-import {VaultActionLib, VaultActionKind, VaultAction} from "./libraries/VaultActionLib.sol";
 
 import {D18} from "../misc/types/D18.sol";
 import {Auth, IAuth} from "../misc/Auth.sol";
@@ -66,7 +66,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     ILiquidityRoute public immutable liquidityRoute;
     ISettlementObserver public immutable settlementObserver;
 
-    // Fold horizon
+    // Request policy
     bool internal immutable _isBatched;
     uint256 public immutable foldHorizon;
     uint256 internal immutable _giftSlots;
@@ -83,7 +83,6 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     BucketLib.State internal _buckets;
     HorizonLib.State internal _horizon;
     mapping(uint96 localId => bytes32) public keyOf;
-    /// @dev Both sides' bucket per key in one slot, deposit in the low 96 bits: the second side rewrites it.
     mapping(bytes32 key => uint256) internal _bucketIds;
 
     constructor(
@@ -183,8 +182,6 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     {
         uint128 shares_ = shares.toUint128();
         require(shares_ != 0, ZeroAmount());
-        // `owner` is not validated yet, so a sponsor can be named as `owner` and pass the credit check; pulling its
-        // shares below still needs its allowance or operator status
         _requireCredit(owner, controller);
         _enforceAction(
             VaultAction(VaultActionKind.RedeemRequest, controller, owner, address(0), _assetsEstimate(shares_), shares_)
@@ -443,7 +440,8 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         // A capacity whose shares convert back to no assets is not one: the redeem reverts, so the view reports none.
         uint128 shares_ = _toShares(gross, ppa, pps, MathLib.Rounding.Down);
         uint128 value = _toAssets(shares_, ppa, pps, MathLib.Rounding.Down);
-        return value == 0 || _quotedSpread(false, controller, value, false) >= value ? 0 : shares_;
+        return
+            value == 0 || _quotedSpread(InstantSide.Redeem, controller, value, FeeBasis.ExactIn) >= value ? 0 : shares_;
     }
 
     /// @inheritdoc IAsyncVault
@@ -463,7 +461,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
             return filled.fractionOf(assets_, claimable, MathLib.Rounding.Down);
         }
 
-        uint128 netAssets = assets_ - _quotedSpread(true, msg.sender, assets_, false);
+        uint128 netAssets = assets_ - _quotedSpread(InstantSide.Deposit, msg.sender, assets_, FeeBasis.ExactIn);
         (D18 ppa, D18 pps) = _pricesChecked();
         return _toShares(netAssets, ppa, pps, MathLib.Rounding.Down);
     }
@@ -473,7 +471,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         uint128 shares_ = shares.toUint128();
         (bool isAsync, uint128 filled, uint128 refund, uint128 claimable) = _depositLedger(msg.sender);
         if (isAsync) {
-            // Refunded shares carry no assets, so only the filled part is priced
+            // Refunded shares carry no assets, so only the filled part is priced.
             uint128 priced = shares_ - MathLib.min(shares_, refund).toUint128();
             if (priced == 0) return 0;
             require(filled != 0, ExceedsDepositLimits());
@@ -482,7 +480,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
 
         (D18 ppa, D18 pps) = _pricesChecked();
         uint128 netAssets = _toAssets(shares_, ppa, pps, MathLib.Rounding.Up);
-        return netAssets + _quotedSpread(true, msg.sender, netAssets, true);
+        return uint256(netAssets) + _quotedSpread(InstantSide.Deposit, msg.sender, netAssets, FeeBasis.ExactOut);
     }
 
     /// @inheritdoc IERC7575
@@ -490,14 +488,15 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         uint128 assets_ = assets.toUint128();
         (bool isAsync, uint128 filled, uint128 refund, uint128 claimableShares) = _redeemLedger(msg.sender);
         if (isAsync) {
-            // Refunded assets carry no shares, so only the filled part is priced
+            // Refunded assets carry no shares, so only the filled part is priced.
             uint128 priced = assets_ - MathLib.min(assets_, refund).toUint128();
             if (priced == 0) return 0;
             require(filled != 0, ExceedsRedeemLimits());
             return claimableShares.fractionOf(priced, filled, MathLib.Rounding.Up);
         }
 
-        uint128 gross = assets_ + _quotedSpread(false, msg.sender, assets_, true);
+        uint128 gross =
+            (uint256(assets_) + _quotedSpread(InstantSide.Redeem, msg.sender, assets_, FeeBasis.ExactOut)).toUint128();
         (D18 ppa, D18 pps) = _pricesChecked();
         return _toShares(gross, ppa, pps, MathLib.Rounding.Up);
     }
@@ -513,7 +512,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
 
         (D18 ppa, D18 pps) = _pricesChecked();
         uint128 gross = _toAssets(shares_, ppa, pps, MathLib.Rounding.Down);
-        return gross - _quotedSpread(false, msg.sender, gross, false);
+        return gross - _quotedSpread(InstantSide.Redeem, msg.sender, gross, FeeBasis.ExactIn);
     }
 
     /// @inheritdoc IERC7575
@@ -740,7 +739,8 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         uint128 contributed = _buckets.transfer(localId, oldController, newController);
         if (!_isBatched) _releaseKey(localId, isDeposit);
         _horizon.remove(_buckets, oldController, localId, isDeposit);
-        // A position moved in is never one of the recipient's open buckets, so it fills only a free slot
+
+        // A position moved in is never one of the recipient's open buckets, so it fills only a free slot.
         _addToHorizon(newController, localId, isDeposit, false);
         emit RequestTransferred(requestId, oldController, newController, isDeposit, contributed, amount);
     }
@@ -799,7 +799,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
             );
         }
         if (shares > refunded) {
-            // Refunded shares to another receiver ride on the claim, with their value beside the fill's
+            // Refunded shares to another receiver ride on the claim, with their value beside the fill's.
             uint128 value =
                 refunded == 0 && refund != 0 ? MathLib.saturatingAdd(assets, _assetsEstimate(refund)) : assets;
             _enforceAction(
@@ -809,7 +809,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     }
 
     /// @dev Refunded shares that return to the controller itself are shares it already held: they move by an
-    ///      authorized transfer, which the share token's transfer hook does not see.
+    ///      authorized transfer, which the shipped transfer hooks do not restrict.
     function _deliverShares(address controller, address receiver, uint128 shares, uint128 refund) internal {
         uint128 refunded = receiver == controller ? refund : 0;
         if (refunded != 0) spoke.transferSharesFrom(poolId, scId, escrow, escrow, receiver, refunded);
@@ -832,7 +832,8 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
                 )
             );
         }
-        // The payout is the assets the receiver gets, a refund to another receiver included
+
+        // The payout is the assets the receiver gets, a refund to another receiver included.
         if (assets > refunded || shares != 0) {
             _enforceAction(
                 VaultAction(VaultActionKind.RedeemClaim, controller, address(0), receiver, assets - refunded, shares)
@@ -936,6 +937,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         uint256 requestId = VaultRequestIdLib.ofThis(localId);
         _buckets.settle(localId, isDeposit, s.assets, s.shares, s.cancelledGross, s.cancelledNet);
         emit BucketSettled(requestId, isDeposit, s.assets, s.shares, s.cancelledGross, s.cancelledNet);
+
         // An unbatched bucket folds as it settles, so its claimable is current, its pending stops closing the instant
         // lane, and a completed one frees its id for reuse. A batch waits for its contributors' claims.
         address owner = _buckets.buckets[localId].owner;
@@ -987,6 +989,16 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         }
     }
 
+    /// @dev Folds the controller's horizon into their ledger, which every claim and view starts from.
+    function _foldHorizon(address controller) internal {
+        _horizon.fold(_buckets, _investments[controller], controller);
+    }
+
+    /// @dev What folding the controller's horizon would add to their ledger, without folding it.
+    function _unfolded(address controller) internal view returns (UnfoldedState memory) {
+        return _horizon.unfolded(_buckets, _investments[controller], controller);
+    }
+
     //----------------------------------------------------------------------------------------------
     // Internal: instant lane, deposit
     //----------------------------------------------------------------------------------------------
@@ -998,11 +1010,11 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         require(assets != 0, ZeroAmount());
         require(assets <= _instantDepositCapacity(receiver, ppa, pps, true), ExceedsDepositLimits());
 
-        InstantFee memory fee = _instantFee(true, receiver, assets, false);
+        InstantFee memory fee = _instantFee(InstantSide.Deposit, receiver, assets, FeeBasis.ExactIn);
         require(fee.charge < assets, ExceedsDepositLimits());
 
         // A rebate grows what the escrow receives, so the shares stay fully asset-backed.
-        uint128 escrowIn = assets - fee.charge + fee.rebate;
+        uint128 escrowIn = (uint256(assets) - fee.charge + fee.rebate).toUint128();
         require(fee.retained < escrowIn, ExceedsDepositLimits());
 
         // The retained leg reaches the escrow but backs no shares, so it accrues to existing holders.
@@ -1018,11 +1030,11 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         uint128 backing = _toAssets(shares, ppa, pps, MathLib.Rounding.Up);
         require(backing > 0, ZeroAmount());
 
-        InstantFee memory fee = _instantFee(true, receiver, backing, true);
+        InstantFee memory fee = _instantFee(InstantSide.Deposit, receiver, backing, FeeBasis.ExactOut);
 
         // The caller funds the shares' value plus the retained leg; only the former backs the shares.
-        uint128 escrowIn = backing + fee.retained;
-        assets = escrowIn + fee.charge - fee.rebate;
+        uint128 escrowIn = (uint256(backing) + fee.retained).toUint128();
+        assets = (uint256(escrowIn) + fee.charge - fee.rebate).toUint128();
         require(assets <= _instantDepositCapacity(receiver, ppa, pps, true), ExceedsDepositLimits());
 
         _executeInstantDeposit(assets, escrowIn, shares, fee, receiver, ppa, pps);
@@ -1070,9 +1082,9 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         view
         returns (uint128, uint128)
     {
-        uint128 capacity = _instantDepositCapacity(receiver, ppa, pps, valid);
-        if (capacity == 0) return (0, 0);
-        capacity = _leaveRoomForRebate(receiver, capacity, ppa, pps);
+        uint128 clamped = _instantDepositCapacity(receiver, ppa, pps, valid);
+        if (clamped == 0) return (0, 0);
+        uint128 capacity = _leaveRoomForRebate(receiver, clamped, ppa, pps);
 
         // A capacity that would issue no shares is not one: the deposit reverts, so the view reports none.
         (uint128 assets, uint128 shares_) = _scaleInstantDeposit(receiver, capacity, ppa, pps);
@@ -1091,18 +1103,18 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         returns (uint128, uint128)
     {
         uint128 shares_ = _instantDepositShares(receiver, capacity, ppa, pps);
-        (uint256 maxAssets, uint256 maxShares) = VaultActionLib.limits(
+        (uint256 maxAssets, uint256 maxShares) = RoleCheckLib.limits(
             share, VaultAction(VaultActionKind.InstantDeposit, receiver, receiver, receiver, capacity, shares_)
         );
 
-        // The deposit whose shares, net of the fee on top (less a rebate), are `maxShares`
+        // The deposit whose shares, net of the fee on top (less a rebate), are `maxShares`.
         uint128 net = maxShares < shares_ ? _toAssets(uint128(maxShares), ppa, pps, MathLib.Rounding.Down) : 0;
         uint256 bound =
-            maxShares < shares_ ? MathLib.min(maxAssets, _lessFee(true, receiver, net, true, true)) : maxAssets;
+            maxShares < shares_ ? MathLib.min(maxAssets, _grossOf(InstantSide.Deposit, receiver, net)) : maxAssets;
         if (bound >= capacity) return (capacity, shares_);
 
         // Rounding in the fee can issue past the limit; then the deposit of `net` with no fee on top, unless a rebate
-        // still carries it past
+        // still carries it past.
         uint128 scaled = _instantDepositShares(receiver, uint128(bound), ppa, pps);
         if (scaled <= maxShares) return (uint128(bound), scaled);
         uint128 atNet = _instantDepositShares(receiver, net, ppa, pps);
@@ -1113,7 +1125,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     ///      can carry the amount past what converts, so it is clamped to the `uint128` of shares first.
     function _instantDepositShares(address receiver, uint128 assets, D18 ppa, D18 pps) internal view returns (uint128) {
         uint128 net = VaultPricingLib.clampToShares(
-            _lessFee(true, receiver, assets, false, false), _assetDecimals, _shareDecimals, ppa, pps, type(uint128).max
+            _netOf(InstantSide.Deposit, receiver, assets), _assetDecimals, _shareDecimals, ppa, pps, type(uint128).max
         );
         return _toShares(net, ppa, pps, MathLib.Rounding.Down);
     }
@@ -1122,7 +1134,8 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     function _instantDepositCapacity(address receiver, D18 ppa, D18 pps, bool valid) internal view returns (uint128) {
         if (!valid) return 0;
         if (address(instantPolicy) == address(0)) return 0;
-        // The shares are issued on top of the supply, which holds at most a `uint128`
+
+        // The shares are issued on top of the supply, which holds at most a `uint128`.
         uint256 room = type(uint128).max - IERC20Metadata(share).totalSupply();
         return VaultPricingLib.clampToShares(
             instantPolicy.maxInstantDeposit(address(this), receiver), _assetDecimals, _shareDecimals, ppa, pps, room
@@ -1132,7 +1145,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     /// @dev A rebate is converted on top of the deposit, so a deposit of the whole capacity can issue past the supply
     ///      room the capacity was clamped to; the views take the rebate's part back out.
     function _leaveRoomForRebate(address receiver, uint128 capacity, D18 ppa, D18 pps) internal view returns (uint128) {
-        uint128 converted = _lessFee(true, receiver, capacity, false, false);
+        uint128 converted = _netOf(InstantSide.Deposit, receiver, capacity);
         if (converted <= capacity) return capacity;
         uint256 room = type(uint128).max - IERC20Metadata(share).totalSupply();
         uint128 fits = VaultPricingLib.clampToShares(converted, _assetDecimals, _shareDecimals, ppa, pps, room);
@@ -1151,12 +1164,12 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         (uint128 capacity, uint128 escrowBalance) = _instantRedeemCapacity(msg.sender, ppa, pps, true);
         require(gross <= capacity, ExceedsRedeemLimits());
 
-        InstantFee memory fee = _instantFee(false, receiver, gross, false);
+        InstantFee memory fee = _instantFee(InstantSide.Redeem, receiver, gross, FeeBasis.ExactIn);
         require(fee.charge < gross, ExceedsRedeemLimits());
 
         // The shares burn at their full value but the retained leg never leaves the escrow, so the difference
         // accrues to the holders who stayed.
-        uint128 afterFee = gross - fee.charge + fee.rebate;
+        uint128 afterFee = (uint256(gross) - fee.charge + fee.rebate).toUint128();
         require(fee.retained < afterFee, ExceedsRedeemLimits());
         payout = afterFee - fee.retained;
 
@@ -1167,11 +1180,11 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         _requireLinked();
         // Price before the (mutating) policy hook.
         (D18 ppa, D18 pps) = _pricesChecked();
-        InstantFee memory fee = _instantFee(false, receiver, payout, true);
+        InstantFee memory fee = _instantFee(InstantSide.Redeem, receiver, payout, FeeBasis.ExactOut);
 
         // With a rebate, part of the payout is source-funded, so fewer shares are burned. The retained leg burns
         // extra shares whose value stays in the escrow.
-        uint128 gross = payout + fee.retained + fee.charge - fee.rebate;
+        uint128 gross = (uint256(payout) + fee.retained + fee.charge - fee.rebate).toUint128();
         (uint128 capacity, uint128 escrowBalance) = _instantRedeemCapacity(msg.sender, ppa, pps, true);
         require(gross <= capacity, ExceedsRedeemLimits());
 
@@ -1193,7 +1206,7 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         D18 pps
     ) internal {
         _enforceAction(VaultAction(VaultActionKind.InstantRedeem, msg.sender, msg.sender, receiver, payout, shares));
-        uint128 escrowOut = payout + fee.charge - fee.rebate;
+        uint128 escrowOut = (uint256(payout) + fee.charge - fee.rebate).toUint128();
         uint128 routed = escrowOut > escrowBalance ? escrowOut - escrowBalance + _reservedBeyondTotal() : 0;
         if (routed != 0) _provideFromRoute(routed);
 
@@ -1228,8 +1241,9 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         MathLib.Rounding sharesRounding
     ) internal view returns (uint128) {
         (uint128 capacity,) = _instantRedeemCapacity(owner, ppa, pps, valid);
+
         // One share below the uint128 bound `_instantRedeemCapacity` already holds it to, so the conversion still
-        // fits when it rounds up
+        // fits when it rounds up.
         uint128 gross =
             VaultPricingLib.clampToShares(capacity, _assetDecimals, _shareDecimals, ppa, pps, type(uint128).max - 1);
         if (gross == 0) return 0;
@@ -1246,9 +1260,8 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     function _instantRedeemAllowed(address owner, uint128 shares, D18 ppa, D18 pps) internal view returns (uint128) {
         if (shares == 0) return 0;
         uint128 payout = _instantRedeemPayout(owner, shares, ppa, pps);
-        (uint256 maxAssets, uint256 maxShares) = VaultActionLib.limits(
-            share, VaultAction(VaultActionKind.InstantRedeem, owner, owner, owner, payout, shares)
-        );
+        (uint256 maxAssets, uint256 maxShares) =
+            RoleCheckLib.limits(share, VaultAction(VaultActionKind.InstantRedeem, owner, owner, owner, payout, shares));
 
         uint256 limit =
             maxAssets < payout ? MathLib.min(maxShares, _sharesPaying(owner, uint128(maxAssets), ppa, pps)) : maxShares;
@@ -1264,13 +1277,13 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     /// @dev Shares whose payout is at most `payout`. A fee comes out of the payout, so the shares `payout` converts to
     ///      bound it from below; a rebate adds to it, so their value is first taken down to the gross that pays `payout`.
     function _sharesPaying(address owner, uint128 payout, D18 ppa, D18 pps) internal view returns (uint128) {
-        uint128 gross = MathLib.min(payout, _lessFee(false, owner, payout, true, true)).toUint128();
+        uint128 gross = MathLib.min(payout, _grossOf(InstantSide.Redeem, owner, payout)).toUint128();
         return _toShares(gross, ppa, pps, MathLib.Rounding.Down);
     }
 
     /// @dev The payout at the signed fee, a rebate included, since the hook limits what is paid.
     function _instantRedeemPayout(address owner, uint128 shares, D18 ppa, D18 pps) internal view returns (uint128) {
-        return _lessFee(false, owner, _toAssets(shares, ppa, pps, MathLib.Rounding.Down), false, false);
+        return _netOf(InstantSide.Redeem, owner, _toAssets(shares, ppa, pps, MathLib.Rounding.Down));
     }
 
     /// @dev What a manager has reserved beyond the escrow's total, which it may do ahead of arrival. Assets that
@@ -1291,10 +1304,10 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
 
         escrowBalance = spoke.availableBalanceOf(poolId, scId, asset, 0);
         uint128 cap = instantPolicy.maxInstantRedeem(address(this), owner);
-        uint256 reachable = escrowBalance;
-        if (cap > escrowBalance && address(liquidityRoute) != address(0)) {
-            reachable += MathLib.saturatingSub(liquidityRoute.available(address(this)), _reservedBeyondTotal());
-        }
+        uint128 routable = cap > escrowBalance && address(liquidityRoute) != address(0)
+            ? MathLib.saturatingSub(liquidityRoute.available(address(this)), _reservedBeyondTotal())
+            : 0;
+        uint256 reachable = uint256(escrowBalance) + routable;
         capacity = VaultPricingLib.clampToConvertible(
             MathLib.min(cap, reachable).toUint128(), _assetDecimals, _shareDecimals, ppa, pps
         );
@@ -1305,19 +1318,23 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     //----------------------------------------------------------------------------------------------
 
     /// @dev Quotes before the policy records the trade, so the fee is the answer the previews gave.
-    function _instantFee(bool isDeposit, address receiver, uint128 amount, bool exactOut)
+    function _instantFee(InstantSide side, address receiver, uint128 amount, FeeBasis basis)
         internal
         returns (InstantFee memory fee)
     {
-        (int128 feeAssets, address recipient) = _quote(isDeposit, msg.sender, receiver, amount, exactOut);
-        if (isDeposit) instantPolicy.onInstantDeposit(address(this), msg.sender, receiver, amount, exactOut);
-        else instantPolicy.onInstantRedeem(address(this), msg.sender, receiver, amount, exactOut);
+        (int128 feeAssets, address recipient) = _quote(side, msg.sender, receiver, amount, basis);
+        bool exactOut = basis == FeeBasis.ExactOut;
+        if (side == InstantSide.Deposit) {
+            instantPolicy.onInstantDeposit(address(this), msg.sender, receiver, amount, exactOut);
+        } else {
+            instantPolicy.onInstantRedeem(address(this), msg.sender, receiver, amount, exactOut);
+        }
         require(feeAssets >= 0 || recipient != address(0), InvalidFeeRecipient());
 
         bool retained = recipient == address(0);
         fee = InstantFee({
             charge: feeAssets > 0 && !retained ? uint128(feeAssets) : 0,
-            rebate: feeAssets < 0 ? uint128(-feeAssets) : 0,
+            rebate: feeAssets < 0 ? uint128(uint256(-int256(feeAssets))) : 0,
             recipient: recipient,
             retained: feeAssets > 0 && retained ? uint128(feeAssets) : 0
         });
@@ -1331,43 +1348,56 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
 
     /// @dev Draws `assets` from the route into the escrow and books them. Measured on this vault's balance, not
     ///      the shared escrow a reentrant route could fill via a sibling, so a route cannot pass off another
-    ///      deposit as delivery.
+    ///      deposit as delivery. Booked before the route runs: a route may release the pool's holdings and then call
+    ///      code it does not control, and a permissionless sync from there would otherwise price the pool without the
+    ///      holding and without the cash. A route that fails to deliver reverts the booking with the draw.
     function _provideFromRoute(uint128 assets) internal {
+        spoke.noteDeposit(poolId, scId, asset, 0, assets);
         uint256 balance = IERC20Metadata(asset).balanceOf(address(this));
         liquidityRoute.provide(address(this), assets);
         uint256 received = IERC20Metadata(asset).balanceOf(address(this)) - balance;
         require(received >= assets, InsufficientLiquidity());
         SafeTransferLib.safeTransfer(asset, escrow, received);
-        spoke.noteDeposit(poolId, scId, asset, 0, assets);
     }
 
-    /// @dev `assets` less the policy's signed fee for `who`, so a rebate adds; with `grossUp`, plus it instead (the
-    ///      gross whose net is `assets`). Floored at zero and capped at `uint128`, for the views.
-    function _lessFee(bool isDeposit, address who, uint128 assets, bool exactOut, bool grossUp)
-        internal
-        view
-        returns (uint128)
-    {
-        (int128 feeAssets,) = _quote(isDeposit, who, who, assets, exactOut);
-        int256 result = grossUp ? int256(uint256(assets)) + feeAssets : int256(uint256(assets)) - feeAssets;
-        if (result <= 0) return 0;
-        return MathLib.min(uint256(result), type(uint128).max).toUint128();
+    /// @dev The net a `gross` pays out after the policy's signed fee for `who`, so a rebate adds. Floored at zero
+    ///      and capped at `uint128`, for the views.
+    function _netOf(InstantSide side, address who, uint128 gross) internal view returns (uint128) {
+        (int128 feeAssets,) = _quote(side, who, who, gross, FeeBasis.ExactIn);
+        return _clampAmount(int256(uint256(gross)) - feeAssets);
+    }
+
+    /// @dev The gross whose net is `net`: `net` plus the policy's signed fee for `who`, so a rebate subtracts.
+    ///      Floored at zero and capped at `uint128`, for the views.
+    function _grossOf(InstantSide side, address who, uint128 net) internal view returns (uint128) {
+        (int128 feeAssets,) = _quote(side, who, who, net, FeeBasis.ExactOut);
+        return _clampAmount(int256(uint256(net)) + feeAssets);
+    }
+
+    function _clampAmount(int256 amount) internal pure returns (uint128) {
+        if (amount <= 0) return 0;
+        return MathLib.min(uint256(amount), type(uint128).max).toUint128();
     }
 
     /// @dev The policy's quote of the fee on `assets` for `who`, without recording it, with a rebate clamped to zero
     ///      so a quote never over-promises.
-    function _quotedSpread(bool isDeposit, address who, uint128 assets, bool exactOut) internal view returns (uint128) {
-        (int128 feeAssets,) = _quote(isDeposit, who, who, assets, exactOut);
+    function _quotedSpread(InstantSide side, address who, uint128 assets, FeeBasis basis)
+        internal
+        view
+        returns (uint128)
+    {
+        (int128 feeAssets,) = _quote(side, who, who, assets, basis);
         return feeAssets > 0 ? uint128(feeAssets) : 0;
     }
 
     /// @dev The instant policy's fee and recipient for a trade, the one answer both previews and trades use.
-    function _quote(bool isDeposit, address sender, address receiver, uint128 assets, bool exactOut)
+    function _quote(InstantSide side, address sender, address receiver, uint128 assets, FeeBasis basis)
         internal
         view
         returns (int128 feeAssets, address recipient)
     {
-        return isDeposit
+        bool exactOut = basis == FeeBasis.ExactOut;
+        return side == InstantSide.Deposit
             ? instantPolicy.quoteInstantDeposit(address(this), sender, receiver, assets, exactOut)
             : instantPolicy.quoteInstantRedeem(address(this), sender, receiver, assets, exactOut);
     }
@@ -1380,8 +1410,8 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         require(_isLinked(), VaultNotLinked());
     }
 
-    /// @dev The registered position is checked too: the registry takes any contract from a pool's factory, so another
-    ///      pool could otherwise register this vault under itself and decide when it is open.
+    /// @dev The registered position is checked too. `DeployAndLink` already refuses a vault under a pool or share
+    ///      class it was not built for, so what this adds is the asset, which nothing else reads from the vault.
     function _isLinked() internal view returns (bool) {
         VaultDetails memory details = spokeRegistry.vaultDetails(address(this));
         return details.isLinked && details.poolId.raw() == poolId.raw() && details.scId.raw() == scId.raw()
@@ -1402,16 +1432,6 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
         require(open != 0 && open <= horizon, InvalidFoldHorizon());
     }
 
-    /// @dev Folds the controller's horizon into their ledger, which every claim and view starts from.
-    function _foldHorizon(address controller) internal {
-        _horizon.fold(_buckets, _investments[controller], controller);
-    }
-
-    /// @dev What folding the controller's horizon would add to their ledger, without folding it.
-    function _unfolded(address controller) internal view returns (UnfoldedState memory) {
-        return _horizon.unfolded(_buckets, _investments[controller], controller);
-    }
-
     /// @dev What is claimable, or the instant gross net of the exit fee, which is charged on top of the payout.
     function _maxWithdraw(address owner, bool cappedAtBalance) internal view returns (uint128) {
         (bool isAsync, uint128 filled, uint128 refund, uint128 shares) = _redeemLedger(owner);
@@ -1420,7 +1440,9 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
 
         (D18 ppa, D18 pps, bool valid) = _prices();
         uint128 gross = _maxInstantRedeem(owner, cappedAtBalance, ppa, pps, valid, MathLib.Rounding.Up);
-        return gross == 0 ? 0 : MathLib.saturatingSub(gross, _quotedSpread(false, owner, gross, false));
+        return gross == 0
+            ? 0
+            : MathLib.saturatingSub(gross, _quotedSpread(InstantSide.Redeem, owner, gross, FeeBasis.ExactIn));
     }
 
     function _prices() internal view returns (D18 ppa, D18 pps, bool valid) {
@@ -1457,11 +1479,11 @@ contract Vault is Auth, Recoverable, ReentrancyProtection, IAsyncVault {
     }
 
     function _enforceAction(VaultAction memory action) internal {
-        VaultActionLib.enforce(share, action);
+        RoleCheckLib.enforce(share, action);
     }
 
     function _isAllowed(VaultAction memory action) internal view returns (bool) {
-        return VaultActionLib.check(share, action);
+        return RoleCheckLib.check(share, action);
     }
 
     /// @dev A price the oracle does not vouch for reads as unlimited, like a missing one. With no hook to ask, nobody

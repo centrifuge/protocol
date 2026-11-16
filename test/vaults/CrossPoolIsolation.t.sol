@@ -114,7 +114,9 @@ contract CrossPoolIsolationTest is Test {
 
         vm.prank(envoy);
         vm.expectRevert(IBasinLiquidityRoute.WrongPool.selector);
-        source.fromHub(POOL_A, abi.encode(address(fake), uint128(1_000e6)));
+        source.fromHub(
+            POOL_A, abi.encode(IBasinLiquidityRoute.ConfigKind.Limit, address(fake), abi.encode(uint128(1_000e6)))
+        );
 
         fake.startLying();
         vm.expectRevert(IBasinLiquidityRoute.ExceedsLimit.selector);

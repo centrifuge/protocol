@@ -48,7 +48,7 @@ struct InvestmentState {
     uint128 refundAssets;
 }
 
-/// @notice A settlement bucket keyed by the local id assigned by the request policy (the full
+/// @notice A settlement bucket keyed by the local id the vault assigns (the full
 ///         ERC-7540 request id is `(vault address << 96) | localId`). Every async request is a
 ///         contribution to a bucket; fulfillments settle bucket-level and distribute pro-rata to
 ///         contributors. Owned and mutated by `BucketLib`.
@@ -138,10 +138,53 @@ struct VaultConfig {
     uint256 foldHorizon;
 }
 
+/// @notice The vault operations the share token's hook gates: those without an enforced share leg, and the two whose
+///         leg the transfer hook sees without the parties the vault knows (an instant deposit's issuance, a deposit
+///         claim's delivery). Every other share movement reaches the hook as an ERC20 transfer.
+enum VaultActionKind {
+    /// @dev `controller` requests a deposit with assets from `owner`.
+    DepositRequest,
+    /// @dev `controller` claims the shares of a settled deposit, delivered to `receiver`. The delivery is an escrow to
+    ///      receiver transfer, which the transfer hook sees without the controller, so the controller is checked here:
+    ///      it must be able to hold the shares itself, so a restricted controller cannot move its position away.
+    DepositClaim,
+    /// @dev `owner`, the caller and `controller`, deposits at once, issued to `receiver`.
+    InstantDeposit,
+    /// @dev `owner` hands its pending deposit position to `receiver` (ERC-8161).
+    DepositRequestTransfer,
+    /// @dev `controller` requests the redemption of shares owned by `owner`.
+    RedeemRequest,
+    /// @dev `controller` claims redemption proceeds, paid out to `receiver`.
+    RedeemClaim,
+    /// @dev `owner`, the caller and `controller`, redeems at once, paid out to `receiver`.
+    InstantRedeem,
+    /// @dev `owner` hands its pending redeem position to `receiver` (ERC-8161).
+    RedeemRequestTransfer,
+    /// @dev `controller` takes back to itself, through `withdraw`, the assets of a cancelled deposit. A refund to
+    ///      another receiver is a claim.
+    DepositRefundClaim,
+    /// @dev `controller` takes back to itself, through `mint`, the shares of a cancelled redemption. A request's owner
+    ///      and controller may differ, and the refund goes to the controller, so a hook whose `Refund` is looser than
+    ///      its `Transfer` lets the controller receive shares it could not have been sent. A refund to another
+    ///      receiver is a claim.
+    RedeemRefundClaim
+}
+
+/// @notice A vault action and the parties and value it involves. Which party each field names, and which are unused, is
+///         the kind's (see `VaultActionKind`). `assets` and `shares` are the value the action moves (see `RoleCheck`).
+struct VaultAction {
+    VaultActionKind kind;
+    address controller;
+    address owner;
+    address receiver;
+    uint128 assets;
+    uint128 shares;
+}
+
 /// @notice Everything the vault reverts with. Split from the function surface below so the settlement
 ///         libraries can raise them without inheriting the surface.
 interface IVaultErrors {
-    /// @notice A request or claim of zero.
+    /// @notice A request, claim or instant trade of zero, or one that converts to zero.
     error ZeroAmount();
     /// @notice The caller may not request for that controller: it is not the owner or its operator, or not accepted.
     error NotSponsor();
@@ -183,11 +226,11 @@ interface IVaultErrors {
     error InvalidController();
     /// @notice The request policy reports no open buckets, or the fold horizon is below them.
     error InvalidFoldHorizon();
-    /// @notice The claim exceeds what the controller can claim on the redeem side.
+    /// @notice Above the redeem-side claimable amount or the instant capacity, or an instant trade its fee consumes.
     error ExceedsRedeemLimits();
-    /// @notice The instant policy charged a fee with no recipient.
+    /// @notice The instant policy gave a rebate with no source to pay it.
     error InvalidFeeRecipient();
-    /// @notice The claim exceeds what the controller can claim on the deposit side.
+    /// @notice Above the deposit-side claimable amount or the instant capacity, or an instant trade its fee consumes.
     error ExceedsDepositLimits();
     /// @notice The escrow or the liquidity route cannot pay the assets out.
     error InsufficientLiquidity();
@@ -226,8 +269,8 @@ interface IVaultEvents {
     /// @notice The controller's position in `requestId` is outside its fold horizon, so a claim no longer folds it. In
     ///         a batch only `foldRequest(localId, controller)` credits what it settles from here; an unbatched bucket
     ///         (one with an `owner`) still folds as it settles, so a keeper can skip it, unless that fold was deferred for
-    ///         a ledger counter without room (`BucketLib.foldInto`). Emitted when the horizon has
-    ///         no room for a position the controller did not submit (a sponsor's, or one transferred to it), and when
+    ///         a ledger counter without room (`BucketLib.foldInto`). Emitted when the horizon has no room for a
+    ///         position the controller did not submit or fund (a sponsor's, or one transferred to it), and when
     ///         the controller's own position evicts an older one the eviction's fold did not complete. A keeper tracks
     ///         these pairs, folds each on its bucket's `BucketSettled`, and drops one on its `RequestFolded` with
     ///         `completed`.
@@ -300,9 +343,9 @@ interface IVaultEvents {
 
     /// @notice The pricing of an instant deposit or redemption, beside its ERC-4626 event: the fee
     ///         paid to (or rebate from) `feeRecipient`, the leg retained by the pool, and on a
-    ///         redemption what was drawn from the liquidity route: the shortfall, plus what a manager reserved
-    ///         beyond the escrow's total, which the draw meets first. `caller` is the account that traded,
-    ///         `shares` the shares minted or burnt, and the prices those the trade converted at.
+    ///         redemption what was asked of the liquidity route, which may deliver more: the shortfall, plus what a
+    ///         manager reserved beyond the escrow's total, which the draw meets first. `caller` is the account that
+    ///         traded, `shares` the shares minted or burnt, and the prices those the trade converted at.
     event InstantFees(
         address indexed caller,
         address indexed receiver,
@@ -408,12 +451,15 @@ interface IVaultTwoArgClaims {
 /// @dev How the ERC-4626 surface reads on this vault:
 ///      - The 2-arg `deposit`/`mint`/`withdraw`/`redeem` claim asynchronously when the caller has something
 ///        claimable or a request pending on that side, and settle instantly otherwise.
-///      - The 3-arg forms route like the 2-arg ones when the caller is the controller (the owner, for
-///        `withdraw`/`redeem`, as ERC-4626 requires), and only claim for an operator: the instant path pulls
-///        from or burns the caller, so an operator acting for an idle controller can never reach it.
+///      - The 3-arg `deposit`/`mint` only claim. The 3-arg `withdraw`/`redeem` route like the 2-arg ones when the
+///        caller is the owner, as ERC-4626 requires, and only claim for an operator: the instant path burns the
+///        caller's shares, so an operator acting for an idle controller can never reach it.
 ///      - `max*` report what is claimable, or the instant capacity when nothing is in flight; the
 ///        instant `maxWithdraw`/`maxRedeem` are also bounded by the owner's share balance.
 ///        `claimable*Request` report only what the hub fulfilled, with no hook gate, so they never revert.
+///      - `preview*` quote what the caller's own 2-arg call would do: the instant quote, or for a caller in async
+///        mode the claim's pro-rata. With no instant policy they revert for a caller with nothing to claim, but
+///        still quote a claimant, where ERC-7540 has a fully async vault revert them for every caller.
 ///      - `convertTo*` and `totalAssets` convert at the last hub prices; they are not previews.
 ///      - `supportsInterface` always claims ERC-7575, ERC-165 and the operator interface, and the
 ///        async ERC-7540 interfaces only when a request policy is set, so an instant-only vault does not
@@ -431,6 +477,18 @@ interface IAsyncVault is
     IERC7575,
     IRecoverable
 {
+    /// @notice Which instant lane a fee is quoted for.
+    enum InstantSide {
+        Deposit,
+        Redeem
+    }
+
+    /// @notice What a fee quote's amount is: a gross the fee comes out of, or a net the fee comes on top of.
+    enum FeeBasis {
+        ExactIn,
+        ExactOut
+    }
+
     /// @notice Folds one contributor's pro-rata slice of a bucket's settlements (rounded down) into
     ///         their claimable ledger, which is when it becomes claimable. Permissionless and incremental;
     ///         a settlement folds an unbatched bucket, and claims only the controller's latest positions (the

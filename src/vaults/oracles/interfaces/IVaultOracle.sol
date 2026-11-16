@@ -29,23 +29,40 @@ interface IVaultOracle {
 /// @notice The default oracle: hub-notified prices, with optional age and skew bounds and a per-pool
 ///         pause. Registry validity alone only means a price was notified once.
 interface ISpokeOracle is IVaultOracle, IManagerCallFromHub {
+    /// @notice What a `fromHub` payload sets, its first word.
+    enum ConfigKind {
+        /// @dev `abi.encode(SetPaused, bool paused)`: the pool's pause flag.
+        SetPaused,
+        /// @dev `abi.encode(SetPauser, address pauser, bool allowed)`: who may `pause` the pool on this chain.
+        SetPauser
+    }
+
+    /// @notice The oracle was deployed with its price source, bounds and configuring Envoy.
     event OracleConfigured(ISpokeRegistry indexed spokeRegistry, uint64 maxAge, uint64 maxSkew, address indexed envoy);
 
-    /// @notice A pool's pause flag changed to `paused`, by `by`: the envoy for the hub, or the local manager that
+    /// @notice A pool's pause flag changed to `paused`, by `by`: the envoy for the hub, or the local pauser that
     ///         paused. Not emitted when a call leaves it as it was.
     event SetPaused(PoolId indexed poolId, bool paused, address indexed by);
 
-    /// @notice Only the Envoy may set the pause flag from the hub.
+    /// @notice The pool allowed or disallowed `pauser` to pause it on this chain.
+    event SetPauser(PoolId indexed poolId, address indexed pauser, bool allowed);
+
+    /// @notice Only the Envoy may configure the oracle from the hub.
     error NotEnvoy();
 
-    /// @notice The caller is not a spoke manager of the pool it tried to pause.
-    error NotManager();
+    /// @notice The caller is not a pauser of the pool it tried to pause.
+    error NotPauser();
 
-    /// @notice Setting the pause flag takes no native value.
+    /// @notice Configuring the oracle takes no native value.
     error UnexpectedValue();
 
+    /// @notice A `fromHub` payload names a configuration kind this contract does not handle.
+    error UnknownConfigKind();
+
     /// @notice Pauses a pool's checked reads from the spoke's chain, without waiting on a hub message.
-    /// @dev    Open to the pool's spoke managers. Pausing only: unpausing stays with the pool, through `fromHub`.
+    /// @dev    Open to the pool's pausers (`ConfigKind.SetPauser`), a role of its own rather than the spoke manager
+    ///         role, so a key that can only stop the lane need not be able to move the escrow. Pausing only:
+    ///         unpausing stays with the pool, through `fromHub`.
     function pause(PoolId poolId) external;
 
     /// @notice The spoke registry the prices are read from.
@@ -60,7 +77,11 @@ interface ISpokeOracle is IVaultOracle, IManagerCallFromHub {
     function maxSkew() external view returns (uint64);
 
     /// @notice Whether a pool's checked reads are refused.
-    /// @dev    Set through the Envoy (`fromHub`, payload `(bool)`), or set by `pause`. Closes the instant lane and the
-    ///         previews; async settlement and claims are untouched, since they price from the ledger.
+    /// @dev    Set through the Envoy (`fromHub`, `ConfigKind.SetPaused`), or set by `pause`. Closes the instant lane
+    ///         and the previews of a caller in instant mode; async settlement, claims and a claimant's previews are
+    ///         untouched, since they price from the ledger.
     function isPaused(PoolId poolId) external view returns (bool);
+
+    /// @notice Whether `who` may `pause` the pool on this chain.
+    function isPauser(PoolId poolId, address who) external view returns (bool);
 }

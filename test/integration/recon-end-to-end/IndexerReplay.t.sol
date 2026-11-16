@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-import {CryticToFoundry} from "./CryticToFoundry.sol";
+import {FoundryHarness} from "./FoundryHarness.sol";
 import {VaultIndexer} from "./mocks/VaultIndexer.sol";
 
 import {IEscrow} from "../../../src/core/spoke/interfaces/IEscrow.sol";
@@ -19,7 +19,7 @@ import {console} from "forge-std/console.sol";
 ///         the indexer must reach it from the fold's own logs.
 /// @dev    Foundry only: Echidna and Medusa cannot read logs. Each test starts the recording itself, so the logs of
 ///         `setUp` are not the indexer's.
-contract IndexerReplayReachability is CryticToFoundry {
+contract IndexerReplayReachability is FoundryHarness {
     VaultIndexer internal indexer;
     address[] internal followed;
     uint256 internal replays;

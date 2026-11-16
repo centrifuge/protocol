@@ -595,6 +595,13 @@ abstract contract VaultTargets is BaseTargetFunctions, Properties {
         _ok(action);
     }
 
+    /// @dev Whether the deposit lane is gated and the account is not on its list.
+    function _gatedOut(IAsyncVault vault, address actor) internal view returns (bool) {
+        (,,,, bool gatedDeposit,,) = reserveInstantPolicy.config(address(vault));
+        return gatedDeposit
+            && !reserveInstantPolicy.isAllowed(address(vault), IReserveInstantPolicy.ConfigKind.Depositor, actor);
+    }
+
     /// @dev What the policy let through must be what it is configured to let through: a closed lane serves nobody,
     ///      and a gated one only the accounts on its list. The gate is the caller's, never the receiver's.
     function _checkLane(IAsyncVault vault, address actor, bool isDeposit) internal {

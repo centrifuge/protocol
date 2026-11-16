@@ -2,10 +2,14 @@
 pragma solidity ^0.8.28;
 
 import {EndToEndFlows} from "./EndToEnd.t.sol";
+import {EvilVaultFactory} from "./recon-end-to-end/mocks/EvilVaultFactory.sol";
 
 import {IAuth} from "../../src/misc/interfaces/IAuth.sol";
 import {CastLib} from "../../src/misc/libraries/CastLib.sol";
 
+import {PoolId} from "../../src/core/types/PoolId.sol";
+import {ShareClassId} from "../../src/core/types/ShareClassId.sol";
+import {ISpokeRegistry} from "../../src/core/spoke/interfaces/ISpokeRegistry.sol";
 import {MessageLib, VaultUpdateKind} from "../../src/core/messaging/libraries/MessageLib.sol";
 
 import {IVaultDeployFactory} from "../../src/vaults/factories/interfaces/IVaultDeployFactory.sol";
@@ -87,6 +91,59 @@ contract VaultLocalDeployTest is EndToEndFlows {
         assertEq(_deploy(FM), vault, "the pool's deploy found another vault");
         assertTrue(_deliver(_deployMessage()), "the link failed");
         assertTrue(s.spokeRegistry.isLinked(vault), "vault not linked");
+    }
+
+    /// @dev `VaultFactory.deploy` is permissionless, so a vault exists at its address before the pool's message
+    ///      arrives. Another pool's admin names a factory of their own that returns that address, and the registry
+    ///      refuses it: the vault says it was built for pool A, whatever factory returned it. The owning pool's own
+    ///      message then still links it.
+    function testAnotherPoolCannotRegisterAPreDeployedVault() public {
+        _configurePool(false);
+        address vault = _deploy(OUTSIDER);
+
+        // Pool B is on the spoke, as the hub's own notifications would put it there
+        PoolId poolB = h.hubRegistry.poolId(CENTRIFUGE_ID_A, 2);
+        ShareClassId scB = h.shareClassManager.previewNextShareClassId(poolB);
+        assertTrue(_deliver(MessageLib.NotifyPool({poolId: poolB.raw()}).serialize()), "pool B was not added");
+        assertTrue(
+            _deliver(
+                MessageLib.NotifyShareClass({
+                    poolId: poolB.raw(),
+                    scId: scB.raw(),
+                    name: "B",
+                    symbol: bytes32("B"),
+                    decimals: 18,
+                    salt: bytes32(bytes8(poolB.raw())),
+                    registrar: address(s.shareTokenRegistrar).toBytes32(),
+                    extraGasLimit: 0,
+                    payload: ""
+                }).serialize()
+            ),
+            "pool B's share class was not added"
+        );
+        require(s.spokeRegistry.hasShareClass(poolB, scB), "pool B is not on the spoke");
+
+        EvilVaultFactory evil = new EvilVaultFactory();
+        evil.set(vault);
+        bytes memory squat = MessageLib.UpdateVault({
+            poolId: poolB.raw(),
+            scId: scB.raw(),
+            assetId: s.usdcId.raw(),
+            vaultOrFactory: address(evil).toBytes32(),
+            kind: uint8(VaultUpdateKind.DeployAndLink),
+            extraGasLimit: 0,
+            payload: ""
+        }).serialize();
+
+        assertFalse(_deliver(squat), "pool B registered a vault built for pool A");
+        vm.prank(OUTSIDER);
+        vm.expectRevert(ISpokeRegistry.InvalidVault.selector);
+        s.gateway.retry(h.centrifugeId, squat);
+        assertFalse(s.spokeRegistry.isVaultRegistered(vault), "the vault is registered");
+
+        assertTrue(_deliver(_deployMessage()), "the owning pool's link failed");
+        assertTrue(s.spokeRegistry.isLinked(vault), "vault not linked");
+        assertEq(s.spokeRegistry.vaultDetails(vault).poolId.raw(), POOL_A.raw(), "registered under another pool");
     }
 
     /// @dev On a hub's own chain the message runs inside the hub call, which then reverts as a whole.

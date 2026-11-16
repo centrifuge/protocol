@@ -11,7 +11,7 @@ import {ShareClassId} from "../../../src/core/types/ShareClassId.sol";
 import {HookPolicies} from "../../../src/token/hooks/HookPolicies.sol";
 import {ShareTokenHook} from "../../../src/token/hooks/ShareTokenHook.sol";
 
-import {VaultActionKind} from "../../../src/vaults/libraries/VaultActionLib.sol";
+import {VaultActionKind} from "../../../src/vaults/interfaces/IAsyncVault.sol";
 
 import {MockVaultRegistry} from "../mocks/MockVaultRegistry.sol";
 import {VaultAction, VaultActionCheck} from "../mocks/VaultActionCheck.sol";
@@ -451,6 +451,28 @@ contract VaultActionPolicyTest is Test {
                 "a frozen controller"
             );
         }
+    }
+
+    function testARefundAsksNoMembershipEvenWithItsMaskBitSet() public {
+        ShareTokenHook hook = _deploy(type(uint8).max);
+        share.setHookData(controller, bytes16(0));
+
+        assertTrue(
+            hook.checkAction(
+                address(share), _action(VaultActionKind.DepositRefundClaim, controller, address(0), controller)
+            ),
+            "a deposit refund"
+        );
+        assertTrue(
+            hook.checkAction(
+                address(share), _action(VaultActionKind.RedeemRefundClaim, controller, address(0), controller)
+            ),
+            "a redeem refund"
+        );
+        assertFalse(
+            hook.checkAction(address(share), _action(VaultActionKind.RedeemClaim, controller, address(0), controller)),
+            "the mask still gates the payout"
+        );
     }
 
     /// @dev Who may fund a position credited to someone else is the vault's question, not the hook's.

@@ -35,6 +35,13 @@ struct CreditLine {
 ///         accounting token minter of each drawing pool, and that liability token a registered spoke
 ///         asset; without them `available` is zero and draws revert.
 interface IBasinLiquidityRoute is ILiquidityRoute, IManagerCallFromHub, IRecoverable {
+    /// @notice What a `fromHub` payload sets. The payload is `abi.encode(ConfigKind, address vault, bytes args)`, the
+    ///         shape the other vault-scoped plugins take.
+    enum ConfigKind {
+        /// @dev `args` is `abi.encode(uint128 limit)`: the vault's line, see {limit}.
+        Limit
+    }
+
     event SetLimit(PoolId indexed poolId, address indexed vault, uint128 limit);
     event SetCredit(PoolId indexed poolId, address indexed vault, uint128 credit);
     event BasinProvided(PoolId indexed poolId, address indexed vault, uint128 assets);
@@ -59,6 +66,9 @@ interface IBasinLiquidityRoute is ILiquidityRoute, IManagerCallFromHub, IRecover
     /// @notice Setting a limit takes no native value.
     error UnexpectedValue();
 
+    /// @notice A `fromHub` payload names a configuration kind this contract does not handle.
+    error UnknownConfigKind();
+
     /// @notice Only the basin's liquidity provider may set a vault's credit.
     error NotLiquidityProvider();
 
@@ -78,7 +88,7 @@ interface IBasinLiquidityRoute is ILiquidityRoute, IManagerCallFromHub, IRecover
     function repay(address vault, uint128 assets) external;
 
     /// @notice The most a vault's pool lets it owe the venue. Set through the Envoy (`fromHub`, payload
-    ///         `abi.encode(address vault, uint128 limit)`); zero disables the vault.
+    ///         `abi.encode(ConfigKind.Limit, address vault, abi.encode(uint128 limit))`); zero disables the vault.
     function limit(address vault) external view returns (uint128);
 
     /// @notice The most the venue lets a vault owe it, set by the liquidity provider.

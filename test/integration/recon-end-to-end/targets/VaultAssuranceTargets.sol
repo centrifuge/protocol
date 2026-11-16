@@ -72,9 +72,14 @@ abstract contract VaultAssuranceTargets is StandardsTargets {
             t(ok && burned != 0, "maxWithdraw offered assets whose preview burns nothing");
             lte(burned, held, "maxWithdraw burns more shares than the holder has");
             (bool okAll, uint256 whole) = _asQuote(vault, actor, vault.previewRedeem.selector, held);
-            t(okAll, "previewRedeem refused the whole holding");
-            lte(withdraw, whole, "maxWithdraw offers more than the whole holding redeems for");
+            if (okAll) lte(withdraw, whole, "maxWithdraw offers more than the whole holding redeems for");
+            // A holding worth more than a uint128 of assets can be neither redeemed at once nor quoted
+            else t(!_holdingFitsAssets(vault, held), "previewRedeem refused the whole holding");
         }
+    }
+
+    function _holdingFitsAssets(IAsyncVault vault, uint256 held) internal view returns (bool fits) {
+        (fits,) = _staticQuote(address(vault), vault.convertToAssets.selector, held);
     }
 
     /// @dev A view as `who`, for the views that read the caller.
@@ -131,10 +136,6 @@ abstract contract VaultAssuranceTargets is StandardsTargets {
             isDeposit
                 ? vault.maxDeposit(actor) + vault.maxMint(actor)
                 : vault.maxWithdraw(actor) + vault.maxRedeem(actor);
-    }
-
-    function _isMember(address who) internal view returns (bool member) {
-        (member,) = fullRestrictions.isMember(address(shareA), who);
     }
 
     //----------------------------------------------------------------------------------------------
@@ -490,6 +491,13 @@ abstract contract VaultAssuranceTargets is StandardsTargets {
 
         (bool success, bytes memory ret) = _requestAsOperator(r);
         if (!success) return _reverted("vault_operatorRequests");
+        // As in `_expectedCredit`, with the operator approval the call ran under: it acted for the owner, so for a
+        // controller that is the owner too, and otherwise only a sponsor's credit is allowed on a dual-lane vault
+        t(
+            r.controller == r.owner || r.controller == r.operator || r.vault.isOperator(r.controller, r.operator)
+                || address(r.vault.instantPolicy()) == address(0) || ghostSponsor[address(r.vault)][r.owner],
+            "an operator's request credited a controller the policy forbids"
+        );
         _noteSurfaced(r.v, r.fold);
         _onRequest(r.v, abi.decode(ret, (uint256)), r.controller, isDeposit, r.amount);
         eq(
